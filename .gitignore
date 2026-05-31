@@ -1,0 +1,33 @@
+# --- Secrets / env ---
+.env
+*.local
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# --- Java / Gradle ---
+.gradle/
+core/build/
+*.class
+bin/
+
+# --- Node / TypeScript ---
+node_modules/
+mcp/dist/
+*.tsbuildinfo
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# --- 셸 마운트 동기화 테스트 잔여물 ---
+__bash_sync_test.txt

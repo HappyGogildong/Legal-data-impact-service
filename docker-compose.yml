@@ -1,0 +1,32 @@
+# 입법 영향 분석기 — 로컬 PoC 오케스트레이션
+# 세 런타임 + 저장소를 한 번에 띄운다.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: lia
+      POSTGRES_USER: lia
+      POSTGRES_PASSWORD: lia
+    ports: ["5432:5432"]
+
+  pipeline:
+    build: ./pipeline
+    env_file: .env            # ASSEMBLY_API_KEY, MOLEG_API_KEY, OPENAI_API_KEY ...
+    depends_on: [db]
+    # 증분 수집 스케줄러 (PoC에서는 1회 데모 실행)
+    command: ["python", "-m", "lia_pipeline.demo"]
+
+  core:
+    build: ./core
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/lia
+      PIPELINE_BASE_URL: http://pipeline:8000
+    ports: ["8080:8080"]
+    depends_on: [db]
+
+  mcp:
+    build: ./mcp
+    environment:
+      CORE_BASE_URL: http://core:8080
+    ports: ["3000:3000"]
+    depends_on: [core]

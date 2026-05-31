@@ -1,0 +1,19 @@
+{
+  "name": "lia-mcp",
+  "version": "0.1.0",
+  "description": "입법 영향 분석기 - MCP 도구 표면 + 웹 BFF",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.16.0",
+    "typescript": "^5.5.0"
+  }
+}
