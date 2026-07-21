@@ -1,0 +1,40 @@
+# LIA core — Boot 4.0 + Spring AI 2.0
+# 비밀값은 환경변수로 주입(레포 루트 .env 규약과 동일 변수명).
+# Spring은 .env 를 직접 읽지 않으므로 IDE 실행 설정이나 셸에서 export 하거나,
+# docker compose(env_file: .env)로 띄우면 자동 주입된다.
+
+lia:
+  sources:
+    assembly:                       # 열린국회 — 의원발의 법안 (ServiceKey)
+      api-key: ${ASSEMBLY_API_KEY:}
+      service: nzmimeepazxkubdpn    # 의원발의 법률안 목록
+      age: "22"                     # 국회 대수(필수). 22대=현재
+      base: https://open.assembly.go.kr/portal/openapi
+      page-size: 100
+      timeout: 20
+      max-retries: 3
+    moleg:                          # 법제처 입법예고 — 정부제출 법안 (OC=회원 이메일 아이디)
+      oc: ${MOLEG_OC:}
+      base: https://opinion.lawmaking.go.kr
+    law:                            # 국가법령정보 — 현행 법령/diff 기준선 (OC)
+      oc: ${LAW_OC:}
+      base: https://www.law.go.kr
+
+spring:
+  ai:
+    anthropic:                      # AnalysisEngine 추론 (D19: Opus 4.8)
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        options:
+          model: claude-opus-4-8
+          max-tokens: 4000
+    openai:                         # Embedder (D32: 외부 임베딩 API, dim 1536)
+      api-key: ${OPENAI_API_KEY:}
+      embedding:
+        options:
+          model: text-embedding-3-small
+      # Upstage 벤치 시: base-url/모델 오버라이드 (OpenAI-호환)
+      # base-url: https://api.upstage.ai
+
+server:
+  port: 8080

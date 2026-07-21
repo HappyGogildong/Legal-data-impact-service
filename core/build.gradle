@@ -1,20 +1,38 @@
+// LIA core — Spring Boot 4.0 + Spring AI 2.0 (D35: 파이프라인 통합 런타임)
+// 버전 변경점: docs/reference/spring-migration.md
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.3.0'
-    id 'io.spring.dependency-management' version '1.1.5'
+    id 'org.springframework.boot' version '4.0.0'          // GA 2025-11. 패치(4.0.x) 추적 권장
+    id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.lia'
-version = '0.1.0'
-java { sourceCompatibility = '21' }
+version = '0.2.0'
+java { sourceCompatibility = '21' }                          // Boot 4 baseline = Java 21
 
 repositories { mavenCentral() }
 
+dependencyManagement {
+    imports {
+        // Spring AI 2.0 GA (2026-05-28). Boot 4 전용 — 3.x와 혼용 불가
+        mavenBom "org.springframework.ai:spring-ai-bom:2.0.0"
+    }
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-webflux' // 파이프라인 호출용 WebClient
-    // implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // --- Spring AI (D35 매핑) ---
+    implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'  // AnalysisEngine 추론 (ChatClient, Opus 4.8)
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'     // Embedder (Upstage는 base-url 오버라이드)
+    // RAGIndexer 단계에서 활성화 (pgvector VectorStore + JDBC):
+    // implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
+    // implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     // runtimeOnly 'org.postgresql:postgresql'
+
+    // 도메인 영속화 단계에서 활성화:
+    // implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
