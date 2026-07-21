@@ -56,7 +56,7 @@ tags: [onboarding, start-here, guide]
 ## 작업 규약 (꼭 알아둘 것)
 - **동결 스냅샷 불변** — 설계 변경은 새 버전 파일 + `ARCHITECTURE.md` 색인·Changelog 갱신. 결정은 decision-log에 D번호로.
 - **GitHub 트래킹** — 라벨 `area:*`/`type:*`/`priority:*`, 마일스톤 M1~M4. 완료 작업도 이슈로 남기고 close(이력). 커밋은 의미 단위, **푸시는 사용자 확인 후**, 푸시 전 `.env`·`config.yaml` 미추적 확인.
-- **문서 3곳 동기화(byte-identical)** — ① 이 레포 `docs/` ② Obsidian 볼트(`…\프로젝트\입법 영향 분석\`) ③ `law-impact-analysis/docs/`. 문서 수정 후 `cp`+`diff`.
+- **작업은 이 레포에서만** — 문서는 **2곳 동기화(byte-identical)**: ① 이 레포 `docs/`(단일 소스, 편집은 여기서만) ② Obsidian 볼트(`…\프로젝트\입법 영향 분석\`, 아카이빙 미러). 문서 수정 후 `cp`+`diff`. (`law-impact-analysis`는 2026-07-21 제외)
 - **비밀 관리** — 실제 키는 루트 `.env`(gitignore)에만. `config.yaml`·`application.yml`은 `${ENV}` 참조. `*.example`엔 절대 금지.
 - **문서 사이트** — `mkdocs serve` (Material·mermaid·콜아웃·위키링크 구성됨).
 
