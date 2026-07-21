@@ -1,0 +1,87 @@
+---
+title: 결정 로그 (Decision Log)
+status: Living
+date: 2026-06-25
+tags: [decisions, log, index]
+related:
+  - "architecture/v0.3-no-video-internal-mcp.md"
+  - "adr/ADR-001-knowledge-store-sizing.md"
+  - "prompts/analysis-prompt-spec.md"
+  - "mvp/components-io-and-scope.md"
+---
+
+# 결정 로그 (Decision Log)
+
+지금까지 합의된 설계 결정을 **한 곳에서 스캔**할 수 있게 정리한다. 깊은 근거·대안은 개별 문서(ADR/스냅샷/스펙)에, 이 로그는 *무엇을·왜·어디에* 의 요약 인덱스다. 살아있는 문서(Living) — 결정이 추가/변경되면 갱신.
+
+> 상세: [[v0.3-no-video-internal-mcp|아키텍처 v0.3]] · [[ADR-001-knowledge-store-sizing|ADR-001]] · [[analysis-prompt-spec|프롬프트 정의서]] · [[components-io-and-scope|컴포넌트·MVP]]
+
+## 요약 표
+
+| ID | 결정 | 상태 | 근거(한 줄) | 상세 |
+|---|---|---|---|---|
+| D01 | 사용자 입력에서 **영상 제외**(링크·기사·직접입력만) | 확정 | 자막/STT 신뢰도·비용 대비 효용 낮음 | v0.3 §1·§3.3 |
+| D02 | **MCP는 내부 전용·사용자 미노출** 어댑터 | 확정 | 일반시민 타겟, 사용자 직접 호출 비현실적 | v0.3 §2·§5 |
+| D03 | **3-런타임 폴리글랏**(Python 추론 / Spring 도메인·API / TS 웹) | 확정 | 각 언어 최강 책임 배치 | v0.3 §2 |
+| D04 | 지식 저장소 **단일 Postgres+pgvector 통합**(분리형 보류) | Proposed | 워킹셋 수십 GB, 비용 동인은 서빙 인스턴스 | ADR-001 |
+| D05 | 분석 엔진 = **외부 foundation API 호출**, 자체/경량 학습·파인튜닝 안 함 | 확정 | 강모델 API로 충분, 운영 단순 | 본 로그 §D05 |
+| D06 | **RAG/RDB = 컨텍스트 공급층**(모델 크기와 무관) | 확정 | 모델 학습범위 밖 최신 법령을 호출 시 주입 | 본 로그 §D06 |
+| D07 | 분석 엔진 **2계층(사실 A / 해석 B) + 인용검증 게이트 + triage 티어링** | Proposed | 캐시·비용·그라운딩 분리 | 프롬프트 정의서, 본 로그 §D07 |
+| D08 | **인용 강제 그라운딩** — 주입 source_id만 인용, 무인용 차단 | 확정 | 환각 통제·역추적 | 프롬프트 정의서 §1·§4·§6 |
+| D09 | 응답은 **구조화 JSON**(claims+citations+confidence+actions…) | 확정 | 검증·렌더·캐시 키 | 프롬프트 정의서 §4 |
+| D10 | **Nemotron-Personas-Korea** 채택 — *학습 증강 아님*, taxonomy+런타임 주입 | 확정 | 센서스 그라운딩, CC BY 4.0 | 본 로그 §D10 |
+| D11 | 페르소나 **오프라인 사전 분류 → Store → 런타임 lookup**(벡터 RAG 아님) | 확정 | 법령=벡터RAG, 페르소나=키 lookup 분리 | 컴포넌트·MVP §1 |
+| D12 | ~~MVP 입력 = 열린국회만~~ → **D24로 개정** | 개정됨 | — | D24 |
+| D13 | ~~MVP 커맨드 3종~~ → **D25로 개정**(LawDiff 추가) | 개정됨 | — | D25 |
+| D14 | **Evaluation Harness** — 합성 페르소나 E2E(구동·정성), 정답판정 금지 | Proposed | 커버리지·회귀, 정답은 규칙+사람검수 | 컴포넌트·MVP §5 |
+| D15 | **컴포넌트 상세 스펙** 확정 + 정합성 검증 통과(갭 닫음) | 확정 | 스펙대로 개발 시 E2E 동작 보장 | [[component-specs]] |
+| D16 | `revision` = 분석영향 필드 content-hash(캐시 무효화 키) | 확정 | 본문·단계·시행일 변동만 무효화 | component-specs §1 |
+| D17 | Spring↔Python REST 계약 + ingest/resolve 스키마 확정 | 확정 | 계층 경계·재현 가능 | component-specs §3 |
+| D18 | 페르소나 **6개 세그먼트**(연령·직업·가구 축) | 확정 | 정책 영향 핵심 축, MVP 대표성 | component-specs §2 |
+| D19 | 추론 모델 = **Opus 4.8**(`claude-opus-4-8`), 입력~32K/출력4K, 캐싱 | 확정 | 법적 정확도 우선, 교체 가능 | component-specs §3.3 |
+| D20 | ~~현행법 diff MVP 생략~~ → **D26으로 개정**(MVP 포함) | 개정됨 | — | D26 |
+| D21 | 법안 속성 확장 + **`BillFacts`(Layer A 파생 캐시)** 신설, `Bill`은 A/B 사실만 | 확정 | 서비스 수준 도메인 모델; C 추론은 Bill과 분리·인용 강제 | [[bill-attributes]], component-specs §1 |
+| D22 | D21에도 **저장소 결정(ADR-001) 불변** | 확정 | BillFacts ≈0.25GB, 헤드룸 내·트리거 미해당 | bill-attributes §저장소 영향 |
+| D23 | SourceAnalyzer **해소 4상태**(RESOLVED/AMBIGUOUS/NOT_FOUND_YET/UNVERIFIED), fail-closed | 확정 | 미등록 vs 허위 구분, 소문이 분석으로 둔갑 방지 | component-specs §4 #2·#8, §3.2 |
+| D24 | **MVP 입력 = 3개 출처**(열린국회·법제처 입법예고 = 법안, 국가법령정보 = 현행법 기준선) | 확정 | v0.3 §3.1과 정합; 커넥터 추가=확장 패턴 실증(법제처) | component-specs §4 #1, mvp §4 |
+| D25 | **MVP 커맨드 = 4종**(+`LawDiff`) | 확정 | "무엇이 바뀌나"가 서비스 핵심 가치 | component-specs §4 #10, mvp §4 |
+| D26 | **현행법 diff MVP 포함** — 신구조문대비표(1차)+국가법령정보(권위 기준선), baselineLawId 채움 | 확정 | diff가 핵심 가치, 대비표로 정렬부담↓; RAG/Vector MVP 활성 | component-specs §5 갭1 |
+| D27 | D24/D26에도 **저장소(ADR-001) 불변** — 현행법 ~0.4GB·벡터 ~270K청크, 헤드룸 내 | 확정 | 트리거(5~10M벡터) 미해당; Vector가 MVP에서 비로소 활용됨 | ADR-001 |
+| D28 | **Triage 분류 기준·라우팅 정책** 문서화(impactScope 판정 룰), 스테이지는 post-MVP | 확정 | 기준 선고정 → BillFacts 추출 프롬프트 명확화 | [[triage-policy]] |
+| D29 | 누적 변경을 **아키텍처 v0.4 스냅샷**으로 반영(RAG Indexer 분리·3출처·4커맨드·BillFacts·해소4상태·triage) | 개정됨→v0.5 | v0.3 그림↔컴포넌트 문서 불일치 해소(RAG Indexer 누락) | [[v0.4-pipeline-refinements]] |
+| D30 | **법안 의미검색(BillFacts·요약 임베딩)** 추가 — 모호 plain text 식별 → 후보(AMBIGUOUS). *분석용 RAG(현행법)*와 별개 *탐색용* | 확정 | 법안명·번호 없는 효과/주제 질의 커버; fail-closed 유지 | [[v0.5-bill-discovery]], component-specs §4 #2·#4 |
+| D31 | D30에도 **저장소(ADR-001) 불변** — 탐색 임베딩 ~1~3GB(벡터 총 <1M) | 확정 | 헤드룸·트리거(5~10M) 내; 스키마 진화 | ADR-001 |
+| D32 | **임베딩은 외부 API**(자체 호스팅 제외), 공유 `Embedder`, dim 1536, 벤더 벤치 후 | 확정 | 인프라 예산 없음; 공개 데이터라 외부 API 적합; 1536=ADR-001 가정 일치 | component-specs §3.3 |
+| D33 | **임베딩 벤치 항목 확정** — OpenAI vs Upstage, 시나리오 A(조문→현행법, 신구조문대비표=정답)·B(모호질의→법안), Recall@5·MRR | 확정 | 벤더를 데이터로 확정; 수집 파이프라인 선행 | [[embedding-benchmark]] |
+| D34 | **DB 프로비저닝** — 개발=로컬 도커 `pgvector/pgvector:pg16`, 프로덕션=AWS RDS PostgreSQL+pgvector(ADR-001). `CREATE EXTENSION vector`, 임베딩 dim 1536. 스키마 소유권: 관계형(bill/article/impact)=Spring(JPA/Flyway), 임베딩=파이프라인 | 확정 | 지금은 AWS 불필요(로컬 무료); 스키마 이중관리 방지 | docker-compose.yml, db/init.sql |
+| D35 | **파이프라인을 Spring으로 통합** — Boot 4.0 + Spring AI 2.0(GA 2026-05-28)으로 Python 서버 대체. 3-런타임 → **2-런타임**(Spring / TS웹). Python↔Spring REST 계약은 내부 호출로 소멸, 도메인 모델 단일화 | 확정 | D05·D19·D32로 Python 선택 근거(무거운 ML 생태계) 소멸 — 실체는 HTTP+파싱+오케스트레이션. v0.2부터 예약된 경로. 기존 Python 코드는 포팅 사양·벤치 도구로 활용 | [[v0.6-spring-consolidation]], [[spring-migration]] |
+
+---
+
+## 아직 개별 문서가 없는 결정의 상세
+
+### D05 — 외부 foundation API 호출, 비학습
+분석 엔진은 잘 만들어진 외부 foundation 모델 API(강모델)를 호출해 응답을 받는다. 자체 모델 학습이나 파인튜닝은 하지 않는다. 모델 티어링(triage용 소형 모델)은 *선택적 비용 최적화*이며 그조차 API(예: Haiku) 조합이지 자체 호스팅이 아니다.
+
+### D06 — RAG/RDB의 위치
+RAG·RDB는 "두뇌(모델)를 경량으로 바꾸는 장치"가 아니라, 파운데이션 모델의 **학습범위 밖에 있는 최신·구체 법령 데이터를 호출 시점에 컨텍스트로 공급**하는 층이다. 모델 크기와 직교한다. (법안 1건은 컨텍스트에 통째로 들어가므로 벡터 RAG 대상이 아니고, RAG는 현행법 관련 조문·유사 선례 검색에만 쓴다.)
+
+### D07 — 2계층 분석 엔진
+- **Layer A(법안 사실층):** 무엇이 바뀌나·시행일·영향 도메인. 페르소나 무관, 법안당 1회, 강하게 그라운딩·캐시.
+- **Layer B(해석층):** 그 위에 페르소나별 영향·대응안. 저렴·다량.
+- 전 구간에 **인용검증 게이트**(스키마+인용 존재성), 비용은 **모델 티어링**(triage 소형/추론 강모델), 품질은 보편 법안에 한해 Generator-Critic/Map-Reduce 조건부.
+
+### D10 — Nemotron 페르소나 용도 (채택/금지 경계)
+- **채택:** 세그먼트 taxonomy, 세그먼트별 속성 프로파일(런타임 `<persona>` 주입값), 프롬프트 평가셋, (선택) 인구분포 triage 가중치·콜드스타트 캐시 워밍.
+- **금지:** (페르소나×법안→영향) 합성쌍을 만들어 **파인튜닝**(학습 안 함 + 그라운딩 원칙 충돌). 정량 인구영향 통계(독립가정 한계).
+- 페르소나는 "수신자 정보"일 뿐 **인용 가능한 법적 source 아님** — `<persona>`와 `<context>`(법령) 블록 분리.
+
+---
+
+## 다음 결정 대기 (Open)
+
+- Evaluation Harness 패널 크기·골든셋 규모 (D14 세부)
+- 세그먼트 군집 알고리즘·검증 방식 (D18 구현 세부)
+- Proposed 항목 검증 후 승격: D04(저장소)·D07(엔진)·D14(평가하니스)
+
+> 설계 결정(D01~D20)은 모두 확정/Proposed로 정리됨. 남은 것은 대부분 *구현 세부*이며, 문서 스펙대로 개발 시 MVP happy-path E2E 동작이 보장된다([[component-specs]] §5 정합성 검증).
