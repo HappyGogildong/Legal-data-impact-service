@@ -77,7 +77,8 @@ Spring 버전 변경점(Boot 3.x→4.0, AI 1.x→2.0)은 `docs/reference/spring-
 - 설계 결정은 `docs/adr/decision-log.md`에 D번호로 추가(개정 시 기존 행을 "개정됨→Dxx"로 표시). ADR 승격 대상은 `docs/adr/`.
 - 파이프라인 컴포넌트마다 `docs/components/<Name>.md` 설계 문서(역할/입출력/파라미터/동작/**구조 결정 의도**)를 유지 — 코드 변경 시 함께 갱신.
 - **문서(docs/*.md)는 3곳 byte-identical 동기화**: ① 이 레포 `docs/` ② Obsidian 볼트 `D:\rbgusgus\obvsidian\2024-2\프로젝트\입법 영향 분석\` (볼트 루트 = docs/에 대응) ③ `D:\workspace\law-impact-analysis\docs\`. mkdocs.yml은 ①③만. 문서 수정 후 `cp` + `diff`로 맞춘다. 코드·CLAUDE.md·인프라 파일은 동기화 대상 아님.
-- **git commit/push/PR을 하지 않는다** — 사용자가 직접 관리(Obsidian 자동 동기화, Notion 공유). 명시적으로 요청받은 경우만 예외.
+- **git**: 이 폴더가 메인 작업 폴더이며 `HappyGogildong/Legal-data-impact-service`(PUBLIC)에 연결돼 있다. 커밋은 의미 단위로 나누고, **푸시·이슈 생성 등 외부 반영은 사용자 확인 후** 수행한다. 푸시 전 `.env`·`config.yaml`이 추적되지 않는지 반드시 확인.
+- **작업 트래킹**: GitHub Issues(라벨 `area:*`/`type:*`/`priority:*`, 마일스톤 M1~M4). 완료 작업도 이슈로 남기고 close해 이력을 유지한다. 코드 변경 시 관련 이슈 번호를 커밋/PR에 참조.
 - mermaid 다이어그램의 엣지 라벨에 괄호 `()`를 쓰면 파싱이 깨진다(노드 라벨은 따옴표라 무관).
 
 ## 현재 상태 (2026-07 기준)
