@@ -2,12 +2,15 @@
 # 세 런타임 + 저장소를 한 번에 띄운다.
 services:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:pg16   # postgres:16 + pgvector 확장 포함
     environment:
       POSTGRES_DB: lia
       POSTGRES_USER: lia
       POSTGRES_PASSWORD: lia
     ports: ["5432:5432"]
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # 최초 기동 시 1회 실행
+      - lia_pgdata:/var/lib/postgresql/data
 
   pipeline:
     build: ./pipeline
@@ -30,3 +33,6 @@ services:
       CORE_BASE_URL: http://core:8080
     ports: ["3000:3000"]
     depends_on: [core]
+
+volumes:
+  lia_pgdata:

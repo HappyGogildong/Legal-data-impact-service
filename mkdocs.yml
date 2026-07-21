@@ -1,0 +1,81 @@
+site_name: 입법 영향 분석기 (LIA) — 설계 문서
+site_description: Legislative Impact Analyzer 아키텍처·ADR·프롬프트·컴포넌트 스펙
+docs_dir: docs
+use_directory_urls: true
+
+theme:
+  name: material
+  language: ko
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - toc.follow
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/weather-night
+        name: 다크 모드
+    - scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: 라이트 모드
+
+# Obsidian 호환 + mermaid 렌더를 위한 확장/플러그인
+markdown_extensions:
+  - admonition            # > [!note] → callouts 플러그인이 변환한 결과를 렌더
+  - pymdownx.details      # 접을 수 있는 콜아웃
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid          # ```mermaid 블록을 다이어그램으로
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+plugins:
+  - search            # 한국어 형태소 토크나이저 미지원(아래 주의) — 기본 검색 사용
+  - callouts          # Obsidian `> [!warning]` → Material admonition 변환
+  - roamlinks         # Obsidian `[[파일명]]` / `[[파일명|별칭]]` → 상대 링크 변환
+
+nav:
+  - 🚀 시작하기(온보딩): onboarding.md
+  - 홈(색인): ARCHITECTURE.md
+  - 아키텍처 버전:
+      - v0.6 — 현행 (Spring 통합·2런타임): architecture/v0.6-spring-consolidation.md
+      - v0.5 — 법안 의미검색·plain text: architecture/v0.5-bill-discovery.md
+      - v0.4 — 파이프라인 정제·RAG Indexer 분리: architecture/v0.4-pipeline-refinements.md
+      - v0.3 — 영상 제외·MCP 내부: architecture/v0.3-no-video-internal-mcp.md
+      - v0.2 — 웹앱 우선: architecture/v0.2-webapp-primary.md
+      - v0.1 — 최초: architecture/v0.1-initial.md
+  - 결정 (ADR):
+      - 결정 로그: adr/decision-log.md
+      - ADR 색인: adr/README.md
+      - ADR-001 — 지식 저장소: adr/ADR-001-knowledge-store-sizing.md
+  - 프롬프트:
+      - 분석 프롬프트 정의서: prompts/analysis-prompt-spec.md
+  - MVP:
+      - 컴포넌트·범위: mvp/components-io-and-scope.md
+  - 컴포넌트 스펙:
+      - 상세 스펙·계약·정합성: components/component-specs.md
+      - 컴포넌트별 설계:
+          - SourceConnector: components/SourceConnector.md
+          - SourceAnalyzer: components/SourceAnalyzer.md
+          - Normalizer: components/Normalizer.md
+          - Embedder: components/Embedder.md
+          - RAG Indexer: components/RAGIndexer.md
+          - Analysis Engine: components/AnalysisEngine.md
+  - 참조 (Reference):
+      - 법안 속성 카탈로그: reference/bill-attributes.md
+      - Triage 정책: reference/triage-policy.md
+      - 임베딩 벤치마크 계획: reference/embedding-benchmark.md
+      - Spring 4.0·Spring AI 2.0 변경점: reference/spring-migration.md
