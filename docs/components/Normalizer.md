@@ -19,8 +19,16 @@ related: ["components/component-specs.md", "reference/bill-attributes.md", "refe
 ## 입력 / 출력
 | | 타입 | 설명 |
 |---|---|---|
-| 입력 | `RawBill` | 출처 원형(커넥터 산출) |
+| 입력 | `RawBill` + **본문 텍스트(별도 획득)** | `RawBill` 필드 정의는 [[SourceConnector]] 참고 |
 | 출력 | `Bill`(+`Article[]`, `Addendum[]`) | [[component-specs]] §1 스키마 |
+
+> ⚠️ **입력 계약 갭 (2026-07-21):** 본 문서는 입력을 `RawBill`로만 적었으나, **`RawBill`에는 본문이 없다**(목록 API가 메타데이터만 제공 — [[SourceConnector]] §본문 획득). 따라서 아래 동작 중 **2~5번(조문·부칙·신구조문대비표·위임조항 파싱)은 본문 획득 경로가 확정돼야 실행 가능**하다.
+>
+> **구현 단계 분리:**
+> - **Phase 1 (본문 무관, 지금 가능):** 동작 1(필드 매핑) + 7(`revision` 계산) — 열린국회 목록 API 필드만으로 충족
+> - **Phase 2 (본문 확보 후):** 동작 2~6 — 본문 파서 본체
+>
+> 본문 획득 경로 결정은 [[SourceConnector]] §본문 획득의 후보 3안 중 택1(별도 결정 예정).
 
 ## 파라미터 (설정)
 | 파라미터 | 예 | 설명 |

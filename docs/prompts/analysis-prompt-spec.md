@@ -32,7 +32,7 @@ related: ["architecture/v0.3-no-video-internal-mcp.md", "adr/ADR-001-knowledge-s
 | 1 | **시스템 역할·정책** | 시스템(상수) | 필수 | "입법 영향 분석가. 근거 없는 주장 금지. 법률자문 아님." 등 불변 가드레일 |
 | 2 | **태스크 지시** | 시스템(커맨드별) | 필수 | 이 호출이 수행할 작업(요약/영향/대응안 등) |
 | 3 | **법안 코어 메타** | RDB | 필수 | `billNo, title, stage, effectiveDate, committee, proposers` |
-| 4 | **법안 조문 본문** | RDB | 필수 | `articles[]{no, text, changeType(신설/개정/삭제)}` + **부칙(시행일·경과조치·적용례)** |
+| 4 | **법안 조문 본문** ⚠️ | RDB | 필수 | `articles[]{no, text, changeType(신설/개정/삭제)}` + **부칙(시행일·경과조치·적용례)**. **획득 경로 미확정(D38)** — 목록 API는 본문 미제공, [[SourceConnector]] §본문 획득 참고 |
 | 5 | **현행법 기준선 + diff** | RDB/RAG | 조건부 필수 | 영향·diff 계열에 필수. `baselineLaw` 조문 + 개정 전후 대조 |
 | 6 | **유사 선례/과거 법안** | RAG | 선택 | precedent 비교 시 주입 |
 | 7 | **페르소나/세그먼트** | Persona Store (Nemotron 파생) | **Layer B 필수** | 개인화 호출에만. Layer A(사실층)에는 불필요 |

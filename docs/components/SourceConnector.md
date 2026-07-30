@@ -22,6 +22,34 @@ related: ["components/component-specs.md", "architecture/v0.5-bill-discovery.md"
 | 입력 | `BillQuery{ since?, billNo?, keyword?, page? }` / `LawQuery{ lawId|lawName }` | 출처 조회 조건 |
 | 출력 | `Iterable[RawBill]` 또는 `Iterable[RawLaw]` | 출처 원형 필드 보존(아직 정규화 전) |
 
+### `RawBill` 필드 정의 (2026-07-21 명문화)
+지금까지 문서 전반에서 `RawBill`을 이름으로만 참조하고 **필드를 정의한 곳이 없었다.** 현행 구현 기준:
+
+```java
+record RawBill(String sourceType, String sourceId, String billNo, String title,
+               Map<String,Object> raw)   // 출처 원본 페이로드(정규화 전)
+```
+
+> ⚠️ **`RawBill`에는 본문(`fullText`)이 없다** — 목록 API가 메타데이터만 주기 때문(아래 §본문 획득). [[Normalizer]]가 요구하는 조문·부칙·신구조문대비표는 **별도 획득 경로**로 채워야 하며, 경로 확정 전까지 해당 파싱 동작은 실행 불가다.
+
+## 본문(fullText) 획득 — **미해결 갭 (2026-07-21 실측)**
+
+`Bill.fullText`·`articles[]`·부칙·신구조문대비표는 [[bill-attributes]]에서 **🔵B(의안 원문 파싱)** 계층으로 분류돼 있고 [[analysis-prompt-spec]] §1 **요소 4(법안 조문 본문)는 필수**지만, **어느 문서도 "본문을 어떻게 가져오는가"를 규정하지 않았다.** 실측 결과:
+
+| 경로 | 결과 |
+|---|---|
+| 목록 API `nzmimeepazxkubdpn` (24필드) | ❌ 본문·제안이유·조문 **전무** — 메타데이터만 |
+| 상세 페이지 `DETAIL_LINK` | ❌ JS 렌더 — 정적 HTML에 "제안이유/주요내용/부칙" 문자열 없음. **HWP 첨부만 존재** |
+| 대체 API `BILLINFOPPSR`·`TVBPMBILL11`·`BILLRCP` | ❌ 응답은 되나 전부 메타데이터(발의자·처리결과·링크) |
+
+**후보 (택1 필요 — 미결정):**
+1. 열린국회 **"의안 제안이유·주요내용" 계열 서비스** — 존재가 시사되나 서비스 ID 미확인(콘솔 로그인 확인 필요)
+2. 상세 페이지 **HWP 첨부 다운로드 + hwplib 파싱** — JVM 네이티브, 품질 최상 / 구현 부담 큼
+3. 상세 페이지 **JS 렌더 후 추출** — 비공식·취약(권장하지 않음)
+
+**영향 범위:** 본문 없이는 `LawDiff`·조문 인용 그라운딩·신구조문대비표(임베딩 벤치 시나리오 A 정답쌍)가 **모두 성립하지 않는다** → MVP 필수 관문.
+**인터페이스 확장 예정:** `SourceConnector`에 `fetchFullText(sourceId)` 추가(경로 확정 후).
+
 ## 파라미터 (설정 — `config.yaml`에서 주입)
 파라미터는 코드/환경변수에 흩지 않고 **`config.yaml`(gitignore 대상)** 한 곳에서 관리한다. `pipeline/src/lia_pipeline/config.py`의 팩토리(`build_assembly_connector`)가 `Settings`를 읽어 커넥터를 조립한다. 값에 `${ENV_VAR}` 보간 지원(키 직접 입력도 가능). 커밋용 템플릿은 `config.example.yaml`.
 

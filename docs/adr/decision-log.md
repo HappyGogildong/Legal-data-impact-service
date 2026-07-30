@@ -58,6 +58,8 @@ related:
 | D36 | **Evaluation Harness(합성 페르소나 E2E)를 MVP에서 제외** — 수직 슬라이스 완성 후(post-MVP) 착수. MVP 품질 앵커는 컴포넌트 단위 테스트 + 소량 사람검수 골든셋. 역할 규율(D14: 정답판정 금지)은 유지 | 확정 | 하니스는 완성된 E2E 흐름·프롬프트가 있어야 가치(회귀·UX 비평) 발동. 페르소나 패널·REST 전 구간에 걸친 선행 부담이 핵심 경로(#5~#9)를 지연 | mvp §4·§5, 이슈 #16 |
 | D37 | **에이전트 프레임워크(LangGraph 등) 미도입** — Analysis Engine은 Spring 빈 + Spring AI `ChatClient`/`VectorStore`로 **명시적 워크플로** 구현(검색→조립→추론→검증→재생성≤N). RAG도 Advisor 자동화 대신 명시적 검색(주입 `source_id` 소유) | 확정 | 실행 경로가 설계 시점에 고정 = 에이전트 아님(H안 기각과 동일 근거). Python 계열 프레임워크는 D35(런타임 통합)와 충돌. 결정성·캐시·인용 감사가 1급 요건 | [[AnalysisEngine]], v0.6 §3.4 |
 
+| D38 | **본문(fullText) 획득 경로 = 미해결 갭으로 공식 등록** — 목록 API·상세 페이지·대체 API 3종 모두 본문 미제공(2026-07-21 실측). `RawBill` 필드 정의도 부재하여 명문화. Normalizer는 Phase 1(필드 매핑+revision, 본문 무관)/Phase 2(본문 파서)로 분리 | **Open(결정 필요)** | 문서가 본문을 "🔵B 원문 파싱"으로 전제하고 프롬프트 요소4를 필수로 규정했으나, *획득 수단*을 어디에도 규정하지 않은 정합성 결손. 본문 없이는 LawDiff·인용 그라운딩·벤치 정답쌍 모두 불성립 → MVP 필수 관문 | [[SourceConnector]] §본문 획득, [[Normalizer]] |
+
 > **D37 재검토 트리거:** ① 대형 옴니버스 법안의 map-reduce + Generator-Critic이 3단 이상 *동적* 분기로 확장 ② 멀티턴 대화형 탐색(상태 지속·중단 재개) 도입. 그때도 `AnalysisEngine` 인터페이스 뒤에 격리해 도입 가능하므로 본 결정은 가역적(JVM 대안: LangGraph4j·Embabel).
 
 ---
