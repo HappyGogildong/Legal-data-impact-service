@@ -40,7 +40,10 @@ record RawBill(String sourceType, String sourceId, String billNo, String title,
 |---|---|
 | 목록 API `nzmimeepazxkubdpn` (24필드) | ❌ 본문·제안이유·조문 **전무** — 메타데이터만 |
 | 상세 페이지 `DETAIL_LINK` | ❌ JS 렌더 — 정적 HTML에 "제안이유/주요내용/부칙" 문자열 없음. **HWP 첨부만 존재** |
-| 대체 API `BILLINFOPPSR`·`TVBPMBILL11`·`BILLRCP` | ❌ 응답은 되나 전부 메타데이터(발의자·처리결과·링크) |
+| 대체 API 4종 — `BILLINFODETAIL`(의안 상세)·`BILLINFOPPSR`(제안자)·`TVBPMBILL11`(통합)·`BILLRCP`(접수) | ❌ 모두 응답하나 **본문 없음**. 값 길이 200자 초과 필드가 하나도 없음(심사 단계 일자·발의자 명단뿐) |
+
+> 재현: `python pipeline/scripts/probe_sources.py [검색어]` — 자격증명·목록 필드·본문 서비스 탐색을 한 번에 실측한다.
+> **판정 기준 주의:** 필드명(`*_CN`, `*CONTENT`)으로 본문을 판별하면 오탐한다 — `PPSR_CN`은 "김기표의원 등 11인"(발의자 내용)이다. **값 길이(>200자)** 로 판정할 것.
 
 **후보 (택1 필요 — 미결정):**
 1. 열린국회 **"의안 제안이유·주요내용" 계열 서비스** — 존재가 시사되나 서비스 ID 미확인(콘솔 로그인 확인 필요)
