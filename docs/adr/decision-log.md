@@ -55,6 +55,7 @@ related:
 | D33 | **임베딩 벤치 항목 확정** — OpenAI vs Upstage, 시나리오 A(조문→현행법, 신구조문대비표=정답)·B(모호질의→법안), Recall@5·MRR | 확정 | 벤더를 데이터로 확정; 수집 파이프라인 선행 | [[embedding-benchmark]] |
 | D34 | **DB 프로비저닝** — 개발=로컬 도커 `pgvector/pgvector:pg16`, 프로덕션=AWS RDS PostgreSQL+pgvector(ADR-001). `CREATE EXTENSION vector`, 임베딩 dim 1536. 스키마 소유권: 관계형(bill/article/impact)=Spring(JPA/Flyway), 임베딩=파이프라인 | 확정 | 지금은 AWS 불필요(로컬 무료); 스키마 이중관리 방지 | docker-compose.yml, db/init.sql |
 | D35 | **파이프라인을 Spring으로 통합** — Boot 4.0 + Spring AI 2.0(GA 2026-05-28)으로 Python 서버 대체. 3-런타임 → **2-런타임**(Spring / TS웹). Python↔Spring REST 계약은 내부 호출로 소멸, 도메인 모델 단일화 | 확정 | D05·D19·D32로 Python 선택 근거(무거운 ML 생태계) 소멸 — 실체는 HTTP+파싱+오케스트레이션. v0.2부터 예약된 경로. 기존 Python 코드는 포팅 사양·벤치 도구로 활용 | [[v0.6-spring-consolidation]], [[spring-migration]] |
+| D36 | **Evaluation Harness(합성 페르소나 E2E)를 MVP에서 제외** — 수직 슬라이스 완성 후(post-MVP) 착수. MVP 품질 앵커는 컴포넌트 단위 테스트 + 소량 사람검수 골든셋. 역할 규율(D14: 정답판정 금지)은 유지 | 확정 | 하니스는 완성된 E2E 흐름·프롬프트가 있어야 가치(회귀·UX 비평) 발동. 페르소나 패널·REST 전 구간에 걸친 선행 부담이 핵심 경로(#5~#9)를 지연 | mvp §4·§5, 이슈 #16 |
 
 ---
 

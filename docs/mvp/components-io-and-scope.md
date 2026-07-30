@@ -53,7 +53,7 @@ related:
 | # | 컴포넌트 | 역할 | 입력 | 출력 |
 |---|---|---|---|---|
 | 14 | **Persona Builder** | Nemotron 7M → 세그먼트 군집·프로파일 생성 | Nemotron-Personas-Korea | Persona Store 적재(세그먼트+프로파일) |
-| 15 | **Evaluation Harness** | 합성 페르소나 에이전트로 E2E 구동·회귀(§5) | 세그먼트 패널 + 법안셋 + `prompt_version` | smoke 결과 + UX 비평 + 커버리지 리포트 |
+| 15 | **Evaluation Harness** *(post-MVP 이연, D36)* | 합성 페르소나 에이전트로 E2E 구동·회귀(§5) | 세그먼트 패널 + 법안셋 + `prompt_version` | smoke 결과 + UX 비평 + 커버리지 리포트 |
 
 > **계층 매핑(프롬프트 정의서):** Layer A(법안 사실)=`ImpactSummary`·`LawDiff`의 사실부, Layer B(해석)=`PersonaImpact`/`ActionPlan`. 컨텍스트 조립은 #8이 정의서 §1 입력계약대로 수행.
 > **#4 RAG Indexer·#6 Vector Index는 MVP에서 활성**(국가법령정보 현행법 임베딩 → LawDiff·영향분석 컨텍스트 검색).
@@ -105,7 +105,6 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 - Analysis Engine: **foundation API 호출** + 현행법 **RAG 검색**, 프롬프트 정의서 v0.1, 구조화 JSON
 - Verification: **스키마 + 인용 존재성(규칙)**
 - Web: 검색→법안 선택→세그먼트 선택→**4종 표시(요약/diff/내 영향/대응안)**
-- Evaluation Harness: **합성 페르소나 패널 smoke/회귀(기본)**
 
 ### OUT (확장점은 유지, 구현 후순위)
 - URL/뉴스 해소 **구현** (인터페이스만)
@@ -115,10 +114,13 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 - LLM-judge 인용 뒷받침(MVP는 규칙 검증만)
 - MCP 어댑터(내부 전용·미노출 — 기정)
 - 인구분포 triage 가중치
+- **Evaluation Harness(합성 페르소나 E2E)** — 수직 슬라이스 완성 후 착수(**D36**). MVP 품질 앵커는 컴포넌트 단위 테스트 + 소량 사람검수 골든셋
 
 ---
 
-## 5. Evaluation Harness — 합성 페르소나 E2E
+## 5. Evaluation Harness — 합성 페르소나 E2E *(post-MVP 이연, D36)*
+
+> **이연(D36):** 완성된 E2E 흐름·프롬프트가 있어야 회귀·UX 비평 가치가 발동하므로 **수직 슬라이스(#13) 완성 후 착수**한다. 아래 역할 규율은 착수 시점에 그대로 적용.
 
 비런타임 CI 컴포넌트. **두 역할을 분리**한다.
 
@@ -137,7 +139,6 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 4. `LawDiff`가 신구조문대비표·현행법 기준선을 인용해 조문별 현행→개정 변화를 제시.
 5. Verification Gate가 *인용 없는/허위 source_id* 응답을 차단(재생성/폴백).
 6. Web에서 검색→선택→4종 결과 표시까지 동작.
-7. Evaluation Harness가 패널을 돌려 smoke 리포트 생성.
 
 ---
 
