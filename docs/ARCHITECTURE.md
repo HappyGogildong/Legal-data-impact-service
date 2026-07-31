@@ -6,13 +6,14 @@
 
 ## 최신본
 
-→ **[architecture/v0.6-spring-consolidation.md](architecture/v0.6-spring-consolidation.md)** (v0.6, 현행)
+→ **[architecture/v0.7-offline-online-split.md](architecture/v0.7-offline-online-split.md)** (v0.7, 현행)
 
 ## 버전 이력
 
 | 버전 | 파일 | 날짜 | 상태 | 핵심 |
 |---|---|---|---|---|
-| v0.6 | [v0.6-spring-consolidation.md](architecture/v0.6-spring-consolidation.md) | 2026-07-21 | 현행 | 파이프라인을 Spring(Boot 4.0+Spring AI 2.0)으로 통합 — 3→2 런타임, Python 서버 대체 |
+| v0.7 | [v0.7-offline-online-split.md](architecture/v0.7-offline-online-split.md) | 2026-08-01 | 현행 | 오프라인(배치 적재)·온라인(요청 응답) 실행 모드 분리, Nemotron 군집(Persona Builder)은 그림에서 제외 |
+| v0.6 | [v0.6-spring-consolidation.md](architecture/v0.6-spring-consolidation.md) | 2026-07-21 | 대체됨 | 파이프라인을 Spring(Boot 4.0+Spring AI 2.0)으로 통합 — 3→2 런타임, Python 서버 대체 |
 | v0.5 | [v0.5-bill-discovery.md](architecture/v0.5-bill-discovery.md) | 2026-06-28 | 대체됨 | 모호 plain text 위한 법안 의미검색(탐색용 임베딩) 추가, 분석용 RAG와 분리 |
 | v0.4 | [v0.4-pipeline-refinements.md](architecture/v0.4-pipeline-refinements.md) | 2026-06-28 | 대체됨 | RAG Indexer 분리, 출처 3종 구체화, 커맨드 4종(+LawDiff), BillFacts/2계층, 해소 4상태, triage |
 | v0.3 | [v0.3-no-video-internal-mcp.md](architecture/v0.3-no-video-internal-mcp.md) | 2026-06-22 | 대체됨 | 사용자 입력에서 영상 제외, MCP를 사용자 미노출 내부 어댑터로 강등 |
@@ -27,11 +28,25 @@
 |---|---|---|---|---|
 | [ADR-001](adr/ADR-001-knowledge-store-sizing.md) | 지식 저장소 구성 — 분리형 vs 통합형(Postgres+pgvector) | v0.3 | v0.4 (단일 Postgres+pgvector 반영됨) | Proposed |
 
-전체 결정 인덱스: [adr/decision-log.md](adr/decision-log.md) (D01~, 최신 D35).
+전체 결정 인덱스: [adr/decision-log.md](adr/decision-log.md) (D01~, 최신 D40).
 
 > ADR이 `Accepted`되어 구조에 반영되면, 그 변경을 담은 새 버전 파일을 추가하고 위 "반영 버전"을 확정한다(예: v0.4). 동결 스냅샷에는 ADR 링크를 넣지 않으므로, 버전↔ADR 매핑은 **이 표가 단일 출처**다.
 
 ## 변경 이유 (Changelog)
+
+### v0.6 → v0.7 — "오프라인·온라인 실행 모드 분리"
+
+**무엇이 바뀌었나**
+- §2 신설: **실행 모드 대조표** — 계기·지연 요구·실패 처리·외부 의존·상태(read/write)·확장 축·장애 영향을 오프라인 vs 온라인으로 구분.
+- §3 다이어그램을 **둘로 분리**: §3.1 오프라인(스케줄러 → 커넥터 → Normalizer/BillFacts 파생 → RAG Indexer → 저장소 write), §3.2 온라인(사용자 → REST → 해소 게이트 → 커맨드 → Engine+LLM → 인용검증 → 응답).
+- **Persona Builder(Nemotron 군집) 다이어그램에서 제외** — post-MVP. `PersonaImpact` 커맨드는 유지하되 세그먼트는 *사용자 선택/수작업 정의*로 단순화.
+- §4.4: RAG 두 용도를 **적재(오프라인) / 검색(온라인) 시점**과 함께 표로 정리.
+- §4.1·§7에 **D38**(법안 본문 경로 미확정, 현행법은 확보) 실측 상태 반영.
+
+**왜 바꿨나**
+- v0.6까지 한 그림에 섞여 있어 **"무엇이 사용자를 기다리게 하는가"** 가 드러나지 않았다. 두 모드는 지연 요구(분~시간 vs 초)·장애 영향(신선도 저하 vs 사용자 직접)·확장 축(코퍼스 vs 동시 사용자)이 근본적으로 다르다.
+- 분리하면 설계 규율이 명시된다 — **"온라인에 넣기 전에 오프라인으로 미리 할 수 없는지 먼저 묻는다."** BillFacts 선계산·임베딩 적재가 오프라인인 이유, 온라인이 *검색+개인화 추론*만 남는 이유가 그림으로 설명된다.
+- 페르소나 군집(Nemotron)은 후순위인데 다이어그램에 있어 MVP 범위를 오해하게 만들었다.
 
 ### v0.5 → v0.6 — "파이프라인 Spring 통합 (Python 서버 대체)"
 

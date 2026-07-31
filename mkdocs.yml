@@ -51,7 +51,8 @@ nav:
   - 🚀 시작하기(온보딩): onboarding.md
   - 홈(색인): ARCHITECTURE.md
   - 아키텍처 버전:
-      - v0.6 — 현행 (Spring 통합·2런타임): architecture/v0.6-spring-consolidation.md
+      - v0.7 — 현행 (오프라인·온라인 분리): architecture/v0.7-offline-online-split.md
+      - v0.6 — Spring 통합·2런타임: architecture/v0.6-spring-consolidation.md
       - v0.5 — 법안 의미검색·plain text: architecture/v0.5-bill-discovery.md
       - v0.4 — 파이프라인 정제·RAG Indexer 분리: architecture/v0.4-pipeline-refinements.md
       - v0.3 — 영상 제외·MCP 내부: architecture/v0.3-no-video-internal-mcp.md
