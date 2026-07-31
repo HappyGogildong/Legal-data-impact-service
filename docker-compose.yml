@@ -12,13 +12,6 @@ services:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # 최초 기동 시 1회 실행
       - lia_pgdata:/var/lib/postgresql/data
 
-  pipeline:
-    build: ./pipeline
-    env_file: .env            # ASSEMBLY_API_KEY, MOLEG_API_KEY, OPENAI_API_KEY ...
-    depends_on: [db]
-    # 증분 수집 스케줄러 (PoC에서는 1회 데모 실행)
-    command: ["python", "-m", "lia_pipeline.demo"]
-
   core:
     build: ./core
     env_file: .env            # 자격증명 단일 소스(D39): ASSEMBLY_API_KEY, MOLEG_OC, LAW_OC,

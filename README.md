@@ -9,9 +9,9 @@
 
 | 디렉터리 | 언어 | 책임 |
 |---|---|---|
-| [`pipeline/`](pipeline) | Python | 신뢰 출처 수집·소스 분석·LLM 영향 추론 |
-| [`core/`](core) | Java Spring | 도메인 모델·use-case별 커맨드 오케스트레이션·REST API |
-| [`mcp/`](mcp) | TypeScript | 웹 프론트엔드 (일반 시민 주 경로) + 선택적 MCP 어댑터 |
+| [`core/`](core) | Java Spring (Boot 4.0 + Spring AI 2.0) | 수집·식별·정규화·RAG·LLM 추론 + 도메인·커맨드·REST API |
+| [`mcp/`](mcp) | TypeScript | 웹 프론트엔드 (일반 시민 주 경로) + 내부 전용 MCP 어댑터 |
+| [`tools/`](tools) | Python | 출처 연동 진단 스크립트 (운영 코드 아님) |
 
 데이터 흐름: **출처 → 정규화 → 저장 → 커맨드 후처리 → 사용자 표면(웹앱)**
 
@@ -23,14 +23,15 @@
 ## 빠른 시작 (PoC)
 
 ```bash
-# 1) 파이프라인 (Python)
-cd pipeline && pip install -e . && python -m lia_pipeline.demo
-
-# 2) 코어 (Java Spring)
+# 1) 코어 (Java Spring) — 수집·분석·API 전체
+cd core && ./gradlew test      # 단위 + 실 API 스모크
 cd core && ./gradlew bootRun
 
-# 3) MCP 서버 (TypeScript)
+# 2) 웹/MCP (TypeScript)
 cd mcp && npm install && npm run dev
+
+# 출처 연동 진단
+python tools/probe_sources.py 주택임대차
 ```
 
 또는 한 번에:

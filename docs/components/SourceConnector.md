@@ -6,7 +6,7 @@ tags: [component, pipeline, connector]
 related: ["components/component-specs.md", "architecture/v0.5-bill-discovery.md"]
 ---
 
-# SourceConnector (Python, 수집)
+# SourceConnector (Spring, 수집)
 
 > **런타임 변경(D35):** 구현 런타임이 Python → **Spring(Boot 4.0 + Spring AI 2.0)** 으로 통합됨([[v0.6-spring-consolidation|v0.6]] · [[spring-migration|버전 변경점]]). 본 문서의 역할·입출력·동작·결정 의도는 그대로 유효하며, Python 인터페이스 초안은 **포팅 사양**으로 유지된다.
 
@@ -44,7 +44,7 @@ record RawBill(String sourceType, String sourceId, String billNo, String title,
 
 > ⚠️ **열린국회 API 함정 (2026-07-31, Java 포팅 중 발견):** `Type=json` 으로 요청해도 서버가 **`Content-Type: text/html`** 로 응답한다(본문은 정상 JSON). Spring `RestClient`가 메시지 컨버터로 바인딩하면 `UnknownContentTypeException` 이 난다 → **`String`으로 받아 직접 파싱**해야 한다(`AssemblyBillsConnector.parseJson`). Python `httpx`는 `.json()`이 강제 파싱해 이 문제가 드러나지 않았다.
 
-> 재현: `python pipeline/scripts/probe_sources.py [검색어]` — 자격증명·목록 필드·본문 서비스 탐색을 한 번에 실측한다.
+> 재현: `python tools/probe_sources.py [검색어]` — 자격증명·목록 필드·본문 서비스 탐색을 한 번에 실측한다.
 > **판정 기준 주의:** 필드명(`*_CN`, `*CONTENT`)으로 본문을 판별하면 오탐한다 — `PPSR_CN`은 "김기표의원 등 11인"(발의자 내용)이다. **값 길이(>200자)** 로 판정할 것.
 
 ### ✅ 현행법(국가법령정보)은 본문 제공 확인 — 2026-07-31 실측
@@ -68,18 +68,19 @@ GET {law.base}/DRF/lawService.do?OC=..&target=law&MST=276291&type=JSON          
 **영향 범위:** 본문 없이는 `LawDiff`·조문 인용 그라운딩·신구조문대비표(임베딩 벤치 시나리오 A 정답쌍)가 **모두 성립하지 않는다** → MVP 필수 관문.
 **인터페이스 확장 예정:** `SourceConnector`에 `fetchFullText(sourceId)` 추가(경로 확정 후).
 
-## 파라미터 (설정 — `config.yaml`에서 주입)
-파라미터는 코드/환경변수에 흩지 않고 **`config.yaml`(gitignore 대상)** 한 곳에서 관리한다. `pipeline/src/lia_pipeline/config.py`의 팩토리(`build_assembly_connector`)가 `Settings`를 읽어 커넥터를 조립한다. 값에 `${ENV_VAR}` 보간 지원(키 직접 입력도 가능). 커밋용 템플릿은 `config.example.yaml`.
+## 파라미터 (설정 — `application.yml` + `.env`)
+비밀값은 **레포 루트 `.env` 하나**가 단일 소스(D39). `core/src/main/resources/application.yml`이 `${ENV_VAR}`로 참조하고, `LiaSourceProperties`(`@ConfigurationProperties`)가 타입 바인딩한다. 주입 경로: 로컬·테스트는 Gradle이 `.env`를 환경변수로 주입, 컨테이너는 compose `env_file: .env`.
 
-| 파라미터 | config.yaml 키 | 예 | 설명 |
+| 파라미터 | application.yml 키 | 예 | 설명 |
 |---|---|---|---|
-| `api_key`/`oc` | `sources.assembly.api_key` | `${ASSEMBLY_API_KEY}` 또는 직접값 | 열린국회=ServiceKey, 국가법령/국민참여=OC |
-| `service` | `sources.assembly.service` | `nzmimeepazxkubdpn` | ⚠️ 서비스 ID — 콘솔 확인·교체 |
-| `base` | `sources.assembly.base` | `open.assembly.go.kr/portal/openapi` | 엔드포인트 |
-| `page_size` | `sources.assembly.page_size` | 100 | 페이지당 건수(페이징 누적) |
-| `timeout`, `max_retries` | `sources.assembly.*` | 20s, 3 | 5xx/네트워크 지수백오프 |
+| `api_key`/`oc` | `lia.sources.assembly.api-key` | `${ASSEMBLY_API_KEY:}` | 열린국회=ServiceKey, 법제처·국가법령=OC(회원 이메일 아이디) |
+| `service` | `lia.sources.assembly.service` | `nzmimeepazxkubdpn` | 의원발의 법률안 목록 서비스 ID |
+| `age` | `lia.sources.assembly.age` | `"22"` | **필수 파라미터** — 없으면 ERROR-300 |
+| `base` | `lia.sources.assembly.base` | `open.assembly.go.kr/portal/openapi` | 엔드포인트 |
+| `page-size` | `lia.sources.assembly.page-size` | 100 | 페이지당 건수(페이징 누적) |
+| `timeout`, `max-retries` | `lia.sources.assembly.*` | 20s, 3 | 5xx/네트워크 지수백오프 |
 
-> 커넥터 자체는 설정에 **비결합** — 평범한 인자를 받고 `config.py` 팩토리가 조립한다(교체·테스트 용이).
+> 커넥터 자체는 설정에 **비결합** — 평범한 인자를 받고 `PipelineConfig`가 프로퍼티를 주입해 조립한다(교체·테스트 용이).
 
 ## 동작
 1. 쿼리 → 출처 요청 빌드(인증·페이징 파라미터 부착)
@@ -87,15 +88,18 @@ GET {law.base}/DRF/lawService.do?OC=..&target=law&MST=276291&type=JSON          
 3. 레이트리밋 준수, 5xx→지수백오프 재시도, 4xx(키만료 등)→로그+스킵
 4. **법안 커넥터는 Normalizer로, `LawConnector`는 RAG Indexer/Bill Store(기준선)로** 흐름
 
-## 인터페이스 (Python 초안)
-```python
-class SourceConnector(ABC):
-    @abstractmethod
-    def fetch(self, query: Query) -> Iterator[Raw]: ...
+## 인터페이스 (Java, `com.lia.core.pipeline.connector`)
+```java
+public interface SourceConnector {
+    String sourceType();
+    List<RawBill> search(String query, int limit);
+    RawBill fetch(String sourceId);
+    default RawBill getByBillNo(String billNo) { ... }   // 기본: search 결과에서 정확 일치
+}
 
-class AssemblyConnector(SourceConnector):  # 열린국회 — 의원발의 법안 → RawBill
-class MolegConnector(SourceConnector):     # 법제처 입법예고 — 정부입법 → RawBill
-class LawConnector(SourceConnector):       # 국가법령정보 — 현행법 → RawLaw
+class AssemblyBillsConnector implements SourceConnector  // 열린국회 — 구현 완료 ✅
+// MolegNoticeConnector  — 법제처 입법예고(정부입법) → RawBill  (이슈 #11)
+// LawConnector          — 국가법령정보(현행법)     → RawLaw   (이슈 #11)
 ```
 
 ## 구조 결정 의도 (왜 이렇게)

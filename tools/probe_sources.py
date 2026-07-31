@@ -1,6 +1,6 @@
 """출처 연동 진단 — "어떤 형식으로 법안을 가져올 수 있는가"를 실측한다.
 
-    python scripts/probe_sources.py [검색어]
+    python tools/probe_sources.py [검색어]
 
 목적 (D38: 본문 획득 경로 미확정):
   1) 설정된 자격증명 상태 확인
@@ -9,21 +9,49 @@
   4) 국가법령정보(현행법) 응답 형식 확인 — OC 있을 때만
 
 읽기 전용. 결과는 docs/components/SourceConnector.md §본문 획득 갱신 근거로 쓴다.
+운영 코드(core, Java)와 무관한 **독립 진단 도구**로, 레포 루트 .env 만 읽는다(D39 정리).
 """
 from __future__ import annotations
 
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 try:
     sys.stdout.reconfigure(encoding="utf-8")
 except Exception:
     pass
 
+from types import SimpleNamespace  # noqa: E402
+
 import httpx  # noqa: E402
 
-from lia_pipeline.config import get_settings  # noqa: E402
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def get_settings():
+    """레포 루트 .env 를 읽어 설정 객체를 구성한다(운영 설정은 core/application.yml)."""
+    env = {}
+    path = os.path.join(ROOT, ".env")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    env[k.strip()] = v.strip().strip("\"'")
+    return SimpleNamespace(
+        sources=SimpleNamespace(
+            assembly=SimpleNamespace(
+                api_key=env.get("ASSEMBLY_API_KEY", ""),
+                service=env.get("ASSEMBLY_BILL_SERVICE", "nzmimeepazxkubdpn"),
+                age=env.get("ASSEMBLY_AGE", "22"),
+                base="https://open.assembly.go.kr/portal/openapi"),
+            moleg=SimpleNamespace(oc=env.get("MOLEG_OC", ""),
+                                  base="https://opinion.lawmaking.go.kr"),
+            law=SimpleNamespace(oc=env.get("LAW_OC", ""),
+                                base="https://www.law.go.kr")),
+        embedding=SimpleNamespace(api_key=env.get("OPENAI_API_KEY", "")),
+        llm=SimpleNamespace(api_key=env.get("ANTHROPIC_API_KEY", "")))
 
 # 본문 판정은 필드명 힌트가 아니라 **값 길이**로 한다.
 # (PPSR_CN="김기표의원 등 11인"처럼 CN/CONTENT 이름이 붙어도 본문이 아닌 경우가 많아 오탐)
