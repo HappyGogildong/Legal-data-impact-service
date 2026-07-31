@@ -5,8 +5,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.client.RestClient;
+
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.lia.core.config.LiaSourceProperties;
@@ -20,6 +21,8 @@ import com.lia.core.config.LiaSourceProperties;
  *  - 필드: BILL_ID / BILL_NO / BILL_NAME / COMMITTEE / PROPOSE_DT / PROC_RESULT ...
  */
 public class AssemblyBillsConnector implements SourceConnector {
+
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private final RestClient http;
     private final LiaSourceProperties.Assembly props;
@@ -92,10 +95,13 @@ public class AssemblyBillsConnector implements SourceConnector {
         RuntimeException last = null;
         for (int attempt = 0; attempt < props.maxRetries(); attempt++) {
             try {
-                Map<String, Object> payload = http.get()
+                // ⚠️ 열린국회 API는 Type=json 이어도 Content-Type 을 text/html 로 응답한다.
+                // 따라서 메시지 컨버터에 맡기지 않고 문자열로 받아 직접 파싱한다.
+                String raw = http.get()
                         .uri(uri.build().toUriString())
                         .retrieve()
-                        .body(new ParameterizedTypeReference<LinkedHashMap<String, Object>>() {});
+                        .body(String.class);
+                Map<String, Object> payload = parseJson(raw);
                 AssemblyEnvelope.checkResult(payload);   // ERROR-* 면 예외
                 return payload;
             } catch (AssemblyApiException e) {
@@ -111,6 +117,14 @@ public class AssemblyBillsConnector implements SourceConnector {
             }
         }
         throw last;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> parseJson(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new AssemblyApiException("빈 응답");
+        }
+        return JSON.readValue(raw, LinkedHashMap.class);
     }
 
     private RawBill toRaw(Map<String, Object> row) {

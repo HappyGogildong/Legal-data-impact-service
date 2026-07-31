@@ -22,6 +22,10 @@ dependencyManagement {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
+    // 레포 루트 .env 를 Spring Environment 로 로드 (D39: 자격증명 단일 소스)
+    // Spring Boot 자체는 .env 를 읽지 않음 → 로컬/IDE 실행용. 컨테이너는 compose env_file 사용
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
+
     // --- Spring AI (D35 매핑) ---
     implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'  // AnalysisEngine 추론 (ChatClient, Opus 4.8)
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'     // Embedder (Upstage는 base-url 오버라이드)
@@ -36,4 +40,33 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
-tasks.named('test') { useJUnitPlatform() }
+// 자격증명 단일 소스(D39): 레포 루트 .env 를 읽어 JVM 환경변수로 주입한다.
+// Spring Boot 는 .env 를 직접 읽지 않고, spring-dotenv 의 디렉터리 지정도
+// Environment 준비 이전 단계라 신뢰하기 어려워 Gradle 에서 명시적으로 넣는다.
+// (컨테이너 실행은 docker-compose 의 env_file: .env 가 담당)
+def loadDotenv = { ->
+    def f = rootProject.file('../.env')
+    def map = [:]
+    if (f.exists()) {
+        f.eachLine('UTF-8') { line ->
+            line = line.trim()
+            if (line && !line.startsWith('#') && line.contains('=')) {
+                def i = line.indexOf('=')
+                def k = line.substring(0, i).trim()
+                def v = line.substring(i + 1).trim().replaceAll(/^["']|["']$/, '')
+                if (k && v) map[k] = v
+            }
+        }
+    }
+    return map
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    environment loadDotenv()
+}
+
+tasks.named('bootRun') {
+    environment loadDotenv()
+}
+

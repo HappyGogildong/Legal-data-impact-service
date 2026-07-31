@@ -66,7 +66,7 @@ related:
 
 - [x] Boot 3.3.0 → 4.0.x 플러그인·BOM 교체 (`core/build.gradle`)
 - [x] Spring AI BOM 2.0.x + starter(anthropic·openai·pgvector) 추가
-- [ ] Jackson 3(`tools.jackson`) 기준으로 직렬화 코드 작성 — RestClient 응답은 Map 바인딩이라 대부분 무풍
+- [x] Jackson 3(`tools.jackson`) 적용 — `AssemblyBillsConnector`가 `tools.jackson.databind.ObjectMapper`로 직접 파싱(열린국회가 text/html 로 응답하는 문제 때문에 컨버터 우회)
 - [ ] 옵션 설정은 빌더만 사용 (`AnthropicChatOptions.builder()...`)
 - [ ] Security 도입 시 4.0 기본값 검토
 - [ ] Spring AI 2.0.x 패치 버전 추적 (GA 직후라 패치 잦음)

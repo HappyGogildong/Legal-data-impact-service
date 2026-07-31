@@ -21,9 +21,10 @@ services:
 
   core:
     build: ./core
+    env_file: .env            # 자격증명 단일 소스(D39): ASSEMBLY_API_KEY, MOLEG_OC, LAW_OC,
+                              # OPENAI_API_KEY, ANTHROPIC_API_KEY → application.yml 의 ${VAR}
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/lia
-      PIPELINE_BASE_URL: http://pipeline:8000
     ports: ["8080:8080"]
     depends_on: [db]
 

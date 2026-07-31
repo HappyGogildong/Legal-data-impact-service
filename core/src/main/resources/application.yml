@@ -1,7 +1,12 @@
 # LIA core — Boot 4.0 + Spring AI 2.0
-# 비밀값은 환경변수로 주입(레포 루트 .env 규약과 동일 변수명).
-# Spring은 .env 를 직접 읽지 않으므로 IDE 실행 설정이나 셸에서 export 하거나,
-# docker compose(env_file: .env)로 띄우면 자동 주입된다.
+# 비밀값은 **레포 루트 `.env` 하나**가 단일 소스(D39). 주입 경로 2가지:
+#   · 로컬/IDE/gradlew  → spring-dotenv 가 아래 env.directory 의 .env 를 로드
+#   · docker compose    → core 서비스의 env_file: .env 로 환경변수 주입
+# 둘 다 없으면 각 키는 빈 문자열(`${VAR:}`)이 되어 커넥터가 명시적으로 실패한다.
+
+env:
+  directory: ..            # core/ 기준 상위 = 레포 루트 (.env 위치)
+  filename: .env
 
 lia:
   sources:

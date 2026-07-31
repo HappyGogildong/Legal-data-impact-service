@@ -42,6 +42,8 @@ record RawBill(String sourceType, String sourceId, String billNo, String title,
 | 상세 페이지 `DETAIL_LINK` | ❌ JS 렌더 — 정적 HTML에 "제안이유/주요내용/부칙" 문자열 없음. **HWP 첨부만 존재** |
 | 대체 API 4종 — `BILLINFODETAIL`(의안 상세)·`BILLINFOPPSR`(제안자)·`TVBPMBILL11`(통합)·`BILLRCP`(접수) | ❌ 모두 응답하나 **본문 없음**. 값 길이 200자 초과 필드가 하나도 없음(심사 단계 일자·발의자 명단뿐) |
 
+> ⚠️ **열린국회 API 함정 (2026-07-31, Java 포팅 중 발견):** `Type=json` 으로 요청해도 서버가 **`Content-Type: text/html`** 로 응답한다(본문은 정상 JSON). Spring `RestClient`가 메시지 컨버터로 바인딩하면 `UnknownContentTypeException` 이 난다 → **`String`으로 받아 직접 파싱**해야 한다(`AssemblyBillsConnector.parseJson`). Python `httpx`는 `.json()`이 강제 파싱해 이 문제가 드러나지 않았다.
+
 > 재현: `python pipeline/scripts/probe_sources.py [검색어]` — 자격증명·목록 필드·본문 서비스 탐색을 한 번에 실측한다.
 > **판정 기준 주의:** 필드명(`*_CN`, `*CONTENT`)으로 본문을 판별하면 오탐한다 — `PPSR_CN`은 "김기표의원 등 11인"(발의자 내용)이다. **값 길이(>200자)** 로 판정할 것.
 
