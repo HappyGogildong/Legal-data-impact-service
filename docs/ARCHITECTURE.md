@@ -6,16 +6,14 @@
 
 ## 최신본
 
-→ **[architecture/v0.7-offline-online-split.md](architecture/v0.7-offline-online-split.md)** (v0.7, 현행)
-
-> ⚠️ **v0.7 이후 갱신 (D42, 2026-08-01) — 스냅샷 미반영.** 동결 규약상 v0.7 파일은 수정하지 않으므로 여기에 적어 둔다:
-> **MVP 분석 대상이 *의안*에서 *공포 후 시행 대기 법령*(국가법령정보 `target=eflaw`)으로 확정**됐다. v0.7 §4.2·§7의 "법안 본문 획득 경로 미확정(D38)" 서술과 "Normalizer 신구조문대비표 파서"는 **더 이상 유효하지 않다** — 본문·개정문·부칙이 이미 확보돼 D38은 해소, 대비표 파싱은 폐기됐다. 현행 계약은 [components/SourceConnector.md](components/SourceConnector.md) §MVP 본문 경로와 [components/component-specs.md](components/component-specs.md) §1.1을 기준으로 한다. 다음 스냅샷(v0.8) 작성 시 반영할 것.
+→ **[architecture/v0.8-pending-law-corpus.md](architecture/v0.8-pending-law-corpus.md)** (v0.8, 현행)
 
 ## 버전 이력
 
 | 버전 | 파일 | 날짜 | 상태 | 핵심 |
 |---|---|---|---|---|
-| v0.7 | [v0.7-offline-online-split.md](architecture/v0.7-offline-online-split.md) | 2026-08-01 | 현행 | 오프라인(배치 적재)·온라인(요청 응답) 실행 모드 분리, Nemotron 군집(Persona Builder)은 그림에서 제외 |
+| v0.8 | [v0.8-pending-law-corpus.md](architecture/v0.8-pending-law-corpus.md) | 2026-08-02 | 현행 | 분석 대상을 의안에서 **공포 후 시행 대기 법령**(`eflaw`)으로 확정, `Law` 모델 신설·`Bill` 보류, 조문 diff를 오프라인으로 이관, 자기신고 프로필 반영 |
+| v0.7 | [v0.7-offline-online-split.md](architecture/v0.7-offline-online-split.md) | 2026-08-01 | 대체됨 | 오프라인(배치 적재)·온라인(요청 응답) 실행 모드 분리, Nemotron 군집(Persona Builder)은 그림에서 제외 |
 | v0.6 | [v0.6-spring-consolidation.md](architecture/v0.6-spring-consolidation.md) | 2026-07-21 | 대체됨 | 파이프라인을 Spring(Boot 4.0+Spring AI 2.0)으로 통합 — 3→2 런타임, Python 서버 대체 |
 | v0.5 | [v0.5-bill-discovery.md](architecture/v0.5-bill-discovery.md) | 2026-06-28 | 대체됨 | 모호 plain text 위한 법안 의미검색(탐색용 임베딩) 추가, 분석용 RAG와 분리 |
 | v0.4 | [v0.4-pipeline-refinements.md](architecture/v0.4-pipeline-refinements.md) | 2026-06-28 | 대체됨 | RAG Indexer 분리, 출처 3종 구체화, 커맨드 4종(+LawDiff), BillFacts/2계층, 해소 4상태, triage |
@@ -36,6 +34,22 @@
 > ADR이 `Accepted`되어 구조에 반영되면, 그 변경을 담은 새 버전 파일을 추가하고 위 "반영 버전"을 확정한다(예: v0.4). 동결 스냅샷에는 ADR 링크를 넣지 않으므로, 버전↔ADR 매핑은 **이 표가 단일 출처**다.
 
 ## 변경 이유 (Changelog)
+
+### v0.7 → v0.8 — "분석 대상을 시행 대기 법령으로"
+
+**문제.** v0.7까지 분석 대상은 *의안*이었다. 그런데 의원발의 통과율은 ~20%로, 서비스 약속("적용될 법이 나에게 무엇을 바꾸는가")과 어긋난다 — 사용자에게 *일어나지 않을 일*을 알리게 된다. 동시에 의안 본문 획득 경로가 미해결(**D38**)이라 `LawDiff`·인용 그라운딩·벤치 정답쌍이 전부 막혀 있었고, 남은 선택지는 HWP 첨부 파싱이라는 가장 비싼 경로뿐이었다.
+
+**전환.** 대상을 **공포됐으나 아직 시행되지 않은 법령**으로 좁혔다(**D42**). 적용 확실성이 100%이고 시행일이 확정돼 `ActionPlan`이 비로소 단정적으로 성립한다.
+
+**결과 — 갭이 풀리는 게 아니라 사라졌다.** 이미 연동돼 있던 국가법령정보가 `target=eflaw`로 **조문 전문·개정문·제개정이유·부칙을 전부** 제공한다(2026-08-01 실측, 시행예정 899건). 새 커넥터도, HWP 파서도 필요 없었다. 파생 효과:
+- **D38 해소** — 의안 본문 갭은 참고용 소스의 post-MVP 과제로 강등
+- **신구조문대비표 파싱 폐기** — 시행중본↔시행예정본이 동일 스키마라 직접 대조
+- **조문 정렬(alignment) 과제 소멸** — 동일 조문번호가 곧 정렬키
+- **`조문변경여부='Y'` 플래그**가 변경 조문을 지목(주택법 137개 중 6개) → 분석 토큰 20분의 1
+- **도메인 모델 분리** — `Law` 신설, `Bill` 보류. `eflaw` 응답에 `billNo`·발의자·소관위·심사단계가 없어 `Bill`은 절반이 null이 된다
+- **diff를 오프라인으로** — 프로필 무관 사실이므로 선계산 대상(v0.7 §2 규율의 적용)
+
+**남은 것(D43):** 한 법령에 시행 대기 개정이 복수일 때 diff 기준 시점. 실측에서 주택법은 *나중에 공포된 개정이 먼저 시행*되는 역전이 있었다.
 
 ### v0.6 → v0.7 — "오프라인·온라인 실행 모드 분리"
 
