@@ -18,9 +18,9 @@ related:
 
 각 컴포넌트의 **역할·입출력 계약**을 고정하고, **MVP 범위(IN/OUT)** 를 확정한다. 결정 사항:
 - **입력:** MVP는 *수집 법안 검색/선택*으로 한정. 단, **URL/뉴스 커넥터를 옆에 붙이면 동작**함을 구조(확장점)로 시연(§3).
-- **분석:** 시민 코어 3종 — `ImpactSummary`, `PersonaImpact`, `ActionPlan`.
+- **분석:** 시민 코어 4종 — `ImpactSummary`, `LawDiff`, `PersonaImpact`, `ActionPlan`(D25).
 - **모델:** 외부 foundation API(강모델). 자체/경량 학습 없음. RAG/RDB는 컨텍스트 공급.
-- **페르소나:** 오프라인 사전 분류 → Store에 저장 → 런타임 **lookup**으로 주입(벡터 RAG 아님).
+- **페르소나:** 회원가입 시 **자기신고 프로필**(목적·연령대·직업·가구·주거·시도) → 런타임 `userId` **lookup** 주입(D41). 성명 등 직접식별정보 미수집.
 
 ---
 
@@ -40,8 +40,8 @@ related:
 | ✶ | **[[Embedder]]** (공유) | Spring | 텍스트→벡터(외부 API), 적재·검색 공유 — 벤치 대상 | `texts`, `mode(query/passage)` | 벡터(dim 1536) |
 | 5 | **Bill Store (RDB)** | — | 법안 정본·결과 캐시 | Bill/Article/ImpactResult | 조회 결과 |
 | 6 | **Vector Index** | — | 의미검색 — 분석용(현행법·선례) + 탐색용(법안) | 쿼리 임베딩 | 관련 조문/법안 후보 |
-| 7 | **Persona Store** | — | 세그먼트 프로파일 보관 | `segment_id` | 세그먼트 속성 프로파일 |
-| 8 | **AnalysisPipeline (Orchestrator)** | Spring | 게이트→컨텍스트 조립→엔진 호출→검증→캐시 | `billRef + command + segmentId` | 검증된 `ImpactResult(JSON)` |
+| 7 | **User Profile Store** | — | 자기신고 프로필 보관(D41) | `userId` | `UserProfile` 속성 |
+| 8 | **AnalysisPipeline (Orchestrator)** | Spring | 게이트→컨텍스트 조립→엔진 호출→검증→캐시 | `billRef + command + userId` | 검증된 `ImpactResult(JSON)` |
 | 9 | **Command Registry** | Spring | `AnalysisCommand` 자동 발견 | `@Component` | 실행 가능 커맨드 집합 |
 | 10 | **AnalysisCommand** (×4) | Spring | 한 use-case의 task·requirements 정의 | `CommandContext` | 커맨드 결과 |
 | 11 | **[[AnalysisEngine|Analysis Engine]]** | Spring | RAG 검색+프롬프트 빌드+**foundation API 호출** | `{Bill, personaProfile, command, options}` | 구조화 JSON (프롬프트 정의서 §4) |
@@ -52,7 +52,6 @@ related:
 
 | # | 컴포넌트 | 역할 | 입력 | 출력 |
 |---|---|---|---|---|
-| 14 | **Persona Builder** | Nemotron 7M → 세그먼트 군집·프로파일 생성 | Nemotron-Personas-Korea | Persona Store 적재(세그먼트+프로파일) |
 | 15 | **Evaluation Harness** *(post-MVP 이연, D36)* | 합성 페르소나 에이전트로 E2E 구동·회귀(§5) | 세그먼트 패널 + 법안셋 + `prompt_version` | smoke 결과 + UX 비평 + 커버리지 리포트 |
 
 > **계층 매핑(프롬프트 정의서):** Layer A(법안 사실)=`ImpactSummary`·`LawDiff`의 사실부, Layer B(해석)=`PersonaImpact`/`ActionPlan`. 컨텍스트 조립은 #8이 정의서 §1 입력계약대로 수행.
@@ -69,9 +68,9 @@ related:
 
 [Web] 법안 검색(이름/의안번호)  ← 열린국회+법제처 수집분
    → [Spring REST] → Bill Store 조회
-[Web] 법안 선택 + 세그먼트 선택
+[Web] 법안 선택  (프로필은 가입 시 저장된 것 사용)
    → [AnalysisPipeline] 해소·requirements 게이트
-       · Bill(RDB) + 신구조문대비표 + 현행법 기준선(Vector Index) + personaProfile 조립
+       · Bill(RDB) + 신구조문대비표 + 현행법 기준선(Vector Index) + UserProfile 조립
    → [Analysis Engine(Spring AI)] 프롬프트 빌드 + foundation API 호출
    → [Verification Gate] 스키마·인용 존재성
    → [Bill Store] ImpactResult 캐시
@@ -99,12 +98,12 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 - SourceConnector: **법안 2개(열린국회정보·법제처 입법예고) + 현행법 1개(국가법령정보, diff 기준선)**
 - SourceAnalyzer: **의안번호/법안명 + 모호 plain text**(정확매칭 + 법안 의미검색) — 해소 4상태(§4 #2). URL/뉴스 = 인터페이스 스텁
 - Normalizer → **Bill Store(RDB)**; RAG Indexer → **Vector Index**(현행법 *분석용* + 법안 요약·BillFacts *탐색용*)
-- Persona Builder(오프라인) → **세그먼트 6개 + Persona Store**
+- **회원가입 프로필 입력 UI + User Profile Store** (자기신고, D41)
 - AnalysisPipeline + Command Registry + **커맨드 4종**(ImpactSummary/**LawDiff**/PersonaImpact/ActionPlan)
 - **현행법 diff**: 법안 **신구조문대비표**(1차) + **국가법령정보 현행법**(권위 기준선·보강) → `baselineLawId` 채움
 - Analysis Engine: **foundation API 호출** + 현행법 **RAG 검색**, 프롬프트 정의서 v0.1, 구조화 JSON
 - Verification: **스키마 + 인용 존재성(규칙)**
-- Web: 검색→법안 선택→세그먼트 선택→**4종 표시(요약/diff/내 영향/대응안)**
+- Web: **가입·프로필 입력** → 검색→법안 선택→**4종 표시(요약/diff/내 영향/대응안)**
 
 ### OUT (확장점은 유지, 구현 후순위)
 - URL/뉴스 해소 **구현** (인터페이스만)
@@ -134,8 +133,8 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 ## 6. MVP 수용 기준 (vertical slice)
 
 1. **열린국회·법제처** 법안 각 1건 + 해당 **현행법 기준선**이 수집·정규화되어 RDB/Vector Index에 존재.
-2. 세그먼트 6개가 Persona Store에 존재.
-3. 한 법안 × 한 세그먼트 → **4종 커맨드**(요약/diff/내 영향/대응안)가 **인용 포함 구조화 JSON**을 반환.
+2. 사용자 프로필 1건이 저장돼 있고 수정·삭제가 가능하다.
+3. 한 법안 × 한 프로필 → **4종 커맨드**(요약/diff/내 영향/대응안)가 **인용 포함 구조화 JSON**을 반환.
 4. `LawDiff`가 신구조문대비표·현행법 기준선을 인용해 조문별 현행→개정 변화를 제시.
 5. Verification Gate가 *인용 없는/허위 source_id* 응답을 차단(재생성/폴백).
 6. Web에서 검색→선택→4종 결과 표시까지 동작.
@@ -144,7 +143,7 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 
 ## 7. 결정 필요 (Open)
 
-- [x] 세그먼트 스키마·개수 → 6개 ([[component-specs]] §2)
+- [x] 페르소나 획득 방식 → **자기신고 프로필**(D41, [[component-specs]] §2). ~~Nemotron 6세그먼트~~ 폐기
 - [x] Spring↔Python REST 계약 → [[component-specs]] §3
 - [x] 현행법 diff MVP 처리 → **MVP 포함**(신구조문대비표+국가법령정보, §4 IN)
 - [x] foundation 모델 픽 + 토큰 예산 → Opus 4.8 ([[component-specs]] §3.3)

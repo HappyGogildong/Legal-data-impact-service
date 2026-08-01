@@ -17,7 +17,7 @@ related:
 
 ## 0. 목적·범위·표기법
 
-[[components-io-and-scope]]의 카탈로그를 **개발 가능한 수준의 상세 스펙**으로 확장한다. **MVP 활성 컴포넌트(IN)** 만 다루며, §2 세그먼트 스키마·§3 REST 계약을 포함하고, §5에서 **정합성 검증**으로 "스펙대로 개발 시 E2E 동작 가능"함을 확인한다.
+[[components-io-and-scope]]의 카탈로그를 **개발 가능한 수준의 상세 스펙**으로 확장한다. **MVP 활성 컴포넌트(IN)** 만 다루며, §2 사용자 프로필 스키마·§3 REST 계약을 포함하고, §5에서 **정합성 검증**으로 "스펙대로 개발 시 E2E 동작 가능"함을 확인한다.
 
 표기: 타입은 `string|int|enum|T[]|T?`(?=nullable). 모든 스키마는 JSON 직렬화 기준. 컴포넌트 번호(#n)는 [[components-io-and-scope]] §1과 일치.
 
@@ -126,55 +126,50 @@ revision = sha256( canonical(
 
 ---
 
-## 2. 계약 A — 세그먼트 스키마 (Persona Segment)
+## 2. 계약 A — 사용자 프로필 (User Profile · 자기신고)
 
-Nemotron-Personas-Korea(26필드) 중 **정책 관련 부분집합**만 채택하고, 군집 후 세그먼트 단위로 집약한다. 취미·여행·미식 등 정책 무관 서사는 제외.
+**D41로 개정.** ~~Nemotron 군집 6개 세그먼트~~ → **회원가입 시 자기신고 프로필**. 고정 6버킷은 개인화 해상도가 낮고(같은 버킷 안에서 상황이 크게 다름), 외부 데이터셋·군집 파이프라인 의존이 붙었다. 사용자가 직접 답한 속성이 더 정확하고 최신이며 Nemotron 의존이 사라진다.
+
+### 수집 항목 (전부 선택 — 채울수록 개인화 정확도↑)
 
 ```ts
-PersonaSegment {
-  segment_id: string              // "seg.tenant_youth_single"
-  label: string                   // 표시명 "청년 1인가구(임차)"
-  attributes: {
-    age_band: enum("19-29"|"30-39"|"40-49"|"50-64"|"65+")
-    sex: enum("M"|"F")?           // 데이터셋 'sex'(성별), gender 아님
-    marital_status: enum("미혼"|"기혼"|"이혼"|"사별")?
-    education: enum("중졸이하"|"고졸"|"대졸"|"대학원")?
-    occupation_category: string   // 직업 대분류 (단순노무/서비스/사무/전문 등)
-    region_sido: string           // 17개 시도
-    region_sigungu: string?       // 252개 시군구 (선택)
-    household_type: enum("1인"|"부부"|"부부+자녀"|"한부모"|"기타")
-  }
-  life_stage: string?             // 파생: 청년/중장년/은퇴 등
-  population_weight: float        // 0~1, 인구분포 근사(triage 가중치용)
-  narrative: string               // 1~2문장 평이 요약 (정책 무관 서사 제외)
-  provenance: {
-    source: "nvidia/Nemotron-Personas-Korea"
-    license: "CC BY 4.0"          // 출처표기 의무
-    built_by: "Persona Builder"
-    built_at: date
-  }
+UserProfile {
+  userId: string                  // 내부 계정 UUID (성명·연락처 아님)
+  purposes: Purpose[]             // ★ 이용 목적(다중) — "무엇 때문에 쓰는가"
+  ageBand: enum("19-29"|"30-39"|"40-49"|"50-64"|"65+")?    // 생년월일 아님
+  occupation: string?             // 직업군 대분류(사무·서비스·생산·전문·자영·농림어업·학생·무직)
+  employmentType: enum("임금근로"|"자영업"|"프리랜서"|"무직·은퇴"|"학생")?
+  householdType: enum("1인"|"부부"|"부부+자녀"|"한부모"|"기타")?
+  housingType: enum("자가"|"전세"|"월세"|"기타")?            // 주거 법안 영향에 직결
+  regionSido: string?             // 17개 시도까지만 (시군구·상세주소 미수집)
+  interests: string[]?            // 관심 도메인(주거·세제·근로·복지·교육·창업…)
+  updatedAt: datetime
 }
+
+Purpose = enum("생활·주거"|"세금·재정"|"근로·고용"|"사업·창업"
+              |"복지·의료"|"교육·양육"|"관심사 모니터링"|"기타")
 ```
 
-규율(결정 D10/D11 반영):
-- **수신자 정보일 뿐 인용 가능한 법적 source 아님** — 프롬프트 `<persona>` 블록 전용, `<context>`(법령)와 분리.
-- 런타임은 `segment_id`로 **lookup**(벡터 RAG 아님). 자유텍스트→세그먼트 매칭에만 임베딩 사용(선택).
-- 독립가정 한계로 정량 인구통계 용도 금지. `population_weight`는 근사·방향성용.
+`purposes`가 핵심이다 — 같은 30대 직장인이라도 *창업 준비 중*인지 *양육 중*인지에 따라 같은 법안의 관심 조문이 달라진다. 고정 세그먼트로는 잡히지 않던 축이다.
 
-런타임 주입 시에는 `attributes` + `narrative`만 직렬화(나머지는 운영 메타).
+### 개인정보 최소 수집
 
-**군집 개수·기준 (MVP 확정):** **6개 세그먼트**, 군집 기준 축 = `{age_band, occupation_category, household_type}`(정책 영향 핵심 축), `region_sido`는 2차. Persona Builder가 정책 부분집합으로 인코딩 → k-means/계층 군집 → 6개 중심을 사람이 라벨링, `population_weight`는 분포에서 산출.
+| 구분 | 항목 |
+|---|---|
+| ✅ 수집 | 이용 목적, **연령대**(구간), 직업군, 고용형태, 가구형태, 주거형태, **시도**, 관심 도메인 |
+| ❌ 미수집 | **성명**, 생년월일, 주민등록번호, 연락처, 상세주소(시군구 이하), 소득액, 직장명 |
 
-| segment_id | label | 핵심 속성 | 주요 영향 법안 예 |
-|---|---|---|---|
-| `seg.youth_single` | 청년 1인가구 | 19–34 / 사무·서비스 / 1인 | 주거·세법·고용 |
-| `seg.working_parents` | 자녀양육 직장인 | 30–49 / 사무·전문 / 부부+자녀 | 교육·보육·세제 |
-| `seg.self_employed` | 자영업·소상공인 | 30–59 / 자영 / 다양 | 규제·세금·지원금 |
-| `seg.manual_worker` | 생산·현장 노동자 | 30–59 / 단순노무·생산 / 다양 | 근로·안전·임금 |
-| `seg.midlife_worker` | 중장년 임금근로자 | 50–64 / 사무·서비스 | 연금·고용·세제 |
-| `seg.retired_elderly` | 은퇴·고령 가구 | 65+ / 무직·연금 / 1인·부부 | 복지·연금·의료 |
+> ⚠️ **"개인정보 아님"이 아니라 "최소 수집"이다.** 직접식별정보는 받지 않지만, 연령대·직업·지역·가구형태의 **조합은 재식별 가능성**이 있고 계정 자체가 식별자다 — 개인정보보호법상 "다른 정보와 쉽게 결합하여 알아볼 수 있는 정보"에 해당할 수 있다. 따라서 **개인정보처리방침·수집 동의·파기 절차는 여전히 필요**하다. 시군구 대신 시도까지만 받는 것도 이 때문이다.
+>
+> 설계 규율: ① 프로필은 **언제든 수정·삭제 가능**해야 한다. ② 분석 결과 캐시 키에는 `userId`가 아니라 **프로필 속성 해시**를 쓴다 — 동일 속성 사용자 간 캐시를 재사용하면서 개인 단위 추적을 피한다.
 
-> 도메인 특정 법안의 *기업/기관* 영향은 개인 세그먼트로 미충족 — 별도 엔티티 프로파일은 MVP 범위 밖(후속).
+### 프롬프트 주입 규율 (D10에서 승계 — 불변)
+
+- 프로필은 **"수신자 정보"일 뿐 인용 가능한 법적 source가 아니다** — `<persona>` 블록 전용, `<context>`(법령)와 분리.
+- 런타임은 `userId`로 **lookup**(벡터 RAG 아님). 주입 시 `userId`는 제외하고 **속성만** 직렬화.
+- **정량 인구통계 용도 금지** — 자기신고 표본이라 인구 대표성이 없다. ~~`population_weight`~~ 제거(Nemotron 분포 기반이었음); triage 인구 가중치는 별도 근거가 필요하다([[triage-policy]] §6 Open).
+
+> 도메인 특정 법안의 *기업/기관* 영향은 개인 프로필로 미충족 — 별도 엔티티 프로파일은 MVP 범위 밖(후속).
 
 ---
 
@@ -196,7 +191,7 @@ Content-Type: application/json
 {
   "command": "PersonaImpactCommand",         // 3종 중 1
   "bill": { /* Bill 부분집합: billNo,title,stage,effectiveDate,articles[],fullText,revision */ },
-  "persona": { /* PersonaSegment.attributes + narrative */ } | null,  // Layer B만 non-null
+  "persona": { /* UserProfile 속성만 — userId 제외 */ } | null,  // Layer B만 non-null
   "options": {
     "prompt_version": "0.1",
     "layer": "B",                            // "A"|"B"
@@ -226,7 +221,8 @@ Content-Type: application/json
 계약 규칙:
 - **요청 게이트는 Spring이 먼저** 수행(아래 §4 #8). Python은 방어적 재검증만.
 - 응답 `result`는 **항상 §1 ImpactResult 스키마**. 인용검증은 Python이 1차(엔진 내부)+Spring이 2차(#12) 수행.
-- 멱등/캐시 키: `command + bill.billNo + bill.revision + (persona.segment_id|"-") + prompt_version` (Layer A는 persona 제외).
+- 멱등/캐시 키: `command + bill.billNo + bill.revision + (profileHash|"-") + prompt_version` (Layer A는 프로필 제외).
+  `profileHash` = 주입 대상 프로필 속성의 정규화 해시 — **`userId`를 키에 쓰지 않는다**(동일 속성 사용자 간 캐시 재사용 + 개인 추적 방지, D41).
 
 ### 3.2 수집·해소 엔드포인트 (확정)
 
@@ -330,28 +326,21 @@ Content-Type: application/json
 - 오류: 제약 위반 → upsert 충돌 해소.
 - **저장소 결정 영향:** `BillFacts`+확장 필드 추가는 [[ADR-001-knowledge-store-sizing|ADR-001]] **불변**(≈0.25GB, 헤드룸 내, 스키마 진화이지 사이징·기술 변경 아님).
 
-### #7 Persona Store
-- 역할: `PersonaSegment` 보관·조회.
-- 입력: `segment_id` (런타임), `PersonaSegment[]`(빌더 적재).
-- 출력: `PersonaSegment`.
+### #7 User Profile Store
+- 역할: `UserProfile` 보관·조회 (자기신고, D41).
+- 입력: `userId`(런타임 조회), `UserProfile`(회원가입·프로필 수정 시 저장).
+- 출력: `UserProfile`.
 - 동작: 키 lookup. 자유텍스트 매칭 시 임베딩 최근접(선택).
-- 의존: Persona Builder 산출물.
-
-### #14 Persona Builder (오프라인 배치)
-- 역할: Nemotron 7M → 세그먼트 군집·프로파일.
-- 입력: Nemotron-Personas-Korea.
-- 출력: `PersonaSegment[]` (MVP 5~8개) → Persona Store.
-- 동작: 정책 부분집합 추출 → 군집(직업/가구/연령 기준) → 세그먼트 집약 + `population_weight` + `narrative` + provenance.
-- 오류: 군집 불안정 시 수동 라벨 보정.
+- 의존: 없음 — 사용자가 직접 입력(외부 데이터셋 의존 제거).
 
 ### #8 AnalysisPipeline / Orchestrator (Spring)
 - 역할: 게이트 → 컨텍스트 조립 → Python 호출 → 검증 → 캐시.
-- 입력: `{ billRef, command, segmentId? }`
+- 입력: `{ billRef, command, userId? }`
 - 출력: 검증된 `ImpactResult`.
 - 동작:
   0. **해소 상태 게이트**: `RESOLVED`만 진행. `AMBIGUOUS`→사용자 확인 반환, `NOT_FOUND_YET`/`UNVERIFIED`→분석 거부 + 안내 문구 반환(분석 단계 미진입).
-  1. `supports/requirements` **게이트**: PersonaImpact/ActionPlan은 `segmentId` 필수, 모든 분석은 Bill(#3·#4) 필수. 미충족 시 즉시 거부.
-  2. Bill(RDB) + PersonaSegment(Store) 로드 → §3.1 요청 구성.
+  1. `supports/requirements` **게이트**: PersonaImpact/ActionPlan은 `userId`(프로필) 필수, 모든 분석은 Bill(#3·#4) 필수. 미충족 시 즉시 거부.
+  2. Bill(RDB) + UserProfile(Store) 로드 → §3.1 요청 구성.
   3. 캐시 조회(키) → 히트면 반환.
   4. Python `/analyze` 호출.
   5. **Verification Gate(#12)** 통과분만 캐시·반환, 실패 시 폴백.
@@ -388,7 +377,7 @@ Content-Type: application/json
 - 역할: 검색·선택·결과 표시.
 - 입력: 사용자 액션.
 - 출력: Spring REST 호출 + 렌더(요약/내 영향/대응안 + 인용 표시).
-- 동작: 검색→법안 선택→세그먼트 선택→3종 호출→결과·인용·면책 표시.
+- 동작: 검색→법안 선택→(프로필 기반)4종 호출→결과·인용·면책 표시. 프로필 미설정 시 안내 후 입력 유도.
 
 ### #15 Evaluation Harness (오프라인/CI)
 - 역할: 합성 페르소나 패널로 E2E smoke·회귀(구동·정성), 정답판정 금지.
@@ -409,7 +398,7 @@ happy-path를 따라 **생산자 출력 ⊇ 소비자 입력 요건**을 점검�
 | 3 | #13 → #2 | `{type,value}` | ✅ MVP는 billNo/title만 활성 |
 | 4 | #2 → #8 | `resolution`(4상태) | ✅ `RESOLVED`만 billRef로 진행; 그 외는 게이트에서 안내·거부 |
 | 5 | #8 게이트 | command별 requirements | ✅ §4#10 표와 일치(persona 필수성) |
-| 6 | #4,#7 → #8 → #11 | §3.1 요청(Bill+persona+options) | ✅ persona=PersonaSegment.attributes+narrative |
+| 6 | #4,#7 → #8 → #11 | §3.1 요청(Bill+persona+options) | ✅ persona=UserProfile 속성(userId 제외, D41) |
 | 7 | #11 → #12 | §3.1 응답(ImpactResult) | ✅ 스키마=§1=프롬프트 정의서 §4 |
 | 8 | #12 → #4 → #13 | 검증된 ImpactResult | ✅ 캐시 키=§3.1 키 |
 | 9 | #15 → REST | 동일 경로 재사용 | ✅ 런타임과 같은 계약 |
