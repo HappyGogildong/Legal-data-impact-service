@@ -33,5 +33,12 @@ public record LiaSourceProperties(Assembly assembly, Moleg moleg, Law law) {
 
     public record Moleg(String oc, String base) {}   // 법제처 입법예고 — OC 인증
 
-    public record Law(String oc, String base) {}     // 국가법령정보 — OC 인증
+    /** 국가법령정보 — OC 인증. eflaw(시행예정)·law(시행중) 양쪽을 한 커넥터가 쓴다(D42). */
+    public record Law(String oc, String base, double timeout, int maxRetries) {
+        public Law {
+            if (base == null || base.isBlank()) base = "https://www.law.go.kr";
+            if (timeout <= 0) timeout = 20.0;
+            if (maxRetries <= 0) maxRetries = 3;
+        }
+    }
 }

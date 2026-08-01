@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
 import com.lia.core.pipeline.connector.AssemblyBillsConnector;
+import com.lia.core.pipeline.connector.LawConnector;
 import com.lia.core.pipeline.connector.SourceConnector;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
 
@@ -21,6 +22,12 @@ public class PipelineConfig {
     public AssemblyBillsConnector assemblyBillsConnector(
             RestClient.Builder builder, LiaSourceProperties props) {
         return new AssemblyBillsConnector(builder, props.assembly());
+    }
+
+    /** 국가법령정보 — MVP 분석 대상(eflaw) + diff 기준선(law). D42 */
+    @Bean
+    public LawConnector lawConnector(RestClient.Builder builder, LiaSourceProperties props) {
+        return new LawConnector(builder, props.law());
     }
 
     @Bean

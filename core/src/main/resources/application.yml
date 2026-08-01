@@ -21,9 +21,11 @@ lia:
     moleg:                          # 법제처 입법예고 — 정부제출 법안 (OC=회원 이메일 아이디)
       oc: ${MOLEG_OC:}
       base: https://opinion.lawmaking.go.kr
-    law:                            # 국가법령정보 — 현행 법령/diff 기준선 (OC)
-      oc: ${LAW_OC:}
-      base: https://www.law.go.kr
+    law:                            # 국가법령정보 — MVP 분석 대상 (OC). D42
+      oc: ${LAW_OC:}                #   target=eflaw → 시행예정 법령(분석 대상)
+      base: https://www.law.go.kr   #   target=law   → 시행중 법령(diff 기준선)
+      timeout: 20
+      max-retries: 3
 
 spring:
   ai:

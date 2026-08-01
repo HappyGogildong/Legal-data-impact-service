@@ -77,6 +77,8 @@ GET {law.base}/DRF/lawService.do?OC=..&target=law&ID=001809&type=JSON
 2. **부칙은 `부칙공포번호 == 기본정보.공포번호`로 필터** — 42개 중 이번 개정분 1개. 여기서 `effectiveRule`이 그대로 나온다: *"공포 후 6개월이 경과한 날부터 시행한다. 다만, 제57조제2항제7호의 개정규정은 공포한 날부터 시행한다"* → `enforcementType="단계적"`.
 3. **`조문내용`만 읽으면 본문이 빈다** — 제2조(정의)는 `조문내용`이 제목 줄뿐이고 실제 정의는 `항 → 호 → 목` 중첩에 있다. **재귀 병합 필수.**
 4. **`기본정보.소관부처` 등 일부 필드가 중첩 객체**다(문자열 아님). 평탄화 필요.
+5. **`display=1` 이면 `law` 가 배열이 아니라 단일 객체**로 온다(2026-08-02 구현 중 발견). 리스트로 감싸지 않으면 단건 조회가 조용히 0건이 된다.
+6. **인증 실패도 HTTP 200** 이다 — `{"result":"사용자 정보 검증에 실패하였습니다.","msg":...}` 가 본문으로 온다. 상태코드로는 판별 불가하므로 **봉투 검사가 유일한 방어선**이다.
 
 > 재현: `python tools/probe_eflaw.py [MST] [efYd]` — 목록 필드·본문 구조·조문 플래그·부칙 필터·현행본 연결을 한 번에 실측한다.
 
@@ -155,11 +157,15 @@ public interface SourceConnector {
 
 class AssemblyBillsConnector implements SourceConnector  // 열린국회 — 구현 완료 ✅ (참고용, post-MVP)
 
-// ★ MVP 우선 구현 (이슈 #11)
+// ★ MVP 수집 경로 — 구현 완료 ✅ (이슈 #11, 2026-08-02)
 // LawConnector — 국가법령정보 단일 커넥터, target 2개를 모두 담당
-//   listPending(from, to)  : target=eflaw + efYd 범위  → 시행예정 목록
-//   fetchPending(mst, efYd): target=eflaw + MST        → 시행예정 본문 (분석 대상)
-//   fetchCurrent(lawId)    : target=law   + ID         → 시행중 본문 (diff 기준선)
+//   listPending(from, to, limit)     : target=eflaw + efYd 범위  → 시행예정 목록
+//   fetchPending(mst, effectiveDate) : target=eflaw + MST        → 시행예정 본문 (분석 대상)
+//   fetchCurrent(lawId)              : target=law   + ID         → 시행중 본문 (diff 기준선)
+// LawEnvelope  — 봉투 파싱 순수 함수: checkError / extractRows / articles
+//                changedArticles / addendaOf / text(재귀 평탄화) / date
+// ⚠️ SourceConnector 인터페이스를 구현하지 않는다 — 다루는 것이 의안이 아니라 법령이라
+//    billNo·발의자·심사단계가 존재하지 않는다(D42).
 
 // MolegNoticeConnector — 법제처 입법예고 → RawBill  (post-MVP)
 //   GET opinion.lawmaking.go.kr/rest/ogLmPp.xml?OC=..            (목록)
