@@ -30,9 +30,65 @@ record RawBill(String sourceType, String sourceId, String billNo, String title,
                Map<String,Object> raw)   // 출처 원본 페이로드(정규화 전)
 ```
 
-> ⚠️ **`RawBill`에는 본문(`fullText`)이 없다** — 목록 API가 메타데이터만 주기 때문(아래 §본문 획득). [[Normalizer]]가 요구하는 조문·부칙·신구조문대비표는 **별도 획득 경로**로 채워야 하며, 경로 확정 전까지 해당 파싱 동작은 실행 불가다.
+> ⚠️ **`RawBill`에는 본문(`fullText`)이 없다** — 목록 API가 메타데이터만 주기 때문. **단 이는 `assembly`(의원발의) 한정이며 MVP 경로가 아니다**(D42). MVP는 아래 `RawLaw`를 쓴다.
 
-## 본문(fullText) 획득 — **미해결 갭 (2026-07-21 실측)**
+---
+
+## ✅ MVP 본문 경로 — `RawLaw` (국가법령정보 `eflaw`) · **2026-08-01 실측 확정 (D42)**
+
+**MVP 분석 대상은 의안이 아니라 "공포됐으나 아직 시행 전인 법령"이다.** 통과 여부가 확정돼 불확실성이 0이고, 국가법령정보가 **전문·개정문·제개정이유·부칙을 모두 제공**한다. 별도 커넥터·HWP 파서가 필요 없다.
+
+```java
+record RawLaw(String lawId, String mst, String title, String status,   // "시행예정"
+              LocalDate effectiveDate, LocalDate promulgateDate, String promulgateNo,
+              Map<String,Object> raw)   // 법령 > {기본정보, 조문, 부칙, 개정문, 제개정이유}
+```
+
+### 획득 2단계
+
+```
+# 1) 목록 — 시행예정만 (오늘 이후 시행일 범위)
+GET {law.base}/DRF/lawSearch.do?OC=..&target=eflaw&type=JSON
+      &efYd=20260802~20271231&sort=efasc&display=200
+  → totalCnt 899 · 각 row: 법령ID·법령일련번호(MST)·법령명한글·시행일자·공포일자·공포번호
+                          ·제개정구분명·법종구분·소관부처명·현행연혁코드("시행예정")
+
+# 2) 본문
+GET {law.base}/DRF/lawService.do?OC=..&target=eflaw&MST=283191&type=JSON&efYd=20260804
+  → 299KB · 법령 > {기본정보, 조문, 부칙, 개정문, 제개정이유}
+
+# 3) diff 기준선(현행본) — ★ 법령ID(ID)로 조회. MST는 버전마다 달라 연결키로 못 쓴다
+GET {law.base}/DRF/lawService.do?OC=..&target=law&ID=001809&type=JSON
+```
+
+### 응답 계약 (주택법 MST=283191, 시행 2026-08-04 실측)
+
+| 블록 | 내용 | 매핑 |
+|---|---|---|
+| `기본정보` | 법령ID·법령명_한글·제개정구분·법종구분·소관부처·공포일자·공포번호·시행일자 | `Law` 헤더 |
+| `조문.조문단위[]` | **137개** — `조문번호·조문제목·조문내용·조문제개정유형·조문시행일자·`**`조문변경여부`**`·조문이동이전/이후·조문키·조문여부` | `Article[]` |
+| `부칙.부칙단위[]` | 42개(이력 전체) — `부칙공포일자·`**`부칙공포번호`**`·부칙내용` | `Addendum[]` |
+| `개정문` | 2,002자 — 자구 단위 개정 지시문 | `Law.amendText` |
+| `제개정이유` | 370자 — "◇ 개정이유 및 주요내용" | `Law.amendReason` |
+
+**실측으로 확인된 규칙 4가지:**
+
+1. **`조문변경여부='Y'`가 이번 개정으로 바뀐 조문을 지목한다** — 137개 중 6개(제18·28·46·49·104·106조). `개정문` 정규식 파싱은 오탐(타법 인용 제15·27조)·누락(제104·106조)을 냈다. **플래그가 정답.**
+2. **부칙은 `부칙공포번호 == 기본정보.공포번호`로 필터** — 42개 중 이번 개정분 1개. 여기서 `effectiveRule`이 그대로 나온다: *"공포 후 6개월이 경과한 날부터 시행한다. 다만, 제57조제2항제7호의 개정규정은 공포한 날부터 시행한다"* → `enforcementType="단계적"`.
+3. **`조문내용`만 읽으면 본문이 빈다** — 제2조(정의)는 `조문내용`이 제목 줄뿐이고 실제 정의는 `항 → 호 → 목` 중첩에 있다. **재귀 병합 필수.**
+4. **`기본정보.소관부처` 등 일부 필드가 중첩 객체**다(문자열 아님). 평탄화 필요.
+
+> 재현: `python tools/probe_eflaw.py [MST] [efYd]` — 목록 필드·본문 구조·조문 플래그·부칙 필터·현행본 연결을 한 번에 실측한다.
+
+### 신구조문대비표는 불필요
+
+`Article.oldNewTable`(HWP 첨부 파싱)은 **폐기**한다. 같은 `lawId`의 시행중본(`target=law&ID=`)과 시행예정본(`target=eflaw&MST=`)이 **동일 스키마로 조문 전문을 주므로** 조문 단위 대조를 직접 만들 수 있고, `개정문`이 권위 있는 자구 변경 근거가 된다. 임베딩 벤치 시나리오 A의 정답쌍도 이 경로로 생성한다.
+
+---
+
+## 법안 본문 — `assembly` 잔여 갭 *(post-MVP 강등, D42)*
+
+> **MVP 차단 요인이 아니다.** 의원발의는 통과율 ~20%로 "적용 예정" 성격이 약해 **참고용 소스**로만 유지한다. 통과율 20%짜리 소스를 위해 가장 비싼 파서(HWP)를 만드는 것은 우선순위 역전이다. 아래는 2026-07-21 실측 기록의 보존이다.
 
 `Bill.fullText`·`articles[]`·부칙·신구조문대비표는 [[bill-attributes]]에서 **🔵B(의안 원문 파싱)** 계층으로 분류돼 있고 [[analysis-prompt-spec]] §1 **요소 4(법안 조문 본문)는 필수**지만, **어느 문서도 "본문을 어떻게 가져오는가"를 규정하지 않았다.** 실측 결과:
 
@@ -65,8 +121,8 @@ GET {law.base}/DRF/lawService.do?OC=..&target=law&MST=276291&type=JSON          
 2. 상세 페이지 **HWP 첨부 다운로드 + hwplib 파싱** — JVM 네이티브, 품질 최상 / 구현 부담 큼
 3. 상세 페이지 **JS 렌더 후 추출** — 비공식·취약(권장하지 않음)
 
-**영향 범위:** 본문 없이는 `LawDiff`·조문 인용 그라운딩·신구조문대비표(임베딩 벤치 시나리오 A 정답쌍)가 **모두 성립하지 않는다** → MVP 필수 관문.
-**인터페이스 확장 예정:** `SourceConnector`에 `fetchFullText(sourceId)` 추가(경로 확정 후).
+**영향 범위(개정 — D42):** ~~MVP 필수 관문~~ **아니다.** `LawDiff`·조문 인용 그라운딩·벤치 정답쌍은 모두 위 `eflaw` 경로로 성립한다. 이 갭은 `assembly`를 *분석 대상*으로 승격할 때만 다시 열린다.
+**인터페이스:** `SourceConnector.fetchFullText(sourceId)`는 `law` 구현체에서 먼저 제공한다(`assembly`는 미구현 스텁).
 
 ## 파라미터 (설정 — `application.yml` + `.env`)
 비밀값은 **레포 루트 `.env` 하나**가 단일 소스(D39). `core/src/main/resources/application.yml`이 `${ENV_VAR}`로 참조하고, `LiaSourceProperties`(`@ConfigurationProperties`)가 타입 바인딩한다. 주입 경로: 로컬·테스트는 Gradle이 `.env`를 환경변수로 주입, 컨테이너는 compose `env_file: .env`.
@@ -97,9 +153,18 @@ public interface SourceConnector {
     default RawBill getByBillNo(String billNo) { ... }   // 기본: search 결과에서 정확 일치
 }
 
-class AssemblyBillsConnector implements SourceConnector  // 열린국회 — 구현 완료 ✅
-// MolegNoticeConnector  — 법제처 입법예고(정부입법) → RawBill  (이슈 #11)
-// LawConnector          — 국가법령정보(현행법)     → RawLaw   (이슈 #11)
+class AssemblyBillsConnector implements SourceConnector  // 열린국회 — 구현 완료 ✅ (참고용, post-MVP)
+
+// ★ MVP 우선 구현 (이슈 #11)
+// LawConnector — 국가법령정보 단일 커넥터, target 2개를 모두 담당
+//   listPending(from, to)  : target=eflaw + efYd 범위  → 시행예정 목록
+//   fetchPending(mst, efYd): target=eflaw + MST        → 시행예정 본문 (분석 대상)
+//   fetchCurrent(lawId)    : target=law   + ID         → 시행중 본문 (diff 기준선)
+
+// MolegNoticeConnector — 법제처 입법예고 → RawBill  (post-MVP)
+//   GET opinion.lawmaking.go.kr/rest/ogLmPp.xml?OC=..            (목록)
+//   GET /rest/ogLmPp/{seq}/{mappingLbicId}/{announceType}.xml    (상세)
+//   ⚠️ type=JSON 무시됨 — .xml 확장자 필수. lmPpCts 에 개정이유·주요내용(HTML)
 ```
 
 ## 구조 결정 의도 (왜 이렇게)

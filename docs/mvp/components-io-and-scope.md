@@ -17,7 +17,7 @@ related:
 ## 0. 목적
 
 각 컴포넌트의 **역할·입출력 계약**을 고정하고, **MVP 범위(IN/OUT)** 를 확정한다. 결정 사항:
-- **입력:** MVP는 *수집 법안 검색/선택*으로 한정. 단, **URL/뉴스 커넥터를 옆에 붙이면 동작**함을 구조(확장점)로 시연(§3).
+- **입력:** MVP 코퍼스 = **국가법령정보 `eflaw` 시행예정 법령**(공포 후 시행 대기, 실측 899건). 의안(의원발의·입법예고)은 post-MVP(**D42**). 단, **커넥터를 옆에 붙이면 동작**함을 구조(확장점)로 시연(§3).
 - **분석:** 시민 코어 4종 — `ImpactSummary`, `LawDiff`, `PersonaImpact`, `ActionPlan`(D25).
 - **모델:** 외부 foundation API(강모델). 자체/경량 학습 없음. RAG/RDB는 컨텍스트 공급.
 - **페르소나:** 회원가입 시 **자기신고 프로필**(목적·만나이·직업·고용형태·가구·주거·시도) → 런타임 `userId` **lookup** 주입(D41). 성명 등 직접식별정보 미수집.
@@ -70,7 +70,7 @@ related:
    → [Spring REST] → Bill Store 조회
 [Web] 법안 선택  (프로필은 가입 시 저장된 것 사용)
    → [AnalysisPipeline] 해소·requirements 게이트
-       · Bill(RDB) + 신구조문대비표 + 현행법 기준선(Vector Index) + UserProfile 조립
+       · Law(RDB, 변경조문만) + 개정문·부칙 + 시행중 기준선(같은 법령ID) + UserProfile 조립
    → [Analysis Engine(Spring AI)] 프롬프트 빌드 + foundation API 호출
    → [Verification Gate] 스키마·인용 존재성
    → [Bill Store] ImpactResult 캐시
@@ -95,17 +95,18 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 ## 4. MVP 범위 (IN / OUT)
 
 ### IN
-- SourceConnector: **법안 2개(열린국회정보·법제처 입법예고) + 현행법 1개(국가법령정보, diff 기준선)**
+- SourceConnector: **국가법령정보 1개** — `eflaw`(시행예정 = 분석 대상) + `law`(시행중 = diff 기준선). 커넥터 1개로 양쪽 커버
 - SourceAnalyzer: **의안번호/법안명 + 모호 plain text**(정확매칭 + 법안 의미검색) — 해소 4상태(§4 #2). URL/뉴스 = 인터페이스 스텁
 - Normalizer → **Bill Store(RDB)**; RAG Indexer → **Vector Index**(현행법 *분석용* + 법안 요약·BillFacts *탐색용*)
 - **회원가입 프로필 입력 UI + User Profile Store** (자기신고, D41)
 - AnalysisPipeline + Command Registry + **커맨드 4종**(ImpactSummary/**LawDiff**/PersonaImpact/ActionPlan)
-- **현행법 diff**: 법안 **신구조문대비표**(1차) + **국가법령정보 현행법**(권위 기준선·보강) → `baselineLawId` 채움
+- **diff**: 시행중본 ↔ 시행예정본 조문 대조(`조문변경여부` 플래그로 대상 선별) + `개정문` 인용 → `baselineLawId` 채움. **신구조문대비표(HWP) 파싱 불필요**(D42)
 - Analysis Engine: **foundation API 호출** + 현행법 **RAG 검색**, 프롬프트 정의서 v0.1, 구조화 JSON
 - Verification: **스키마 + 인용 존재성(규칙)**
 - Web: **가입·프로필 입력** → 검색→법안 선택→**4종 표시(요약/diff/내 영향/대응안)**
 
 ### OUT (확장점은 유지, 구현 후순위)
+- **의안(열린국회 의원발의·법제처 입법예고) 분석** — 참고용 소스로만 유지(D42). 의원발의 본문(HWP) 파싱 포함
 - URL/뉴스 해소 **구현** (인터페이스만)
 - `StageTracker` 통과확률, `Precedent` 비교
 - 추가 출처(지자체 **조례**, 국세청 해석례 등)
@@ -132,10 +133,10 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 
 ## 6. MVP 수용 기준 (vertical slice)
 
-1. **열린국회·법제처** 법안 각 1건 + 해당 **현행법 기준선**이 수집·정규화되어 RDB/Vector Index에 존재.
+1. **시행예정 법령**(`eflaw`) 1건 + 같은 `법령ID`의 **시행중 기준선**이 수집·정규화되어 RDB/Vector Index에 존재.
 2. 사용자 프로필 1건이 저장돼 있고 수정·삭제가 가능하다.
 3. 한 법안 × 한 프로필 → **4종 커맨드**(요약/diff/내 영향/대응안)가 **인용 포함 구조화 JSON**을 반환.
-4. `LawDiff`가 신구조문대비표·현행법 기준선을 인용해 조문별 현행→개정 변화를 제시.
+4. `LawDiff`가 **`조문변경여부='Y'` 조문만** 골라 시행중본과 대조하고, `개정문`·`부칙`을 인용해 조문별 변화와 **시행일**을 제시.
 5. Verification Gate가 *인용 없는/허위 source_id* 응답을 차단(재생성/폴백).
 6. Web에서 검색→선택→4종 결과 표시까지 동작.
 
@@ -145,7 +146,8 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 
 - [x] 페르소나 획득 방식 → **자기신고 프로필**(D41, [[component-specs]] §2). ~~Nemotron 6세그먼트~~ 폐기
 - [x] Spring↔Python REST 계약 → [[component-specs]] §3
-- [x] 현행법 diff MVP 처리 → **MVP 포함**(신구조문대비표+국가법령정보, §4 IN)
+- [x] 현행법 diff MVP 처리 → **MVP 포함**(시행중본↔시행예정본 조문 대조, D42)
 - [x] foundation 모델 픽 + 토큰 예산 → Opus 4.8 ([[component-specs]] §3.3)
-- [ ] 현행법↔법안 조문 **정렬(alignment)** 방식 — 신구조문대비표 파싱 vs baseline 자동매칭
+- [x] 현행법↔법안 조문 **정렬(alignment)** → **해소(D42)**. 두 버전이 동일 스키마·동일 조문번호라 매칭이 자명하고, `조문변경여부` 플래그가 대상을 지목한다
+- [ ] 한 법령에 시행예정본이 복수일 때 diff 기준 시점 (**D43**)
 - [ ] Evaluation Harness 패널 크기·골든셋 규모

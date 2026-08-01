@@ -8,6 +8,9 @@
 
 → **[architecture/v0.7-offline-online-split.md](architecture/v0.7-offline-online-split.md)** (v0.7, 현행)
 
+> ⚠️ **v0.7 이후 갱신 (D42, 2026-08-01) — 스냅샷 미반영.** 동결 규약상 v0.7 파일은 수정하지 않으므로 여기에 적어 둔다:
+> **MVP 분석 대상이 *의안*에서 *공포 후 시행 대기 법령*(국가법령정보 `target=eflaw`)으로 확정**됐다. v0.7 §4.2·§7의 "법안 본문 획득 경로 미확정(D38)" 서술과 "Normalizer 신구조문대비표 파서"는 **더 이상 유효하지 않다** — 본문·개정문·부칙이 이미 확보돼 D38은 해소, 대비표 파싱은 폐기됐다. 현행 계약은 [components/SourceConnector.md](components/SourceConnector.md) §MVP 본문 경로와 [components/component-specs.md](components/component-specs.md) §1.1을 기준으로 한다. 다음 스냅샷(v0.8) 작성 시 반영할 것.
+
 ## 버전 이력
 
 | 버전 | 파일 | 날짜 | 상태 | 핵심 |

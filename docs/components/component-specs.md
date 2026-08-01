@@ -29,6 +29,44 @@ related:
 
 속성 출처·용도의 전체 카탈로그는 [[bill-attributes|법안 속성 카탈로그]] 참고. 아래는 그중 모델에 반영하는 필드.
 
+> **모델 분리 (D42, 2026-08-01):** MVP 분석 대상은 *의안*이 아니라 **공포 후 시행 대기 법령**이다(`target=eflaw`). 아래 **`Law`가 MVP의 유일한 분석 대상 모델**이고, **`Bill`(의안)은 post-MVP로 보류**한다 — 의원발의(통과율 ~20%)·입법예고를 실제로 붙일 때 형태를 확정한다. 두 모델을 억지로 합치지 않는 이유: eflaw 응답에 `billNo`·발의자·소관위·심사단계가 **아예 없어** `Bill`을 쓰면 절반이 항상 null이다.
+
+### 1.1 `Law` — MVP 분석 대상 (공포된 법령)
+
+**시행중본과 시행예정본이 같은 구조**다(`target=law` / `target=eflaw`가 동일 스키마 `법령 > {기본정보, 조문, 부칙, 개정문, 제개정이유}`). `status`로만 구분한다.
+
+```ts
+Law {                        // 🟢A(국가법령정보 API) — 전 필드 그라운딩 가능
+  id: string                 // 내부 PK
+  lawId: string              // ★ 법령ID (버전 불변) — 시행중↔시행예정 연결키
+  mst: string                // 법령일련번호 — 버전마다 다름. 연결키로 쓰지 말 것
+  title: string              // 법령명_한글
+  status: enum("시행중"|"시행예정")     // 현행연혁코드
+  amendKind: enum("제정"|"일부개정"|"전부개정"|"타법개정"|"폐지")  // 제개정구분
+  lawType: enum("법률"|"대통령령"|"총리령"|"부령"|"기타")          // 법종구분
+  ministry: string?          // 소관부처  ⚠️ 응답이 중첩 객체 — 평탄화 필요
+  promulgateDate: date       // 공포일자
+  promulgateNo: string       // 공포번호 — 이번 개정분 부칙 필터 키
+  effectiveDate: date        // ★ 시행일자 (시행예정본은 미래일)
+  effectiveRule: string?     // "공포 후 6개월이 경과한 날" 등 — 부칙 제1조에서 추출
+  enforcementType: enum("즉시"|"유예"|"단계적")?   // 부칙 단서조항 유무로 판정
+  amendReason: string?       // 제개정이유 (= 개정이유 및 주요내용)
+  amendText: string?         // 개정문 — 자구 단위 개정 지시문
+  addenda: Addendum[]        // 부칙단위 중 promulgateNo 일치분
+  articles: Article[]        // 조문단위
+  fullText: string           // articles 병합
+  baselineLawId: string?     // diff 기준선 = 같은 lawId 의 status="시행중" 버전
+  sourceType: enum("LAW")    // MVP는 국가법령정보 단일
+  sourceUrl: string?
+  revision: string           // 캐시 무효화 해시 (promulgateNo + effectiveDate + 법령키)
+  lastSeen: datetime         // 신선도 (revision 해시 비포함)
+}
+```
+
+> **1:N 주의.** 한 `lawId`에 **시행 대기 개정이 여러 건 겹칠 수 있다.** 실측: 주택법 현행본은 공포 제21447호(2026-03-05)인데 시행예정본은 제21323호(2026-02-03)로 *나중에 공포된 쪽이 먼저 시행*됐다. `LawDiff`는 **어느 시행예정본 기준인지 `effectiveDate`와 함께 명시**해야 한다. → [[decision-log|D43(Open)]]
+
+### 1.2 `Bill` — 의안 *(post-MVP 보류, D42)*
+
 ```ts
 Bill {                       // 🟢A(API) + 🔵B(원문) 원천 사실 — 그라운딩 대상
   id: string                 // 내부 PK
@@ -65,16 +103,30 @@ StageEvent { stage: Stage, date: date }
 Addendum   { no: string, kind: enum("시행일"|"경과조치"|"적용례"|"특례"), text: string }
 
 Article {
-  no: string                 // 조문 번호 ("제3조")
-  title: string?
-  text: string
+  no: string                 // 조문번호 ("제3조")
+  title: string?             // 조문제목
+  text: string               // ⚠️ 조문내용 + 항/호/목 재귀 병합 (아래 주의)
+  changed: boolean           // ★ 조문변경여부 Y/N — 이번 개정으로 바뀐 조문인가
   changeType: enum("신설"|"개정"|"삭제"|"이동"|"없음")
-  oldNewTable: string?       // 신구조문대비표(개정 전후) — MVP diff 원천 (B)
-  diffVsCurrent: string?     // 현행법 정밀 대조 (MVP: 신구조문대비표/국가법령정보 기반)
+  movedFrom: string?         // 조문이동이전
+  movedTo: string?           // 조문이동이후
+  articleEffectiveDate: date?// 조문시행일자 — 조문별로 다를 수 있음(단계적 시행)
+  isArticle: boolean         // 조문여부 — "조문"만 실조문, 나머지는 장·절 제목
+  diffVsCurrent: string?     // 현행본 같은 조문과의 대조 (baselineLawId로 조회)
 }
+```
 
-BillFacts {                  // 🟡C 파생 — Bill에 저장 X. Layer A 캐시(페르소나 무관). D07.
-  bill_ref: string           // "BILL:{billNo}"
+> **`changed` 플래그가 LawDiff의 핵심이다.** 실측(주택법, 2026-08-04 시행): 조문단위 137개 중 `조문변경여부='Y'`는 **6개뿐**(제18·28·46·49·104·106조). 분석 대상을 137→6조문으로 줄이므로 토큰·정확도 양쪽에서 이득이다.
+> **`개정문` 정규식 파싱은 하지 말 것.** 같은 법안에서 정규식은 인용된 *타법* 조문번호(제15·27조)를 오탐하고 벌칙·과태료(제104·106조)를 누락했다. **플래그가 정답**이고 `개정문`은 사람이 읽을 근거 텍스트로만 쓴다.
+> **`text` 조립 주의.** `조문내용`만 읽으면 본문이 비어 보인다 — 실측에서 제2조(정의)의 `조문내용`은 제목 줄뿐이고 실제 정의는 `항 → 호 → 목` 중첩에 있다. Normalizer가 재귀 병합해야 한다.
+
+### 1.3 `BillFacts` — Layer A 파생 캐시 (MVP 유효)
+
+`Law`·`Bill` 양쪽에 공통 적용된다(이름은 이력상 유지). MVP에서는 `Law`에 대해 산출한다.
+
+```ts
+BillFacts {                  // 🟡C 파생 — 원본에 저장 X. Layer A 캐시(페르소나 무관). D07.
+  bill_ref: string           // MVP(Law): "LAW:{lawId}@{effectiveDate}" / post-MVP(Bill): "BILL:{billNo}"
   revision: string           // 기준 revision (캐시 키)
   impactScope: enum("보편"|"도메인특정"|"소수")
   affectedDomains: string[]
@@ -359,7 +411,7 @@ Content-Type: application/json
 | 커맨드 | requirements | layer | 출력 핵심 |
 |---|---|---|---|
 | `ImpactSummaryCommand` | Bill | A→B경계 | summary, claims |
-| `LawDiffCommand` | Bill, baseline(신구조문대비표 또는 현행법) | A | claims(조문별 현행→개정), impacts |
+| `LawDiffCommand` | Law(변경조문) + baseline(같은 법령ID 시행중본) + 개정문·부칙 | A | claims(조문별 현행→개정), 시행일, impacts |
 | `PersonaImpactCommand` | Bill, segment | B | affected_segments, impacts |
 | `ActionPlanCommand` | Bill, segment | B | actions(deadline,basis) |
 
@@ -414,7 +466,7 @@ happy-path를 따라 **생산자 출력 ⊇ 소비자 입력 요건**을 점검�
 - 캐시 키(Layer A persona 제외): §3.1 = 프롬프트 정의서 §2 ✅
 
 **발견된 갭 / 개발 전 닫을 것**
-1. **현행법 diff 처리 수준 (확정·MVP 포함):** MVP에 `LawDiff` 포함. **신구조문대비표**(법안 원문, 항상 정렬·인용 가능)를 *1차 diff*로, **국가법령정보 현행법**(`LawConnector`→Vector Index)을 *권위 기준선·보강*으로 사용 → `baselineLawId` 채움. 남은 과제는 *조문 정렬(alignment)* 정밀도(§6) — 신구조문대비표가 없는/불완전한 법안에서 현행법 자동매칭 품질. 이때만 confidence↓ + uncertainties 표기.
+1. **현행법 diff 처리 수준 (확정·MVP 포함 / D42로 단순화):** MVP에 `LawDiff` 포함. ~~신구조문대비표를 1차 diff로~~ **폐기** — 같은 `lawId`의 **시행중본(`target=law&ID=`) ↔ 시행예정본(`target=eflaw&MST=`)** 이 동일 스키마로 조문 전문을 주므로 직접 대조한다. 대상 조문은 `조문변경여부='Y'`가 지목하고(주택법 137개 중 6개), 자구 변경 근거는 `개정문`, 시행 시점은 `부칙`이 제공한다. **조문 정렬(alignment) 과제도 함께 소멸**(조문번호가 곧 정렬키). 남은 것은 시행예정본이 복수일 때의 기준 시점(**D43**).
 2. **resolve/ingest 스키마 미확정** — §3.2는 후속(§6 Open). MVP 검색 경로엔 영향 없음.
 3. ~~인용 존재성 검증의 source_id 집합 전달~~ — **닫힘**: §3.1 응답에 `injected_source_ids: string[]` 추가, #12가 이를 검증 입력으로 사용.
 4. **revision 산출 규칙** — 단계변동만? 본문변동 포함? 캐시 정확성 좌우 → 규칙 명문화 필요.
@@ -431,7 +483,8 @@ happy-path를 따라 **생산자 출력 ⊇ 소비자 입력 요건**을 점검�
 - [x] 세그먼트 군집 개수·기준 → §2 확정(6개)
 - [x] foundation 모델 픽 + 토큰 예산 → §3.3 확정(Opus 4.8)
 - [x] 임베딩 모델 배치 → §3.3 **외부 API 확정**(자체 호스팅 제외, dim 1536), 벤더는 벤치 후
-- [x] 현행법 diff MVP 처리 수준 → §5 갭1 **MVP 포함**(신구조문대비표+국가법령정보)
-- [ ] 조문 정렬(alignment) 정밀도 — 신구조문대비표 파싱 vs 현행법 자동매칭 (구현 세부)
+- [x] 현행법 diff MVP 처리 수준 → §5 갭1 **MVP 포함**(시행중본↔시행예정본 직접 대조, D42)
+- [x] 조문 정렬(alignment) → **해소(D42)** — 동일 스키마·동일 조문번호
+- [ ] 시행예정본이 복수인 법령의 diff 기준 시점 (**D43**)
 
 > 남은 작업은 대부분 *구현*. 본 스펙대로 개발 시 happy-path E2E 동작 보장.
