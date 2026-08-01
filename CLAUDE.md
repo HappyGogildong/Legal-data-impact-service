@@ -60,6 +60,32 @@ Spring 버전 변경점(Boot 3.x→4.0, AI 1.x→2.0)은 `docs/reference/spring-
 - 오류 응답은 최상위 `{"RESULT": {...}}` 형태(정상 응답의 `head[].RESULT`와 다름) — `AssemblyEnvelope.resultCode`가 둘 다 처리.
 - (열린국회, post-MVP) `Type=json` 이어도 **`Content-Type: text/html`** 로 응답 → `String`으로 받아 Jackson 3로 직접 파싱. 국가법령정보는 정상 `application/json` 이지만 오류가 200으로 오므로 봉투 검사는 필수(`LawEnvelope.checkError`).
 
+## 패키지 규약 (core — 2026-08-02 확정)
+
+```
+com.lia.core
+├── domain/            공유 도메인 — 바운디드 컨텍스트별로 나눈다
+│   ├── law/           Law · Article · Addendum        (수집·정규화)
+│   ├── analysis/      분석 산출물                       (#13)
+│   └── user/          UserProfile                      (#12, D41)
+├── pipeline/          처리 단계(stage)별 — 계층도 기능도 아님
+│   ├── connector/     수집   LawConnector · LawEnvelope · RawLaw
+│   ├── resolve/       식별   SourceAnalyzer · LawLookup · Resolution*
+│   ├── normalize/     정규화 (#5)
+│   ├── diff/          대조   (#12)
+│   └── index/         적재   (#6·#7)
+└── config/            빈 조립 · 프로퍼티
+```
+
+**네 가지 규칙:**
+
+1. **의존 방향은 `pipeline → domain` 단방향.** `domain`은 파이프라인을 import하지 않는다. 도메인 타입은 천천히 변하고 단계는 자주 변하므로, 섞으면 안정된 것이 불안정한 것에 딸려 움직인다.
+2. **`Raw*`는 도메인이 아니다.** `RawLaw`는 출처 원형을 담은 커넥터 지역 DTO(`Map raw` 보유)이고 `connector/`에 산다. `RawLaw → Law` 변환이 **Anti-Corruption Layer**이며, 출처 API의 기벽은 전부 이 층에 가둔다(원칙 ② 수집과 해석의 분리).
+3. **포트는 교체가 실제로 예정된 것만.** `LawLookup`은 Law Store 완성 후 구현을 갈아끼울 것이므로 포트다. 저장소는 Postgres 하나로 고정(D04)이라 Repository 추상화를 따로 두지 않는다.
+4. **`domain`은 빈약(anemic)해도 된다 — 단, 우리가 만든 판정은 예외.** `Law`·`Article`은 우리가 저작하지 않는 외부 권위 사실이라 강제할 불변식이 없다. 반면 **우리가 산출한 판정에는 있다**: `ResolutionResult`의 fail-closed 4상태(D23)는 생성자에서 강제한다. 인용 없는 주장 차단(D08)도 타입이 알아야 한다 — #13에서 같은 방식으로.
+
+> 도입하지 않는 것(현 단계에서 순수 비용): Aggregate Root(`Law`는 통째로 읽고 쓰는 불변 스냅샷), Repository 추상화, Domain Event, Spring Modulith, Value Object 남발.
+
 ## 설정·비밀 관리
 
 - 비밀값은 **레포 루트 `.env`**(gitignore) 하나가 단일 소스. `core/src/main/resources/application.yml`은 `${ENV_VAR}` 참조만 둔다.
