@@ -39,7 +39,7 @@ related: ["components/component-specs.md", "architecture/v0.5-bill-discovery.md"
 ## 동작
 1. 엔티티 추출(LLM): 법안명·의안번호·키워드·**주제·효과**
 2. Bill Store 정확/퍼지 매칭
-3. 약하면 → **법안 의미검색**([[RAGIndexer|법안 네임스페이스]], BillFacts·요약 임베딩) → 후보
+3. 약하면 → **법안 의미검색**([[RAGIndexer|법안 네임스페이스]], LawFacts·요약 임베딩) → 후보
 4. Store/출처 miss → **on-demand 신뢰 출처 질의**(미등록 vs 부재 판별)
 5. 4상태 판정: 단일=RESOLVED, 다수=AMBIGUOUS(명확화), 형식상 유효하나 부재=NOT_FOUND_YET, 매칭 없음/모순=UNVERIFIED
 

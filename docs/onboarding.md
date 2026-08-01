@@ -63,7 +63,7 @@ tags: [onboarding, start-here, guide]
 ## 핵심 개념 30초
 - **그라운딩:** 모든 주장은 조문 `source_id` 인용 필수 — 없으면 게이트 차단(환각 통제).
 - **해소 4상태:** RESOLVED/AMBIGUOUS/NOT_FOUND_YET/UNVERIFIED — 신뢰 출처 미확인이면 분석 안 함(fail-closed). 미등록≠허위(안내 다름).
-- **2계층 분석:** Layer A(법안 사실·BillFacts, 페르소나 무관·캐시) → Layer B(세그먼트별 영향·대응안).
+- **2계층 분석:** Layer A(법안 사실·LawFacts, 페르소나 무관·캐시) → Layer B(세그먼트별 영향·대응안).
 - **RAG 두 용도:** 분석용(`law` ns, 현행법) + 탐색용(`bill` ns, 법안 요약 — 모호 질의→후보). 적재·검색 **동일 임베딩 모델**.
 - **출처 3종(내용 기준):** assembly=의원발의(ServiceKey+**AGE 필수**) / moleg=정부입법예고(**OC**) / law=현행법령(**OC**) — 법제처가 뒤 둘을 다 운영하니 이름에 속지 말 것.
 

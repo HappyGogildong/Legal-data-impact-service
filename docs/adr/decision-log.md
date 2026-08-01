@@ -40,16 +40,16 @@ related:
 | D18 | ~~페르소나 6개 세그먼트~~ → **D41로 폐기** | 개정됨 | 6버킷은 개인화 해상도 부족 | D41 |
 | D19 | 추론 모델 = **Opus 4.8**(`claude-opus-4-8`), 입력~32K/출력4K, 캐싱 | 확정 | 법적 정확도 우선, 교체 가능 | component-specs §3.3 |
 | D20 | ~~현행법 diff MVP 생략~~ → **D26으로 개정**(MVP 포함) | 개정됨 | — | D26 |
-| D21 | 법안 속성 확장 + **`BillFacts`(Layer A 파생 캐시)** 신설, `Bill`은 A/B 사실만 | 확정 | 서비스 수준 도메인 모델; C 추론은 Bill과 분리·인용 강제 | [[bill-attributes]], component-specs §1 |
-| D22 | D21에도 **저장소 결정(ADR-001) 불변** | 확정 | BillFacts ≈0.25GB, 헤드룸 내·트리거 미해당 | bill-attributes §저장소 영향 |
+| D21 | 법안 속성 확장 + **`LawFacts`(Layer A 파생 캐시)** 신설, `Bill`은 A/B 사실만 | 확정 | 서비스 수준 도메인 모델; C 추론은 Bill과 분리·인용 강제 | [[bill-attributes]], component-specs §1 |
+| D22 | D21에도 **저장소 결정(ADR-001) 불변** | 확정 | LawFacts ≈0.25GB, 헤드룸 내·트리거 미해당 | bill-attributes §저장소 영향 |
 | D23 | SourceAnalyzer **해소 4상태**(RESOLVED/AMBIGUOUS/NOT_FOUND_YET/UNVERIFIED), fail-closed | 확정 | 미등록 vs 허위 구분, 소문이 분석으로 둔갑 방지 | component-specs §4 #2·#8, §3.2 |
 | D24 | **MVP 입력 = 3개 출처**(열린국회·법제처 입법예고 = 법안, 국가법령정보 = 현행법 기준선) | 확정 | v0.3 §3.1과 정합; 커넥터 추가=확장 패턴 실증(법제처) | component-specs §4 #1, mvp §4 |
 | D25 | **MVP 커맨드 = 4종**(+`LawDiff`) | 확정 | "무엇이 바뀌나"가 서비스 핵심 가치 | component-specs §4 #10, mvp §4 |
 | D26 | **현행법 diff MVP 포함** — ~~신구조문대비표(1차)~~+국가법령정보(권위 기준선), baselineLawId 채움. **diff 원천은 D42로 개정**(시행중본↔시행예정본 직접 대조) | 개정됨(D42) | diff가 핵심 가치, 대비표로 정렬부담↓; RAG/Vector MVP 활성 | component-specs §5 갭1 |
 | D27 | D24/D26에도 **저장소(ADR-001) 불변** — 현행법 ~0.4GB·벡터 ~270K청크, 헤드룸 내 | 확정 | 트리거(5~10M벡터) 미해당; Vector가 MVP에서 비로소 활용됨 | ADR-001 |
-| D28 | **Triage 분류 기준·라우팅 정책** 문서화(impactScope 판정 룰), 스테이지는 post-MVP | 확정 | 기준 선고정 → BillFacts 추출 프롬프트 명확화 | [[triage-policy]] |
-| D29 | 누적 변경을 **아키텍처 v0.4 스냅샷**으로 반영(RAG Indexer 분리·3출처·4커맨드·BillFacts·해소4상태·triage) | 개정됨→v0.5 | v0.3 그림↔컴포넌트 문서 불일치 해소(RAG Indexer 누락) | [[v0.4-pipeline-refinements]] |
-| D30 | **법안 의미검색(BillFacts·요약 임베딩)** 추가 — 모호 plain text 식별 → 후보(AMBIGUOUS). *분석용 RAG(현행법)*와 별개 *탐색용* | 확정 | 법안명·번호 없는 효과/주제 질의 커버; fail-closed 유지 | [[v0.5-bill-discovery]], component-specs §4 #2·#4 |
+| D28 | **Triage 분류 기준·라우팅 정책** 문서화(impactScope 판정 룰), 스테이지는 post-MVP | 확정 | 기준 선고정 → LawFacts 추출 프롬프트 명확화 | [[triage-policy]] |
+| D29 | 누적 변경을 **아키텍처 v0.4 스냅샷**으로 반영(RAG Indexer 분리·3출처·4커맨드·LawFacts·해소4상태·triage) | 개정됨→v0.5 | v0.3 그림↔컴포넌트 문서 불일치 해소(RAG Indexer 누락) | [[v0.4-pipeline-refinements]] |
+| D30 | **법안 의미검색(LawFacts·요약 임베딩)** 추가 — 모호 plain text 식별 → 후보(AMBIGUOUS). *분석용 RAG(현행법)*와 별개 *탐색용* | 확정 | 법안명·번호 없는 효과/주제 질의 커버; fail-closed 유지 | [[v0.5-bill-discovery]], component-specs §4 #2·#4 |
 | D31 | D30에도 **저장소(ADR-001) 불변** — 탐색 임베딩 ~1~3GB(벡터 총 <1M) | 확정 | 헤드룸·트리거(5~10M) 내; 스키마 진화 | ADR-001 |
 | D32 | **임베딩은 외부 API**(자체 호스팅 제외), 공유 `Embedder`, dim 1536, 벤더 벤치 후 | 확정 | 인프라 예산 없음; 공개 데이터라 외부 API 적합; 1536=ADR-001 가정 일치 | component-specs §3.3 |
 | D33 | **임베딩 벤치 항목 확정** — OpenAI vs Upstage, 시나리오 A(조문→현행법, ~~신구조문대비표~~ **개정문+조문대조=정답**, D42)·B(모호질의→법안), Recall@5·MRR | 확정 | 벤더를 데이터로 확정; 수집 파이프라인 선행 | [[embedding-benchmark]] |
@@ -61,11 +61,13 @@ related:
 | D38 | **법안 본문(fullText) 획득 경로 = 미해결 갭** (현행법은 해결 ✓) — 목록 API·상세 페이지·대체 API 3종 모두 본문 미제공(2026-07-21 실측). `RawBill` 필드 정의도 부재하여 명문화. Normalizer는 Phase 1(필드 매핑+revision, 본문 무관)/Phase 2(본문 파서)로 분리 | **해소됨(D42)** | 문서가 본문을 "🔵B 원문 파싱"으로 전제하고 프롬프트 요소4를 필수로 규정했으나, *획득 수단*을 어디에도 규정하지 않은 정합성 결손. 본문 없이는 LawDiff·인용 그라운딩·벤치 정답쌍 모두 불성립 → MVP 필수 관문. **2026-07-31: 국가법령정보(현행법) 본문 제공 확인 → 갭은 *법안(assembly)* 한정. 2026-08-01 D42로 해소 — MVP 대상이 의안이 아니라 *시행예정 법령*(`eflaw`)으로 확정돼 본문이 이미 확보됨. assembly 본문은 참고용 소스의 post-MVP 과제로 강등** | [[SourceConnector]] §본문 획득, [[Normalizer]] |
 
 | D39 | **Java 단일 구조 유지 재확인** (메모리 우려 검토 결과) — Python 분리 재도입 안 함. 대신 **전환 완료**: Spring 자격증명 경로 연결 → 커넥터 Java 이관 → Python은 진단·벤치 도구로만 축소 | 확정 | "RAG가 앱 인스턴스에서 돌아 메모리 한계" 우려는 우리 구조에 미해당 — 벡터 저장·HNSW 검색=Postgres(별도 인스턴스), 임베딩·추론=외부 API(D32·D19). JVM은 HTTP+파싱+top-k 수 KB만 다룸. 분리해도 pgvector 부담은 그대로이고 런타임·인스턴스만 증가(예산 역행, ADR-001 "동인은 띄워 둔 인스턴스") | 본 로그 §D39 |
-| D40 | **오프라인/온라인 실행 모드 분리**(v0.7) — 다이어그램·설계 규율을 배치 적재 vs 요청 응답으로 구분. Persona Builder(Nemotron 군집)는 다이어그램에서 제외(post-MVP), `PersonaImpact` 커맨드는 유지하되 세그먼트는 사용자 선택/수작업 정의 | 확정 | 두 모드는 지연 요구·장애 영향·확장 축이 근본적으로 다름. 분리로 "온라인에 넣기 전 오프라인 가능성을 먼저 묻는다"는 규율이 명시됨(BillFacts 선계산·임베딩 적재의 근거) | [[v0.7-offline-online-split]] |
+| D40 | **오프라인/온라인 실행 모드 분리**(v0.7) — 다이어그램·설계 규율을 배치 적재 vs 요청 응답으로 구분. Persona Builder(Nemotron 군집)는 다이어그램에서 제외(post-MVP), `PersonaImpact` 커맨드는 유지하되 세그먼트는 사용자 선택/수작업 정의 | 확정 | 두 모드는 지연 요구·장애 영향·확장 축이 근본적으로 다름. 분리로 "온라인에 넣기 전 오프라인 가능성을 먼저 묻는다"는 규율이 명시됨(LawFacts 선계산·임베딩 적재의 근거) | [[v0.7-offline-online-split]] |
 | D41 | **페르소나 = 회원가입 자기신고 프로필**(Nemotron 군집 폐기) — `UserProfile{purposes, age(정수), occupation, employmentType, householdType, housingType, regionSido}`. **성명·생년월일·연락처·상세주소 미수집**, 시도까지만. **나이는 구간이 아닌 정수** — 법령 기준이 만 19/34/65세처럼 특정 나이로 끊기므로 구간화 시 경계 사용자에게 오답. 캐시 키는 `userId`가 아니라 **프로필 속성 해시**. D10 주입 규율(비인용·`<persona>` 격리)은 승계 | 확정 | 고정 6세그먼트는 해상도 부족(같은 버킷 내 상황 상이). 자기신고가 더 정확·최신이고 외부 데이터셋·군집 파이프라인 의존 제거. **주의: 직접식별정보 미수집일 뿐 "개인정보 아님"은 아님** — 조합 재식별·계정 식별자 존재하므로 처리방침·동의·파기 필요 | [[component-specs]] §2 |
 
 | D42 | **MVP 분석 대상 = 공포 후 시행 대기 법령**(국가법령정보 `target=eflaw`), 의안은 post-MVP. 도메인 모델 **`Law` 신설·`Bill` 보류**(C안). 신구조문대비표(HWP) 파싱 **폐기** | 확정 | 서비스 정의가 "적용될 확률이 높거나 적용 예정인 법안"이므로 통과율 ~20%인 의원발의는 참고용에 가깝다. 시행예정 법령은 **적용 확실성 100%**이고 전문·개정문·제개정이유·부칙이 **이미 연동된 출처에 전부 존재**(2026-08-01 실측, 899건). `조문변경여부='Y'` 플래그가 변경 조문을 직접 지목해(주택법 137개 중 6개) LawDiff 대상 선별·토큰 비용까지 해결. eflaw 응답에 `billNo`·발의자·소관위·심사단계가 없어 `Bill`을 쓰면 절반이 null → 모델 분리 | [[v0.8-pending-law-corpus|아키텍처 v0.8]], [[SourceConnector]] §MVP 본문 경로, [[component-specs]] §1.1 |
 | D43 | 한 법령에 **시행 대기 개정이 복수**일 때 LawDiff 기준 시점 | **Open** | 실측: 주택법 현행본 공포 제21447호(2026-03-05)인데 시행예정본은 제21323호(2026-02-03) — *나중에 공포된 쪽이 먼저 시행*. `lawId`↔시행예정본이 1:N이므로 "무엇이 바뀌나"를 어느 버전 기준으로 보여줄지 규정 필요 | [[v0.8-pending-law-corpus|아키텍처 v0.8]], [[component-specs]] §1.1 |
+
+| D44 | **`BillFacts` → `LawFacts` 개명**(참조 키 `bill_ref` → `law_ref`). v0.4~v0.7 동결 스냅샷은 옛 이름 유지, v0.8·살아있는 문서는 갱신 | 확정 | 이름이 *의안 전용*으로 읽혀 "의안을 post-MVP로 미뤘는데 왜 계속 나오나"라는 오해를 만들었다. 실체는 **분석 대상이 무엇이든 붙는 페르소나 무관 Layer A 파생 캐시**이고 v0.8 오프라인 다이어그램에 MVP로 들어가 있다. 순수 개명이라 설계·범위 변화는 없다 | [[component-specs]] §1.3, [[v0.8-pending-law-corpus]] §4.5 |
 
 > **D37 재검토 트리거:** ① 대형 옴니버스 법안의 map-reduce + Generator-Critic이 3단 이상 *동적* 분기로 확장 ② 멀티턴 대화형 탐색(상태 지속·중단 재개) 도입. 그때도 `AnalysisEngine` 인터페이스 뒤에 격리해 도입 가능하므로 본 결정은 가역적(JVM 대안: LangGraph4j·Embabel).
 

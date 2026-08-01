@@ -13,11 +13,11 @@ related:
 
 # Triage 정책 — 영향범위 분류·라우팅
 
-**관련:** [[bill-attributes|법안 속성]] §4 (`impactScope`) · [[component-specs|컴포넌트 스펙]] (BillFacts) · [[ADR-001-knowledge-store-sizing|ADR-001]] (캐시·비용)
+**관련:** [[bill-attributes|법안 속성]] §4 (`impactScope`) · [[component-specs|컴포넌트 스펙]] (LawFacts) · [[ADR-001-knowledge-store-sizing|ADR-001]] (캐시·비용)
 
-법안을 분석 처리에 넣기 전, **"누구에게 얼마나 영향이고, 그래서 얼마나 깊게 분석할까"** 를 가려내는 분류·라우팅 정책. 분류 결과(`BillFacts.impactScope` + `affectedDomains`)가 *어떤 커맨드·페르소나로, 어느 깊이·모델·캐시 정책으로* 돌릴지를 결정한다.
+법안을 분석 처리에 넣기 전, **"누구에게 얼마나 영향이고, 그래서 얼마나 깊게 분석할까"** 를 가려내는 분류·라우팅 정책. 분류 결과(`LawFacts.impactScope` + `affectedDomains`)가 *어떤 커맨드·페르소나로, 어느 깊이·모델·캐시 정책으로* 돌릴지를 결정한다.
 
-> **MVP 위치:** triage **스테이지(차등 라우팅)는 MVP 밖**. MVP는 `impactScope`·`affectedDomains`를 *메타데이터로 추출만* 하고, 4종 커맨드를 **사용자 프로필에 균일 적용**한다(D41). 본 문서는 *기준을 미리 고정*해 BillFacts 추출 프롬프트 설계를 명확히 하기 위함. (관련: [[decision-log|D24~D27]])
+> **MVP 위치:** triage **스테이지(차등 라우팅)는 MVP 밖**. MVP는 `impactScope`·`affectedDomains`를 *메타데이터로 추출만* 하고, 4종 커맨드를 **사용자 프로필에 균일 적용**한다(D41). 본 문서는 *기준을 미리 고정*해 LawFacts 추출 프롬프트 설계를 명확히 하기 위함. (관련: [[decision-log|D24~D27]])
 
 ---
 
@@ -59,7 +59,7 @@ related:
    - 근거: 시민 대상 서비스에서 *영향 누락*이 *추가 비용*보다 나쁘다. fail-open은 "넓게"로.
 
 - 1차 단서는 **소관위 + entityTypes + 적용대상 보편성**. 인구 커버리지(Nemotron)는 post-MVP 보조 신호.
-- 산출: `BillFacts.impactScope` + `confidence` + 근거 `citations`.
+- 산출: `LawFacts.impactScope` + `confidence` + 근거 `citations`.
 
 ---
 
@@ -81,7 +81,7 @@ related:
 
 | | MVP | post-MVP |
 |---|---|---|
-| `impactScope`·`affectedDomains` 추출 | ✅ 메타데이터로 추출(BillFacts) | — |
+| `impactScope`·`affectedDomains` 추출 | ✅ 메타데이터로 추출(LawFacts) | — |
 | 분류 기반 **차등 라우팅** | ❌ — 4종 커맨드를 프로필에 **균일 적용** | ✅ §4 라우팅 |
 | 기업/기관 **엔티티 프로파일** | ❌ | ✅ |
 | 인구분포 **triage 가중치** | ❌ | ✅ |

@@ -120,13 +120,15 @@ Article {
 > **`개정문` 정규식 파싱은 하지 말 것.** 같은 법안에서 정규식은 인용된 *타법* 조문번호(제15·27조)를 오탐하고 벌칙·과태료(제104·106조)를 누락했다. **플래그가 정답**이고 `개정문`은 사람이 읽을 근거 텍스트로만 쓴다.
 > **`text` 조립 주의.** `조문내용`만 읽으면 본문이 비어 보인다 — 실측에서 제2조(정의)의 `조문내용`은 제목 줄뿐이고 실제 정의는 `항 → 호 → 목` 중첩에 있다. Normalizer가 재귀 병합해야 한다.
 
-### 1.3 `BillFacts` — Layer A 파생 캐시 (MVP 유효)
+### 1.3 `LawFacts` — Layer A 파생 캐시 (MVP 유효)
 
-`Law`·`Bill` 양쪽에 공통 적용된다(이름은 이력상 유지). MVP에서는 `Law`에 대해 산출한다.
+**페르소나와 무관한** 사실 파생층이라 한 번 만들면 모든 사용자가 재사용한다. MVP에서는 `Law`에 대해 산출하며, 의안(`Bill`)이 복귀하면 같은 형태로 적용된다.
+
+> **개명 (D44, 2026-08-02):** ~~`BillFacts`~~ → **`LawFacts`**. 이름이 의안 전용으로 읽혀 MVP 범위를 오해하게 만들었다 — 실제로는 분석 대상이 무엇이든 붙는 Layer A 파생 캐시다. 참조 키도 `bill_ref` → `law_ref`.
 
 ```ts
-BillFacts {                  // 🟡C 파생 — 원본에 저장 X. Layer A 캐시(페르소나 무관). D07.
-  bill_ref: string           // MVP(Law): "LAW:{lawId}@{effectiveDate}" / post-MVP(Bill): "BILL:{billNo}"
+LawFacts {                  // 🟡C 파생 — 원본에 저장 X. Layer A 캐시(페르소나 무관). D07.
+  law_ref: string           // MVP(Law): "LAW:{lawId}@{effectiveDate}" / post-MVP(Bill): "BILL:{billNo}"
   revision: string           // 기준 revision (캐시 키)
   impactScope: enum("보편"|"도메인특정"|"소수")
   affectedDomains: string[]
@@ -144,7 +146,7 @@ Fact { statement: string, citations: string[], confidence: float }  // citations
 Stage = enum("발의"|"위원회심사"|"본회의"|"정부이송"|"공포"|"시행")
 
 ImpactResult {               // 프롬프트 정의서 §4와 동일 스키마
-  bill_ref: string           // "BILL:{billNo}"
+  law_ref: string           // MVP: "LAW:{lawId}@{effectiveDate}"
   command: string
   summary: string
   claims: Claim[]
@@ -161,7 +163,15 @@ Impact { aspect: string, direction: string, detail: string, citations: string[] 
 Action { what: string, deadline: string, basis: string[] }
 ```
 
-`source_id` 형식(인용 키, 프롬프트 정의서 §2와 동일): `BILL:{billNo}:art:{no}` · `BILL:{billNo}:addenda:{no}` · `LAW:{lawId}:art:{no}` · `PREC:{billNo}`.
+`source_id` 형식(인용 키, 프롬프트 정의서 §2와 동일):
+
+| 대상 | 형식 | 비고 |
+|---|---|---|
+| 시행예정 법령 조문 | `LAW:{lawId}@{effectiveDate}:art:{no}` | **MVP 주 경로** — 같은 법령ID에 시행예정본이 복수일 수 있어 시행일로 판별(D43) |
+| 시행중 법령 조문 | `LAW:{lawId}:art:{no}` | diff 기준선 |
+| 부칙 | `LAW:{lawId}@{effectiveDate}:addenda:{no}` | 시행일·경과조치 근거 |
+| 개정문 | `LAW:{lawId}@{effectiveDate}:amend` | 자구 변경 근거 |
+| 의안 | `BILL:{billNo}:art:{no}` · `PREC:{billNo}` | *post-MVP* |
 
 **`revision` 산출 규칙 (캐시 무효화 키, 갭 4 확정):**
 ```
@@ -201,7 +211,7 @@ Purpose = enum("생활·주거"|"세금·재정"|"근로·고용"|"사업·창�
               |"복지·의료"|"교육·양육"|"관심사 모니터링"|"기타")
 ```
 
-**`age`를 구간이 아닌 정수로 두는 이유:** 한국 법령의 적용 기준은 **특정 나이로 끊긴다** — 만 19세(성년·청약), 34세(청년 정책 상한), 65세(노인 복지) 등. `"19-29"` 같은 구간으로 뭉개면 *경계에 걸린 사용자에게 정반대 결론*을 줄 수 있다(19세와 29세는 적용 법령이 크게 다르다). `BillFacts.thresholds`(적용 기준: 금액·연령·규모)와 정확히 대조하려면 정수가 필요하다.
+**`age`를 구간이 아닌 정수로 두는 이유:** 한국 법령의 적용 기준은 **특정 나이로 끊긴다** — 만 19세(성년·청약), 34세(청년 정책 상한), 65세(노인 복지) 등. `"19-29"` 같은 구간으로 뭉개면 *경계에 걸린 사용자에게 정반대 결론*을 줄 수 있다(19세와 29세는 적용 법령이 크게 다르다). `LawFacts.thresholds`(적용 기준: 금액·연령·규모)와 정확히 대조하려면 정수가 필요하다.
 
 **`purposes`가 개인화의 핵심 축이다** — 같은 30세 사무직이라도 *창업 준비 중*인지 *양육 중*인지에 따라 같은 법안에서 볼 조문이 달라진다. 고정 세그먼트로는 잡히지 않던 구분이다. (관심 도메인은 `purposes`와 중복돼 별도 필드로 두지 않는다.)
 
@@ -349,7 +359,7 @@ Content-Type: application/json
 - 동작:
   1. 엔티티 추출(의안번호/법안명/키워드/**주제·효과**). `url`은 본문 추출 후, `text`(모호 자연어)는 그대로.
   2. Bill Store 검색(정확/퍼지).
-  3. 매칭 약하면 → **법안 의미검색**(Vector Index 법안 네임스페이스, BillFacts·요약 임베딩) → 후보 도출.
+  3. 매칭 약하면 → **법안 의미검색**(Vector Index 법안 네임스페이스, LawFacts·요약 임베딩) → 후보 도출.
   4. Store/출처 miss → **on-demand 신뢰 출처 질의** → 미등록(지연) vs 부재 판별.
   5. 매칭 결과로 상태 판정. 모호 입력은 보통 `AMBIGUOUS`(후보 명확화).
 - 의존: Bill Store, **Vector Index(법안 탐색)**, (확장 시) SourceConnector.
@@ -374,12 +384,12 @@ Content-Type: application/json
 - 오류: 파싱 실패 조문 → `changeType:"없음"`+원문 보존, 결손 플래그.
 
 ### #4 Bill Store (RDB / Postgres+pgvector)
-- 역할: 법안 정본(`Bill`/`Article`) + `BillFacts`(Layer A 캐시) + `ImpactResult`(Layer B 캐시) + (선택) 벡터.
-- 입력/출력: Bill/Article/BillFacts/ImpactResult CRUD; 검색 쿼리→Bill[].
-- 동작: upsert(billNo 유니크). `BillFacts` 캐시 키=`billNo+revision`(페르소나 무관), `ImpactResult` 캐시 키=§3.1.
+- 역할: 법안 정본(`Bill`/`Article`) + `LawFacts`(Layer A 캐시) + `ImpactResult`(Layer B 캐시) + (선택) 벡터.
+- 입력/출력: Bill/Article/LawFacts/ImpactResult CRUD; 검색 쿼리→Bill[].
+- 동작: upsert(billNo 유니크). `LawFacts` 캐시 키=`billNo+revision`(페르소나 무관), `ImpactResult` 캐시 키=§3.1.
 - 의존: 없음.
 - 오류: 제약 위반 → upsert 충돌 해소.
-- **저장소 결정 영향:** `BillFacts`+확장 필드 추가는 [[ADR-001-knowledge-store-sizing|ADR-001]] **불변**(≈0.25GB, 헤드룸 내, 스키마 진화이지 사이징·기술 변경 아님).
+- **저장소 결정 영향:** `LawFacts`+확장 필드 추가는 [[ADR-001-knowledge-store-sizing|ADR-001]] **불변**(≈0.25GB, 헤드룸 내, 스키마 진화이지 사이징·기술 변경 아님).
 
 ### #7 User Profile Store
 - 역할: `UserProfile` 보관·조회 (자기신고, D41).

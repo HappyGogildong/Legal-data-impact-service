@@ -24,7 +24,7 @@ related:
 | 🔵 **B. 의안 원문 파싱** | 원문(HWP/PDF) 안 제안이유·조문·신구조문대비표·부칙 | ✅ source |
 | 🟡 **C. LLM 추출·추론** | A/B를 근거로 파생 | ❌ — 반드시 A/B `source_id` 인용 |
 
-> **[[decision-log|D07]] 2계층 엔진과 연결:** A·B = `Bill`(원천 사실). C 중 *페르소나 무관*(영향범위·의무·벌칙·기한) = **`BillFacts`(Layer A 캐시)**. C 중 *페르소나별* = **`ImpactResult`(Layer B)**. **C를 `Bill`에 사실로 저장하지 않는다** — 검증 대상 추론이기 때문.
+> **[[decision-log|D07]] 2계층 엔진과 연결:** A·B = `Bill`(원천 사실). C 중 *페르소나 무관*(영향범위·의무·벌칙·기한) = **`LawFacts`(Layer A 캐시)**. C 중 *페르소나별* = **`ImpactResult`(Layer B)**. **C를 `Bill`에 사실로 저장하지 않는다** — 검증 대상 추론이기 때문.
 
 ---
 
@@ -64,7 +64,7 @@ related:
 | `addenda` 부칙 (시행일/경과조치/적용례/특례) | ActionPlan·PersonaImpact | ✅ ★ |
 | `delegationClauses` 위임조항 ("대통령령으로 정한다") | 영향이 하위법령에 위임 → `uncertainties` 표기 | ✅ ★ |
 
-## 4. 영향 파생 (🟡 C → `BillFacts`, Layer A 캐시)
+## 4. 영향 파생 (🟡 C → `LawFacts`, Layer A 캐시)
 
 PersonaImpact/ActionPlan을 실제로 굴리는 값. **모든 항목은 조문 `source_id` 인용 필수.**
 
@@ -103,10 +103,10 @@ PersonaImpact/ActionPlan을 실제로 굴리는 값. **모든 항목은 조문 `
 
 1. **차별점은 §2·§4에 있다.** 시간축(시행일·시행규칙) + 행동 가능 파생(의무·벌칙·기한)이 "조회"를 "내가 뭘 해야 하나"로 바꾼다.
 2. **위임조항(§3★)이 함정.** 실질 영향이 "~는 대통령령으로 정한다"로 시행령에 위임되면 법안만으로 단정 불가 → `delegationClauses` 감지 시 `uncertainties`에 명시(환각 방지).
-3. **A/B는 사실, C는 추론.** §4 파생은 LLM이 뽑되 반드시 §2·§3의 `source_id`를 인용해야 검증 게이트 통과. C는 `Bill`이 아니라 `BillFacts`(Layer A)·`ImpactResult`(Layer B)에 둔다.
+3. **A/B는 사실, C는 추론.** §4 파생은 LLM이 뽑되 반드시 §2·§3의 `source_id`를 인용해야 검증 게이트 통과. C는 `Bill`이 아니라 `LawFacts`(Layer A)·`ImpactResult`(Layer B)에 둔다.
 
 ## 저장소(ADR-001) 영향 평가
 
-`BillFacts` 및 확장 필드를 더해도 **[[ADR-001-knowledge-store-sizing|ADR-001]] 결정은 불변**이다.
-- `BillFacts` ≈ 5KB/건 × 5만 ≈ **0.25 GB**, 확장 Bill 필드는 `fullText` 추정에 흡수. RDB 헤드룸 50GB 내.
+`LawFacts` 및 확장 필드를 더해도 **[[ADR-001-knowledge-store-sizing|ADR-001]] 결정은 불변**이다.
+- `LawFacts` ≈ 5KB/건 × 5만 ≈ **0.25 GB**, 확장 Bill 필드는 `fullText` 추정에 흡수. RDB 헤드룸 50GB 내.
 - ADR-001 재평가 트리거는 *벡터 5~10M 초과 / 조례 확장* — 테이블·컬럼 추가가 아님. 단일 Postgres 내 **스키마 진화**일 뿐 저장기술·사이징 결정과 직교.

@@ -62,9 +62,9 @@ class Normalizer:
 - **신구조문대비표를 1급으로.** 이게 (a) MVP diff의 1차 소스, (b) 임베딩 벤치 시나리오 A의 *무료 정답쌍*. 그래서 파싱을 핵심 동작으로 승격([[decision-log|D26·D33]]).
 - **`revision`은 분석영향 필드 해시.** 단계·시행일·본문 변동만 캐시를 무효화하고, 행정 메타 변동은 무시 → 불필요 재분석 방지([[decision-log|D16]]).
 - **결손 보존(드롭 금지).** 파싱 실패해도 원문을 남겨 그라운딩(인용) 가능성을 지킴.
-- BillFacts(🟡C 파생)는 여기서 **만들지 않음** — 그건 [[AnalysisEngine]]의 Layer A 책임. Normalizer는 🟢A+🔵B 사실만.
+- LawFacts(🟡C 파생)는 여기서 **만들지 않음** — 그건 [[AnalysisEngine]]의 Layer A 책임. Normalizer는 🟢A+🔵B 사실만.
 
 ## 의존 / 관련
 - 입력: [[SourceConnector]]
 - 출력 적재: Bill Store(RDB)
-- 후속 소비: [[AnalysisEngine]], [[RAGIndexer]](요약·BillFacts 임베딩)
+- 후속 소비: [[AnalysisEngine]], [[RAGIndexer]](요약·LawFacts 임베딩)

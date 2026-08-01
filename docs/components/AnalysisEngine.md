@@ -36,10 +36,10 @@ related: ["components/component-specs.md", "prompts/analysis-prompt-spec.md", "a
 2. `source_id` 부여한 컨텍스트 조립([[analysis-prompt-spec]] §3 템플릿) — 조문·diff·(Layer B면)persona
 3. **Opus API 호출**(constrained JSON, [[analysis-prompt-spec]] §4 스키마)
 4. **1차 인용검증**(스키마 + 인용 존재성), 실패 시 재생성(≤`regen_max`)
-5. 산출: `ImpactResult` + `injected_source_ids`(2차 게이트용); BillFacts(Layer A)·결과를 Bill Store 캐시
+5. 산출: `ImpactResult` + `injected_source_ids`(2차 게이트용); LawFacts(Layer A)·결과를 Bill Store 캐시
 
 ## 2계층
-- **Layer A**(페르소나 무관): 법안 사실·diff·`BillFacts` 생성 → 캐시. `ImpactSummary`/`LawDiff`.
+- **Layer A**(페르소나 무관): 법안 사실·diff·`LawFacts` 생성 → 캐시. `ImpactSummary`/`LawDiff`.
 - **Layer B**(페르소나별): A를 입력으로 `PersonaImpact`/`ActionPlan`.
 
 ## 인터페이스 (Python 초안)

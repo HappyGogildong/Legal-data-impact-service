@@ -36,7 +36,7 @@ related:
 | 1 | **[[SourceConnector]]** | Spring | 출처별 fetch·인증/페이징 흡수 — 법안(열린국회·법제처) + 현행법(국가법령정보) | 출처 쿼리 | `RawBill[]`(법안) / `RawLaw[]`(현행법 기준선) |
 | 2 | **[[SourceAnalyzer]]** | Spring | 사용자 입력 → 법안 ref 해소(정확매칭 + 법안 의미검색) | 의안번호/법안명/**모호 plain text** · URL(확장) | 해소 4상태(resolved/후보…) |
 | 3 | **[[Normalizer]]** | Spring | RawBill → 표준 도메인 모델 | `RawBill` | `Bill` + `Article[]` |
-| 4 | **[[RAGIndexer|RAG Indexer]]** | Spring | 임베딩 적재 — 분석용(현행법·선례) + **탐색용(법안 요약·BillFacts)** | 현행법/선례, 법안 요약·BillFacts | Vector Index 엔트리(2 네임스페이스) |
+| 4 | **[[RAGIndexer|RAG Indexer]]** | Spring | 임베딩 적재 — 분석용(현행법·선례) + **탐색용(법안 요약·LawFacts)** | 현행법/선례, 법안 요약·LawFacts | Vector Index 엔트리(2 네임스페이스) |
 | ✶ | **[[Embedder]]** (공유) | Spring | 텍스트→벡터(외부 API), 적재·검색 공유 — 벤치 대상 | `texts`, `mode(query/passage)` | 벡터(dim 1536) |
 | 5 | **Bill Store (RDB)** | — | 법안 정본·결과 캐시 | Bill/Article/ImpactResult | 조회 결과 |
 | 6 | **Vector Index** | — | 의미검색 — 분석용(현행법·선례) + 탐색용(법안) | 쿼리 임베딩 | 관련 조문/법안 후보 |
@@ -97,7 +97,7 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 ### IN
 - SourceConnector: **국가법령정보 1개** — `eflaw`(시행예정 = 분석 대상) + `law`(시행중 = diff 기준선). 커넥터 1개로 양쪽 커버
 - SourceAnalyzer: **의안번호/법안명 + 모호 plain text**(정확매칭 + 법안 의미검색) — 해소 4상태(§4 #2). URL/뉴스 = 인터페이스 스텁
-- Normalizer → **Bill Store(RDB)**; RAG Indexer → **Vector Index**(현행법 *분석용* + 법안 요약·BillFacts *탐색용*)
+- Normalizer → **Bill Store(RDB)**; RAG Indexer → **Vector Index**(현행법 *분석용* + 법안 요약·LawFacts *탐색용*)
 - **회원가입 프로필 입력 UI + User Profile Store** (자기신고, D41)
 - AnalysisPipeline + Command Registry + **커맨드 4종**(ImpactSummary/**LawDiff**/PersonaImpact/ActionPlan)
 - **diff**: 시행중본 ↔ 시행예정본 조문 대조(`조문변경여부` 플래그로 대상 선별) + `개정문` 인용 → `baselineLawId` 채움. **신구조문대비표(HWP) 파싱 불필요**(D42)

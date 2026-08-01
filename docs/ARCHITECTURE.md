@@ -16,7 +16,7 @@
 | v0.7 | [v0.7-offline-online-split.md](architecture/v0.7-offline-online-split.md) | 2026-08-01 | 대체됨 | 오프라인(배치 적재)·온라인(요청 응답) 실행 모드 분리, Nemotron 군집(Persona Builder)은 그림에서 제외 |
 | v0.6 | [v0.6-spring-consolidation.md](architecture/v0.6-spring-consolidation.md) | 2026-07-21 | 대체됨 | 파이프라인을 Spring(Boot 4.0+Spring AI 2.0)으로 통합 — 3→2 런타임, Python 서버 대체 |
 | v0.5 | [v0.5-bill-discovery.md](architecture/v0.5-bill-discovery.md) | 2026-06-28 | 대체됨 | 모호 plain text 위한 법안 의미검색(탐색용 임베딩) 추가, 분석용 RAG와 분리 |
-| v0.4 | [v0.4-pipeline-refinements.md](architecture/v0.4-pipeline-refinements.md) | 2026-06-28 | 대체됨 | RAG Indexer 분리, 출처 3종 구체화, 커맨드 4종(+LawDiff), BillFacts/2계층, 해소 4상태, triage |
+| v0.4 | [v0.4-pipeline-refinements.md](architecture/v0.4-pipeline-refinements.md) | 2026-06-28 | 대체됨 | RAG Indexer 분리, 출처 3종 구체화, 커맨드 4종(+LawDiff), LawFacts/2계층, 해소 4상태, triage |
 | v0.3 | [v0.3-no-video-internal-mcp.md](architecture/v0.3-no-video-internal-mcp.md) | 2026-06-22 | 대체됨 | 사용자 입력에서 영상 제외, MCP를 사용자 미노출 내부 어댑터로 강등 |
 | v0.2 | [v0.2-webapp-primary.md](architecture/v0.2-webapp-primary.md) | 2026-05-31 | 대체됨 | 웹앱을 주 사용자 경로로, MCP는 부가 표면으로 강등 |
 | v0.1 | [v0.1-initial.md](architecture/v0.1-initial.md) | 2026-05-31 | 대체됨 | 최초 설계. MCP/BFF를 1급 도구 표면으로 배치 |
@@ -55,14 +55,14 @@
 
 **무엇이 바뀌었나**
 - §2 신설: **실행 모드 대조표** — 계기·지연 요구·실패 처리·외부 의존·상태(read/write)·확장 축·장애 영향을 오프라인 vs 온라인으로 구분.
-- §3 다이어그램을 **둘로 분리**: §3.1 오프라인(스케줄러 → 커넥터 → Normalizer/BillFacts 파생 → RAG Indexer → 저장소 write), §3.2 온라인(사용자 → REST → 해소 게이트 → 커맨드 → Engine+LLM → 인용검증 → 응답).
+- §3 다이어그램을 **둘로 분리**: §3.1 오프라인(스케줄러 → 커넥터 → Normalizer/LawFacts 파생 → RAG Indexer → 저장소 write), §3.2 온라인(사용자 → REST → 해소 게이트 → 커맨드 → Engine+LLM → 인용검증 → 응답).
 - **Persona Builder(Nemotron 군집) 다이어그램에서 제외** — post-MVP. `PersonaImpact` 커맨드는 유지하되 세그먼트는 *사용자 선택/수작업 정의*로 단순화.
 - §4.4: RAG 두 용도를 **적재(오프라인) / 검색(온라인) 시점**과 함께 표로 정리.
 - §4.1·§7에 **D38**(법안 본문 경로 미확정, 현행법은 확보) 실측 상태 반영.
 
 **왜 바꿨나**
 - v0.6까지 한 그림에 섞여 있어 **"무엇이 사용자를 기다리게 하는가"** 가 드러나지 않았다. 두 모드는 지연 요구(분~시간 vs 초)·장애 영향(신선도 저하 vs 사용자 직접)·확장 축(코퍼스 vs 동시 사용자)이 근본적으로 다르다.
-- 분리하면 설계 규율이 명시된다 — **"온라인에 넣기 전에 오프라인으로 미리 할 수 없는지 먼저 묻는다."** BillFacts 선계산·임베딩 적재가 오프라인인 이유, 온라인이 *검색+개인화 추론*만 남는 이유가 그림으로 설명된다.
+- 분리하면 설계 규율이 명시된다 — **"온라인에 넣기 전에 오프라인으로 미리 할 수 없는지 먼저 묻는다."** LawFacts 선계산·임베딩 적재가 오프라인인 이유, 온라인이 *검색+개인화 추론*만 남는 이유가 그림으로 설명된다.
 - 페르소나 군집(Nemotron)은 후순위인데 다이어그램에 있어 MVP 범위를 오해하게 만들었다.
 
 ### v0.5 → v0.6 — "파이프라인 Spring 통합 (Python 서버 대체)"
@@ -81,9 +81,9 @@
 
 **무엇이 바뀌었나**
 - §1 원칙 넷째·§2 USRC: **모호한 자연어(plain text)** 를 명시적 입력 유형으로 추가(U2).
-- §2 다이어그램: **법안 요약·BillFacts 임베딩(탐색용)** 을 RAG Indexer 범위·Vector Index 내용에 추가. `SourceAnalyzer -. 법안 의미검색 .-> Vector Index` 엣지 신설.
+- §2 다이어그램: **법안 요약·LawFacts 임베딩(탐색용)** 을 RAG Indexer 범위·Vector Index 내용에 추가. `SourceAnalyzer -. 법안 의미검색 .-> Vector Index` 엣지 신설.
 - §3.3: SourceAnalyzer 해소를 *정확/퍼지 매칭 + 의미검색(매칭 약할 때)* 2단계로. 모호 입력 → 보통 `AMBIGUOUS`(후보 명확화).
-- §3.4: RAG의 **두 용도 분리** 명문화 — *분석용(현행법·선례)* vs *탐색용(법안 요약·BillFacts)*. 법안 전문은 임베딩 안 함(컨텍스트에 통째로).
+- §3.4: RAG의 **두 용도 분리** 명문화 — *분석용(현행법·선례)* vs *탐색용(법안 요약·LawFacts)*. 법안 전문은 임베딩 안 함(컨텍스트에 통째로).
 - §6: 탐색 임베딩 추가가 ADR-001 불변임 명시(~1~3GB, 헤드룸·트리거 내).
 
 **왜 바꿨나**
@@ -91,12 +91,12 @@
 - "분석을 위한 RAG(알려진 법안에 현행법 컨텍스트 제공)"와 "탐색을 위한 의미검색(모호 입력 → 후보 법안)"은 목적이 다른 별개 용도라 구분.
 - 그래도 **fail-closed 유지** — 실재 법안이 없으면 후보 없음/미등록/허위로 처리, 지어내지 않음.
 
-### v0.3 → v0.4 — "파이프라인 정제: RAG Indexer 분리·출처 3종·diff·BillFacts"
+### v0.3 → v0.4 — "파이프라인 정제: RAG Indexer 분리·출처 3종·diff·LawFacts"
 
 **무엇이 바뀌었나**
 - §2 다이어그램: **`RAG Indexer` 노드 신설** — v0.3에서 Analysis Engine(C4)이 겸하던 임베딩 적재를 분리. Analysis Engine은 *쿼리 임베딩+검색+추론*만. RAG 대상도 *법안* → **현행법·선례**로(법안 한 건은 컨텍스트에 통째로).
 - §2/§3.1: Connectors를 **법안 2종(열린국회·법제처) + 현행법(국가법령정보=`LawConnector`)** 으로 구체화. 저장소를 **단일 Postgres+pgvector**(`Bill Store`·`Vector Index`·`Persona Store`)로 명시.
-- §3.2: 도메인 모델에 **`BillFacts`(Layer A 파생 캐시)** + Bill/Article 확장 필드(신구조문대비표·부칙·위임조항 등) 반영.
+- §3.2: 도메인 모델에 **`LawFacts`(Layer A 파생 캐시)** + Bill/Article 확장 필드(신구조문대비표·부칙·위임조항 등) 반영.
 - §3.3: 소스 입력 흐름에 **해소 4상태**(RESOLVED/AMBIGUOUS/NOT_FOUND_YET/UNVERIFIED, fail-closed) 추가.
 - §3.4: **2계층 엔진**(사실 A / 해석 B) + **인용검증 게이트** + **임베딩 모델은 추론 모델과 별개** 명문화.
 - §4: MVP 커맨드 **4종(+`LawDiff`)**, **Triage** 분류 기준 고정(라우팅은 post-MVP), 페르소나 lookup.
@@ -105,7 +105,7 @@
 **왜 바꿨나**
 - v0.3 다이어그램이 임베딩 적재를 Analysis Engine에 묶어 그려, 이후 컴포넌트 문서에서 분리한 **`RAG Indexer`가 그림에 없던 불일치**를 해소(이 버전의 직접 계기).
 - MVP를 v0.3 §3.1(3개 출처)과 일치시키고, 핵심 가치인 **현행법 diff를 MVP에 포함**(신구조문대비표 1차 + 국가법령정보 보강).
-- 누적 결정(2계층 엔진·BillFacts·해소 4상태·triage·foundation API 비학습)을 스냅샷에 반영해 그림과 컴포넌트 문서를 정합화. (상세: [adr/decision-log.md](adr/decision-log.md) D04·D07·D10·D14·D18~D28)
+- 누적 결정(2계층 엔진·LawFacts·해소 4상태·triage·foundation API 비학습)을 스냅샷에 반영해 그림과 컴포넌트 문서를 정합화. (상세: [adr/decision-log.md](adr/decision-log.md) D04·D07·D10·D14·D18~D28)
 
 ### v0.2 → v0.3 — "영상 입력 제외, MCP 사용자 미노출"
 
