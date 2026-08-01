@@ -86,6 +86,29 @@ public class LawConnector {
         return limit > 0 && collected.size() > limit ? collected.subList(0, limit) : collected;
     }
 
+    /**
+     * 법령명으로 시행예정 법령 검색 — 사용자 입력 해소(SourceAnalyzer)용.
+     *
+     * <p>같은 {@code 법령ID} 가 시행일자만 다른 채 여러 건 나올 수 있다(D43).
+     * 실측: "자본시장" → 자본시장과 금융투자업에 관한 법률이 3건(2026-10-01·11-13, 2027-02-04).
+     */
+    public List<RawLaw> searchPending(String query, LocalDate from, LocalDate to, int limit) {
+        requireOc();
+        if (query == null || query.isBlank()) return List.of();
+        Map<String, Object> payload = request(UriComponentsBuilder.fromPath("/DRF/lawSearch.do")
+                .queryParam("target", "eflaw")
+                .queryParam("query", query)
+                .queryParam("efYd", from.format(YMD) + "~" + to.format(YMD))
+                .queryParam("sort", "efasc")
+                .queryParam("display", Math.min(MAX_PAGE_SIZE, Math.max(1, limit))));
+
+        List<RawLaw> out = new ArrayList<>();
+        for (Map<String, Object> row : LawEnvelope.extractRows(payload)) {
+            out.add(fromListRow(row));
+        }
+        return out;
+    }
+
     /** 시행예정 법령 본문. {@code efYd} 는 목록의 시행일자를 그대로 넘긴다. */
     public RawLaw fetchPending(String mst, LocalDate effectiveDate) {
         requireOc();

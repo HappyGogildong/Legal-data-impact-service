@@ -147,31 +147,46 @@ GET {law.base}/DRF/lawService.do?OC=..&target=law&MST=276291&type=JSON          
 4. **법안 커넥터는 Normalizer로, `LawConnector`는 RAG Indexer/Bill Store(기준선)로** 흐름
 
 ## 인터페이스 (Java, `com.lia.core.pipeline.connector`)
+
+> **2026-08-02 정리:** `SourceConnector` 인터페이스와 `RawBill`·`AssemblyBillsConnector`·`AssemblyEnvelope`는 **코드에서 삭제**했다(D42로 의안이 분석 대상에서 빠짐). 계약은 본 문서에 남아 있으므로 의안 커넥터를 되살릴 때 여기서 복원한다(git 이력에도 보존).
+
+```java
+// ★ MVP 수집 경로 — 구현 완료 ✅ (이슈 #11)
+public class LawConnector {
+    List<RawLaw> listPending(LocalDate from, LocalDate to, int limit);   // target=eflaw + efYd
+    List<RawLaw> searchPending(String query, LocalDate from, LocalDate to, int limit);
+    RawLaw fetchPending(String mst, LocalDate effectiveDate);            // target=eflaw + MST
+    RawLaw fetchCurrent(String lawId);                                   // target=law + ID
+}
+
+// 봉투 파싱 순수 함수 — 단위 테스트 대상
+public final class LawEnvelope {
+    checkError · extractRows · totalCount · lawRoot · basicInfo
+    articles · changedArticles · addendaOf · text(재귀 평탄화) · date · str
+}
+```
+
+**해소(resolve)와의 경계 — `LawLookup` 포트.** `SourceAnalyzer`는 커넥터를 직접 부르지 않는다. 아키텍처 v0.8 §3.2에서 해소는 **Law Store·Vector Index(오프라인 적재분)** 를 읽기 때문이다. 현재는 `PipelineConfig`가 `LawConnector`를 어댑터로 꽂아 두고, 저장소가 생기면 구현만 교체한다(`SourceAnalyzer` 무수정).
+
+```java
+public interface LawLookup {                       // com.lia.core.pipeline.resolve
+    List<RawLaw> searchByName(String query, int limit);
+}
+```
+
+### 의안 커넥터 계약 *(post-MVP — 되살릴 때 참고)*
+
 ```java
 public interface SourceConnector {
     String sourceType();
     List<RawBill> search(String query, int limit);
     RawBill fetch(String sourceId);
-    default RawBill getByBillNo(String billNo) { ... }   // 기본: search 결과에서 정확 일치
+    default RawBill getByBillNo(String billNo) { ... }
 }
-
-class AssemblyBillsConnector implements SourceConnector  // 열린국회 — 구현 완료 ✅ (참고용, post-MVP)
-
-// ★ MVP 수집 경로 — 구현 완료 ✅ (이슈 #11, 2026-08-02)
-// LawConnector — 국가법령정보 단일 커넥터, target 2개를 모두 담당
-//   listPending(from, to, limit)     : target=eflaw + efYd 범위  → 시행예정 목록
-//   fetchPending(mst, effectiveDate) : target=eflaw + MST        → 시행예정 본문 (분석 대상)
-//   fetchCurrent(lawId)              : target=law   + ID         → 시행중 본문 (diff 기준선)
-// LawEnvelope  — 봉투 파싱 순수 함수: checkError / extractRows / articles
-//                changedArticles / addendaOf / text(재귀 평탄화) / date
-// ⚠️ SourceConnector 인터페이스를 구현하지 않는다 — 다루는 것이 의안이 아니라 법령이라
-//    billNo·발의자·심사단계가 존재하지 않는다(D42).
-
-// MolegNoticeConnector — 법제처 입법예고 → RawBill  (post-MVP)
-//   GET opinion.lawmaking.go.kr/rest/ogLmPp.xml?OC=..            (목록)
-//   GET /rest/ogLmPp/{seq}/{mappingLbicId}/{announceType}.xml    (상세)
-//   ⚠️ type=JSON 무시됨 — .xml 확장자 필수. lmPpCts 에 개정이유·주요내용(HTML)
+record RawBill(String sourceType, String sourceId, String billNo, String title, Map<String,Object> raw)
 ```
+- `AssemblyBillsConnector` — 열린국회. `AGE` 필수, `Type=json` 이어도 `text/html` 응답(String 수신 후 Jackson 3 직접 파싱)
+- `MolegNoticeConnector` — 법제처 입법예고. `.xml` 확장자 필수, `lmPpCts`에 개정이유·주요내용
 
 ## 구조 결정 의도 (왜 이렇게)
 - **개방-폐쇄.** 출처 다양성을 인터페이스 뒤로 숨겨, 출처 추가가 코어·하류를 건드리지 않게 함(법제처가 MVP 내 실증, [[decision-log|D24]]).

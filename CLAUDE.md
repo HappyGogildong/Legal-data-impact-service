@@ -58,7 +58,7 @@ Spring 버전 변경점(Boot 3.x→4.0, AI 1.x→2.0)은 `docs/reference/spring-
 
 열린국회 API 함정 2가지 (실측·해결됨):
 - 오류 응답은 최상위 `{"RESULT": {...}}` 형태(정상 응답의 `head[].RESULT`와 다름) — `AssemblyEnvelope.resultCode`가 둘 다 처리.
-- `Type=json` 이어도 **`Content-Type: text/html`** 로 응답 → `RestClient` 컨버터가 거부하므로 `String`으로 받아 Jackson 3로 직접 파싱(`AssemblyBillsConnector.parseJson`).
+- (열린국회, post-MVP) `Type=json` 이어도 **`Content-Type: text/html`** 로 응답 → `String`으로 받아 Jackson 3로 직접 파싱. 국가법령정보는 정상 `application/json` 이지만 오류가 200으로 오므로 봉투 검사는 필수(`LawEnvelope.checkError`).
 
 ## 설정·비밀 관리
 
@@ -82,4 +82,6 @@ Spring 버전 변경점(Boot 3.x→4.0, AI 1.x→2.0)은 `docs/reference/spring-
 
 설계 문서 v0.6(**Spring 통합, D35·D39**). **Python 파이프라인 제거 완료** — 커넥터·SourceAnalyzer(4상태)·설정이 Java로 이관돼 실 API 검증까지 통과(테스트 15건). 다음: Normalizer(#5, 신구조문대비표 파서) → LawConnector/MolegConnector(#11) → Spring AI Embedder(#6)/RAGIndexer(#7) → 임베딩 벤치(#8). `mcp/`는 아직 PoC 스텁.
 
-**미해결 갭(D38):** 법안 본문(조문·부칙·신구조문대비표) 획득 경로 미확정 — 열린국회 API 5종 모두 메타데이터만 제공. 현행법(국가법령정보)은 조문 42개·부칙 제공 확인됨. `docs/components/SourceConnector.md` §본문 획득 참고.
+**MVP 수집 경로(D42, 2026-08-02):** 분석 대상은 의안이 아니라 **공포 후 시행 대기 법령**(`target=eflaw`). 전문·개정문·제개정이유·부칙이 모두 제공되므로 D38(법안 본문 갭)은 해소됐고, 의안 경로는 post-MVP로 강등돼 **코드에서 삭제**했다(`SourceConnector`·`RawBill`·`Assembly*`). 계약은 `docs/components/SourceConnector.md`에 보존.
+
+**실측 함정(국가법령정보):** ① `display=1` 이면 `law`가 배열이 아니라 **단일 객체** ② 인증 실패도 **HTTP 200** + `{"result":"사용자 정보 검증에 실패..."}` ③ `조문내용`만 읽으면 본문이 빔(`항→호→목` 재귀 병합 필수) ④ 부칙은 이력 전체 → `부칙공포번호`로 필터 ⑤ 연결키는 **`법령ID`**(MST는 버전마다 다름). 재현: `python tools/probe_eflaw.py`
