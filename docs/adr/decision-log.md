@@ -40,8 +40,8 @@ related:
 | D18 | ~~페르소나 6개 세그먼트~~ → **D41로 폐기** | 개정됨 | 6버킷은 개인화 해상도 부족 | D41 |
 | D19 | 추론 모델 = **Opus 4.8**(`claude-opus-4-8`), 입력~32K/출력4K, 캐싱 | 확정 | 법적 정확도 우선, 교체 가능 | component-specs §3.3 |
 | D20 | ~~현행법 diff MVP 생략~~ → **D26으로 개정**(MVP 포함) | 개정됨 | — | D26 |
-| D21 | 법안 속성 확장 + **`LawFacts`(Layer A 파생 캐시)** 신설, `Bill`은 A/B 사실만 | 확정 | 서비스 수준 도메인 모델; C 추론은 Bill과 분리·인용 강제 | [[bill-attributes]], component-specs §1 |
-| D22 | D21에도 **저장소 결정(ADR-001) 불변** | 확정 | LawFacts ≈0.25GB, 헤드룸 내·트리거 미해당 | bill-attributes §저장소 영향 |
+| D21 | 법안 속성 확장 + **`LawFacts`(Layer A 파생 캐시)** 신설, `Bill`은 A/B 사실만 | 확정 | 서비스 수준 도메인 모델; C 추론은 Bill과 분리·인용 강제 | [[law-attributes]], component-specs §1 |
+| D22 | D21에도 **저장소 결정(ADR-001) 불변** | 확정 | LawFacts ≈0.25GB, 헤드룸 내·트리거 미해당 | law-attributes §저장소 영향 |
 | D23 | SourceAnalyzer **해소 4상태**(RESOLVED/AMBIGUOUS/NOT_FOUND_YET/UNVERIFIED), fail-closed | 확정 | 미등록 vs 허위 구분, 소문이 분석으로 둔갑 방지 | component-specs §4 #2·#8, §3.2 |
 | D24 | **MVP 입력 = 3개 출처**(열린국회·법제처 입법예고 = 법안, 국가법령정보 = 현행법 기준선) | 확정 | v0.3 §3.1과 정합; 커넥터 추가=확장 패턴 실증(법제처) | component-specs §4 #1, mvp §4 |
 | D25 | **MVP 커맨드 = 4종**(+`LawDiff`) | 확정 | "무엇이 바뀌나"가 서비스 핵심 가치 | component-specs §4 #10, mvp §4 |
@@ -67,7 +67,7 @@ related:
 | D42 | **MVP 분석 대상 = 공포 후 시행 대기 법령**(국가법령정보 `target=eflaw`), 의안은 post-MVP. 도메인 모델 **`Law` 신설·`Bill` 보류**(C안). 신구조문대비표(HWP) 파싱 **폐기** | 확정 | 서비스 정의가 "적용될 확률이 높거나 적용 예정인 법안"이므로 통과율 ~20%인 의원발의는 참고용에 가깝다. 시행예정 법령은 **적용 확실성 100%**이고 전문·개정문·제개정이유·부칙이 **이미 연동된 출처에 전부 존재**(2026-08-01 실측, 899건). `조문변경여부='Y'` 플래그가 변경 조문을 직접 지목해(주택법 137개 중 6개) LawDiff 대상 선별·토큰 비용까지 해결. eflaw 응답에 `billNo`·발의자·소관위·심사단계가 없어 `Bill`을 쓰면 절반이 null → 모델 분리 | [[v0.8-pending-law-corpus|아키텍처 v0.8]], [[SourceConnector]] §MVP 본문 경로, [[component-specs]] §1.1 |
 | D43 | 한 법령에 **시행 대기 개정이 복수**일 때 LawDiff 기준 시점 | **Open** | 실측: 주택법 현행본 공포 제21447호(2026-03-05)인데 시행예정본은 제21323호(2026-02-03) — *나중에 공포된 쪽이 먼저 시행*. `lawId`↔시행예정본이 1:N이므로 "무엇이 바뀌나"를 어느 버전 기준으로 보여줄지 규정 필요 | [[v0.8-pending-law-corpus|아키텍처 v0.8]], [[component-specs]] §1.1 |
 
-| D44 | **`BillFacts` → `LawFacts` 개명**(참조 키 `bill_ref` → `law_ref`). v0.4~v0.7 동결 스냅샷은 옛 이름 유지, v0.8·살아있는 문서는 갱신 | 확정 | 이름이 *의안 전용*으로 읽혀 "의안을 post-MVP로 미뤘는데 왜 계속 나오나"라는 오해를 만들었다. 실체는 **분석 대상이 무엇이든 붙는 페르소나 무관 Layer A 파생 캐시**이고 v0.8 오프라인 다이어그램에 MVP로 들어가 있다. 순수 개명이라 설계·범위 변화는 없다 | [[component-specs]] §1.3, [[v0.8-pending-law-corpus]] §4.5 |
+| D44 | **`BillFacts` → `LawFacts` 개명**(참조 키 `bill_ref` → `law_ref`) + **`bill-attributes` → `law-attributes` 문서 개편**(의안 고유 속성 제거, 획득 계층 3→2). v0.4~v0.7 동결 스냅샷은 옛 이름 유지, v0.8·살아있는 문서는 갱신 | 확정 | 이름이 *의안 전용*으로 읽혀 "의안을 post-MVP로 미뤘는데 왜 계속 나오나"라는 오해를 만들었다. 실체는 **분석 대상이 무엇이든 붙는 페르소나 무관 Layer A 파생 캐시**이고 v0.8 오프라인 다이어그램에 MVP로 들어가 있다. 개명 자체는 설계 변화가 없다. 속성 카탈로그는 의안 기준 서술이 남아 있어 본문까지 법령 기준으로 재작성했다 — 특히 **🔵B(원문 파싱) 계층이 소멸**했다(API가 조문·부칙·개정문을 모두 제공). 옛 경로는 동결 스냅샷 v0.4~v0.7의 링크를 살리려 **묘비 문서**로 남긴다 | [[component-specs]] §1.3, [[v0.8-pending-law-corpus]] §4.5 |
 
 > **D37 재검토 트리거:** ① 대형 옴니버스 법안의 map-reduce + Generator-Critic이 3단 이상 *동적* 분기로 확장 ② 멀티턴 대화형 탐색(상태 지속·중단 재개) 도입. 그때도 `AnalysisEngine` 인터페이스 뒤에 격리해 도입 가능하므로 본 결정은 가역적(JVM 대안: LangGraph4j·Embabel).
 

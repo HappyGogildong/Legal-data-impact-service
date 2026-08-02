@@ -5,7 +5,7 @@ version: 0.1
 date: 2026-06-28
 tags: [reference, triage, classification, routing, impact-scope]
 related:
-  - "reference/bill-attributes.md"
+  - "reference/law-attributes.md"
   - "components/component-specs.md"
   - "adr/decision-log.md"
   - "adr/ADR-001-knowledge-store-sizing.md"
@@ -13,7 +13,7 @@ related:
 
 # Triage 정책 — 영향범위 분류·라우팅
 
-**관련:** [[bill-attributes|법안 속성]] §4 (`impactScope`) · [[component-specs|컴포넌트 스펙]] (LawFacts) · [[ADR-001-knowledge-store-sizing|ADR-001]] (캐시·비용)
+**관련:** [[law-attributes|법령 속성]] §4 (`impactScope`) · [[component-specs|컴포넌트 스펙]] (LawFacts) · [[ADR-001-knowledge-store-sizing|ADR-001]] (캐시·비용)
 
 법안을 분석 처리에 넣기 전, **"누구에게 얼마나 영향이고, 그래서 얼마나 깊게 분석할까"** 를 가려내는 분류·라우팅 정책. 분류 결과(`LawFacts.impactScope` + `affectedDomains`)가 *어떤 커맨드·페르소나로, 어느 깊이·모델·캐시 정책으로* 돌릴지를 결정한다.
 
@@ -36,7 +36,7 @@ related:
 
 ## 2. 분류 신호 (Signals)
 
-🟡 C계층 추론으로 판정하되, 아래 신호를 근거로 삼는다. 모든 판정은 근거 조문/메타의 `source_id`를 인용([[bill-attributes]] §6).
+🟡 C계층 추론으로 판정하되, 아래 신호를 근거로 삼는다. 모든 판정은 근거 조문/메타의 `source_id`를 인용([[law-attributes]] §6).
 
 | 신호 | 보편 ← | → 도메인특정 | → 소수 | 출처 |
 |---|---|---|---|---|
@@ -94,4 +94,4 @@ related:
 - [ ] 소관위 → 보편/도메인 매핑 사전(어느 위원회가 어느 성향인지)
 - [ ] `confidence` 임계값(보편 fail-open 발동 기준)
 - [ ] 인구 커버리지 신호의 **근거 자료 재선정** — Nemotron `population_weight` 폐기(D41). 통계청 등 공식 인구통계 사용 여부 결정
-- [ ] 엔티티 프로파일 스키마(도메인 법안용 — 기업·기관, [[bill-attributes]] §통찰 참고)
+- [ ] 엔티티 프로파일 스키마(도메인 법안용 — 기업·기관, [[law-attributes]] §통찰 참고)

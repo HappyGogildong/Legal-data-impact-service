@@ -3,7 +3,7 @@ title: Normalizer — 컴포넌트 설계
 status: Draft
 date: 2026-06-30
 tags: [component, pipeline, normalizer]
-related: ["components/component-specs.md", "reference/bill-attributes.md", "reference/embedding-benchmark.md"]
+related: ["components/component-specs.md", "reference/law-attributes.md", "reference/embedding-benchmark.md"]
 ---
 
 # Normalizer (Python, 수집)
@@ -11,7 +11,7 @@ related: ["components/component-specs.md", "reference/bill-attributes.md", "refe
 > **런타임 변경(D35):** 구현 런타임이 Python → **Spring(Boot 4.0 + Spring AI 2.0)** 으로 통합됨([[v0.6-spring-consolidation|v0.6]] · [[spring-migration|버전 변경점]]). 본 문서의 역할·입출력·동작·결정 의도는 그대로 유효하며, Python 인터페이스 초안은 **포팅 사양**으로 유지된다.
 
 
-> `RawBill` → **표준 `Bill`+`Article[]`** 변환. 조문·부칙·신구조문대비표·위임조항 파싱과 `revision` 계산. 관련: [[component-specs]] §1·§4 #3 · [[bill-attributes]]
+> `RawBill` → **표준 `Bill`+`Article[]`** 변환. 조문·부칙·신구조문대비표·위임조항 파싱과 `revision` 계산. 관련: [[component-specs]] §1·§4 #3 · [[law-attributes]]
 
 ## 역할
 출처별 원형(`RawBill`)을 도메인 표준 모델로 정규화한다. 특히 **신구조문대비표**를 1급으로 파싱해 [[embedding-benchmark|벤치 시나리오 A]]의 정답쌍 원천을 만든다.

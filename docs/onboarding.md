@@ -31,7 +31,7 @@ tags: [onboarding, start-here, guide]
 4. [[decision-log|결정 로그]] (D01~D35) — "왜 이렇게 됐나"를 한눈에
 5. [[component-specs|컴포넌트 상세 스펙]] — 도메인 모델·계약·정합성
 6. [[analysis-prompt-spec|프롬프트 정의서]] — LLM 입력계약·응답 JSON·인용검증
-7. 참조: [[bill-attributes|법안 속성]] · [[triage-policy|Triage]] · [[embedding-benchmark|임베딩 벤치]] · [[spring-migration|Spring 버전 변경점]]
+7. 참조: [[law-attributes|법령 속성]] · [[triage-policy|Triage]] · [[embedding-benchmark|임베딩 벤치]] · [[spring-migration|Spring 버전 변경점]]
 
 ## 역할별 빠른 경로
 | 역할 | 먼저 볼 것 |

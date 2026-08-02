@@ -77,7 +77,7 @@ nav:
           - RAG Indexer: components/RAGIndexer.md
           - Analysis Engine: components/AnalysisEngine.md
   - 참조 (Reference):
-      - 법안 속성 카탈로그: reference/bill-attributes.md
+      - 법령 속성 카탈로그: reference/law-attributes.md
       - Triage 정책: reference/triage-policy.md
       - 임베딩 벤치마크 계획: reference/embedding-benchmark.md
       - Spring 4.0·Spring AI 2.0 변경점: reference/spring-migration.md
