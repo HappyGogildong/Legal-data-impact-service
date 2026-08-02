@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
 import com.lia.core.pipeline.connector.LawConnector;
+import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
 
@@ -37,6 +38,11 @@ public class PipelineConfig {
             LocalDate from = LocalDate.now().plusDays(1);
             return connector.searchPending(query, from, from.plusYears(LOOKAHEAD_YEARS), limit);
         };
+    }
+
+    @Bean
+    public Normalizer normalizer() {
+        return new Normalizer();
     }
 
     @Bean

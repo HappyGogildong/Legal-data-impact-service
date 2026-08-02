@@ -96,26 +96,14 @@ public final class LawEnvelope {
     }
 
     /**
-     * {@code 법령.부칙.부칙단위[]} 중 <b>이번 개정분만</b>(함정 5).
-     * 부칙은 제정 이후 이력 전체가 오므로 {@code 부칙공포번호 == promulgateNo} 로 거른다.
+     * {@code 법령.부칙.부칙단위[]} — <b>이력 전체</b>(실측 42개). 단건이면 감싸서 반환.
+     *
+     * <p>"이번 개정의 부칙만 고른다"는 <b>도메인 규칙이지 파싱이 아니므로</b> 여기서 하지 않는다.
+     * 필터는 {@code Normalizer.parseAddenda} 가 {@code 부칙공포번호}로 수행하고,
+     * 그 결과가 {@code Law.addenda} 다.
      */
-    public static List<Map<String, Object>> addendaOf(Map<String, Object> lawRoot, String promulgateNo) {
-        List<Map<String, Object>> all = nestedList(lawRoot, "부칙", "부칙단위");
-        if (promulgateNo == null || promulgateNo.isBlank()) return all;
-        List<Map<String, Object>> mine = new ArrayList<>();
-        for (Map<String, Object> a : all) {
-            if (promulgateNo.equals(str(a.get("부칙공포번호")))) mine.add(a);
-        }
-        return mine;
-    }
-
-    /** 이번 개정으로 바뀐 조문만({@code 조문변경여부='Y'}) — LawDiff 대상 선별. */
-    public static List<Map<String, Object>> changedArticles(Map<String, Object> lawRoot) {
-        List<Map<String, Object>> changed = new ArrayList<>();
-        for (Map<String, Object> a : articles(lawRoot)) {
-            if ("Y".equalsIgnoreCase(str(a.get("조문변경여부")))) changed.add(a);
-        }
-        return changed;
+    public static List<Map<String, Object>> addenda(Map<String, Object> lawRoot) {
+        return nestedList(lawRoot, "부칙", "부칙단위");
     }
 
     // --- 텍스트 평탄화 ---------------------------------------------------

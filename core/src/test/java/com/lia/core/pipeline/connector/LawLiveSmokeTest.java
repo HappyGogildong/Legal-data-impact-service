@@ -77,8 +77,10 @@ class LawLiveSmokeTest {
         assertEquals(head.lawId(), body.lawId(), "목록↔본문의 법령ID가 어긋난다");
 
         List<Map<String, Object>> articles = LawEnvelope.articles(body.raw());
-        List<Map<String, Object>> changed = LawEnvelope.changedArticles(body.raw());
-        List<Map<String, Object>> addenda = LawEnvelope.addendaOf(body.raw(), body.promulgateNo());
+        List<Map<String, Object>> changed = articles.stream()
+                .filter(a -> "Y".equalsIgnoreCase(String.valueOf(a.get("조문변경여부")))).toList();
+        List<Map<String, Object>> addenda = LawEnvelope.addenda(body.raw()).stream()
+                .filter(a -> body.promulgateNo().equals(LawEnvelope.str(a.get("부칙공포번호")))).toList();
 
         System.out.printf("[live] %s — 조문 %d개(변경 %d개), 이번 개정 부칙 %d개%n",
                 body.title(), articles.size(), changed.size(), addenda.size());

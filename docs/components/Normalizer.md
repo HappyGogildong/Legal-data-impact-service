@@ -46,19 +46,47 @@ related: ["components/component-specs.md", "reference/law-attributes.md", "compo
 
 **오류/엣지:** 파싱 실패 조문은 **드롭하지 않는다** — `changeType:"없음"` + 원문 보존 + 결손 플래그. 인용 가능성을 잃지 않기 위해서다.
 
-## 인터페이스 (Java, `com.lia.core.pipeline.normalize`)
+## 인터페이스 (Java, `com.lia.core.pipeline.normalize`) — 구현 완료 ✅
 
 ```java
 public class Normalizer {
-    Law normalize(RawLaw raw);                       // 헤더 + 조문 + 부칙 + revision
+    Law normalize(RawLaw raw);                       // 헤더 + 조문 + 부칙 + 위임 + revision
     List<Article> parseArticles(Map<String,Object> lawRoot);
     List<Addendum> parseAddenda(Map<String,Object> lawRoot, String promulgateNo);
-    EffectiveRule parseEffectiveRule(List<Addendum> addenda);
+    EffectiveRule parseEffectiveRule(List<Addendum> addenda);   // (text, EnforcementType)
+    List<String> detectDelegations(List<Article> articles);
     String computeRevision(Law law);
 }
 ```
 
-> **`LawEnvelope` 정리 동반(#5 범위).** 현재 `LawEnvelope.changedArticles`·`addendaOf` 는 파싱 유틸에 도메인 규칙이 섞인 상태다 — "이번 개정으로 바뀐 조문", "이번 개정의 부칙"은 법령 도메인 개념이지 JSON 파싱이 아니다. 정규화 후에는 **`Law.changedArticles()`·`Law.currentAddenda()`** 로 옮기고, `LawEnvelope` 에는 순수 파싱(`extractRows`·`text`·`date`·`checkError`)만 남긴다.
+> **`LawEnvelope` 정리 완료.** `changedArticles`·`addendaOf` 를 걷어냈다 — "이번 개정으로 바뀐 조문", "이번 개정의 부칙"은 법령 도메인 개념이지 JSON 파싱이 아니다. 지금은 **`Law.changedArticles()`** 와 **`Normalizer.parseAddenda`** 가 담당하고, `LawEnvelope` 에는 순수 파싱(`extractRows`·`articles`·`addenda`·`text`·`date`·`checkError`)만 남았다. `LawEnvelope.addenda()` 는 **이력 전체**를 그대로 준다.
+
+### `Law` 도메인 질의
+
+```java
+law.changedArticles()   // 이번 개정으로 바뀐 조문 — 분석 대상 선별
+law.realArticles()      // 조문여부='조문' 만 (장·절 제목 제외)
+law.effectiveClause()   // 부칙 시행일 조항
+law.ref()               // "LAW:{lawId}@{effectiveDate}" — 시행중본은 "@" 없음
+law.sourceId(article)   // "LAW:{lawId}@{efYd}:art:{no}"
+law.fullText()          // 실조문 병합(파생값, 저장 필드 아님)
+```
+
+`lawId`·`effectiveDate` 는 생성자에서 필수로 강제한다 — 전자는 시행중↔시행예정 연결키, 후자는 `ActionPlan` 기한 산출의 근거다.
+
+## 실측 검증 (2026-08-02, 주택법 `LAW:001809@2026-08-04`)
+
+```
+조문 137개(실조문 125, 변경 6) · 부칙 3개 · 위임 237건 · revision c4426c2f1ab8a2fe
+시행규칙: "이 법은 공포 후 6개월이 경과한 날부터 시행한다. 다만, 제57조제2항제7호의
+          개정규정은 공포한 날부터 시행한다." → 단계적
+기준선(시행중본): 주택법 조문 125개, revision 66fc6aff3e2ec627
+```
+
+- 실조문 125개 **전부 본문이 채워졌다**(빈 조문 0) — 항/호/목 병합이 실제 응답에서 동작
+- 부칙 이력 전체에서 이번 개정분 3개 조항만 남았다
+- `enforcementType` 이 단서조항으로 `단계적` 판정
+- **위임 237건**은 예상보다 많다 — 주택법이 하위법령 위임이 많은 법률이라 그렇다. `uncertainties` 로 전량 노출하면 과할 수 있어 **변경 조문의 위임만 추릴지는 Layer A 파생 단계에서 결정**한다(후속)
 
 ## 구조 결정 의도 (왜 이렇게)
 

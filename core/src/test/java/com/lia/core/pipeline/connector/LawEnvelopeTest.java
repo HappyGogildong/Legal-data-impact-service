@@ -91,20 +91,18 @@ class LawEnvelopeTest {
         }
 
         @Test
-        void 변경된_조문만_골라낸다() {
-            List<Map<String, Object>> changed = LawEnvelope.changedArticles(lawRoot());
-
-            assertEquals(2, changed.size(), "조문변경여부='Y' 필터가 동작하지 않는다");
-            assertEquals(List.of("18", "104"),
-                    changed.stream().map(a -> a.get("조문번호")).toList());
+        void 조문단위를_그대로_꺼낸다() {
+            // 변경 조문 선별은 도메인 규칙이라 Law.changedArticles() 가 담당한다(파싱 아님).
+            assertEquals(3, LawEnvelope.articles(lawRoot()).size());
         }
 
         @Test
-        void 부칙은_이번_공포번호만_남긴다() {
-            List<Map<String, Object>> mine = LawEnvelope.addendaOf(lawRoot(), "21323");
+        void 부칙은_이력_전체를_그대로_준다() {
+            // 이번 개정분 필터도 도메인 규칙이라 Normalizer.parseAddenda 가 담당한다.
+            List<Map<String, Object>> all = LawEnvelope.addenda(lawRoot());
 
-            assertEquals(1, mine.size(), "부칙 이력 전체가 섞여 나온다");
-            assertTrue(LawEnvelope.text(mine.get(0).get("부칙내용")).contains("공포 후 6개월"));
+            assertEquals(2, all.size(), "부칙 이력이 유실됐다");
+            assertTrue(LawEnvelope.text(all.get(1).get("부칙내용")).contains("공포 후 6개월"));
         }
 
         @Test
