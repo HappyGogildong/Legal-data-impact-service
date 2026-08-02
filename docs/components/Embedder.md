@@ -6,9 +6,9 @@ tags: [component, pipeline, embedding]
 related: ["reference/embedding-benchmark.md", "components/component-specs.md", "adr/decision-log.md"]
 ---
 
-# Embedder (Python, 공유)
+# Embedder (Spring, 공유)
 
-> **런타임 변경(D35):** 구현 런타임이 Python → **Spring(Boot 4.0 + Spring AI 2.0)** 으로 통합됨([[v0.6-spring-consolidation|v0.6]] · [[spring-migration|버전 변경점]]). 본 문서의 역할·입출력·동작·결정 의도는 그대로 유효하며, Python 인터페이스 초안은 **포팅 사양**으로 유지된다.
+> **v0.2 (2026-08-02):** 런타임이 Spring(Spring AI `EmbeddingModel`)으로 확정됐다(D35). 역할·파라미터·벤치 계획은 불변.
 
 
 > 텍스트 → 벡터. **적재·검색이 공유**하는 외부 임베딩 API 추상화. 벤더 교체 지점(벤치 대상). 관련: [[embedding-benchmark]] · [[component-specs]] §3.3 · [[decision-log|D32·D33]]
@@ -36,15 +36,15 @@ RAG Indexer(적재)·Analysis Engine·SourceAnalyzer(검색)가 **동일 모델*
 2. 배치 호출 + 레이트리밋·재시도
 3. (필요 시) 정규화 → 코사인 거리용
 
-## 인터페이스 (Python 초안)
-```python
-class Embedder(ABC):
-    dim: int
-    @abstractmethod
-    def embed(self, texts: list[str], mode: Literal["passage","query"]) -> list[Vector]: ...
-
-class OpenAIEmbedder(Embedder):    # text-embedding-3-small, dim=1536, 대칭
-class UpstageEmbedder(Embedder):   # solar-embedding, dim=4096, query/passage 분리
+## 인터페이스 (Java, `com.lia.core.pipeline.index`)
+```java
+public interface Embedder {
+    int dim();
+    List<float[]> embed(List<String> texts, Mode mode);   // Mode = PASSAGE | QUERY
+}
+// 구현은 Spring AI EmbeddingModel 위임:
+//   OpenAI   text-embedding-3-small, dim=1536, 대칭(모드 무시)
+//   Upstage  solar-embedding, query/passage 분리 — OpenAI-호환 base-url 오버라이드
 ```
 
 ## 구조 결정 의도 (왜 이렇게)

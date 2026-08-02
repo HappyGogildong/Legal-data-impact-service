@@ -1,19 +1,21 @@
 ---
 title: 컴포넌트 상세 스펙 (역할·입출력·동작) + 계약 + 정합성 검증
 status: Draft
-version: 0.1
-date: 2026-06-25
-tags: [spec, components, contract, segment-schema, rest, consistency]
+version: 0.2
+date: 2026-08-02
+tags: [spec, components, contract, profile-schema, consistency]
 related:
-  - "architecture/v0.3-no-video-internal-mcp.md"
+  - "architecture/v0.8-pending-law-corpus.md"
   - "mvp/components-io-and-scope.md"
   - "prompts/analysis-prompt-spec.md"
   - "adr/decision-log.md"
 ---
 
-# 컴포넌트 상세 스펙 + 계약 + 정합성 검증 (v0.1 Draft)
+# 컴포넌트 상세 스펙 + 계약 + 정합성 검증 (v0.2 Draft)
 
-**관련:** [[components-io-and-scope|컴포넌트·MVP 범위]] · [[analysis-prompt-spec|프롬프트 정의서]] · [[v0.3-no-video-internal-mcp|아키텍처 v0.3]] · [[decision-log|결정 로그]]
+**관련:** [[components-io-and-scope|컴포넌트·MVP 범위]] · [[analysis-prompt-spec|프롬프트 정의서]] · [[v0.8-pending-law-corpus|아키텍처 v0.8]] · [[decision-log|결정 로그]]
+
+> **v0.1 → v0.2 (D41·D42·D44, 2026-08-02):** 분석 대상이 *의안* → **시행예정 법령**(§1.1 `Law` 신설, `Bill`은 post-MVP 보류), 개인화 입력이 *페르소나 세그먼트* → **자기신고 프로필**(§2), 파생 캐시가 `BillFacts` → **`LawFacts`**(§1.3). §3 계약은 Python↔Spring REST가 아니라 **내부 호출**이고(D35), §3.2 수집·해소 스키마는 법령 기준으로 다시 썼다.
 
 ## 0. 목적·범위·표기법
 
@@ -117,7 +119,7 @@ Article {
 ```
 
 > **`changed` 플래그가 LawDiff의 핵심이다.** 실측(주택법, 2026-08-04 시행): 조문단위 137개 중 `조문변경여부='Y'`는 **6개뿐**(제18·28·46·49·104·106조). 분석 대상을 137→6조문으로 줄이므로 토큰·정확도 양쪽에서 이득이다.
-> **`개정문` 정규식 파싱은 하지 말 것.** 같은 법안에서 정규식은 인용된 *타법* 조문번호(제15·27조)를 오탐하고 벌칙·과태료(제104·106조)를 누락했다. **플래그가 정답**이고 `개정문`은 사람이 읽을 근거 텍스트로만 쓴다.
+> **`개정문` 정규식 파싱은 하지 말 것.** 실측 법령에서 정규식은 인용된 *타법* 조문번호(제15·27조)를 오탐하고 벌칙·과태료(제104·106조)를 누락했다. **플래그가 정답**이고 `개정문`은 사람이 읽을 근거 텍스트로만 쓴다.
 > **`text` 조립 주의.** `조문내용`만 읽으면 본문이 비어 보인다 — 실측에서 제2조(정의)의 `조문내용`은 제목 줄뿐이고 실제 정의는 `항 → 호 → 목` 중첩에 있다. Normalizer가 재귀 병합해야 한다.
 
 ### 1.3 `LawFacts` — Layer A 파생 캐시 (MVP 유효)
@@ -176,14 +178,15 @@ Action { what: string, deadline: string, basis: string[] }
 **`revision` 산출 규칙 (캐시 무효화 키, 갭 4 확정):**
 ```
 revision = sha256( canonical(
-   title + summary + fullText
-   + articles[]{no,text,changeType}     // 분석 출력에 영향
-   + effectiveDate + stage + baselineLawId
+   title + amendReason + amendText + fullText
+   + articles[]{no,text,changed,changeType}   // 분석 출력에 영향
+   + effectiveDate + effectiveRule + promulgateNo + baselineLawId
 ) )[:16]
 ```
-- *분석 결과에 영향을 주는 필드만* 해시 대상. `sourceUrl`·`proposers` 등 행정 메타는 제외.
-- `stage`·`effectiveDate` 포함 이유: `ActionPlan`(기한)·`stage_info`가 의존.
-- 단계만 바뀌고 본문 동일하면 revision 변경 → 보수적 무효화(ActionPlan 재생성 필요). 본문 무변경 시 사실층(Layer A) 캐시는 `billNo+revision`이 같아 재사용 가능하나, 단계 변동은 revision을 바꾸므로 재실행됨(정확성 우선).
+- *분석 결과에 영향을 주는 필드만* 해시 대상. `sourceUrl`·소관부처 연락처 등 행정 메타는 제외.
+- `effectiveDate`·`effectiveRule` 포함 이유: `ActionPlan`(기한)이 의존한다.
+- `promulgateNo` 포함 이유: 부칙 필터 키라 이게 바뀌면 적용되는 부칙 자체가 달라진다.
+- 사실층(Layer A) 캐시는 `lawId@effectiveDate + revision` 이 같으면 재사용한다. 의안의 `stage`(심사 단계)는 대상이 아니다 — 공포된 법령엔 단계 변동이 없다(D42).
 - 최근 관측 시각(`lastSeen`)은 revision과 **별도** 필드로 두어 신선도만 추적(해시 비포함).
 
 ---
@@ -202,7 +205,7 @@ UserProfile {
   occupation: string?             // 직업군 대분류(사무·서비스·생산·전문·자영·농림어업·학생·무직)
   employmentType: enum("임금근로"|"자영업"|"프리랜서"|"무직·은퇴"|"학생")?
   householdType: enum("1인"|"부부"|"부부+자녀"|"한부모"|"기타")?
-  housingType: enum("자가"|"전세"|"월세"|"기타")?            // 주거 법안 영향에 직결
+  housingType: enum("자가"|"전세"|"월세"|"기타")?            // 주거 법령 영향에 직결
   regionSido: string?             // 17개 시도까지만 (시군구·상세주소 미수집)
   updatedAt: datetime
 }
@@ -213,7 +216,7 @@ Purpose = enum("생활·주거"|"세금·재정"|"근로·고용"|"사업·창�
 
 **`age`를 구간이 아닌 정수로 두는 이유:** 한국 법령의 적용 기준은 **특정 나이로 끊긴다** — 만 19세(성년·청약), 34세(청년 정책 상한), 65세(노인 복지) 등. `"19-29"` 같은 구간으로 뭉개면 *경계에 걸린 사용자에게 정반대 결론*을 줄 수 있다(19세와 29세는 적용 법령이 크게 다르다). `LawFacts.thresholds`(적용 기준: 금액·연령·규모)와 정확히 대조하려면 정수가 필요하다.
 
-**`purposes`가 개인화의 핵심 축이다** — 같은 30세 사무직이라도 *창업 준비 중*인지 *양육 중*인지에 따라 같은 법안에서 볼 조문이 달라진다. 고정 세그먼트로는 잡히지 않던 구분이다. (관심 도메인은 `purposes`와 중복돼 별도 필드로 두지 않는다.)
+**`purposes`가 개인화의 핵심 축이다** — 같은 30세 사무직이라도 *창업 준비 중*인지 *양육 중*인지에 따라 같은 법령에서 볼 조문이 달라진다. 고정 세그먼트로는 잡히지 않던 구분이다. (관심 도메인은 `purposes`와 중복돼 별도 필드로 두지 않는다.)
 
 ### 개인정보 최소 수집
 
@@ -234,7 +237,7 @@ Purpose = enum("생활·주거"|"세금·재정"|"근로·고용"|"사업·창�
 - 런타임은 `userId`로 **lookup**(벡터 RAG 아님). 주입 시 `userId`는 제외하고 **속성만** 직렬화.
 - **정량 인구통계 용도 금지** — 자기신고 표본이라 인구 대표성이 없다. ~~`population_weight`~~ 제거(Nemotron 분포 기반이었음); triage 인구 가중치는 별도 근거가 필요하다([[triage-policy]] §6 Open).
 
-> 도메인 특정 법안의 *기업/기관* 영향은 개인 프로필로 미충족 — 별도 엔티티 프로파일은 MVP 범위 밖(후속).
+> 도메인 특정 법령의 *기업/기관* 영향은 개인 프로필로 미충족 — 별도 엔티티 프로파일은 MVP 범위 밖(후속).
 
 ---
 
@@ -242,21 +245,23 @@ Purpose = enum("생활·주거"|"세금·재정"|"근로·고용"|"사업·창�
 
 > **D35:** 파이프라인이 Spring으로 통합되어 아래 REST 계약은 **내부 메서드 호출/DTO**로 승계된다(필드·오류 의미는 동일, `injected_source_ids` 포함). HTTP 스키마는 이력·참고용으로 보존.
 
-**경계:** Spring(#8)이 게이트 통과 후 정규화된 입력을 Python(#11)에 넘긴다. RAG 검색·프롬프트 빌드·foundation API 호출·구조화 응답은 Python이 수행. (MVP는 현행법 diff 생략/best-effort라 RAG 비중 낮음.)
+**경계:** 오케스트레이터(#8)가 해소 게이트를 통과한 입력을 Analysis Engine(#11)에 넘긴다. RAG 검색·프롬프트 빌드·foundation API 호출·구조화 응답은 #11이 수행한다. **같은 Spring 애플리케이션 안의 내부 호출**이며(D35), 아래 HTTP 표기는 필드·오류 의미를 보존하기 위한 이력 표기다.
 
 ### 3.1 분석 호출
 
 ```
-POST /internal/v1/analyze        (Python Analysis Engine)
+analyze(request)                 // 내부 호출(D35). 아래 HTTP 표기는 계약 서술용
 Content-Type: application/json
 ```
 
 요청:
 ```jsonc
 {
-  "command": "PersonaImpactCommand",         // 3종 중 1
-  "bill": { /* Bill 부분집합: billNo,title,stage,effectiveDate,articles[],fullText,revision */ },
-  "persona": { /* UserProfile 속성만 — userId 제외 */ } | null,  // Layer B만 non-null
+  "command": "PersonaImpactCommand",         // 4종 중 1
+  "law": { /* Law 부분집합: lawId,title,effectiveDate,effectiveRule,promulgateNo,
+              articles[](changed=true 만), amendText, addenda[], revision */ },
+  "baseline": { /* 같은 lawId 의 시행중본 — 변경 조문에 대응하는 현행 조문만 */ } | null,
+  "profile": { /* UserProfile 속성만 — userId 제외 */ } | null,  // Layer B만 non-null
   "options": {
     "prompt_version": "0.1",
     "layer": "B",                            // "A"|"B"
@@ -271,7 +276,7 @@ Content-Type: application/json
 {
   "status": "ok",
   "result": { /* ImpactResult (§1) */ },
-  "injected_source_ids": ["BILL:2210001:art:3", "..."]  // #12 인용 존재성 검증 입력
+  "injected_source_ids": ["LAW:001809@20260804:art:18", "LAW:001809:art:18", "..."]  // #12 검증 입력
 }
 ```
 
@@ -284,38 +289,44 @@ Content-Type: application/json
 | 503 | `upstream_error` | 모델 API 장애 | 백오프·서킷브레이커 |
 
 계약 규칙:
-- **요청 게이트는 Spring이 먼저** 수행(아래 §4 #8). Python은 방어적 재검증만.
-- 응답 `result`는 **항상 §1 ImpactResult 스키마**. 인용검증은 Python이 1차(엔진 내부)+Spring이 2차(#12) 수행.
-- 멱등/캐시 키: `command + bill.billNo + bill.revision + (profileHash|"-") + prompt_version` (Layer A는 프로필 제외).
+- **요청 게이트는 오케스트레이터(#8)가 먼저** 수행한다. Analysis Engine(#11)은 방어적 재검증만.
+- 응답 `result`는 **항상 §1 ImpactResult 스키마**. 인용검증은 엔진 내부 1차 + Verification Gate(#12) 2차.
+- 멱등/캐시 키: `command + law.lawId + law.effectiveDate + law.revision + (profileHash|"-") + prompt_version` (Layer A는 프로필 제외).
+  `effectiveDate` 를 넣는 이유: 같은 법령에 시행예정본이 복수일 수 있어 `lawId` 만으로는 캐시가 충돌한다(D43).
   `profileHash` = 주입 대상 프로필 속성의 정규화 해시 — **`userId`를 키에 쓰지 않는다**(동일 속성 사용자 간 캐시 재사용 + 개인 추적 방지, D41).
 
 ### 3.2 수집·해소 엔드포인트 (확정)
 
-**Ingest — `POST /internal/v1/ingest`** (SourceConnector 트리거, MVP는 배치)
+**Ingest — `POST /internal/v1/ingest`** (LawConnector 트리거, MVP는 배치)
 ```jsonc
-// 요청
-{ "source": "ASSEMBLY", "since": "2026-01-01", "billNo": null, "keyword": null }
+// 요청 — 시행일 범위로 시행예정 법령을 훑는다
+{ "source": "LAW", "efFrom": "2026-08-03", "efTo": "2027-08-03", "lawId": null }
 // 응답
-{ "status": "ok", "ingested": 42, "billNos": ["2210001", "..."] }
+{ "status": "ok", "ingested": 42, "lawIds": ["001809", "..."] }
 ```
 
 **Resolve — `POST /internal/v1/resolve`** (SourceAnalyzer) — 결과는 `resolution`(4상태), 모두 HTTP 200
 ```jsonc
-// 요청  (MVP: type ∈ billNo|title; url|text 는 501 NotImplemented)
-{ "type": "title", "value": "주택임대차보호법 일부개정법률안" }
+// 요청  (MVP: type ∈ lawName|text; url 은 501 NotImplemented)
+{ "type": "lawName", "value": "주택법" }
 
 // RESOLVED
-{ "resolution": "RESOLVED", "resolved": "2210001" }
-// AMBIGUOUS
-{ "resolution": "AMBIGUOUS", "candidates": [ { "billNo": "2210001", "title": "...", "score": 0.93 } ] }
-// NOT_FOUND_YET  (출처까지 질의했으나 없음 — 미등록/지연)
-{ "resolution": "NOT_FOUND_YET", "checkedSource": true, "message": "신뢰 출처에서 확인되지 않습니다(아직 발의 전이거나 미등록일 수 있음)." }
-// UNVERIFIED     (허위 의심; 유사 실제 법안 있으면 대조용으로 제시)
-{ "resolution": "UNVERIFIED", "similar": [ { "billNo": "2209888", "title": "...", "score": 0.41 } ], "message": "확인되지 않은 정보입니다." }
+{ "resolution": "RESOLVED", "resolved": { "lawId": "001809", "effectiveDate": "2026-08-04" } }
+// AMBIGUOUS — 같은 lawId 의 시행예정본 복수(D43): 어느 시행일 기준인지 되묻는다
+{ "resolution": "AMBIGUOUS",
+  "candidates": [ { "lawId": "010513", "title": "자본시장과 금융투자업에 관한 법률",
+                    "effectiveDate": "2026-10-01", "score": 0.99 },
+                  { "lawId": "010513", "title": "자본시장과 금융투자업에 관한 법률",
+                    "effectiveDate": "2026-11-13", "score": 0.99 } ],
+  "message": "같은 법령에 시행 예정인 개정이 여러 건입니다. 어느 시행일 기준으로 보시겠습니까?" }
+// NOT_FOUND_YET  (출처까지 질의했으나 없음 — 미공포/수집 지연/이미 시행 중)
+{ "resolution": "NOT_FOUND_YET", "checkedSource": true, "message": "신뢰 출처에서 확인되지 않습니다(아직 공포되지 않았거나, 이미 시행 중이어서 분석 대상이 아닐 수 있습니다)." }
+// UNVERIFIED     (허위 의심; 유사 실재 법령이 있으면 대조용으로 제시)
+{ "resolution": "UNVERIFIED", "similar": [], "message": "확인되지 않은 정보입니다." }
 ```
 - **4상태 모두 HTTP 200**(정상 해소 결과). 4xx/5xx는 §3.1 오류표(시스템 오류)와 별개.
 - `RESOLVED`만 분석으로 진행. `AMBIGUOUS`는 사용자 확인, `NOT_FOUND_YET`·`UNVERIFIED`는 분석 거부.
-- `url`/`text` 입력은 MVP에서 `501 not_implemented`(확장점 스텁).
+- `url` 입력은 MVP에서 `501 not_implemented`(확장점 스텁). `text`(모호 자연어)는 의미검색으로 처리.
 
 ### 3.3 모델·토큰 예산 (확정)
 
@@ -326,10 +337,10 @@ Content-Type: application/json
 | (대안) 비용 압박 시 추론 | Claude Sonnet 4.6 | `claude-sonnet-4-6` | 3 / 15 | — |
 | **임베딩(적재·검색)** | **외부 임베딩 API** (자체 호스팅 X) | 벤더 미확정(후보 아래) | ~0.02~0.13 / — | 분석용·탐색용 공유, **dim 1536** |
 
-- **임베딩 모델 = 외부 API 확정(자체 호스팅 제외).** 인프라 예산 없음 → API 호출. ① Python 파이프라인의 공유 `Embedder`가 RAG Indexer·Analysis Engine·SourceAnalyzer에 **동일 모델** 제공. 후보: OpenAI `text-embedding-3-small`(1536, 기본·최저가) / Upstage `solar-embedding`(한국어 특화, 4096) / Cohere·Voyage(1024) — 벤치 후 확정. **기본 1536차원**(ADR-001 가정과 일치 → 저장 결정 불변). 추론 모델(Opus)과 별개이며, **모델 변경 시 전 코퍼스 재색인** 필요. 데이터 민감도 낮음(공개 법령·합성 페르소나)이라 외부 API 적합.
+- **임베딩 모델 = 외부 API 확정(자체 호스팅 제외).** 인프라 예산 없음 → API 호출. ① 공유 `Embedder`(Spring AI `EmbeddingModel` 위임)가 RAG Indexer·Analysis Engine·SourceAnalyzer에 **동일 모델** 제공. 후보: OpenAI `text-embedding-3-small`(1536, 기본·최저가) / Upstage `solar-embedding`(한국어 특화, 4096) / Cohere·Voyage(1024) — 벤치 후 확정. **기본 1536차원**(ADR-001 가정과 일치 → 저장 결정 불변). 추론 모델(Opus)과 별개이며, **모델 변경 시 전 코퍼스 재색인** 필요. 데이터 민감도 낮음(공개 법령)이라 외부 API 적합 — 사용자 프로필은 임베딩 대상이 아니다.
 - **MVP 추론 기본 = Opus 4.8** (1M 컨텍스트, 128K 출력). 법적 정확도 우선. 모델 픽은 `prompt_version`/`meta`로 교체 가능.
 - **토큰 예산:** 입력 컨텍스트 상한 **~32K**(초과 시 §2 우선순위로 자르기), 출력 `max_tokens=4000`(구조화 JSON엔 충분, 스트리밍 불필요).
-- **프롬프트 캐싱:** 안정 프리픽스(시스템 가드레일 + Layer A 사실 블록)에 `cache_control` → 재호출 시 읽기 ~0.1×. 쓰기 1.25×(5분)/2×(1h). **Opus 4.8 최소 캐시 프리픽스 4096토큰** — 그보다 짧으면 캐시 미적용. 캐시 키 안정성 위해 시스템 프롬프트에 날짜·UUID 주입 금지(페르소나·법안은 프리픽스 뒤에 배치).
+- **프롬프트 캐싱:** 안정 프리픽스(시스템 가드레일 + Layer A 사실 블록)에 `cache_control` → 재호출 시 읽기 ~0.1×. 쓰기 1.25×(5분)/2×(1h). **Opus 4.8 최소 캐시 프리픽스 4096토큰** — 그보다 짧으면 캐시 미적용. 캐시 키 안정성 위해 시스템 프롬프트에 날짜·UUID 주입 금지(프로필·대상 법령은 프리픽스 뒤에 배치).
 
 ---
 
@@ -337,59 +348,60 @@ Content-Type: application/json
 
 각 항목: **역할 / 입력 / 출력 / 동작 / 의존 / 오류·엣지**.
 
-### #1 SourceConnector (Spring) — 3개 출처 (MVP)
-- 역할: 출처 OpenAPI 호출, 인증/페이징/필드명 차이 흡수.
+### #1 SourceConnector (Spring) — 국가법령정보 단일 (MVP, D42)
+- 역할: 출처 OpenAPI 호출, 인증/페이징/응답 기벽 흡수.
 - 구현체:
-  | 커넥터 | 출처 | 산출 | 용도 |
-  |---|---|---|---|
-  | `AssemblyConnector` | 열린국회정보 | `RawBill[]` | 의원발의 법안 |
-  | `MolegConnector` | 법제처 입법예고 | `RawBill[]` | 정부입법 법안 |
-  | `LawConnector` | 국가법령정보 | `RawLaw[]` | 현행법 기준선(diff·RAG) |
-- 입력: `{ since: date?, billNo?: string, keyword?: string }` (법안) / `{ lawId|lawName }` (현행법)
-- 출력: `RawBill[]` 또는 `RawLaw[]`(현행 조문)
-- 동작: API 호출 → 페이지 순회 → 매핑. 레이트리밋 준수. 법안 커넥터는 Normalizer로, `LawConnector`는 RAG Indexer/Bill Store(기준선)로.
-- 의존: 각 출처 API 키.
-- 오류: 키 만료/4xx → 로그+스킵, 5xx → 재시도.
-- **확장점:** `SourceConnector` 인터페이스 구현체 추가로 URL/뉴스·조례 등 확장(하류 무수정). *법제처 커넥터가 이 패턴의 MVP 내 실증 사례.*
+  | 커넥터 | 출처 | 산출 | 용도 | 상태 |
+  |---|---|---|---|---|
+  | `LawConnector` | 국가법령정보 `eflaw` | `RawLaw[]` | **시행예정 법령 = 분석 대상** | ✅ 구현 |
+  | `LawConnector` | 국가법령정보 `law` | `RawLaw` | 시행중 법령 = **diff 기준선** | ✅ 구현 |
+  | `MolegNoticeConnector` | 법제처 입법예고 | `RawBill[]` | 정부입법 의안 | post-MVP |
+  | `AssemblyBillsConnector` | 열린국회정보 | `RawBill[]` | 의원발의 의안(통과율 ~20%) | post-MVP |
+- 입력: `listPending(from,to,limit)` · `searchPending(query,from,to,limit)` · `fetchPending(mst,efYd)` · `fetchCurrent(lawId)`
+- 출력: `RawLaw[]` — `lawId·mst·title·status·시행일·공포일·공포번호` + 원본 블록(`법령 > {기본정보,조문,부칙,개정문,제개정이유}`)
+- 동작: API 호출 → 봉투 검사 → 페이지 순회 → 매핑. **연결키는 `법령ID`**(MST는 버전마다 다름).
+- 의존: `LAW_OC` 자격증명.
+- 오류: 인증 실패도 **HTTP 200 + `{"result":"사용자 정보 검증에 실패..."}`** 로 오므로 봉투 검사가 유일한 방어선. 5xx → 지수 백오프.
+- **확장점:** 의안 커넥터를 되살릴 때 `SourceConnector` 인터페이스를 복원한다(계약은 [[SourceConnector]] 에 보존). 하류 무수정.
 
 ### #2 SourceAnalyzer (Spring) — 입력 해소 + 해소 상태 판정
-- 역할: 사용자 입력 → 법안 ref 해소. **신뢰 출처에서 확인되지 않으면 해소 실패(fail-closed).** 기사·입력 *내용*을 사실로 받지 않고 "어떤 법안인가"만 식별(resolver).
-- 입력: `{ type: "billNo"|"title"(MVP) | "url"|"text"(스텁), value: string }`
+- 역할: 사용자 입력 → **시행예정 법령** ref 해소. **신뢰 출처에서 확인되지 않으면 해소 실패(fail-closed).** 기사·입력 *내용*을 사실로 받지 않고 "어떤 법령인가"만 식별(resolver).
+- 입력: `{ type: "lawName"|"text"(MVP) | "url"(스텁), value: string }`
 - 출력: `{ resolution: ResolutionState, ... }` — 아래 4상태.
 - 동작:
-  1. 엔티티 추출(의안번호/법안명/키워드/**주제·효과**). `url`은 본문 추출 후, `text`(모호 자연어)는 그대로.
-  2. Bill Store 검색(정확/퍼지).
-  3. 매칭 약하면 → **법안 의미검색**(Vector Index 법안 네임스페이스, LawFacts·요약 임베딩) → 후보 도출.
-  4. Store/출처 miss → **on-demand 신뢰 출처 질의** → 미등록(지연) vs 부재 판별.
-  5. 매칭 결과로 상태 판정. 모호 입력은 보통 `AMBIGUOUS`(후보 명확화).
-- 의존: Bill Store, **Vector Index(법안 탐색)**, (확장 시) SourceConnector.
+  1. 법령명 정확/퍼지 매칭 — `LawLookup` 포트 경유(토큰 유사도).
+  2. 매칭 약하면 → **의미검색**(Vector Index `pending` 네임스페이스, 요약·LawFacts 임베딩) → 후보 도출.
+  3. 상태 판정. 모호 입력은 보통 `AMBIGUOUS`(후보 명확화).
+  4. **의안번호 분기는 없다**(D42) — 법령에 의안번호가 없고 사용자가 법령ID(`001809`)를 입력하지도 않는다.
+- 의존: `LawLookup` 포트 → (현재) LawConnector · (예정) Law Store + Vector Index `pending` ns.
 
 **해소 상태 (ResolutionState):**
 
 | 상태 | 조건 | 다음 단계 |
 |---|---|---|
 | `RESOLVED` | 출처에서 정확히 1건 확인 | 분석 진행 |
-| `AMBIGUOUS` | 후보 2건 이상 | 사용자 확인 요청(후보 제시) |
-| `NOT_FOUND_YET` | 잘 형성된 식별자/법안명이나 출처에 없음 — *아직 발의 전 또는 수집 지연* | 분석 거부 + "확인되지 않음(미등록 가능)" 안내, (후속) 알림 등록 제안 |
-| `UNVERIFIED` | 신뢰할 매칭 없음, 또는 입력 주장이 원문과 불일치 — *허위 의심* | 분석 거부 + "확인 불가" 안내, 유사 실제 법안 있으면 대조 제시(팩트체크) |
+| `AMBIGUOUS` | 후보 2건 이상 — **같은 `법령ID`의 시행예정본 복수 포함**(D43) | 사용자 확인 요청. 같은 법령이면 *어느 시행일 기준인지* 되묻는다 |
+| `NOT_FOUND_YET` | 법령스러운 표현이나 출처에 없음 — *미공포 / 수집 지연 / 이미 시행 중* | 분석 거부 + 안내, (후속) 알림 등록 제안 |
+| `UNVERIFIED` | 신뢰할 매칭 없음, 또는 입력 주장이 원문과 불일치 — *허위 의심* | 분석 거부 + "확인 불가" 안내, 유사 실재 법령 있으면 대조 제시(팩트체크) |
 
-> **`NOT_FOUND_YET`(미등록·지연)와 `UNVERIFIED`(허위 의심)는 구분한다** — 사용자 안내 문구가 다르다(전자 "아직 없음/지연", 후자 "확인 불가"). 둘 다 분석은 거부(fail-closed) — 지어내지 않음. 판별: 입력이 *형식상 유효한 법안 식별자/명*이면 `NOT_FOUND_YET`, 신뢰할 엔티티가 안 잡히거나 주장이 원문과 모순이면 `UNVERIFIED`.
+> **`NOT_FOUND_YET`(미등록·지연)와 `UNVERIFIED`(허위 의심)는 구분한다** — 사용자 안내 문구가 다르다(전자 "아직 없음/지연", 후자 "확인 불가"). 둘 다 분석은 거부(fail-closed) — 지어내지 않음. 판별: 입력이 *법령스러운 표현*이면 `NOT_FOUND_YET`, 그렇지 않거나 주장이 원문과 모순이면 `UNVERIFIED`. **불변식은 `ResolutionResult` 생성자가 강제한다** — 미해소 상태에 결과가 딸려나가는 경로를 타입이 막는다.
 
 ### #3 Normalizer (Spring)
-- 역할: RawBill → 표준 `Bill`+`Article[]`.
-- 입력: `RawBill`
-- 출력: `Bill`
-- 동작: 필드 매핑, 조문 파싱(조/항/호 + 부칙), `changeType` 판정, `revision` 해시 계산.
+- 역할: `RawLaw` → 표준 `Law`+`Article[]`+`Addendum[]`. 출처 API의 기벽을 여기서 끝낸다(ACL 안쪽 절반).
+- 입력: `RawLaw` (본문 포함)
+- 출력: `Law`
+- 동작: 헤더 매핑 → **조문 조립(`조문내용` + `항→호→목` 재귀 병합)** → 변경 플래그(`changed`·`movedFrom/To`) 매핑 → **부칙 필터(`부칙공포번호 == promulgateNo`)** → 부칙 제1조에서 `effectiveRule`·`enforcementType` 추출 → 위임조항 감지 → `revision` 해시.
 - 의존: 없음.
-- 오류: 파싱 실패 조문 → `changeType:"없음"`+원문 보존, 결손 플래그.
+- 오류: 파싱 실패 조문 → `changeType:"없음"`+원문 보존, 결손 플래그(드롭 금지).
+- ⚠️ `조문내용`만 읽으면 본문이 빈다. 부칙은 이력 전체(실측 42개)가 오므로 필터 없이 쓰면 옛 경과조치를 이번 개정으로 오인한다. 상세: [[Normalizer]]
 
-### #4 Bill Store (RDB / Postgres+pgvector)
-- 역할: 법안 정본(`Bill`/`Article`) + `LawFacts`(Layer A 캐시) + `ImpactResult`(Layer B 캐시) + (선택) 벡터.
-- 입력/출력: Bill/Article/LawFacts/ImpactResult CRUD; 검색 쿼리→Bill[].
-- 동작: upsert(billNo 유니크). `LawFacts` 캐시 키=`billNo+revision`(페르소나 무관), `ImpactResult` 캐시 키=§3.1.
+### #4 Law Store (RDB / Postgres+pgvector)
+- 역할: 법령 정본(`Law`/`Article`/`Addendum`) + `LawFacts`(Layer A 캐시) + `ImpactResult`(Layer B 캐시) + 벡터.
+- 입력/출력: Law/Article/LawFacts/ImpactResult CRUD; 검색 쿼리→Law[].
+- 동작: upsert. **유니크 키는 `(lawId, effectiveDate)`** — `lawId` 단독은 안 된다. 같은 법령에 시행예정본이 복수일 수 있다(D43). `LawFacts` 캐시 키=`lawId@effectiveDate + revision`(프로필 무관), `ImpactResult` 캐시 키=§3.1(프로필 속성 해시 포함).
 - 의존: 없음.
 - 오류: 제약 위반 → upsert 충돌 해소.
-- **저장소 결정 영향:** `LawFacts`+확장 필드 추가는 [[ADR-001-knowledge-store-sizing|ADR-001]] **불변**(≈0.25GB, 헤드룸 내, 스키마 진화이지 사이징·기술 변경 아님).
+- **저장소 결정 영향:** [[ADR-001-knowledge-store-sizing|ADR-001]] **불변**이며 D42로 여유가 커졌다 — MVP 코퍼스가 *의안 5만 건 가정*에서 **시행예정 899건 실측**으로 줄었다. 부피 주축은 diff 기준선용 시행중 법령 본문(~0.4GB 추정) 안쪽.
 
 ### #7 User Profile Store
 - 역할: `UserProfile` 보관·조회 (자기신고, D41).
@@ -399,15 +411,15 @@ Content-Type: application/json
 - 의존: 없음 — 사용자가 직접 입력(외부 데이터셋 의존 제거).
 
 ### #8 AnalysisPipeline / Orchestrator (Spring)
-- 역할: 게이트 → 컨텍스트 조립 → Python 호출 → 검증 → 캐시.
-- 입력: `{ billRef, command, userId? }`
+- 역할: 게이트 → 컨텍스트 조립 → Analysis Engine 호출(내부) → 검증 → 캐시.
+- 입력: `{ lawRef, command, userId? }` — `lawRef = {lawId, effectiveDate}`
 - 출력: 검증된 `ImpactResult`.
 - 동작:
-  0. **해소 상태 게이트**: `RESOLVED`만 진행. `AMBIGUOUS`→사용자 확인 반환, `NOT_FOUND_YET`/`UNVERIFIED`→분석 거부 + 안내 문구 반환(분석 단계 미진입).
-  1. `supports/requirements` **게이트**: PersonaImpact/ActionPlan은 `userId`(프로필) 필수, 모든 분석은 Bill(#3·#4) 필수. 미충족 시 즉시 거부.
-  2. Bill(RDB) + UserProfile(Store) 로드 → §3.1 요청 구성.
+  0. **해소 상태 게이트**: `ResolutionResult.analyzable()`(= `RESOLVED`)만 진행. `AMBIGUOUS`→사용자 확인 반환, `NOT_FOUND_YET`/`UNVERIFIED`→분석 거부 + 안내 문구 반환(분석 단계 미진입).
+  1. `supports/requirements` **게이트**: PersonaImpact/ActionPlan은 `userId`(프로필) 필수, 모든 분석은 Law(#3·#4) 필수. 미충족 시 즉시 거부.
+  2. Law + **변경 조문 + 기준선 조문** + UserProfile 로드 → §3.1 요청 구성.
   3. 캐시 조회(키) → 히트면 반환.
-  4. Python `/analyze` 호출.
+  4. Analysis Engine `analyze()` **내부 호출**(D35로 REST 소멸).
   5. **Verification Gate(#12)** 통과분만 캐시·반환, 실패 시 폴백.
 - 의존: #4, #7, #11, #12, Command Registry.
 - 오류: §3.1 오류표 처리.
@@ -420,19 +432,19 @@ Content-Type: application/json
 각 커맨드 = `name() / supports() / requirements() / 출력 핵심필드`.
 | 커맨드 | requirements | layer | 출력 핵심 |
 |---|---|---|---|
-| `ImpactSummaryCommand` | Bill | A→B경계 | summary, claims |
+| `ImpactSummaryCommand` | Law + `제개정이유` | A | summary, claims |
 | `LawDiffCommand` | Law(변경조문) + baseline(같은 법령ID 시행중본) + 개정문·부칙 | A | claims(조문별 현행→개정), 시행일, impacts |
-| `PersonaImpactCommand` | Bill, segment | B | affected_segments, impacts |
-| `ActionPlanCommand` | Bill, segment | B | actions(deadline,basis) |
+| `PersonaImpactCommand` | Law(변경조문) + LawFacts + **UserProfile** | B | impacts |
+| `ActionPlanCommand` | Law + 부칙(시행일) + **UserProfile** | B | actions(deadline, basis) |
 
 ### #11 Analysis Engine (Spring · Spring AI)
-- 역할: 현행법 **RAG 검색**(MVP 활성) + 프롬프트 빌드 + **foundation API 호출** + 1차 인용검증.
+- 역할: **시행중 법령 RAG 검색**(MVP 활성) + 프롬프트 빌드 + **foundation API 호출** + 1차 인용검증.
 - 입력: §3.1 요청.
 - 출력: §3.1 응답(ImpactResult 또는 오류).
 - 동작: source_id 부여 → 프롬프트 정의서 §3 템플릿 조립 → API 호출(constrained JSON) → 스키마·인용 존재성 1차 검증 → 실패 시 재생성(≤N).
 - 의존: foundation 모델 API.
 
-### #12 Verification Gate (Spring/Py)
+### #12 Verification Gate (Spring)
 - 역할: 최종 응답 게이트.
 - 입력: `ImpactResult` + 주입 source_id 집합.
 - 출력: 통과 `ImpactResult` | "근거 부족" 폴백.
@@ -442,13 +454,13 @@ Content-Type: application/json
 - 역할: 검색·선택·결과 표시.
 - 입력: 사용자 액션.
 - 출력: Spring REST 호출 + 렌더(요약/내 영향/대응안 + 인용 표시).
-- 동작: 검색→법안 선택→(프로필 기반)4종 호출→결과·인용·면책 표시. 프로필 미설정 시 안내 후 입력 유도.
+- 동작: 검색→**법령 선택(시행일 포함)**→(프로필 기반)4종 호출→결과·인용·**시행일**·면책 표시. 프로필 미설정 시 안내 후 입력 유도. 같은 법령에 시행예정본이 여럿이면 시행일 선택 UI 필요(D43).
 
 ### #15 Evaluation Harness (오프라인/CI)
 - 역할: 합성 페르소나 패널로 E2E smoke·회귀(구동·정성), 정답판정 금지.
-- 입력: 세그먼트 패널 + 법안셋 + `prompt_version`.
+- 입력: 프로필 패널 + 법령셋 + `prompt_version`.
 - 출력: smoke 결과 + UX 비평 + 커버리지 리포트.
-- 동작: 세그먼트별 에이전트가 실제 REST 흐름 호출 → 스키마/인용 누락·UX 이슈 수집. 정답 앵커는 규칙검증+사람 골든셋.
+- 동작: 프로필별 에이전트가 실제 REST 흐름 호출 → 스키마/인용 누락·UX 이슈 수집. 정답 앵커는 규칙검증+사람 골든셋. **post-MVP 이연(D36)**.
 
 ---
 
@@ -458,12 +470,12 @@ happy-path를 따라 **생산자 출력 ⊇ 소비자 입력 요건**을 점검�
 
 | 단계 | 생산자 → 소비자 | 전달 객체 | 정합성 |
 |---|---|---|---|
-| 1 | #1 → #3 | RawBill | ✅ Normalizer 입력=RawBill |
-| 2 | #3 → #4 | Bill(+Article,revision) | ✅ Store 스키마=공통모델 §1 |
-| 3 | #13 → #2 | `{type,value}` | ✅ MVP는 billNo/title만 활성 |
-| 4 | #2 → #8 | `resolution`(4상태) | ✅ `RESOLVED`만 billRef로 진행; 그 외는 게이트에서 안내·거부 |
-| 5 | #8 게이트 | command별 requirements | ✅ §4#10 표와 일치(persona 필수성) |
-| 6 | #4,#7 → #8 → #11 | §3.1 요청(Bill+persona+options) | ✅ persona=UserProfile 속성(userId 제외, D41) |
+| 1 | #1 → #3 | `RawLaw`(본문 포함) | ✅ Normalizer 입력=RawLaw. 본문 갭(D38) 해소됨 |
+| 2 | #3 → #4 | `Law`(+Article, Addendum, revision) | ✅ Store 스키마=공통모델 §1.1. 유니크 키 `(lawId, effectiveDate)` |
+| 3 | #13 → #2 | `{type,value}` | ✅ MVP는 lawName/text 활성, url은 스텁 |
+| 4 | #2 → #8 | `ResolutionResult`(4상태) | ✅ `analyzable()`만 `lawRef`로 진행; 불변식은 생성자가 강제 |
+| 5 | #8 게이트 | command별 requirements | ✅ §4#10 표와 일치(프로필 필수성) |
+| 6 | #4,#7 → #8 → #11 | §3.1 요청(Law+baseline+profile+options) | ✅ profile=UserProfile 속성(userId 제외, D41) |
 | 7 | #11 → #12 | §3.1 응답(ImpactResult) | ✅ 스키마=§1=프롬프트 정의서 §4 |
 | 8 | #12 → #4 → #13 | 검증된 ImpactResult | ✅ 캐시 키=§3.1 키 |
 | 9 | #15 → REST | 동일 경로 재사용 | ✅ 런타임과 같은 계약 |
@@ -471,17 +483,18 @@ happy-path를 따라 **생산자 출력 ⊇ 소비자 입력 요건**을 점검�
 **교차 문서 일관성 점검**
 - source_id 형식: 공통모델 §1 = 프롬프트 정의서 §2 ✅
 - ImpactResult 필드: 공통모델 §1 = 프롬프트 정의서 §4 ✅
-- 커맨드 3종·requirements: §4#10 = [[components-io-and-scope]] §4 = [[decision-log]] D13 ✅
-- persona 비인용 격리: §2 = 프롬프트 정의서 §3 = D10 ✅
-- 캐시 키(Layer A persona 제외): §3.1 = 프롬프트 정의서 §2 ✅
+- 커맨드 4종·requirements: §4#10 = [[components-io-and-scope]] §4 = [[decision-log]] D25 ✅
+- 프로필 비인용 격리: §2 = 프롬프트 정의서 §3 = D10(D41로 승계) ✅
+- 캐시 키(Layer A 프로필 제외): §3.1 = 프롬프트 정의서 §2 ✅
 
 **발견된 갭 / 개발 전 닫을 것**
 1. **현행법 diff 처리 수준 (확정·MVP 포함 / D42로 단순화):** MVP에 `LawDiff` 포함. ~~신구조문대비표를 1차 diff로~~ **폐기** — 같은 `lawId`의 **시행중본(`target=law&ID=`) ↔ 시행예정본(`target=eflaw&MST=`)** 이 동일 스키마로 조문 전문을 주므로 직접 대조한다. 대상 조문은 `조문변경여부='Y'`가 지목하고(주택법 137개 중 6개), 자구 변경 근거는 `개정문`, 시행 시점은 `부칙`이 제공한다. **조문 정렬(alignment) 과제도 함께 소멸**(조문번호가 곧 정렬키). 남은 것은 시행예정본이 복수일 때의 기준 시점(**D43**).
-2. **resolve/ingest 스키마 미확정** — §3.2는 후속(§6 Open). MVP 검색 경로엔 영향 없음.
+2. ~~resolve/ingest 스키마 미확정~~ — **닫힘**: §3.2에 법령 기준으로 확정(D42).
 3. ~~인용 존재성 검증의 source_id 집합 전달~~ — **닫힘**: §3.1 응답에 `injected_source_ids: string[]` 추가, #12가 이를 검증 입력으로 사용.
-4. **revision 산출 규칙** — 단계변동만? 본문변동 포함? 캐시 정확성 좌우 → 규칙 명문화 필요.
+4. ~~revision 산출 규칙~~ — **닫힘**: §1 에 명문화(분석영향 필드 해시).
+5. **시행예정본 복수 시 기준 시점(D43)** — 해소는 `AMBIGUOUS`로 되묻고, Store 유니크 키에 `effectiveDate`를 포함해 데이터 수준에서는 이미 구분된다. 남은 것은 *기본값 정책*(가장 이른 시행일? 사용자 선택 강제?).
 
-**결론:** 갭 3은 본 문서에서 닫았다. 남은 갭 2·4(스키마 보강, 소규모)와 갭 1(정확도 면책의 *정책 결정*)을 처리하면 **스펙대로 구현 시 happy-path E2E 동작이 보장**된다. 갭 1은 동작 자체를 막지 않는다.
+**결론:** 갭 1~4는 닫혔다. 남은 것은 **갭 5(D43 기본값 정책)** 하나이며, `AMBIGUOUS`로 되묻는 경로가 이미 있어 동작을 막지 않는다. 스펙대로 구현 시 happy-path E2E 동작이 보장된다.
 
 ---
 
@@ -490,11 +503,12 @@ happy-path를 따라 **생산자 출력 ⊇ 소비자 입력 요건**을 점검�
 - [x] §3.1 응답에 `injected_source_ids` 추가(정합성 갭 3)
 - [x] `revision` 산출 규칙(갭 4) → §1 확정
 - [x] resolve/ingest 엔드포인트 스키마 → §3.2 확정
-- [x] 세그먼트 군집 개수·기준 → §2 확정(6개)
+- [x] ~~세그먼트 군집 개수·기준~~ → **폐기(D41)**. 자기신고 `UserProfile`로 대체 → §2
 - [x] foundation 모델 픽 + 토큰 예산 → §3.3 확정(Opus 4.8)
 - [x] 임베딩 모델 배치 → §3.3 **외부 API 확정**(자체 호스팅 제외, dim 1536), 벤더는 벤치 후
 - [x] 현행법 diff MVP 처리 수준 → §5 갭1 **MVP 포함**(시행중본↔시행예정본 직접 대조, D42)
 - [x] 조문 정렬(alignment) → **해소(D42)** — 동일 스키마·동일 조문번호
-- [ ] 시행예정본이 복수인 법령의 diff 기준 시점 (**D43**)
+- [x] resolve 응답의 법령 식별자 형식 → §3.2 확정(`{lawId, effectiveDate}`)
+- [ ] 시행예정본이 복수인 법령의 **기본 기준 시점** (**D43**) — 해소는 되묻기로 처리 중
 
 > 남은 작업은 대부분 *구현*. 본 스펙대로 개발 시 happy-path E2E 동작 보장.
