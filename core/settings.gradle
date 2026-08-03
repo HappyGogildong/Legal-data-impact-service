@@ -1,0 +1,7 @@
+// 툴체인 자동 프로비저닝 — JDK 21 이 없는 환경에서도 Gradle 이 받아온다.
+// (없으면 "No matching toolchains found" 로 빌드가 막힌다)
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'lia-core'

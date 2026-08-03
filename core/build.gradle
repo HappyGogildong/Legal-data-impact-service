@@ -8,7 +8,13 @@ plugins {
 
 group = 'com.lia'
 version = '0.2.0'
-java { sourceCompatibility = '21' }                          // Boot 4 baseline = Java 21
+// Boot 4.0 최소는 Java 17이지만 최신 LTS 사용을 권장한다 → Java 21 LTS 고정.
+// sourceCompatibility 대신 toolchain 을 쓰는 이유: 전자는 *source 레벨*만 낮출 뿐
+// 컴파일러가 상위 JDK API 에 링크하는 것을 막지 못해, JDK 21 런타임에서
+// NoSuchMethodError 가 나는 클래스가 만들어질 수 있다. toolchain 은 JDK 자체를 고정한다.
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+}
 
 repositories { mavenCentral() }
 

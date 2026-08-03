@@ -22,7 +22,7 @@ related:
 | Spring Boot | 3.3.0 | **4.0.x** (2025-11 GA) |
 | Spring Framework | 6.1.x | **7.x** |
 | Spring AI | (미사용) | **2.0.x** (2026-05-28 GA) |
-| Java | 21 | 21 (baseline 그대로 ✓) |
+| Java | 21 | **21 LTS** (toolchain 고정) |
 
 > **호환성 핵심:** Spring AI 2.0은 **Boot 4.0 전용**이다 — 3.x 컨텍스트에서 로드되지 않으므로 "Boot 3.5 + Spring AI 1.1.x" 또는 "Boot 4.0 + Spring AI 2.0" 두 조합만 유효하다. 우리는 후자.
 
@@ -30,7 +30,7 @@ related:
 
 | 변경 | 내용 | 우리 영향 |
 |---|---|---|
-| **Java 21 baseline** | 최소 Java 21 | 없음(이미 21) |
+| ~~Java 21 baseline~~ **정정** | **최소는 Java 17** — Boot 3.x와 동일하고 4.0에서 올라가지 않았다. 다만 공식 문서가 *최신 LTS 사용*을 권한다(4.1 기준 Java 26까지 호환) | 우리는 **Java 21 LTS 고정**. `sourceCompatibility` 가 아니라 **toolchain** 으로 JDK 자체를 고정한다 — source 레벨만 낮추면 상위 JDK API 링크를 못 막아 런타임 `NoSuchMethodError` 위험 |
 | **Framework 7 + Jakarta EE 11** | 코어 세대 교체 | 신규 코드라 무풍 |
 | **Jackson 2 → 3** | 패키지 `com.fasterxml.jackson` → `tools.jackson`, 날짜 직렬화·필드 순서 기본값 변경 | ⚠️ **주의 1순위** — 구조화 JSON(ImpactResult) 직렬화 코드·테스트는 처음부터 Jackson 3 기준으로 |
 | **JSpecify null-safety** | `org.springframework.lang.@Nullable` 제거 → `org.jspecify.annotations` | 신규 코드에서 JSpecify 사용 |
