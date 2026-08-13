@@ -8,12 +8,13 @@ related:
   - "mvp/components-io-and-scope.md"
   - "components/component-specs.md"
   - "prompts/analysis-prompt-spec.md"
-  - "architecture/v0.8-pending-law-corpus.md"
+  - "architecture/v0.9-nl-query-planner.md"
+  - "components/QueryPlanner.md"
 ---
 
 # 서비스 기능·공개 API 명세 (MVP)
 
-**관련:** [[components-io-and-scope|컴포넌트·범위]] · [[component-specs|컴포넌트 스펙]] · [[analysis-prompt-spec|프롬프트 정의서]] · [[v0.8-pending-law-corpus|아키텍처 v0.8]]
+**관련:** [[components-io-and-scope|컴포넌트·범위]] · [[component-specs|컴포넌트 스펙]] · [[analysis-prompt-spec|프롬프트 정의서]] · [[v0.9-nl-query-planner|아키텍처 v0.9]] · [[QueryPlanner|Query Planner]]
 
 이 문서는 **웹앱(및 향후 클라이언트)이 호출하는 공개 REST API `/api/v1/*`** 와 그것이 제공하는 **사용자 기능**을 한곳에 고정한다.
 
@@ -23,7 +24,7 @@ related:
 
 ## 1. 서비스가 제공하는 기능
 
-**사용자는 자연어로 자유롭게 묻는다** — "주택법 바뀌면 나 전세 계약 어떻게 돼?". 시스템은 이 질문에 대한 답을 **네 차원으로 구조화**하고, **각 차원마다 조문 인용을 강제**한다. 아래 넷은 *사용자가 고르는 버튼*이 아니라 **답변의 구조이자 그라운딩 가드레일**이다.
+**사용자는 자연어로 자유롭게 묻는다** — "주택법 바뀌면 나 전세 계약 어떻게 돼?". 시스템은 이 질문을 **타입으로 분류**하고 답을 **차원으로 구조화**하며, **각 차원마다 조문 인용을 강제**한다. 아래 넷은 *사용자가 고르는 버튼*이 아니라 **답변의 구조이자 그라운딩 가드레일**이다.
 
 | # | 차원 | 대응하는 질문 | 커맨드(내부) | 계층 | 프로필 |
 |---|---|---|---|---|---|
@@ -31,10 +32,13 @@ related:
 | F2 | **무엇이 바뀌나** | "현행법 대비 뭐가 달라져?" | `LawDiff` | A | 불필요 |
 | F3 | **내게 미치는 영향** | "그래서 나한테 무슨 상관인데?" | `PersonaImpact` | B | **필요** |
 | F4 | **대응 행동** | "그럼 나 뭘 해야 해? 언제까지?" | `ActionPlan` | B | **필요** |
+| F0 | **법령 발견(검색)** | "나한테 영향 있을 법령 찾아줘" | `LOOKUP` | 발견 | 조건부 |
 
+> F0(**`LOOKUP`**, D46)은 특정 법령을 모른 채 *코퍼스에서 찾는* 동작이다 — 나머지 넷과 달리 답변 차원이 아니라 **발견**이며, 프로필/도메인/조건으로 `pending` 네임스페이스를 검색한다. "찾아서 분석해줘"면 발견 후 top-K를 분석으로 팬아웃한다.
+>
 > **커맨드 = 내부 분해, 사용자 선택 아님.** 4종은 여전히 `AnalysisCommand`(개방-폐쇄, Layer A/B 구분)로 구현되지만, *사용자가 토글하는 모드*가 아니라 **플래너가 질문에서 골라내는 내부 단위**다. "무엇이 바뀌었는지만 알려줘"는 F2만, 포괄 질문은 넷 다 돌 수 있다. 각 커맨드는 인용 없는 주장을 차단하는 **가드레일**이기도 하다(D08).
 >
-> **플래너(질의 → 차원 선택)는 아직 미구현 컴포넌트다** — §5 Open. 자연어 질의 모델이 새로 요구하는 단계이며, 클라이언트가 커맨드를 지정하던 기존 전제를 대체한다.
+> **플래너(질의 → 타입 선택)는 [[QueryPlanner|Query Planner]]로 설계 확정**(D46). 자연어를 타입 DTO(`AnalysisQuery`)로 번역하고 타입이 dispatch를 결정한다 — 클라이언트가 커맨드를 지정하던 기존 전제를 대체한다.
 
 이를 둘러싼 지원 기능:
 
@@ -95,10 +99,11 @@ BASE  /api/v1
 }
 ```
 
-**처리 순서**(온라인 경로, [[v0.8-pending-law-corpus]] §3.2):
-1. **해소** — `lawRef` 있으면 사용, 없으면 `query`에서 법령을 해소(4상태, fail-closed).
-2. **플래닝** — `scope` 없으면 질문에서 필요한 차원(F1~F4)을 고른다. Layer B 차원은 인증·프로필이 있을 때만.
-3. **조립·추론·검증** — Layer A(선계산 사실·diff) + 프로필 → 커맨드 실행 → 인용검증 게이트.
+**처리 순서**(온라인 경로, [[v0.9-nl-query-planner]] §3.2 · [[QueryPlanner]]):
+1. **번역** — `QueryTranslator`(Haiku)가 자연어를 `AnalysisQuery`(타입 집합·엔티티·target)로. `scope`/`lawRef`가 오면 힌트로 병합.
+2. **해소/발견** — target이 `Reference`면 해소(4상태, fail-closed), `Discovery`(LOOKUP)면 `pending` ns 코퍼스 검색.
+3. **플래닝** — 프로필 없으면 Layer B 타입 제거(`unmet`). 검증된 `AnalysisQuery` 확정.
+4. **디스패치·검증** — 타입별 핸들러(Layer A=캐시 조회, Layer B=RAG+Opus) → 인용검증 게이트. Discovery+분석은 top-K 팬아웃.
 
 **RESOLVED 응답** — 해소되고 분석까지 성공:
 ```jsonc
@@ -299,7 +304,8 @@ GET /api/v1/laws/001809/2026-08-04
 
 ## 5. Open
 
-- [ ] **Query Planner 컴포넌트 신설** — 자연어 질의 → (해소된 법령, 실행할 차원 F1~F4) 매핑. 자연어 질의 모델이 새로 요구하는 단계로, 기존에 클라이언트가 커맨드를 지정하던 전제를 대체한다. 명시적 규칙+경량 분류로 구현(D37 준수, 에이전트 아님). [[component-specs]]에 컴포넌트로 추가 필요
+- [x] **Query Planner 설계 확정(D46)** — 자연어 → `AnalysisQuery`(타입 DTO) → dispatch. 5 QueryType(LOOKUP 포함), Reference/Discovery target. 상세 [[QueryPlanner]]
+- [ ] LOOKUP 팬아웃 정책 — top-K 자동 분석 vs 후보만 반환 후 사용자 선택
 - [ ] 인증 방식 확정(세션 쿠키 vs Bearer 토큰) — 웹 구현 단계
 - [ ] `AMBIGUOUS` 시행일 복수(D43)의 **기본 선택 정책**(가장 이른 시행일 자동 vs 선택 강제)
 - [ ] 부분 성공(`unmet` 차원) 렌더링 규약 — 웹 UX

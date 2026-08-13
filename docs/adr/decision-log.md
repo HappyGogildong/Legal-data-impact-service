@@ -71,6 +71,9 @@ related:
 
 | D45 | **공개 API 표면 고정 — 분석 중심 구조** — `POST /api/v1/analyses`(자연어 질의)가 상위 리소스, `/laws/*`(검색·목록·사실)는 그것이 참조하는 **읽기 전용 데이터**. 분석을 law 하위에 두지 않는다(사용자는 lawId를 모른 채 질문). 4종 커맨드는 *사용자 선택 모드가 아니라 답변 구조·그라운딩 가드레일*이고 **Query Planner**(질의→차원)가 고른다. 시행일을 경로에 포함(`/laws/{lawId}/{efYd}`, D43), 해소 4상태는 HTTP 200, 프로필 없으면 부분성공(`unmet`) | 확정 | `/api/v1/...` 가 6개 문서에서 언급만 되고 정의된 적 없었다. 초안은 `/laws/{id}/analysis` 로 분석을 법령 하위에 뒀으나, 이는 '검색→선택→분석' 브라우징 흐름을 API에 박아 **자연어 자유 질의**를 배제한다. 분석이 상위 리소스이고 법령은 그 입력이라는 것이 올바른 구조. Query Planner 는 자연어 질의 모델이 새로 요구하는 미구현 컴포넌트 | [[service-api-spec]] |
 
+| D46 | **Query Planner = ORM-like NL→DTO→dispatch** — 자연어를 `AnalysisQuery`(타입 DTO)로 번역(Haiku), 타입이 검색·실행 전략 결정. QueryType **5종**: `LOOKUP`(발견)+`SUMMARY`·`DIFF`(Layer A)+`IMPACT`·`ACTION`(Layer B). Target 2형: `Reference`(해소)·`Discovery`(코퍼스 검색). 주 타입 1+집합, 자유도 보존 | 확정 | D45가 남긴 Query Planner 공백 해소. **자연어 입력 ≠ 동적 제어** — 번역기가 타입 객체를 뱉으면 이후 경로는 고정이라 결정성·캐시·인용 감사 보존(D37 *강화*, 에이전트 아님). 타입이 검색 전략을 골라 LOOKUP·SUMMARY·DIFF는 캐시/no-RAG(비용 레버). LOOKUP은 '찾아줘' 검색 동작을 대응 | [[QueryPlanner]], [[v0.9-nl-query-planner]] |
+| D47 | **아키텍처 v0.9** — 온라인 경로를 자연어 질의 중심으로(Query Planner 신설). 옛 `AnalysisPipeline`+`CommandRegistry`→`QueryDispatcher`, `AnalysisCommand`→`DimensionHandler` | 확정 | 커맨드가 *사용자 선택 모드*가 아니라 답변 구조·그라운딩 가드레일임을 구조에 반영 | [[v0.9-nl-query-planner]] |
+
 > **D37 재검토 트리거:** ① 대형 옴니버스 법안의 map-reduce + Generator-Critic이 3단 이상 *동적* 분기로 확장 ② 멀티턴 대화형 탐색(상태 지속·중단 재개) 도입. 그때도 `AnalysisEngine` 인터페이스 뒤에 격리해 도입 가능하므로 본 결정은 가역적(JVM 대안: LangGraph4j·Embabel).
 
 ---

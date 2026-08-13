@@ -189,6 +189,29 @@ revision = sha256( canonical(
 - 사실층(Layer A) 캐시는 `lawId@effectiveDate + revision` 이 같으면 재사용한다. 의안의 `stage`(심사 단계)는 대상이 아니다 — 공포된 법령엔 단계 변동이 없다(D42).
 - 최근 관측 시각(`lastSeen`)은 revision과 **별도** 필드로 두어 신선도만 추적(해시 비포함).
 
+### 1.4 `QueryType` · `AnalysisQuery` — 자연어 질의 표현 (D46)
+
+자연어 질의를 실행 가능한 타입 DTO로 표현한다. **상세·시나리오는 [[QueryPlanner]]**, 여기선 계약만.
+
+```ts
+QueryType = enum("LOOKUP"|"SUMMARY"|"DIFF"|"IMPACT"|"ACTION")   // LOOKUP=발견, 나머지=분석 차원
+Target    = Reference(LawRef) | Discovery(DiscoveryCriteria)     // sealed
+
+AnalysisQuery {                    // QueryTranslator(Haiku)가 번역, QueryPlanner가 검증
+  primaryType: QueryType           // FE 주 뷰·주 검색
+  types: QueryType[]               // 채울 차원(포괄질문=복수)
+  target: Target
+  entities: { lawName?, articleNo?, keywords[], conditions[], domains[] }
+  intentSummary: string
+  filters: { articleScope: enum("CHANGED_ONLY"|"ALL") }
+  profileBound: boolean            // Layer B(IMPACT/ACTION) 채울 수 있는지
+  options: { language, promptVersion }
+}
+```
+
+- **번역이 유일한 LLM 자유도.** 이후 dispatch는 결정론(D46, D37 강화). 자연어 입력 ≠ 동적 제어.
+- `Reference` 미해소·`Discovery` 무결과 모두 fail-closed — 지어내지 않는다.
+
 ---
 
 ## 2. 계약 A — 사용자 프로필 (User Profile · 자기신고)
@@ -410,32 +433,34 @@ Content-Type: application/json
 - 동작: 키 lookup. 자유텍스트 매칭 시 임베딩 최근접(선택).
 - 의존: 없음 — 사용자가 직접 입력(외부 데이터셋 의존 제거).
 
-### #8 AnalysisPipeline / Orchestrator (Spring)
-- 역할: 게이트 → 컨텍스트 조립 → Analysis Engine 호출(내부) → 검증 → 캐시.
-- 입력: `{ lawRef, command, userId? }` — `lawRef = {lawId, effectiveDate}`
-- 출력: 검증된 `ImpactResult`.
+### #7b Query Planner (Spring) — 자연어 → `AnalysisQuery` (D46)
+- 역할: 자연어 질의를 타입 DTO로 번역·검증. **상세·시나리오 [[QueryPlanner]]**.
+- 구성: `QueryTranslator`(Haiku, NL→DTO) → `QueryPlanner`(해소/발견 결정·프로필 게이트) → `QueryDispatcher`(타입별 라우팅).
+- 입력: `{ query, lawRef?, scope? }` → 출력: `PlanResult = Planned(AnalysisQuery) | Unresolved(ResolutionResult)`.
+- 의존: `ChatClient`(Haiku), #2 SourceAnalyzer(Reference 해소), LawDiscovery(Discovery 검색, 후속).
+
+### #8 QueryDispatcher / Orchestrator (Spring)  *(옛 AnalysisPipeline 승계, D47)*
+- 역할: 검증된 `AnalysisQuery`를 **QueryType별 핸들러로 라우팅**·조립 → 검증 → 캐시.
+- 입력: `AnalysisQuery` (해소·발견 완료). 출력: 타입별 결과 묶음.
 - 동작:
-  0. **해소 상태 게이트**: `ResolutionResult.analyzable()`(= `RESOLVED`)만 진행. `AMBIGUOUS`→사용자 확인 반환, `NOT_FOUND_YET`/`UNVERIFIED`→분석 거부 + 안내 문구 반환(분석 단계 미진입).
-  1. `supports/requirements` **게이트**: PersonaImpact/ActionPlan은 `userId`(프로필) 필수, 모든 분석은 Law(#3·#4) 필수. 미충족 시 즉시 거부.
-  2. Law + **변경 조문 + 기준선 조문** + UserProfile 로드 → §3.1 요청 구성.
-  3. 캐시 조회(키) → 히트면 반환.
-  4. Analysis Engine `analyze()` **내부 호출**(D35로 REST 소멸).
-  5. **Verification Gate(#12)** 통과분만 캐시·반환, 실패 시 폴백.
-- 의존: #4, #7, #11, #12, Command Registry.
-- 오류: §3.1 오류표 처리.
+  1. `types` 순회 — Layer A(SUMMARY·DIFF)=선계산 캐시 조회, Layer B(IMPACT·ACTION)=Analysis Engine(#11) RAG+LLM.
+  2. `Target.Discovery`면 검색 후보 top-K에 분석 타입 **팬아웃**.
+  3. 캐시 키(프로필 해시 + law_ref + 타입) 조회 → 히트면 반환.
+  4. **Verification Gate(#12)** 통과분만. 근거 부족 차원은 `unmet`으로 부분성공.
+- 의존: #4, #7, #7b, #11, #12, `DimensionHandler` 레지스트리.
 
-### #9 Command Registry (Spring)
-- 역할: `AnalysisCommand` 구현체 자동 발견(`@Component`).
-- 출력: `name → AnalysisCommand`.
+### #9 DimensionHandler Registry (Spring)  *(옛 Command Registry 승계)*
+- 역할: `DimensionHandler` 구현체 자동 발견(`@Component`) → `QueryType → Handler`.
 
-### #10 AnalysisCommand ×4 (Spring)
-각 커맨드 = `name() / supports() / requirements() / 출력 핵심필드`.
-| 커맨드 | requirements | layer | 출력 핵심 |
+### #10 DimensionHandler ×5 (Spring)  *(옛 AnalysisCommand 승계)*
+각 핸들러 = `type() / needsProfile() / needsRag() / 실행`. 사용자 선택 모드가 아니라 플래너가 고르는 내부 분해(D46).
+| 핸들러 | 입력 | kind | 출력 핵심 |
 |---|---|---|---|
-| `ImpactSummaryCommand` | Law + `제개정이유` | A | summary, claims |
-| `LawDiffCommand` | Law(변경조문) + baseline(같은 법령ID 시행중본) + 개정문·부칙 | A | claims(조문별 현행→개정), 시행일, impacts |
-| `PersonaImpactCommand` | Law(변경조문) + LawFacts + **UserProfile** | B | impacts |
-| `ActionPlanCommand` | Law + 부칙(시행일) + **UserProfile** | B | actions(deadline, basis) |
+| `LookupHandler` | DiscoveryCriteria + (프로필) | 발견 | 후보 법령 랭킹 |
+| `SummaryHandler` | Law + `제개정이유` | A | summary, claims |
+| `DiffHandler` | Law(변경조문) + baseline 시행중본 + 개정문·부칙 | A | claims(조문별 현행→개정), 시행일 |
+| `ImpactHandler` | Law(변경조문) + LawFacts + **UserProfile** | B | impacts |
+| `ActionHandler` | Law + 부칙(시행일) + **UserProfile** | B | actions(deadline, basis) |
 
 ### #11 Analysis Engine (Spring · Spring AI)
 - 역할: **시행중 법령 RAG 검색**(MVP 활성) + 프롬프트 빌드 + **foundation API 호출** + 1차 인용검증.

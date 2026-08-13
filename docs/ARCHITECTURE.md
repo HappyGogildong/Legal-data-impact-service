@@ -6,13 +6,14 @@
 
 ## 최신본
 
-→ **[architecture/v0.8-pending-law-corpus.md](architecture/v0.8-pending-law-corpus.md)** (v0.8, 현행)
+→ **[architecture/v0.9-nl-query-planner.md](architecture/v0.9-nl-query-planner.md)** (v0.9, 현행)
 
 ## 버전 이력
 
 | 버전 | 파일 | 날짜 | 상태 | 핵심 |
 |---|---|---|---|---|
-| v0.8 | [v0.8-pending-law-corpus.md](architecture/v0.8-pending-law-corpus.md) | 2026-08-02 | 현행 | 분석 대상을 의안에서 **공포 후 시행 대기 법령**(`eflaw`)으로 확정, `Law` 모델 신설·`Bill` 보류, 조문 diff를 오프라인으로 이관, 자기신고 프로필 반영 |
+| v0.9 | [v0.9-nl-query-planner.md](architecture/v0.9-nl-query-planner.md) | 2026-08-02 | 현행 | 온라인 경로를 **자연어 질의 중심**으로 — ORM-like Query Planner(NL→타입 DTO→dispatch), QueryType 5종(LOOKUP 포함), Reference/Discovery target. `AnalysisPipeline`→`QueryDispatcher` |
+| v0.8 | [v0.8-pending-law-corpus.md](architecture/v0.8-pending-law-corpus.md) | 2026-08-02 | 대체됨 | 분석 대상을 의안에서 **공포 후 시행 대기 법령**(`eflaw`)으로 확정, `Law` 모델 신설·`Bill` 보류, 조문 diff를 오프라인으로 이관, 자기신고 프로필 반영 |
 | v0.7 | [v0.7-offline-online-split.md](architecture/v0.7-offline-online-split.md) | 2026-08-01 | 대체됨 | 오프라인(배치 적재)·온라인(요청 응답) 실행 모드 분리, Nemotron 군집(Persona Builder)은 그림에서 제외 |
 | v0.6 | [v0.6-spring-consolidation.md](architecture/v0.6-spring-consolidation.md) | 2026-07-21 | 대체됨 | 파이프라인을 Spring(Boot 4.0+Spring AI 2.0)으로 통합 — 3→2 런타임, Python 서버 대체 |
 | v0.5 | [v0.5-bill-discovery.md](architecture/v0.5-bill-discovery.md) | 2026-06-28 | 대체됨 | 모호 plain text 위한 법안 의미검색(탐색용 임베딩) 추가, 분석용 RAG와 분리 |
@@ -34,6 +35,19 @@
 > ADR이 `Accepted`되어 구조에 반영되면, 그 변경을 담은 새 버전 파일을 추가하고 위 "반영 버전"을 확정한다(예: v0.4). 동결 스냅샷에는 ADR 링크를 넣지 않으므로, 버전↔ADR 매핑은 **이 표가 단일 출처**다.
 
 ## 변경 이유 (Changelog)
+
+### v0.8 → v0.9 — "자연어 질의 · ORM-like Query Planner"
+
+**문제.** D45에서 공개 API를 자연어 질의(`POST /analyses`) 중심으로 재설계했으나, "질의 → 무엇을 실행할지"를 정하는 Query Planner가 공백이었다. 그리고 자연어 질의라면 에이전트를 도입할지가 쟁점이 됐다.
+
+**판단(D46).** 자연어 입력 ≠ 동적 제어 흐름. **LLM을 "번역기"로 좁히면**(NL → 타입 DTO `AnalysisQuery`) 이후 실행은 결정론이라 결정성·캐시·인용 감사가 보존된다 — 에이전트가 아니라 ORM-like 파이프라인이다. 이는 D37을 *강화*한다.
+
+**결과.**
+- **Query Planner 신설** — `QueryTranslator`(Haiku)·`QueryPlanner`·`QueryDispatcher`. 번역이 유일한 LLM 자유도.
+- **QueryType 5종** — `LOOKUP`(발견)+`SUMMARY`·`DIFF`(Layer A)+`IMPACT`·`ACTION`(Layer B). LOOKUP은 "찾아줘" 검색 동작 대응.
+- **Target 2형** — `Reference`(해소 1건)·`Discovery`(코퍼스 검색 N건). 후자는 top-K 팬아웃.
+- **타입이 검색 전략을 고른다** — LOOKUP·SUMMARY·DIFF는 캐시/no-RAG(비용 레버).
+- 옛 `AnalysisPipeline`+`CommandRegistry`→`QueryDispatcher`, `AnalysisCommand`→`DimensionHandler`(D47).
 
 ### v0.7 → v0.8 — "분석 대상을 시행 대기 법령으로"
 
