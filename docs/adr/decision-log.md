@@ -77,6 +77,8 @@ related:
 | D48 | **백엔드 동시성 기법은 측정 선행** — single-flight·격리수준·outbox는 관측 지표로 병목을 증명한 뒤 적용. 관측 스택 확정: Micrometer→Prometheus→Grafana, Micrometer Tracing→OTel→Tempo, k6 부하, postgres_exporter. 각 기법 = 문제→신호→기법→트리거 | 확정 | speculative한 락은 없는 병목을 만들고 복잡도만 늘린다. "측정 없는 최적화 금지"를 문서 구조로 강제 — k6로 스탬피드 100:100을 먼저 관측하고 single-flight 후 100:1 증명 | [[observability]], [[concurrency-and-reliability]] |
 | D49 | **알림은 인앱 알림함 우선**(외부 채널 opt-in) — 연락처 미수집(D41)이라 이메일·푸시 불가. 인앱 알림함은 PII 불필요. Outbox+dedup로 정확히 한 번 | 확정 | D41 최소수집과 알림 기능의 긴장 해소 — 연락처를 받지 않고도 통지 제공. 외부 발송은 명시적 별도 동의 후에만 | [[concurrency-and-reliability]] §3, [[service-api-spec]] §3.6 |
 
+| D50 | **로그 스택 = Grafana Loki**(구조화 JSON + trace-id 상관, Prometheus·Tempo와 Grafana 단일 UI). 운영 로그(휘발 TTL) vs **감사 로그**(append-only 영구) 분리. 로그 PII 규율(userId 대신 프로필 해시, 질의 원문 마스킹) | 확정 | ELK/Elasticsearch는 로그 검색 최강이나 ES 운영 부담이 커 우리 규모엔 과함. 이미 Grafana 진영이라 Loki가 정합(한 UI·경량·라벨 색인). AWS 관리형 대안 CloudWatch. 감사 로그는 법률 서비스 책임성(D08 그라운딩)·D41 로그 뒷문 차단 | [[observability]] §4, [[concurrency-and-reliability]] §4 |
+
 > **D37 재검토 트리거:** ① 대형 옴니버스 법안의 map-reduce + Generator-Critic이 3단 이상 *동적* 분기로 확장 ② 멀티턴 대화형 탐색(상태 지속·중단 재개) 도입. 그때도 `AnalysisEngine` 인터페이스 뒤에 격리해 도입 가능하므로 본 결정은 가역적(JVM 대안: LangGraph4j·Embabel).
 
 ---

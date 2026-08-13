@@ -34,7 +34,7 @@ related:
 |---|---|---|
 | **지표** | Spring Boot Actuator + **Micrometer**(Boot 내장) → **Prometheus** scrape → **Grafana** | `/actuator/prometheus` 노출 |
 | **추적** | **Micrometer Tracing** + **OpenTelemetry**(OTLP) → **Tempo/Jaeger** | 요청당 분산 트레이스 |
-| **로그** | 구조화 JSON(Logback) + **trace-id 상관** | 감사 로그와 연결([[concurrency-and-reliability]] §참고) |
+| **로그** | 구조화 JSON(Logback) → **Grafana Loki** · trace-id 상관 | §4. AWS 대안 CloudWatch Logs |
 | **DB** | **postgres_exporter** | lock wait·deadlock·트랜잭션·커넥션 |
 | **부하** | **k6** | 시나리오 재현, before/after |
 
@@ -122,7 +122,28 @@ p99가 튀면 **어느 span인지** 바로 보인다 — Haiku 번역인지, RAG
 
 ---
 
-## 4. 부하 테스트 (k6) — before/after로 증명
+## 4. 로그 (Logs) — Grafana Loki
+
+세 기둥에서 로그의 역할은 다르다. **지표**=집계 숫자, **추적**=요청 경로, **로그**=이벤트 원본("무슨 일이 있었나"의 상세). 셋을 **Grafana 한 UI**에서 `trace-id`로 오간다 — Prometheus(지표) · Loki(로그) · Tempo(추적).
+
+**스택.** 구조화 JSON 로그(Logback) → **Loki** 적재 → Grafana 조회. Loki는 로그 *본문*을 색인하지 않고 **라벨만 색인**해 경량이다(ELK/Elasticsearch 대비 운영 부담↓ — 우리 규모엔 이게 맞다). AWS 배포 시 관리형 대안은 CloudWatch Logs.
+
+**상관(correlation).** MDC에 `trace-id`·`span-id`를 주입해 로그 라인이 추적과 연결된다. Grafana에서 느린 span → 그 요청의 로그로 원클릭.
+
+**레벨·이벤트 정책.** 도메인 사건을 *구조화 이벤트*로 남긴다:
+- `resolution=NOT_FOUND_YET/UNVERIFIED`(fail-closed) — WARN
+- `grounding.blocked`(인용 없는 주장 차단)·`regenerate`(재생성) — INFO/WARN
+- `ingest.upsert.conflict`·`notify.duplicate` — WARN/ERROR → Grafana 알림 연동
+
+**운영 로그 vs 감사 로그 — 분리한다.**
+- **운영 로그**(Loki): 디버깅·성능. 보존 TTL(예: 30일), 휘발.
+- **감사 로그**: 법률 서비스 책임성 — 답변의 인용·모델·프롬프트 버전을 **append-only 영구** 기록. 상세: [[concurrency-and-reliability]] §4 감사 로그.
+
+> **⚠️ D41 — 로그가 최소수집의 뒷문이 되지 않게.** ① 로그에 `userId`·프로필 원본을 남기지 않는다 — **프로필 해시·trace-id만**. ② 자연어 질의 원문에 개인정보가 섞일 수 있다 → 질의 전문을 기본 로깅하지 않거나 마스킹, 보존을 짧게. ③ 감사 로그도 근거·인용만, 개인 식별 최소.
+
+---
+
+## 5. 부하 테스트 (k6) — before/after로 증명
 
 각 동시성 결정은 **가설 → k6 재현 → 지표 확인 → 기법 적용 → 재측정** 루프를 거친다.
 
@@ -137,7 +158,7 @@ p99가 튀면 **어느 span인지** 바로 보인다 — Haiku 번역인지, RAG
 
 ---
 
-## 5. 트리거 임계 (초기값 — 실측으로 조정)
+## 6. 트리거 임계 (초기값 — 실측으로 조정)
 
 | 기법 | 신호 | 초기 임계 |
 |---|---|---|
@@ -150,12 +171,12 @@ p99가 튀면 **어느 span인지** 바로 보인다 — Haiku 번역인지, RAG
 
 ---
 
-## 6. 단계
+## 7. 단계
 
 1. Actuator + Micrometer + Prometheus 지표 노출(Boot 기본 + 커스텀 4~5개).
 2. `docker-compose.observability.yml` — Prometheus·Grafana·postgres-exporter.
 3. Grafana 대시보드: 비용(LLM 호출)·지연(p99)·캐시 적중률.
-4. Micrometer Tracing + OTLP → Tempo(요청 트레이스).
+4. Micrometer Tracing + OTLP → Tempo(요청 트레이스). 구조화 JSON 로그 → **Loki**(trace-id 상관).
 5. k6 스탬피드 시나리오 — 스탬피드 **관측**(기법 적용은 그 다음).
 
 > 관측이 서기 전에는 [[concurrency-and-reliability]]의 기법을 **넣지 않는다.** 이 문서가 그 순서를 강제한다.
