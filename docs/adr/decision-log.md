@@ -74,6 +74,9 @@ related:
 | D46 | **Query Planner = ORM-like NL→DTO→dispatch** — 자연어를 `AnalysisQuery`(타입 DTO)로 번역(Haiku), 타입이 검색·실행 전략 결정. QueryType **5종**: `LOOKUP`(발견)+`SUMMARY`·`DIFF`(Layer A)+`IMPACT`·`ACTION`(Layer B). Target 2형: `Reference`(해소)·`Discovery`(코퍼스 검색). 주 타입 1+집합, 자유도 보존 | 확정 | D45가 남긴 Query Planner 공백 해소. **자연어 입력 ≠ 동적 제어** — 번역기가 타입 객체를 뱉으면 이후 경로는 고정이라 결정성·캐시·인용 감사 보존(D37 *강화*, 에이전트 아님). 타입이 검색 전략을 골라 LOOKUP·SUMMARY·DIFF는 캐시/no-RAG(비용 레버). LOOKUP은 '찾아줘' 검색 동작을 대응 | [[QueryPlanner]], [[v0.9-nl-query-planner]] |
 | D47 | **아키텍처 v0.9** — 온라인 경로를 자연어 질의 중심으로(Query Planner 신설). 옛 `AnalysisPipeline`+`CommandRegistry`→`QueryDispatcher`, `AnalysisCommand`→`DimensionHandler` | 확정 | 커맨드가 *사용자 선택 모드*가 아니라 답변 구조·그라운딩 가드레일임을 구조에 반영 | [[v0.9-nl-query-planner]] |
 
+| D48 | **백엔드 동시성 기법은 측정 선행** — single-flight·격리수준·outbox는 관측 지표로 병목을 증명한 뒤 적용. 관측 스택 확정: Micrometer→Prometheus→Grafana, Micrometer Tracing→OTel→Tempo, k6 부하, postgres_exporter. 각 기법 = 문제→신호→기법→트리거 | 확정 | speculative한 락은 없는 병목을 만들고 복잡도만 늘린다. "측정 없는 최적화 금지"를 문서 구조로 강제 — k6로 스탬피드 100:100을 먼저 관측하고 single-flight 후 100:1 증명 | [[observability]], [[concurrency-and-reliability]] |
+| D49 | **알림은 인앱 알림함 우선**(외부 채널 opt-in) — 연락처 미수집(D41)이라 이메일·푸시 불가. 인앱 알림함은 PII 불필요. Outbox+dedup로 정확히 한 번 | 확정 | D41 최소수집과 알림 기능의 긴장 해소 — 연락처를 받지 않고도 통지 제공. 외부 발송은 명시적 별도 동의 후에만 | [[concurrency-and-reliability]] §3, [[service-api-spec]] §3.6 |
+
 > **D37 재검토 트리거:** ① 대형 옴니버스 법안의 map-reduce + Generator-Critic이 3단 이상 *동적* 분기로 확장 ② 멀티턴 대화형 탐색(상태 지속·중단 재개) 도입. 그때도 `AnalysisEngine` 인터페이스 뒤에 격리해 도입 가능하므로 본 결정은 가역적(JVM 대안: LangGraph4j·Embabel).
 
 ---

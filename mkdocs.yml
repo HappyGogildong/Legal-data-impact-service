@@ -69,6 +69,9 @@ nav:
   - MVP:
       - 컴포넌트·범위: mvp/components-io-and-scope.md
       - 서비스 기능·공개 API: mvp/service-api-spec.md
+  - 백엔드:
+      - 관측성·성능 측정: backend/observability.md
+      - 동시성·신뢰성: backend/concurrency-and-reliability.md
   - 컴포넌트 스펙:
       - 상세 스펙·계약·정합성: components/component-specs.md
       - 컴포넌트별 설계:

@@ -10,6 +10,7 @@ related:
   - "prompts/analysis-prompt-spec.md"
   - "architecture/v0.9-nl-query-planner.md"
   - "components/QueryPlanner.md"
+  - "backend/concurrency-and-reliability.md"
 ---
 
 # 서비스 기능·공개 API 명세 (MVP)
@@ -49,6 +50,7 @@ related:
 | S3 | **자기신고 프로필** | 회원가입 시 이용 목적·나이·직업 등 자기신고. 성명 등 직접식별정보 미수집(D41) |
 | S4 | **인용·시행일 표시** | 모든 주장에 조문 근거 링크 + 확정 시행일 + 법률자문 아님 면책 |
 | S5 | **트렌드(자주 찾는 법령)** | 조회량 기반 랭킹을 시간창·도메인별로 표출. **집계는 개인 식별 없이 카운트만**(D41) |
+| S6 | **시행 임박 알림 구독** | "이 법 시행되면"·"내 프로필 영향 법 D-N" 구독. **인앱 알림함**(연락처 미수집, D49) |
 
 **MVP 제외**(기능은 유지, 구현 후순위): 의안(의원발의·입법예고) 분석, URL/뉴스 입력 해소, 도메인 심화 추론, 알림 등록.
 
@@ -73,6 +75,10 @@ BASE  /api/v1
 | `GET` | `/laws/{lawId}` | 한 법령의 **시행예정본 목록**(D43) | — |
 | `GET` | `/laws/{lawId}/{efYd}` | 이미 분석된 법령 사실 + 조문 대조(Layer A) | — |
 | `GET` | `/laws/trending` | S5 자주 찾는 법령 랭킹(시간창·도메인) | — |
+| `POST` | `/subscriptions` | S6 알림 구독 생성 | 필요 |
+| `GET` | `/subscriptions` | 내 구독 목록 | 필요 |
+| `DELETE` | `/subscriptions/{id}` | 구독 해지 | 필요 |
+| `GET` | `/notifications` | 인앱 알림함(읽음 처리 포함) | 필요 |
 | `GET` | `/profile` | S3 내 프로필 조회 | 필요 |
 | `PUT` | `/profile` | S3 프로필 생성·수정 | 필요 |
 | `DELETE` | `/profile` | S3 프로필 파기(개인정보) | 필요 |
@@ -296,6 +302,28 @@ GET /api/v1/laws/trending?window=week&domain=주거&limit=10
 > - **hot-key 쓰기 집중:** 인기 법령 한 건에 조회 증가가 몰린다. 원자적 증가(DB `UPDATE … SET views=views+1` 행 잠금 경합 / 인메모리·Redis 집계 후 주기 flush) 중 택. 정확도 vs 처리량 트레이드오프.
 > - **시간창:** MVP는 배치 tumbling(일/주 경계 집계) + TTL 캐시. 실시간 sliding window는 post-MVP.
 > - 조회 카운트는 **분석·상세 조회 경로(`POST /analyses` RESOLVED, `GET /laws/{lawId}/{efYd}`)에서 비동기 기록** — 응답 지연에 영향 주지 않게.
+
+---
+
+### 3.6 알림 구독 — `/subscriptions` · `/notifications` (S6)
+
+시행 임박을 미리 알려준다. **정확히 한 번·신뢰 전송의 내부 로직은 [[concurrency-and-reliability]] §3**(Outbox), 여기선 API만.
+
+```jsonc
+// POST /api/v1/subscriptions   (인증 필요)
+{ "type": "law", "lawRef": { "lawId": "001809", "effectiveDate": "2026-08-04" },
+  "notifyBefore": 7 }                 // 시행 D-7 에 알림
+// 또는 프로필 기반:
+{ "type": "impact", "notifyBefore": 7 }   // 내 프로필에 영향 있는 법 시행 임박 시
+```
+```jsonc
+// GET /api/v1/subscriptions → [{ id, type, lawRef?, notifyBefore, createdAt }]
+// DELETE /api/v1/subscriptions/{id} → 204
+// GET /api/v1/notifications → [{ id, lawRef, message, effectiveDate, read, sentAt }]
+```
+
+> **⚠️ 연락처를 수집하지 않는다(D41·D49).** 이메일·전화 미수집이므로 외부 발송이 불가하다. **MVP 채널은 인앱 알림함** — 로그인 시 표시, PII 불필요. 외부 채널(이메일·푸시)은 **명시적 별도 동의 opt-in**으로만(post-MVP). 이것이 D41 최소수집을 유지하면서 알림을 제공하는 방식이다.
+> **정확히 한 번.** dedup 키 `(subscriptionId, lawRef, eventType)`로 중복 통지를 막는다 — Outbox 패턴([[concurrency-and-reliability]] §3).
 
 ---
 
