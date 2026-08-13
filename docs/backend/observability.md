@@ -83,6 +83,45 @@ p99가 튀면 **어느 span인지** 바로 보인다 — Haiku 번역인지, RAG
 
 ---
 
+## 3.1 지연 분해 — 추론 시간 vs API 응답 시간
+
+"느리다"의 층을 나누지 않으면 반드시 오독한다. 지연은 **세 층**이며, 두 층까지는 우리가 직접 측정하지만 **순수 추론(모델 compute)은 프로바이더 내부라 직접 측정할 수 없다.**
+
+```
+[ 총 API 응답 지연 ]  ← 사용자 체감
+   = 우리 오버헤드 + [ LLM 호출 구간 ]
+                       = 네트워크 + 프로바이더 큐 + [ 순수 추론 ]  ← Anthropic 내부
+```
+
+| 층 | 무엇 | 측정 |
+|---|---|---|
+| **총 API 응답 지연** | 웹→REST→파이프라인 전체 왕복 | ✅ request span |
+| **LLM 호출 구간** | `ChatClient` 호출을 감싼 span (네트워크+큐+추론) | ✅ 별도 span — **"추론 계열"을 나머지와 분리** |
+| **순수 추론**(서버 compute) | 모델이 토큰을 계산하는 시간만 | ❌ 직접 불가 — Anthropic 응답에 server compute 필드 없음 |
+
+**순수 추론 근사 — 스트리밍.** `.stream()`(Spring AI `ChatClient` Flux)을 쓰면 LLM 호출 구간을 둘로 쪼갠다. 최종 응답은 버퍼링해 구조화 JSON으로 돌려주더라도 **내부 스트리밍으로 TTFT를 계측**한다.
+
+- **TTFT**(첫 토큰까지) ≈ 네트워크 + 큐 + **prefill**(프롬프트 처리)
+- **생성 시간**(첫~마지막 토큰) ≈ 실제 토큰 생성. `생성시간 / output_tokens` = **토큰/초 처리량**
+
+**우리 오버헤드는 자동으로 갈린다:** `총 − LLM span = RAG 검색 + 프롬프트 조립 + 인용검증`. `dimension` 태그로 Layer A(캐시, **추론 0**) vs Layer B(Opus) 구분. 포괄 질문은 `추론 계열 = Σ(llm.call span)`(IMPACT+ACTION).
+
+> **⚠️ 대기시간 ≠ 추론시간.** single-flight로 99요청이 1계산을 기다리면 그 99개의 *API 지연*은 크지만 *추론은 0*이다 — 그냥 기다린 것. 집계 지표(`query.latency`)만 보면 "느리다"로 오독한다. **`llm.singleflight.wait` span/지표를 `llm.call`과 분리**해야 "기다린 거지 추론이 느린 게 아니다"가 보인다.
+
+**분해용 지표:**
+
+| 지표 | 의미 |
+|---|---|
+| `query.latency{endpoint,dimension}` | 총 API 지연(사용자 체감) |
+| `llm.call.latency{model,dimension}` | LLM 호출 구간(추론 계열) |
+| `llm.ttft{model}` | 스트리밍 시 TTFT — prefill+큐 근사 |
+| `llm.singleflight.wait` | 병합 대기(추론 아님, 별도) |
+| `rag.retrieve.latency{namespace}` | 벡터 검색(우리 오버헤드) |
+
+항상 `query.latency = 우리 오버헤드(RAG+조립+검증+대기) + Σ llm.call.latency` 로 분해된다.
+
+---
+
 ## 4. 부하 테스트 (k6) — before/after로 증명
 
 각 동시성 결정은 **가설 → k6 재현 → 지표 확인 → 기법 적용 → 재측정** 루프를 거친다.
