@@ -72,6 +72,10 @@ nav:
   - 백엔드:
       - 관측성·성능 측정: backend/observability.md
       - 동시성·신뢰성: backend/concurrency-and-reliability.md
+  - 트러블슈팅:
+      - 개요: troubleshooting/README.md
+      - 001 · law API display=1: troubleshooting/001-lawapi-display1-single-object.md
+      - 002 · 위임 정규식 한글: troubleshooting/002-delegation-regex-korean-morphology.md
   - 컴포넌트 스펙:
       - 상세 스펙·계약·정합성: components/component-specs.md
       - 컴포넌트별 설계:

@@ -3,6 +3,32 @@
 **곧 시행될 법령이 나에게 어떤 변화를 주는지, 무엇을 해야 하는지**를
 일반 시민의 언어로 알려주는 웹 서비스.
 
+## 핵심 성과 요약 (TL;DR)
+
+> 실측 성과 수치(p99·QPS 등)는 부하 테스트 단계에서 채운다 — 이 프로젝트는 **측정하지 않은 수치를 쓰지 않는다**([D48](docs/backend/observability.md)). 아래는 현재까지의 기술적 하이라이트다.
+
+- ⚡ **비용 인지 설계** — 자연어 질의를 타입 DTO로 번역하는 **ORM-like 플래너**로 캐시(Layer A)/LLM(Layer B)를 분기. 요약·비교는 LLM 호출 0. `조문변경여부` 플래그로 분석 대상을 **137 → 6 조문(약 20분의 1)** 으로 축소(주택법 실측).
+- 🔄 **법령 수집 파이프라인** — 국가법령정보 *시행 대기 법령*을 배치 수집·정규화·조문 diff 선계산(**실측 899건**). 오프라인(적재)·온라인(질의) 실행 모드 분리.
+- 📊 **측정 선행 Observability** — Prometheus·Loki·Grafana·Tempo + k6. single-flight 등 동시성 기법은 **지표로 병목을 증명한 뒤** 적용(speculative 최적화 배제).
+
+<!-- 부하 테스트 후 채울 수치 슬롯 (측정 전에는 비워 둔다):
+  ⚡ 성능: 분석 캐시 + single-flight 로 p99 ___ms → ___ms (__% 개선) / 중복 LLM 호출 100→1 (k6 스탬피드 before/after)
+  🔄 파이프라인: 비동기 이벤트 분산 처리로 QPS ____ 안정화
+  📊 Observability: k6 부하 시나리오 __종 · Grafana 대시보드 __개
+-->
+
+## Overview (EN)
+
+**LIA** tells ordinary citizens how a *soon-to-take-effect* law will affect them and what to do about it — in plain language, **grounded in cited articles**.
+
+- **Cost-aware, ORM-like query planner** — a free-form natural-language question is *compiled* into a typed DTO; cheap dimensions (summary/diff) are served from precomputed cache, only personalized impact/action reach the LLM.
+- **Fail-closed grounding** — every claim cites a source article; unverifiable laws are never analyzed, distinguishing *"not yet enacted"* from *"fabricated"*.
+- **Measure-first observability** — Prometheus/Loki/Grafana/Tempo + k6; concurrency techniques (single-flight, isolation levels, outbox) are applied **only after metrics prove the bottleneck**.
+
+Stack: Java 21 · Spring Boot 4.0 · Spring AI 2.0 · PostgreSQL + pgvector · Claude (Opus/Haiku). Design docs live in [`docs/`](docs/) (Korean); see [`docs/troubleshooting/`](docs/troubleshooting) for debugging write-ups.
+
+---
+
 > 참고한 `korean-law-mcp` 류는 *이미 시행 중인* 법령을 조회한다.
 > LIA의 차별점은 **아직 시행되지 않은 법령**을 다루고, 그것을 *나에게 미칠 영향*과
 > *언제까지 무엇을 해야 하는지*로 번역한다는 점이다.
