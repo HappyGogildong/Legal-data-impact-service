@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
 import com.lia.core.pipeline.connector.LawConnector;
+import com.lia.core.pipeline.diff.DiffBuilder;
 import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
@@ -43,6 +44,12 @@ public class PipelineConfig {
     @Bean
     public Normalizer normalizer() {
         return new Normalizer();
+    }
+
+    /** 변경 조문 ↔ 시행중본 대조 (신설·삭제 확정 + diffVsCurrent). D42 */
+    @Bean
+    public DiffBuilder diffBuilder() {
+        return new DiffBuilder();
     }
 
     @Bean

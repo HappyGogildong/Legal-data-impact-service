@@ -70,13 +70,15 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | `Normalizer` — 조문 병합·부칙 필터·시행규칙·`revision` | ✅ |
 | `SourceAnalyzer` — 해소 4상태, fail-closed | ✅ |
 | `domain/law` — `Law`·`Article`·`Addendum` | ✅ |
-| Diff Builder — 변경 조문 ↔ 기준선 대조 | ⬜ 다음 |
-| Law Store(RDB) · Embedder · RAG Indexer | ⬜ |
+| `DiffBuilder` — 변경 조문 ↔ 기준선 대조(신설·삭제 확정, `diffVsCurrent`) | ✅ |
+| Law Store(RDB) · Embedder · RAG Indexer | ⬜ 다음 |
 | Query Planner — `QueryTranslator`·`QueryPlanner`·`QueryDispatcher` | ⬜ |
 | Analysis Engine · 차원 핸들러 4종 · 인용검증 게이트 | ⬜ |
 | 웹 프론트엔드 · User Profile Store | ⬜ |
 
-테스트 **60개** 통과(단위 + 실 API 라이브 스모크).
+단위 테스트 **62개** 통과. (실 API 라이브 스모크 3건은 국가법령정보 응답 이슈로 조사 대기 — 아래 참고.)
+
+> ⚠️ **라이브 스모크 실패(조사 대기).** `LawLiveSmokeTest`·`NormalizerLiveSmokeTest`가 `본문 응답에 '법령' 블록이 없다: [Law]`로 실패한다 — 시행중(`target=law`) 본문 응답 최상위 키가 `법령`이 아닌 `Law`로 관측됨(API/자격증명 쪽, 코드 변경 무관). 커넥터 파싱 대응 필요 시 트러블슈팅에 기록한다.
 
 ### 구현 순서 (큐)
 

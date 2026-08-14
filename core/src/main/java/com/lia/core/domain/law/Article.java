@@ -31,4 +31,13 @@ public record Article(
     public String label() {
         return no == null ? "" : "제" + no + "조";
     }
+
+    /**
+     * Diff Builder 가 기준선 대조 결과를 반영한 사본.
+     * {@code changeType} 을 신설·삭제로 확정하고 {@code diffVsCurrent} 를 채운다.
+     */
+    public Article withDiff(ChangeType confirmedType, String diff) {
+        return new Article(no, title, text, changed, confirmedType, movedFrom, movedTo,
+                articleEffectiveDate, isArticle, diff);
+    }
 }
