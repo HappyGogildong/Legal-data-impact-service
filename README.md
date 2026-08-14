@@ -17,6 +17,22 @@
   📊 Observability: k6 부하 시나리오 __종 · Grafana 대시보드 __개
 -->
 
+## 왜 "그냥 Claude에 물어보면" 안 되나
+
+이 서비스는 **Claude의 추론력과 경쟁하지 않는다.** 날것의 LLM을 *법률 정보*에 못 쓰게 만드는 문제 — 지식 공백·환각·검색·검증 — 를 푸는 것이 제품이다. LLM 호출은 파이프라인의 **마지막 단계**이고, 그마저 인용된 근거만 쓰도록 **제약**된다.
+
+| 그냥 Claude에 질문 | LIA |
+|---|---|
+| **모른다** — 곧 공포될·특정 시행예정 개정은 학습 범위 밖 | 국가법령정보에서 **실제 현행 조문을 검색**해 주입(권위·최신) |
+| **지어낸다** — 그럴듯한 조문 번호를 자신 있게 환각 | **인용 없으면 차단**, 미해소 법령은 분석 안 함(fail-closed) |
+| **사용자가 못 먹인다** — 어느 개정본? 뭐가 바뀌었나? | 해소·버전 특정·**변경 조문만**(실측 137→6)·현행 대비 diff를 대신 조립 |
+| **검증 불가** | 모든 주장에 **조문 링크** → 클릭해 역추적 |
+
+**결정타.** "2026-08-04 시행 주택법 개정으로 전세 세입자한테 뭐가 바뀌어?"
+→ 날것의 Claude는 *"그 개정 정보가 없습니다"* 또는 **환각**. LIA는 실제 제49조 신설(현장점검 요청권)을 **인용·확정 시행일·부칙 기한**과 함께 답한다.
+
+> **LLM은 의도적으로 교체 가능한 부품**이다(모델·임베딩 벤더 무관). 모델이 좋아지면 공짜로 올라타고, 해자(데이터 파이프라인·그라운딩·도메인 모델)는 별도로 쌓인다. — 같은 논리로 Harvey AI는 모두가 GPT를 쓰는데도 그라운딩·검증·큐레이션으로 Am Law 100의 97%를 확보했다.
+
 ## Overview (EN)
 
 **LIA** tells ordinary citizens how a *soon-to-take-effect* law will affect them and what to do about it — in plain language, **grounded in cited articles**.
@@ -24,6 +40,8 @@
 - **Cost-aware, ORM-like query planner** — a free-form natural-language question is *compiled* into a typed DTO; cheap dimensions (summary/diff) are served from precomputed cache, only personalized impact/action reach the LLM.
 - **Fail-closed grounding** — every claim cites a source article; unverifiable laws are never analyzed, distinguishing *"not yet enacted"* from *"fabricated"*.
 - **Measure-first observability** — Prometheus/Loki/Grafana/Tempo + k6; concurrency techniques (single-flight, isolation levels, outbox) are applied **only after metrics prove the bottleneck**.
+
+**Not a wrapper.** LIA does not compete with Claude's reasoning; it solves what makes a raw LLM unusable for *legal* info — knowledge gaps, hallucination, retrieval, verification. The LLM is the last, *constrained* step (cite-only-injected sources). Ask raw Claude about a specific pending amendment and it says "I don't have that" or fabricates; LIA retrieves the actual article, cites it, and gives the effective date. The model is a swappable commodity; the moat is the data pipeline + grounding.
 
 Stack: Java 21 · Spring Boot 4.0 · Spring AI 2.0 · PostgreSQL + pgvector · Claude (Opus/Haiku). Design docs live in [`docs/`](docs/) (Korean); see [`docs/troubleshooting/`](docs/troubleshooting) for debugging write-ups.
 
