@@ -105,7 +105,8 @@ Technical highlights:
 Stack: Java 21 · Spring Boot 4.0 · Spring AI 2.0 · PostgreSQL + pgvector · Claude (Opus · Haiku).
 
 Internal design docs, decision history, component specs, backend, and troubleshooting live in
-[`docs/`](docs/). New here? Start with [`docs/onboarding.md`](docs/onboarding.md).
+[`docs/`](docs/). Status, tech spec, and the implementation checklist are in
+[`docs/status.md`](docs/status.md); new here? Start with [`docs/onboarding.md`](docs/onboarding.md).
 
 ```bash
 cd core && ./gradlew test

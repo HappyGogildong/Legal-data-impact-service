@@ -12,7 +12,7 @@
 
 | 버전 | 파일 | 날짜 | 상태 | 핵심 |
 |---|---|---|---|---|
-| v0.9 | [v0.9-nl-query-planner.md](architecture/v0.9-nl-query-planner.md) | 2026-08-02 | 현행 | 온라인 경로를 **자연어 질의 중심**으로 — ORM-like Query Planner(NL→타입 DTO→dispatch), QueryType 5종(LOOKUP 포함), Reference/Discovery target. `AnalysisPipeline`→`QueryDispatcher` |
+| v0.9 | [v0.9-nl-query-planner.md](architecture/v0.9-nl-query-planner.md) | 2026-08-02 | 현행 | 온라인 경로를 **자연어 질의 중심**으로 — Query Planner(NL→타입 DTO→dispatch), QueryType 5종(LOOKUP 포함), Reference/Discovery target. `AnalysisPipeline`→`QueryDispatcher` |
 | v0.8 | [v0.8-pending-law-corpus.md](architecture/v0.8-pending-law-corpus.md) | 2026-08-02 | 대체됨 | 분석 대상을 의안에서 **공포 후 시행 대기 법령**(`eflaw`)으로 확정, `Law` 모델 신설·`Bill` 보류, 조문 diff를 오프라인으로 이관, 자기신고 프로필 반영 |
 | v0.7 | [v0.7-offline-online-split.md](architecture/v0.7-offline-online-split.md) | 2026-08-01 | 대체됨 | 오프라인(배치 적재)·온라인(요청 응답) 실행 모드 분리, Nemotron 군집(Persona Builder)은 그림에서 제외 |
 | v0.6 | [v0.6-spring-consolidation.md](architecture/v0.6-spring-consolidation.md) | 2026-07-21 | 대체됨 | 파이프라인을 Spring(Boot 4.0+Spring AI 2.0)으로 통합 — 3→2 런타임, Python 서버 대체 |
@@ -36,11 +36,11 @@
 
 ## 변경 이유 (Changelog)
 
-### v0.8 → v0.9 — "자연어 질의 · ORM-like Query Planner"
+### v0.8 → v0.9 — "자연어 질의 · Query Planner"
 
 **문제.** D45에서 공개 API를 자연어 질의(`POST /analyses`) 중심으로 재설계했으나, "질의 → 무엇을 실행할지"를 정하는 Query Planner가 공백이었다. 그리고 자연어 질의라면 에이전트를 도입할지가 쟁점이 됐다.
 
-**판단(D46).** 자연어 입력 ≠ 동적 제어 흐름. **LLM을 "번역기"로 좁히면**(NL → 타입 DTO `AnalysisQuery`) 이후 실행은 결정론이라 결정성·캐시·인용 감사가 보존된다 — 에이전트가 아니라 ORM-like 파이프라인이다. 이는 D37을 *강화*한다.
+**판단(D46).** 자연어 입력 ≠ 동적 제어 흐름. **LLM을 "번역기"로 좁히면**(NL → 타입 DTO `AnalysisQuery`) 이후 실행은 결정론이라 결정성·캐시·인용 감사가 보존된다 — 에이전트가 아니라 결정론 파이프라인이다(컴파일러/ORM에 빗댈 수 있으나 명칭은 **Query Planner**로 통일). 이는 D37을 *강화*한다.
 
 **결과.**
 - **Query Planner 신설** — `QueryTranslator`(Haiku)·`QueryPlanner`·`QueryDispatcher`. 번역이 유일한 LLM 자유도.

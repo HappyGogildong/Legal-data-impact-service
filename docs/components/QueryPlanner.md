@@ -3,27 +3,17 @@ title: Query Planner — 컴포넌트 설계
 status: Draft
 version: 0.1
 date: 2026-08-02
-tags: [component, pipeline, planner, nl, orm]
+tags: [component, pipeline, planner, nl]
 related: ["components/component-specs.md", "mvp/service-api-spec.md", "architecture/v0.9-nl-query-planner.md"]
 ---
 
 # Query Planner (Spring, 질의 계획)
 
-> 자연어 질의를 **엄격한 타입 DTO(`AnalysisQuery`)** 로 번역하고, 타입에 따라 해소·검색·실행을 라우팅한다. **ORM-like**(LLM=컴파일러 → DTO → dispatch). 관련: [[v0.9-nl-query-planner]] §2 · [[service-api-spec]] · [[component-specs]] §1
+> 자연어 질의를 **엄격한 타입 DTO(`AnalysisQuery`)** 로 번역하고, 타입에 따라 해소·검색·실행을 라우팅한다. LLM=번역기 → 타입 DTO → 결정론 dispatch[^orm]. 관련: [[v0.9-nl-query-planner]] §2 · [[service-api-spec]] · [[component-specs]] §1
 
 ## 역할
 
 `POST /analyses`로 들어온 자연어를 받아 **"이 질문이 무엇을 요구하는가"를 구조화**한다. LLM의 자유도를 *번역 한 단계*로 좁혀, 이후 실행 경로는 결정론으로 고정한다 — 이것이 D37(에이전트 미도입)을 강화하는 핵심 장치다. 자유 텍스트는 번역기 입구에서 끝난다.
-
-## ORM 유비
-
-| ORM | Query Planner |
-|---|---|
-| Entity/Model | `Law` · 분석 차원 |
-| Query 표현식 | **`AnalysisQuery`**(타입 DTO) |
-| Mapper (표현식→SQL) | **`QueryTranslator`**(NL→DTO, 여기만 LLM) |
-| Query Builder | **`QueryDispatcher`**(타입→실행 전략) |
-| Executor/Session | 차원 핸들러 |
 
 ## 1. 자연어 질의 시나리오 → 파이프라인
 
@@ -89,3 +79,7 @@ AnalysisQuery {
 - 의존: `ChatClient`(Anthropic Haiku), `SourceAnalyzer`(Reference 해소), `LawDiscovery`(Discovery 검색, 후속), `LawLookup`.
 - 소비: `QueryDispatcher` → 차원 핸들러(AnalysisEngine 본체).
 - D37 격리: 멀티턴·위임추적(동적 깊이) 도입 시 이 컴포넌트가 에이전트 삽입점.
+
+---
+
+[^orm]: **설계 유비(참고).** 명칭은 **Query Planner**로 통일한다. 아래는 이해를 돕는 비유일 뿐 명명·구현 근거가 아니다 — ORM이 표현식을 SQL로 컴파일하듯, 여기서는 LLM이 자연어를 타입 DTO로 컴파일하고 이후는 결정론으로 실행한다. `AnalysisQuery`↔Query 표현식, `QueryTranslator`(여기만 LLM)↔Mapper, `QueryDispatcher`↔Query Builder, 차원 핸들러↔Executor/Session.

@@ -98,7 +98,7 @@ LIA는 LLM의 추론력과 경쟁하지 않는다. 날것의 LLM을 *법률 정�
 스택: Java 21 · Spring Boot 4.0 · Spring AI 2.0 · PostgreSQL + pgvector · Claude(Opus·Haiku).
 
 내부 설계·결정 이력·컴포넌트 스펙·백엔드·트러블슈팅 문서는 [`docs/`](docs/)에 있다.
-처음이라면 [`docs/onboarding.md`](docs/onboarding.md)부터.
+현황·기술 스펙·구현 체크리스트는 [`docs/status.md`](docs/status.md), 처음이라면 [`docs/onboarding.md`](docs/onboarding.md)부터.
 
 ```bash
 cd core && ./gradlew test
