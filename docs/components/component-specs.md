@@ -31,7 +31,7 @@ related:
 
 속성 출처·용도의 전체 카탈로그는 [[law-attributes|법령 속성 카탈로그]] 참고. 아래는 그중 모델에 반영하는 필드.
 
-> **모델 분리 (D42, 2026-08-01):** MVP 분석 대상은 *의안*이 아니라 **공포 후 시행 대기 법령**이다(`target=eflaw`). 아래 **`Law`가 MVP의 유일한 분석 대상 모델**이고, **`Bill`(의안)은 post-MVP로 보류**한다 — 의원발의(통과율 ~20%)·입법예고를 실제로 붙일 때 형태를 확정한다. 두 모델을 억지로 합치지 않는 이유: eflaw 응답에 `billNo`·발의자·소관위·심사단계가 **아예 없어** `Bill`을 쓰면 절반이 항상 null이다.
+> **모델 분리 (D42, 2026-08-01):** MVP 분석 대상은 *의안*이 아니라 **공포 후 시행 대기 법령**이다(`target=eflaw`). 아래 **`Law`가 MVP의 유일한 분석 대상 모델**이고, **`Bill`(의안)은 post-MVP로 보류**하고 스키마는 삭제했다(복귀 시 git·[[SourceConnector]] 계약에서 복원, D52). eflaw 응답에 `billNo`·발의자·소관위·심사단계가 **아예 없어** `Bill`을 쓰면 절반이 항상 null이라 두 모델을 합치지 않는다.
 
 ### 1.1 `Law` — MVP 분석 대상 (공포된 법령)
 
@@ -67,42 +67,18 @@ Law {                        // 🟢A(국가법령정보 API) — 전 필드 그
 
 > **1:N 주의.** 한 `lawId`에 **시행 대기 개정이 여러 건 겹칠 수 있다.** 실측: 주택법 현행본은 공포 제21447호(2026-03-05)인데 시행예정본은 제21323호(2026-02-03)로 *나중에 공포된 쪽이 먼저 시행*됐다. `LawDiff`는 **어느 시행예정본 기준인지 `effectiveDate`와 함께 명시**해야 한다. → [[decision-log|D43(Open)]]
 
-### 1.2 `Bill` — 의안 *(post-MVP 보류, D42)*
+### 1.2 `Article` · `Addendum` — 공통 조문·부칙 타입
+
+`Law`가 공유한다. (의안 `Bill` 모델은 post-MVP로 삭제 — 복귀 시 git 이력·[[SourceConnector]] 의안 계약에서 복원, D52)
 
 ```ts
-Bill {                       // 🟢A(API) + 🔵B(원문) 원천 사실 — 그라운딩 대상
-  id: string                 // 내부 PK
-  billNo: string             // 의안번호 (출처 식별자)
-  title: string
-  billKind: enum("제정"|"일부개정"|"전부개정"|"폐지")     // A
-  lawType: enum("법률"|"시행령"|"시행규칙"|"조례"|"기타")   // A
-  summary: string?           // 제안이유+주요내용 (B)
-  proposalReason: string?    // B
-  mainContents: string?      // B
-  proposerType: enum("의원"|"정부"|"위원장")              // A
-  proposers: string[]
-  committee: string?
-  age: string?               // 대수·회기 (A)
-  proposeDate: date
-  stage: Stage
-  stageHistory: StageEvent[] // 단계별 일자 (A)
-  procResult: string?        // 처리결과 (A)
-  effectiveDate: date?       // 시행(예정)일 — 부칙 우선 (B→A)
-  effectiveRule: string?     // "공포 후 6개월" 등 (B 부칙)
-  enforcementType: enum("즉시"|"유예"|"단계적")?
-  addenda: Addendum[]        // 부칙 (B)
-  delegationClauses: string[]// 하위법령 위임 조항 (B)
-  fullText: string
-  articles: Article[]
-  baselineLawId: string?     // 현행법 diff 기준선 (MVP: 국가법령정보로 채움)
-  sourceType: enum("ASSEMBLY"|"MOLEG"|"LAW"|"URL"|"TEXT")
-  sourceUrl: string?
-  revision: string           // 캐시 무효화용 해시 (분석영향 필드 기준)
-  lastSeen: datetime         // 신선도 (revision 해시 비포함)
+Addendum {
+  no: string                 // "제1조"
+  title: string?             // "시행일" 등
+  kind: enum("시행일"|"경과조치"|"적용례"|"특례")
+  text: string
+  promulgateNo: string       // 소속 개정 공포번호 — 이번 개정분 필터 키
 }
-
-StageEvent { stage: Stage, date: date }
-Addendum   { no: string, kind: enum("시행일"|"경과조치"|"적용례"|"특례"), text: string }
 
 Article {
   no: string                 // 조문번호 ("제3조")
@@ -124,13 +100,13 @@ Article {
 
 ### 1.3 `LawFacts` — Layer A 파생 캐시 (MVP 유효)
 
-**페르소나와 무관한** 사실 파생층이라 한 번 만들면 모든 사용자가 재사용한다. MVP에서는 `Law`에 대해 산출하며, 의안(`Bill`)이 복귀하면 같은 형태로 적용된다.
+**페르소나와 무관한** 사실 파생층이라 한 번 만들면 모든 사용자가 재사용한다. 분석 대상이 무엇이든 붙는 Layer A 캐시다.
 
 > **개명 (D44, 2026-08-02):** ~~`BillFacts`~~ → **`LawFacts`**. 이름이 의안 전용으로 읽혀 MVP 범위를 오해하게 만들었다 — 실제로는 분석 대상이 무엇이든 붙는 Layer A 파생 캐시다. 참조 키도 `bill_ref` → `law_ref`.
 
 ```ts
 LawFacts {                  // 🟡C 파생 — 원본에 저장 X. Layer A 캐시(페르소나 무관). D07.
-  law_ref: string           // MVP(Law): "LAW:{lawId}@{effectiveDate}" / post-MVP(Bill): "BILL:{billNo}"
+  law_ref: string           // "LAW:{lawId}@{effectiveDate}"
   revision: string           // 기준 revision (캐시 키)
   impactScope: enum("보편"|"도메인특정"|"소수")
   affectedDomains: string[]
@@ -145,17 +121,15 @@ LawFacts {                  // 🟡C 파생 — 원본에 저장 X. Layer A 캐�
 }
 Fact { statement: string, citations: string[], confidence: float }  // citations 비면 무효(인용 강제)
 
-Stage = enum("발의"|"위원회심사"|"본회의"|"정부이송"|"공포"|"시행")
-
 ImpactResult {               // 프롬프트 정의서 §4와 동일 스키마
   law_ref: string           // MVP: "LAW:{lawId}@{effectiveDate}"
   command: string
   summary: string
   claims: Claim[]
-  affected_segments: string[]
+  affected_profiles: string[]  // 이 법령이 두드러지게 영향 주는 프로필 유형
   impacts: Impact[]
   actions: Action[]
-  stage_info: { stage: string, effective_date: date?, passage_note: string? }
+  effective_info: { status: enum("시행중"|"시행예정"), effective_date: date?, enforcement: enum("즉시"|"유예"|"단계적")? }
   uncertainties: string[]
   disclaimer: string
   meta: { model: string, prompt_version: string, layer: enum("A"|"B") }

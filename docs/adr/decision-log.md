@@ -81,6 +81,8 @@ related:
 
 | D51 | **캐싱 모델 3층 확정** — ① Layer A 오프라인 선계산(법령 사실·diff → context 재료) ② **Anthropic prompt caching**(안정 prefix=가드레일+법령 사실, 읽기 ~10%)으로 context 재사용 ③ 답변 캐시는 **완전 동일 질의만**(키에 **질문 해시** 포함). Semantic 답 캐시 기본 미사용. **차원=캐시 키 아님**(라우팅·구조·가드레일). 개인화 답 = 캐시 context + 프로필 + 실제 질문 → Opus 1콜 | 확정 | 이전 "차원별(프로필+법령+dimension) 답 캐시"는 같은 버킷의 다른 질의("구체적으로 더")에 같은 답을 주고, 개인화 답 재사용률이 낮아 선계산 낭비. prompt caching(context)과 semantic caching(완성 답)은 다른 층 — 전자를 주로. 선례: Harvey AI 법률 RAG(Postgres+pgvector·검색+그라운딩·질의별 생성) | [[component-specs]] §3.4, [[concurrency-and-reliability]] §1 |
 
+| D52 | **문서 정리 — MVP 범위 밖 항목 축약·현행화** — ① `Bill` 스키마(§1.2) 삭제(복원은 git·[[SourceConnector]] 계약) ② **프롬프트 정의서 현행 재작성**(Bill·Nemotron·`BILL:` → Law·자기신고 프로필·`LAW:{lawId}@{efYd}`·차원·D51 캐싱) ③ Evaluation Harness 등 post-MVP 블록 한 줄 축약 ④ `ImpactResult` 정렬(`affected_segments`→`affected_profiles`, `stage_info`→`effective_info`) | 확정 | 프롬프트 정의서가 통째로 구 설계라 component-specs가 '동일 스키마'로 참조하며 잘못된 곳을 가리켰다. 결정로그·동결 스냅샷(v0.x)·의도적 post-MVP 경계 마커는 보존(축약 유지) | [[component-specs]] §1·§3, [[analysis-prompt-spec]] |
+
 > **D37 재검토 트리거:** ① 대형 옴니버스 법안의 map-reduce + Generator-Critic이 3단 이상 *동적* 분기로 확장 ② 멀티턴 대화형 탐색(상태 지속·중단 재개) 도입. 그때도 `AnalysisEngine` 인터페이스 뒤에 격리해 도입 가능하므로 본 결정은 가역적(JVM 대안: LangGraph4j·Embabel).
 
 ---
