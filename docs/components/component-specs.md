@@ -314,7 +314,7 @@ Content-Type: application/json
 계약 규칙:
 - **요청 게이트는 오케스트레이터(#8)가 먼저** 수행한다. Analysis Engine(#11)은 방어적 재검증만.
 - 응답 `result`는 **항상 §1 ImpactResult 스키마**. 인용검증은 엔진 내부 1차 + Verification Gate(#12) 2차.
-- 멱등/캐시 키: `command + law.lawId + law.effectiveDate + law.revision + (profileHash|"-") + prompt_version` (Layer A는 프로필 제외).
+- **답변 캐시 키(완전 동일 질의 전용, §3.4)**: `hash(정규화 질문) + law.lawId + law.effectiveDate + law.revision + (profileHash|"-") + prompt_version`. **질문 해시를 반드시 포함**해야 다른 질의가 같은 답으로 collapse되지 않는다(D51). context 재사용은 이 키가 아니라 **prompt caching**(§3.3·§3.4)이 담당.
   `effectiveDate` 를 넣는 이유: 같은 법령에 시행예정본이 복수일 수 있어 `lawId` 만으로는 캐시가 충돌한다(D43).
   `profileHash` = 주입 대상 프로필 속성의 정규화 해시 — **`userId`를 키에 쓰지 않는다**(동일 속성 사용자 간 캐시 재사용 + 개인 추적 방지, D41).
 
@@ -363,7 +363,23 @@ Content-Type: application/json
 - **임베딩 모델 = 외부 API 확정(자체 호스팅 제외).** 인프라 예산 없음 → API 호출. ① 공유 `Embedder`(Spring AI `EmbeddingModel` 위임)가 RAG Indexer·Analysis Engine·SourceAnalyzer에 **동일 모델** 제공. 후보: OpenAI `text-embedding-3-small`(1536, 기본·최저가) / Upstage `solar-embedding`(한국어 특화, 4096) / Cohere·Voyage(1024) — 벤치 후 확정. **기본 1536차원**(ADR-001 가정과 일치 → 저장 결정 불변). 추론 모델(Opus)과 별개이며, **모델 변경 시 전 코퍼스 재색인** 필요. 데이터 민감도 낮음(공개 법령)이라 외부 API 적합 — 사용자 프로필은 임베딩 대상이 아니다.
 - **MVP 추론 기본 = Opus 4.8** (1M 컨텍스트, 128K 출력). 법적 정확도 우선. 모델 픽은 `prompt_version`/`meta`로 교체 가능.
 - **토큰 예산:** 입력 컨텍스트 상한 **~32K**(초과 시 §2 우선순위로 자르기), 출력 `max_tokens=4000`(구조화 JSON엔 충분, 스트리밍 불필요).
-- **프롬프트 캐싱:** 안정 프리픽스(시스템 가드레일 + Layer A 사실 블록)에 `cache_control` → 재호출 시 읽기 ~0.1×. 쓰기 1.25×(5분)/2×(1h). **Opus 4.8 최소 캐시 프리픽스 4096토큰** — 그보다 짧으면 캐시 미적용. 캐시 키 안정성 위해 시스템 프롬프트에 날짜·UUID 주입 금지(프로필·대상 법령은 프리픽스 뒤에 배치).
+- **프롬프트 캐싱:** 안정 프리픽스(시스템 가드레일 + Layer A 사실 블록)에 `cache_control` → 재호출 시 읽기 ~0.1×. 쓰기 1.25×(5분)/2×(1h). **Opus 4.8 최소 캐시 프리픽스 4096토큰** — 그보다 짧으면 캐시 미적용. 캐시 키 안정성 위해 시스템 프롬프트에 날짜·UUID 주입 금지(프로필·대상 법령은 프리픽스 뒤에 배치). → 이것이 **캐싱 모델의 주 수단**(§3.4, D51).
+
+---
+
+### 3.4 캐싱 모델 (3층, D51)
+
+비용을 줄이되 **"완성 답"을 프로필·법령 단위로 캐시하지 않는다** — 그러면 같은 버킷의 서로 다른 질문("구체적으로 더")에 같은 답을 주는 오류가 난다. 대신 세 층:
+
+1. **Layer A 선계산 (오프라인)** — 법령 사실·조문 diff·LawFacts. 프로필 무관·법령 단위·높은 재사용. Law Store 저장 → 온라인에서 **context로 조립**(답이 아니라 *재료*). D07.
+2. **Prompt caching (Anthropic prefix)** — 생성 시 안정 프리픽스(시스템 가드레일 + Layer A 법령 사실 블록)에 `cache_control`. 읽기 ~10% 비용·지연↓(§3.3). **context 재사용의 주 수단** — 같은 법령의 여러 질의가 프리픽스를 공유한다. 프로필·실제 질문은 프리픽스 **뒤**(가변부).
+3. **답변 캐시 (좁게)** — **완전 동일 질의**만: `hash(정규화 질문) + law_ref + profileHash + prompt_version + revision`. 트렌드·핫 질의의 콜드-중복만 방어([[concurrency-and-reliability]] §1 single-flight). **Semantic 답 캐시는 기본 미사용** — 유사하나 다른 질의에 같은 답을 주는 위험.
+
+**개인화 답 = 캐시된 context + 프로필 + 실제 질문 + 가드레일 → Opus 1콜.** 질문마다 생성하므로 *서로 다른 질문은 다른 답*이다.
+
+**차원(dimension)은 캐시 키가 아니다** — context 라우팅(무엇을 당길지) + 출력 구조 + 그라운딩 가드레일이다. 이전 설계의 "차원별(프로필+법령+dimension) 답 캐시"는 D51로 폐기.
+
+> **근거.** Anthropic *prompt caching* = context/prefix 재사용, *semantic caching* = 완성 답 재사용(유사 질의) — 다른 층이다. 우리는 전자를 주로, 후자는 완전 반복에만. 도메인 선례 Harvey AI(법률 RAG · Postgres+pgvector · 검색+그라운딩+질의별 생성)도 같은 골격.
 
 ---
 
@@ -421,7 +437,7 @@ Content-Type: application/json
 ### #4 Law Store (RDB / Postgres+pgvector)
 - 역할: 법령 정본(`Law`/`Article`/`Addendum`) + `LawFacts`(Layer A 캐시) + `ImpactResult`(Layer B 캐시) + 벡터.
 - 입력/출력: Law/Article/LawFacts/ImpactResult CRUD; 검색 쿼리→Law[].
-- 동작: upsert. **유니크 키는 `(lawId, effectiveDate)`** — `lawId` 단독은 안 된다. 같은 법령에 시행예정본이 복수일 수 있다(D43). `LawFacts` 캐시 키=`lawId@effectiveDate + revision`(프로필 무관), `ImpactResult` 캐시 키=§3.1(프로필 속성 해시 포함).
+- 동작: upsert. **유니크 키는 `(lawId, effectiveDate)`** — `lawId` 단독은 안 된다. 같은 법령에 시행예정본이 복수일 수 있다(D43). `LawFacts` 캐시 키=`lawId@effectiveDate + revision`(프로필 무관), `ImpactResult` 답변 캐시 키=§3.4(질문 해시 포함·완전 동일 질의 전용, D51).
 - 의존: 없음.
 - 오류: 제약 위반 → upsert 충돌 해소.
 - **저장소 결정 영향:** [[ADR-001-knowledge-store-sizing|ADR-001]] **불변**이며 D42로 여유가 커졌다 — MVP 코퍼스가 *의안 5만 건 가정*에서 **시행예정 899건 실측**으로 줄었다. 부피 주축은 diff 기준선용 시행중 법령 본문(~0.4GB 추정) 안쪽.
@@ -445,7 +461,7 @@ Content-Type: application/json
 - 동작:
   1. `types` 순회 — Layer A(SUMMARY·DIFF)=선계산 캐시 조회, Layer B(IMPACT·ACTION)=Analysis Engine(#11) RAG+LLM.
   2. `Target.Discovery`면 검색 후보 top-K에 분석 타입 **팬아웃**.
-  3. 캐시 키(프로필 해시 + law_ref + 타입) 조회 → 히트면 반환.
+  3. **완전 동일 질의**면 답변 캐시(§3.4) 히트 반환. 그 외엔 prompt caching으로 context 재사용하며 생성 — 차원은 캐시 키가 아니다(D51).
   4. **Verification Gate(#12)** 통과분만. 근거 부족 차원은 `unmet`으로 부분성공.
 - 의존: #4, #7, #7b, #11, #12, `DimensionHandler` 레지스트리.
 

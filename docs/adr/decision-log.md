@@ -79,6 +79,8 @@ related:
 
 | D50 | **로그 스택 = Grafana Loki**(구조화 JSON + trace-id 상관, Prometheus·Tempo와 Grafana 단일 UI). 운영 로그(휘발 TTL) vs **감사 로그**(append-only 영구) 분리. 로그 PII 규율(userId 대신 프로필 해시, 질의 원문 마스킹) | 확정 | ELK/Elasticsearch는 로그 검색 최강이나 ES 운영 부담이 커 우리 규모엔 과함. 이미 Grafana 진영이라 Loki가 정합(한 UI·경량·라벨 색인). AWS 관리형 대안 CloudWatch. 감사 로그는 법률 서비스 책임성(D08 그라운딩)·D41 로그 뒷문 차단 | [[observability]] §4, [[concurrency-and-reliability]] §4 |
 
+| D51 | **캐싱 모델 3층 확정** — ① Layer A 오프라인 선계산(법령 사실·diff → context 재료) ② **Anthropic prompt caching**(안정 prefix=가드레일+법령 사실, 읽기 ~10%)으로 context 재사용 ③ 답변 캐시는 **완전 동일 질의만**(키에 **질문 해시** 포함). Semantic 답 캐시 기본 미사용. **차원=캐시 키 아님**(라우팅·구조·가드레일). 개인화 답 = 캐시 context + 프로필 + 실제 질문 → Opus 1콜 | 확정 | 이전 "차원별(프로필+법령+dimension) 답 캐시"는 같은 버킷의 다른 질의("구체적으로 더")에 같은 답을 주고, 개인화 답 재사용률이 낮아 선계산 낭비. prompt caching(context)과 semantic caching(완성 답)은 다른 층 — 전자를 주로. 선례: Harvey AI 법률 RAG(Postgres+pgvector·검색+그라운딩·질의별 생성) | [[component-specs]] §3.4, [[concurrency-and-reliability]] §1 |
+
 > **D37 재검토 트리거:** ① 대형 옴니버스 법안의 map-reduce + Generator-Critic이 3단 이상 *동적* 분기로 확장 ② 멀티턴 대화형 탐색(상태 지속·중단 재개) 도입. 그때도 `AnalysisEngine` 인터페이스 뒤에 격리해 도입 가능하므로 본 결정은 가역적(JVM 대안: LangGraph4j·Embabel).
 
 ---
