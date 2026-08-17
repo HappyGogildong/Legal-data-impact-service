@@ -33,7 +33,7 @@ related:
 | 층 | 도구 | 비고 |
 |---|---|---|
 | **지표** | Spring Boot Actuator + **Micrometer**(Boot 내장) → **Prometheus** scrape → **Grafana** | `/actuator/prometheus` 노출 |
-| **추적** | **Micrometer Tracing** + **OpenTelemetry**(OTLP) → **Tempo/Jaeger** | 요청당 분산 트레이스 |
+| **추적** | **Micrometer Tracing** + **OpenTelemetry**(OTLP) → **Tempo** | 요청당 분산 트레이스. ⚠️ Boot 4.0은 `spring-boot-starter-opentelemetry` + `management.opentelemetry.tracing.export.otlp.*` 필요([[003-boot4-tracing-autoconfig-moved\|003]]) |
 | **로그** | 구조화 JSON(Logback) → **Grafana Loki** · trace-id 상관 | §4. AWS 대안 CloudWatch Logs |
 | **DB** | **postgres_exporter** | lock wait·deadlock·트랜잭션·커넥션 |
 | **부하** | **k6** | 시나리오 재현, before/after |

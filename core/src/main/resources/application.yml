@@ -60,9 +60,11 @@ management:
   tracing:
     sampling:
       probability: 1.0               # dev: 전량 샘플링. prod에서 낮춘다
-  otlp:
+  opentelemetry:                     # Boot 4.0 네임스페이스(구 management.otlp.tracing 아님)
     tracing:
-      endpoint: http://localhost:4318/v1/traces   # → Tempo(OTLP HTTP)
+      export:
+        otlp:
+          endpoint: http://localhost:4318/v1/traces   # → Tempo(OTLP HTTP)
 
 logging:
   level:
