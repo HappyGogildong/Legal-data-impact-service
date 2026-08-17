@@ -28,6 +28,12 @@ dependencyManagement {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
+    // --- 관측성 (D48 측정 선행) ---
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'   // /actuator/prometheus
+    implementation 'io.micrometer:micrometer-registry-prometheus'            // 지표 → Prometheus
+    implementation 'io.micrometer:micrometer-tracing-bridge-otel'            // 트레이스(Micrometer Observation → OTel)
+    implementation 'io.opentelemetry:opentelemetry-exporter-otlp'            // OTLP → Tempo
+
     // 레포 루트 .env 를 Spring Environment 로 로드 (D39: 자격증명 단일 소스)
     // Spring Boot 자체는 .env 를 읽지 않음 → 로컬/IDE 실행용. 컨테이너는 compose env_file 사용
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'

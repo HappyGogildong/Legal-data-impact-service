@@ -1,8 +1,8 @@
 ---
 title: 관측성·성능 측정 환경 (Observability)
 status: Draft
-version: 0.1
-date: 2026-08-14
+version: 0.2
+date: 2026-08-18
 tags: [backend, observability, metrics, tracing, load-test, performance]
 related:
   - "backend/concurrency-and-reliability.md"
@@ -38,13 +38,47 @@ related:
 | **DB** | **postgres_exporter** | lock wait·deadlock·트랜잭션·커넥션 |
 | **부하** | **k6** | 시나리오 재현, before/after |
 
-**로컬 구성:** 기존 `docker-compose.yml`(Postgres) 위에 `docker-compose.observability.yml` **오버레이** — `prometheus`·`grafana`·`tempo`·`postgres-exporter`. 개발자는 `docker compose -f docker-compose.yml -f docker-compose.observability.yml up`으로 계기판까지 한 번에.
+**로컬 구성:** 기존 `docker-compose.yml`(Postgres) 위에 `docker-compose.observability.yml` **오버레이** — `prometheus`·`grafana`·`tempo`·`postgres-exporter`. core 는 호스트 bootRun, 계기판은 컨테이너:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d db prometheus grafana tempo postgres-exporter
+cd core && ./gradlew bootRun --args='--spring.profiles.active=demo'
+```
+
+Grafana `http://localhost:3001`(익명 Admin) · Prometheus `:9090` · Tempo `:3200`. 설정: `ops/observability/`.
+
+### 1.1 증분 1 — 구축 범위·상태 (2026-08-18)
+
+**측정·추적 대상을 먼저 정의하고(§2·§3.1) 그에 맞춘 스택만 세운다.** 온라인 답변 경로(dispatch·LLM·RAG)는 미구현이라 도메인 지표는 **hook(배선)** 으로 두고, 지금 코드가 있는 **오프라인 파이프라인**을 실측한다.
+
+| 구성 | 이번 증분 | 비고 |
+|---|---|---|
+| Actuator+Micrometer→Prometheus | ✅ | `/actuator/prometheus` 라이브 검증 |
+| Micrometer Tracing→OTel→**Tempo** | ✅ | Jaeger 대신 Grafana-native |
+| postgres-exporter | ✅ | DB lock/tx/conn |
+| **오프라인 파이프라인 계측** | ✅ | fetch·normalize·diff·resolve·ingest (§2 live) |
+| Grafana 대시보드(`lia-overview`) | ✅ | 파이프라인 지연·JVM·HTTP + hook 패널 |
+| 데모 러너(`@Profile("demo")`) | ✅ | 번들 fixture → normalize→diff, 베이스라인 생성 |
+| **Loki**(로그)·**k6**(부하) | ⬜ 증분 2 | 이번 "측정·추적 대상"이 아님 — 온라인 경로 landing 후 |
+| LLM/RAG/dimension 실측 | ⬜ hook | Embedder·Store·AnalysisEngine landing 시 발화 |
 
 ---
 
 ## 2. 도메인 지표 (우리가 실제로 봐야 할 것)
 
 프레임워크 기본 지표(JVM·HTTP·HikariCP 풀) 위에, **결정에 쓰이는** 커스텀 지표를 둔다.
+
+**live (증분 1) — 오프라인 파이프라인 단계.** `Observation` 으로 감싸 <b>타이머 + span</b> 동시 생성(코드: `Obs` 상수 · `PipelineConfig` 주입).
+
+| 지표 | 타입 | 태그 | 무엇을 결정하나 |
+|---|---|---|---|
+| `lia.connector.fetch` | timer | `target` | 외부 API 지연(네트워크+응답+파싱) |
+| `lia.normalize` | timer | — | 파싱 순수 CPU — 큰 법령이 병목인가 |
+| `lia.diff` | timer | — | 대조 순수 CPU |
+| `lia.resolve` | timer | `state` | 해소 지연(명칭매칭+의미검색) |
+| `lia.ingest` | timer | — | 적재 1건 end-to-end |
+
+**hook — 온라인 경로 landing 시 발화.**
 
 | 지표 | 타입 | 태그 | 무엇을 결정하나 |
 |---|---|---|---|

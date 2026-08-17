@@ -12,9 +12,13 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
+
 import com.lia.core.domain.law.Addendum;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
+import com.lia.core.observability.Obs;
 import com.lia.core.pipeline.connector.LawEnvelope;
 import com.lia.core.pipeline.connector.RawLaw;
 
@@ -50,12 +54,27 @@ public class Normalizer {
     private static final Pattern EFFECTIVE_SENTENCE =
             Pattern.compile("(이 (?:법|영|규칙)은.*?시행한다\\.(?:\\s*다만,.*?시행한다\\.)?)", Pattern.DOTALL);
 
+    /** 계측 레지스트리 — 미주입 시 NOOP(단위 테스트의 {@code new Normalizer()} 무영향). */
+    private final ObservationRegistry observations;
+
+    public Normalizer() {
+        this(ObservationRegistry.NOOP);
+    }
+
+    public Normalizer(ObservationRegistry observations) {
+        this.observations = observations == null ? ObservationRegistry.NOOP : observations;
+    }
+
     // --- 공개 API --------------------------------------------------------
 
     public Law normalize(RawLaw raw) {
         if (raw == null || !raw.hasBody()) {
             throw new IllegalArgumentException("본문 없는 RawLaw 는 정규화할 수 없다 — fetchPending/fetchCurrent 결과를 넘길 것.");
         }
+        return Observation.createNotStarted(Obs.NORMALIZE, observations).observe(() -> doNormalize(raw));
+    }
+
+    private Law doNormalize(RawLaw raw) {
         Map<String, Object> root = raw.raw();
         Map<String, Object> info = LawEnvelope.basicInfo(root);
 

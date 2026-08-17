@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
+import io.micrometer.observation.ObservationRegistry;
+
 import com.lia.core.pipeline.connector.LawConnector;
 import com.lia.core.pipeline.diff.DiffBuilder;
 import com.lia.core.pipeline.normalize.Normalizer;
@@ -24,8 +26,9 @@ public class PipelineConfig {
 
     /** 국가법령정보 — MVP 분석 대상(eflaw) + diff 기준선(law). D42 */
     @Bean
-    public LawConnector lawConnector(RestClient.Builder builder, LiaSourceProperties props) {
-        return new LawConnector(builder, props.law());
+    public LawConnector lawConnector(RestClient.Builder builder, LiaSourceProperties props,
+                                     ObservationRegistry observations) {
+        return new LawConnector(builder, props.law(), observations);
     }
 
     /**
@@ -42,19 +45,19 @@ public class PipelineConfig {
     }
 
     @Bean
-    public Normalizer normalizer() {
-        return new Normalizer();
+    public Normalizer normalizer(ObservationRegistry observations) {
+        return new Normalizer(observations);
     }
 
     /** 변경 조문 ↔ 시행중본 대조 (신설·삭제 확정 + diffVsCurrent). D42 */
     @Bean
-    public DiffBuilder diffBuilder() {
-        return new DiffBuilder();
+    public DiffBuilder diffBuilder(ObservationRegistry observations) {
+        return new DiffBuilder(observations);
     }
 
     @Bean
-    public SourceAnalyzer sourceAnalyzer(LawLookup lookup) {
+    public SourceAnalyzer sourceAnalyzer(LawLookup lookup, ObservationRegistry observations) {
         // 의미검색(semanticSearch)은 Embedder/VectorStore 구현 후 주입 (v0.8 §4.5)
-        return new SourceAnalyzer(lookup);
+        return new SourceAnalyzer(lookup, observations);
     }
 }

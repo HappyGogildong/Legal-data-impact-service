@@ -28,6 +28,8 @@ lia:
       max-retries: 3
 
 spring:
+  application:
+    name: lia-core
   ai:
     anthropic:                      # AnalysisEngine 추론 (D19: Opus 4.8)
       api-key: ${ANTHROPIC_API_KEY:}
@@ -45,3 +47,23 @@ spring:
 
 server:
   port: 8080
+
+# --- 관측성 (D48 측정 선행) ---
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    tags:
+      application: lia-core          # 모든 지표 공통 태그
+  tracing:
+    sampling:
+      probability: 1.0               # dev: 전량 샘플링. prod에서 낮춘다
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces   # → Tempo(OTLP HTTP)
+
+logging:
+  level:
+    com.lia.core.observability: INFO   # 오프라인 파이프라인 계측 로그

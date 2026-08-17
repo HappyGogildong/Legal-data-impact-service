@@ -1,0 +1,18 @@
+# LIA 관측 — Tempo (트레이스 저장, OTLP 수신). 로컬 단일 노드.
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        http:            # 4318 — application.yml 의 management.otlp.tracing.endpoint 대상
+        grpc:            # 4317
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/blocks
+    wal:
+      path: /var/tempo/wal

@@ -1,0 +1,84 @@
+{
+  "uid": "lia-overview",
+  "title": "LIA · Overview",
+  "tags": ["lia"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "type": "row", "title": "파이프라인 지연 (우리 오버헤드 · live)", "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries", "title": "단계별 평균 지연 (s)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "rate(lia_normalize_seconds_sum[1m]) / rate(lia_normalize_seconds_count[1m])", "legendFormat": "normalize" },
+        { "refId": "B", "expr": "rate(lia_diff_seconds_sum[1m]) / rate(lia_diff_seconds_count[1m])", "legendFormat": "diff" },
+        { "refId": "C", "expr": "rate(lia_resolve_seconds_sum[1m]) / rate(lia_resolve_seconds_count[1m])", "legendFormat": "resolve" },
+        { "refId": "D", "expr": "rate(lia_connector_fetch_seconds_sum[1m]) / rate(lia_connector_fetch_seconds_count[1m])", "legendFormat": "connector.fetch {{target}}" },
+        { "refId": "E", "expr": "rate(lia_ingest_seconds_sum[1m]) / rate(lia_ingest_seconds_count[1m])", "legendFormat": "ingest(total)" }
+      ]
+    },
+    {
+      "type": "timeseries", "title": "단계별 처리량 (ops/s)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "rate(lia_normalize_seconds_count[1m])", "legendFormat": "normalize" },
+        { "refId": "B", "expr": "rate(lia_diff_seconds_count[1m])", "legendFormat": "diff" },
+        { "refId": "C", "expr": "sum by (state) (rate(lia_resolve_seconds_count[1m]))", "legendFormat": "resolve {{state}}" }
+      ]
+    },
+    {
+      "type": "row", "title": "런타임 (JVM · HTTP)", "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
+    },
+    {
+      "type": "timeseries", "title": "JVM 힙 사용 (bytes)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "sum(jvm_memory_used_bytes{area=\"heap\"})", "legendFormat": "heap used" }
+      ]
+    },
+    {
+      "type": "timeseries", "title": "HTTP 요청 지연 p99 (s)",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.99, sum by (le, uri) (rate(http_server_requests_seconds_bucket[5m])))", "legendFormat": "{{uri}}" }
+      ]
+    },
+    {
+      "type": "row", "title": "온라인 경로 (hook · landing 시 채워짐)", "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+      "panels": [
+        {
+          "type": "timeseries", "title": "LLM 호출량 (비용) — hook",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+          "targets": [
+            { "refId": "A", "expr": "sum by (model) (rate(lia_analysis_llm_calls_total[5m]))", "legendFormat": "{{model}}" }
+          ]
+        },
+        {
+          "type": "timeseries", "title": "캐시 적중률 — hook",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+          "targets": [
+            { "refId": "A", "expr": "sum(rate(lia_analysis_cache_hit_total[5m])) / (sum(rate(lia_analysis_cache_hit_total[5m])) + sum(rate(lia_analysis_cache_miss_total[5m])))", "legendFormat": "hit ratio" }
+          ]
+        }
+      ]
+    }
+  ]
+}

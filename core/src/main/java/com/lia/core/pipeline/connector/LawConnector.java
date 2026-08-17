@@ -10,9 +10,12 @@ import java.util.Map;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.config.LiaSourceProperties;
+import com.lia.core.observability.Obs;
 
 /**
  * 국가법령정보(law.go.kr DRF) 커넥터 — <b>MVP의 유일한 수집 경로</b>(D42).
@@ -38,10 +41,17 @@ public class LawConnector {
 
     private final RestClient http;
     private final LiaSourceProperties.Law props;
+    private final ObservationRegistry observations;   // 미주입 시 NOOP
 
     public LawConnector(RestClient.Builder builder, LiaSourceProperties.Law props) {
+        this(builder, props, ObservationRegistry.NOOP);
+    }
+
+    public LawConnector(RestClient.Builder builder, LiaSourceProperties.Law props,
+                        ObservationRegistry observations) {
         this.props = props;
         this.http = builder.baseUrl(props.base()).build();
+        this.observations = observations == null ? ObservationRegistry.NOOP : observations;
     }
 
     public String sourceType() {
@@ -111,12 +121,16 @@ public class LawConnector {
 
     /** 시행예정 법령 본문. {@code efYd} 는 목록의 시행일자를 그대로 넘긴다. */
     public RawLaw fetchPending(String mst, LocalDate effectiveDate) {
-        requireOc();
-        var uri = UriComponentsBuilder.fromPath("/DRF/lawService.do")
-                .queryParam("target", "eflaw")
-                .queryParam("MST", mst);
-        if (effectiveDate != null) uri.queryParam("efYd", effectiveDate.format(YMD));
-        return fromBody(request(uri), "시행예정", mst);
+        return Observation.createNotStarted(Obs.CONNECTOR_FETCH, observations)
+                .lowCardinalityKeyValue(Obs.TAG_TARGET, "eflaw")
+                .observe(() -> {
+                    requireOc();
+                    var uri = UriComponentsBuilder.fromPath("/DRF/lawService.do")
+                            .queryParam("target", "eflaw")
+                            .queryParam("MST", mst);
+                    if (effectiveDate != null) uri.queryParam("efYd", effectiveDate.format(YMD));
+                    return fromBody(request(uri), "시행예정", mst);
+                });
     }
 
     /**
@@ -126,11 +140,15 @@ public class LawConnector {
      * 달라서 시행중↔시행예정 연결에 쓸 수 없다(실측 확인).
      */
     public RawLaw fetchCurrent(String lawId) {
-        requireOc();
-        var uri = UriComponentsBuilder.fromPath("/DRF/lawService.do")
-                .queryParam("target", "law")
-                .queryParam("ID", lawId);
-        return fromBody(request(uri), "시행중", null);
+        return Observation.createNotStarted(Obs.CONNECTOR_FETCH, observations)
+                .lowCardinalityKeyValue(Obs.TAG_TARGET, "law")
+                .observe(() -> {
+                    requireOc();
+                    var uri = UriComponentsBuilder.fromPath("/DRF/lawService.do")
+                            .queryParam("target", "law")
+                            .queryParam("ID", lawId);
+                    return fromBody(request(uri), "시행중", null);
+                });
     }
 
     // --- 매핑 ------------------------------------------------------------

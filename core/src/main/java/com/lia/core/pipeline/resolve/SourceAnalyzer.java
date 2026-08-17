@@ -9,6 +9,10 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
+
+import com.lia.core.observability.Obs;
 import com.lia.core.pipeline.connector.RawLaw;
 
 /**
@@ -36,21 +40,49 @@ public class SourceAnalyzer {
     private final Function<String, List<RawLaw>> semanticSearch; // 의미검색(pending ns). 미구현 시 null
     private final double confident;
     private final double ambiguousMin;
+    private final ObservationRegistry observations;             // 미주입 시 NOOP
 
     public SourceAnalyzer(LawLookup lookup) {
         this(lookup, null, 88.0, 60.0);
     }
 
+    public SourceAnalyzer(LawLookup lookup, ObservationRegistry observations) {
+        this(lookup, null, 88.0, 60.0, observations);
+    }
+
     public SourceAnalyzer(LawLookup lookup,
                           Function<String, List<RawLaw>> semanticSearch,
                           double confident, double ambiguousMin) {
+        this(lookup, semanticSearch, confident, ambiguousMin, ObservationRegistry.NOOP);
+    }
+
+    public SourceAnalyzer(LawLookup lookup,
+                          Function<String, List<RawLaw>> semanticSearch,
+                          double confident, double ambiguousMin,
+                          ObservationRegistry observations) {
         this.lookup = lookup;
         this.semanticSearch = semanticSearch;
         this.confident = confident;
         this.ambiguousMin = ambiguousMin;
+        this.observations = observations == null ? ObservationRegistry.NOOP : observations;
     }
 
+    /** 해소 지연을 {@code state} 태그와 함께 계측한다(태그는 결과가 나와야 정해져 수동 start/stop). */
     public ResolutionResult resolve(String input) {
+        Observation observation = Observation.createNotStarted(Obs.RESOLVE, observations).start();
+        try (Observation.Scope scope = observation.openScope()) {
+            ResolutionResult r = doResolve(input);
+            observation.lowCardinalityKeyValue(Obs.TAG_STATE, r.state().name());
+            return r;
+        } catch (Throwable t) {
+            observation.error(t);
+            throw t;
+        } finally {
+            observation.stop();
+        }
+    }
+
+    private ResolutionResult doResolve(String input) {
         String text = input == null ? "" : input.trim();
 
         // 1) 법령명 정확·퍼지 매칭

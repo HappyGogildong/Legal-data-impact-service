@@ -1,0 +1,39 @@
+# LIA 관측 스택 오버레이 (D48) — 기존 docker-compose.yml(db) 위에 얹는다.
+#   docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d db prometheus grafana tempo postgres-exporter
+# core 는 호스트에서 `cd core && ./gradlew bootRun --args='--spring.profiles.active=demo'` 로 띄운다.
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./ops/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Linux 에서 호스트 bootRun scrape 용(Docker Desktop 은 자동)
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./ops/observability/tempo.yaml:/etc/tempo/tempo.yaml:ro
+    ports:
+      - "3200:3200"    # Tempo API (Grafana 조회)
+      - "4318:4318"    # OTLP HTTP — application.yml management.otlp.tracing.endpoint
+      - "4317:4317"    # OTLP gRPC
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_SECURITY_ADMIN_PASSWORD: lia
+    volumes:
+      - ./ops/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports: ["3001:3000"]     # 호스트 3000 은 mcp 가 쓰므로 3001
+    depends_on: [prometheus, tempo]
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.16.0
+    environment:
+      DATA_SOURCE_NAME: "postgresql://lia:lia@db:5432/lia?sslmode=disable"
+    ports: ["9187:9187"]
+    depends_on: [db]

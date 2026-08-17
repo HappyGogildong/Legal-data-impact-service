@@ -3,9 +3,13 @@ package com.lia.core.pipeline.diff;
 import java.util.ArrayList;
 import java.util.List;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
+
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Law;
+import com.lia.core.observability.Obs;
 
 /**
  * 시행예정본의 <b>변경 조문</b>을 시행중본(기준선)과 대조해 {@code diffVsCurrent} 를 채우고
@@ -27,6 +31,17 @@ import com.lia.core.domain.law.Law;
  */
 public class DiffBuilder {
 
+    /** 계측 레지스트리 — 미주입 시 NOOP(단위 테스트의 {@code new DiffBuilder()} 무영향). */
+    private final ObservationRegistry observations;
+
+    public DiffBuilder() {
+        this(ObservationRegistry.NOOP);
+    }
+
+    public DiffBuilder(ObservationRegistry observations) {
+        this.observations = observations == null ? ObservationRegistry.NOOP : observations;
+    }
+
     /**
      * @param pending  시행예정본 (필수). 조문에 {@code changed} 플래그가 채워져 있어야 한다.
      * @param baseline 같은 {@code lawId} 의 시행중본. 없으면(제정) {@code null}.
@@ -36,11 +51,13 @@ public class DiffBuilder {
         if (pending == null) {
             throw new IllegalArgumentException("시행예정본은 필수다 — 대조 대상.");
         }
-        List<Article> out = new ArrayList<>(pending.articles().size());
-        for (Article a : pending.articles()) {
-            out.add(a.changed() ? diffed(a, baseline) : a);
-        }
-        return pending.withArticles(out);
+        return Observation.createNotStarted(Obs.DIFF, observations).observe(() -> {
+            List<Article> out = new ArrayList<>(pending.articles().size());
+            for (Article a : pending.articles()) {
+                out.add(a.changed() ? diffed(a, baseline) : a);
+            }
+            return pending.withArticles(out);
+        });
     }
 
     /** 변경 조문 하나를 기준선과 대조해 확정 타입·대조문을 채운다. */
