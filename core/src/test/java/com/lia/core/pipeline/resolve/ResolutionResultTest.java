@@ -23,10 +23,14 @@ class ResolutionResultTest {
             "001809", "283191", "주택법", "시행예정",
             LocalDate.of(2026, 8, 4), LocalDate.of(2026, 2, 3), "21323", Map.of());
 
+    private static final RawLaw LAW_LATER = new RawLaw(
+            "001809", "283999", "주택법", "시행예정",
+            LocalDate.of(2027, 1, 1), LocalDate.of(2026, 5, 1), "21999", Map.of());
+
     @Test
     void RESOLVED인데_결과가_없으면_생성_불가() {
         var e = assertThrows(IllegalArgumentException.class, () ->
-                new ResolutionResult(ResolutionState.RESOLVED, null, List.of(), List.of(), null));
+                new ResolutionResult(ResolutionState.RESOLVED, null, List.of(), List.of(), List.of(), null));
         assertTrue(e.getMessage().contains("fail-closed"));
     }
 
@@ -36,7 +40,7 @@ class ResolutionResultTest {
                                          ResolutionState.NOT_FOUND_YET,
                                          ResolutionState.UNVERIFIED)) {
             assertThrows(IllegalArgumentException.class, () ->
-                            new ResolutionResult(s, LAW, List.of(LAW), List.of(), "안내"),
+                            new ResolutionResult(s, LAW, List.of(LAW), List.of(), List.of(), "안내"),
                     s + " 상태에 해소 결과가 새어들어갔다");
         }
     }
@@ -44,7 +48,24 @@ class ResolutionResultTest {
     @Test
     void RESOLVED에_후보를_함께_둘_수_없다() {
         assertThrows(IllegalArgumentException.class, () ->
-                new ResolutionResult(ResolutionState.RESOLVED, LAW, List.of(LAW), List.of(), null));
+                new ResolutionResult(ResolutionState.RESOLVED, LAW, List.of(LAW), List.of(), List.of(), null));
+    }
+
+    @Test
+    void 미해소_상태에_대안_버전이_딸리면_생성_불가() {
+        var e = assertThrows(IllegalArgumentException.class, () ->
+                new ResolutionResult(ResolutionState.AMBIGUOUS, null, List.of(LAW), List.of(),
+                        List.of(LAW_LATER), "어느 것인가요?"));
+        assertTrue(e.getMessage().contains("대안"), e.getMessage());
+    }
+
+    @Test
+    void 복수_시행예정본은_해소_후_대안으로_안내된다() {   // D43
+        var r = ResolutionResult.resolvedAmong(LAW, List.of(LAW_LATER));
+        assertTrue(r.analyzable(), "가장 이른 본으로 해소돼 분석 가능해야 한다");
+        assertEquals(LAW, r.resolved());
+        assertEquals(1, r.alternatives().size());
+        assertThrows(UnsupportedOperationException.class, () -> r.alternatives().add(LAW));
     }
 
     @Test

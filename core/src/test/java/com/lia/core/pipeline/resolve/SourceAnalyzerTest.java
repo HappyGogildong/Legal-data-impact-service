@@ -52,13 +52,14 @@ class SourceAnalyzerTest {
     }
 
     @Test
-    void 같은_법령의_시행예정본_복수는_AMBIGUOUS_이고_시행일을_되묻는다() {
+    void 같은_법령의_시행예정본_복수는_가장_이른_시행일로_해소하고_나머지를_안내한다() {   // D43
         var r = sa.resolve("자본시장과 금융투자업에 관한 법률");
 
-        assertEquals(ResolutionState.AMBIGUOUS, r.state(), "D43 케이스가 단정으로 새면 안 된다");
-        assertEquals(2, r.candidates().size());
-        assertTrue(r.message().contains("시행일"), "같은 법령ID 복수는 시행일 기준을 물어야 한다: " + r.message());
-        assertEquals(1, r.candidates().stream().map(RawLaw::lawId).distinct().count());
+        assertEquals(ResolutionState.RESOLVED, r.state(), "복수 시행예정본은 가장 이른 본으로 해소된다(D43)");
+        assertEquals("010513", r.resolved().lawId());
+        assertEquals(LocalDate.of(2026, 10, 1), r.resolved().effectiveDate(), "가장 이른 시행일본이어야 한다");
+        assertEquals(1, r.alternatives().size(), "나머지 시행예정본은 안내(alternatives)로 딸린다");
+        assertEquals(LocalDate.of(2026, 11, 13), r.alternatives().get(0).effectiveDate());
     }
 
     @Test

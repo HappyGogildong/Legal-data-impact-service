@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.lia.core.pipeline.connector.RawLaw;
 
@@ -68,9 +69,20 @@ public class SourceAnalyzer {
 
             if (strong.size() == 1) return ResolutionResult.resolved(strong.get(0));
             if (strong.size() >= 2) {
-                // 제목이 같은 여러 건 = 대개 같은 법령의 시행예정본이 겹친 것(D43).
-                // 어느 시점 기준인지 단정할 수 없으므로 사용자에게 되묻는다.
-                return ResolutionResult.ambiguous(top(strong), ambiguityMessage(strong));
+                // 제목이 같은 여러 건은 두 경우다:
+                //  (a) 같은 lawId 의 시행예정본이 겹침(D43) → 가장 이른 시행일본으로 해소, 나머지는 안내.
+                //  (b) 서로 다른 법령이 동명 → 진짜 모호하므로 되묻는다.
+                Map<String, List<RawLaw>> byLaw = strong.stream().collect(Collectors.groupingBy(
+                        l -> l.lawId() == null ? "" : l.lawId(), LinkedHashMap::new, Collectors.toList()));
+                if (byLaw.size() == 1) {                                    // (a) D43
+                    List<RawLaw> versions = strong.stream()
+                            .sorted(Comparator.comparing(RawLaw::effectiveDate,
+                                    Comparator.nullsLast(Comparator.naturalOrder())))
+                            .toList();
+                    return ResolutionResult.resolvedAmong(
+                            versions.get(0), versions.subList(1, versions.size()));
+                }
+                return ResolutionResult.ambiguous(top(strong), ambiguityMessage(strong));  // (b)
             }
 
             List<RawLaw> decent = scored.stream()

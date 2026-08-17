@@ -21,7 +21,13 @@ import com.lia.core.pipeline.connector.RawLaw;
  *   <li>{@code AMBIGUOUS} ⇒ 후보가 하나 이상. 빈 후보는 사실상 미해소다.</li>
  *   <li>{@code RESOLVED} 가 아니면 ⇒ 사용자 안내 {@code message} 필수.
  *       미등록과 허위 의심은 문구가 달라야 한다(D23).</li>
+ *   <li>{@code alternatives} 는 {@code RESOLVED} 에서만 채워진다 — 같은 법령의 다른
+ *       시행예정본(안내용, D43). 미해소 상태에 딸리면 위반이다.</li>
  * </ul>
+ *
+ * <p><b>{@code candidates} 와 {@code alternatives} 는 다르다.</b> 후보(candidates)는
+ * "어느 법령인지 모른다"는 <i>미해소</i> 상태이고, 대안(alternatives)은 "법령은 확정됐고
+ * 그 법령의 다른 시행일 버전이 더 있다"는 <i>해소된</i> 상태의 부가 안내다(D43).
  *
  * <p>목록은 항상 불변 복사본이다 — 생성 후 후보를 밀어넣지 못한다.
  */
@@ -30,6 +36,7 @@ public record ResolutionResult(
         RawLaw resolved,           // RESOLVED 일 때만
         List<RawLaw> candidates,   // AMBIGUOUS 후보
         List<RawLaw> similar,      // UNVERIFIED 대조용
+        List<RawLaw> alternatives, // RESOLVED 시 같은 법령의 다른 시행예정본(D43 안내)
         String message
 ) {
     public ResolutionResult {
@@ -38,6 +45,7 @@ public record ResolutionResult(
         }
         candidates = candidates == null ? List.of() : List.copyOf(candidates);
         similar = similar == null ? List.of() : List.copyOf(similar);
+        alternatives = alternatives == null ? List.of() : List.copyOf(alternatives);
 
         if (state == ResolutionState.RESOLVED) {
             if (resolved == null) {
@@ -51,6 +59,10 @@ public record ResolutionResult(
                 throw new IllegalArgumentException(
                         state + " 인데 해소 결과가 딸려 있다 — 미해소 입력이 분석으로 새는 경로다.");
             }
+            if (!alternatives.isEmpty()) {
+                throw new IllegalArgumentException(
+                        state + " 인데 대안 버전이 딸려 있다 — 대안은 해소된 법령의 부가 안내다(D43).");
+            }
             if (message == null || message.isBlank()) {
                 throw new IllegalArgumentException(state + " 는 사용자 안내 문구가 필요하다 (D23).");
             }
@@ -61,19 +73,27 @@ public record ResolutionResult(
     }
 
     public static ResolutionResult resolved(RawLaw law) {
-        return new ResolutionResult(ResolutionState.RESOLVED, law, List.of(), List.of(), null);
+        return new ResolutionResult(ResolutionState.RESOLVED, law, List.of(), List.of(), List.of(), null);
+    }
+
+    /**
+     * 같은 법령의 시행예정본이 복수일 때 — <b>가장 이른 시행일본으로 해소</b>하고
+     * 나머지({@code alternatives})는 안내로 딸린다(D43). @efYd 로 특정 버전을 열 수 있다(D45).
+     */
+    public static ResolutionResult resolvedAmong(RawLaw chosen, List<RawLaw> alternatives) {
+        return new ResolutionResult(ResolutionState.RESOLVED, chosen, List.of(), List.of(), alternatives, null);
     }
 
     public static ResolutionResult ambiguous(List<RawLaw> candidates, String message) {
-        return new ResolutionResult(ResolutionState.AMBIGUOUS, null, candidates, List.of(), message);
+        return new ResolutionResult(ResolutionState.AMBIGUOUS, null, candidates, List.of(), List.of(), message);
     }
 
     public static ResolutionResult notFoundYet(String message) {
-        return new ResolutionResult(ResolutionState.NOT_FOUND_YET, null, List.of(), List.of(), message);
+        return new ResolutionResult(ResolutionState.NOT_FOUND_YET, null, List.of(), List.of(), List.of(), message);
     }
 
     public static ResolutionResult unverified(List<RawLaw> similar, String message) {
-        return new ResolutionResult(ResolutionState.UNVERIFIED, null, List.of(), similar, message);
+        return new ResolutionResult(ResolutionState.UNVERIFIED, null, List.of(), similar, List.of(), message);
     }
 
     /** 분석 파이프라인 진입 가능 여부 — 게이트가 이 한 줄만 보면 되게. */
