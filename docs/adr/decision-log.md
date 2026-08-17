@@ -57,30 +57,20 @@ related:
 | D35 | **파이프라인을 Spring으로 통합** — Boot 4.0 + Spring AI 2.0(GA 2026-05-28)으로 Python 서버 대체. 3-런타임 → **2-런타임**(Spring / TS웹). Python↔Spring REST 계약은 내부 호출로 소멸, 도메인 모델 단일화 | 확정 | D05·D19·D32로 Python 선택 근거(무거운 ML 생태계) 소멸 — 실체는 HTTP+파싱+오케스트레이션. v0.2부터 예약된 경로. 기존 Python 코드는 포팅 사양·벤치 도구로 활용 | [[v0.6-spring-consolidation]], [[spring-migration]] |
 | D36 | **Evaluation Harness(합성 페르소나 E2E)를 MVP에서 제외** — 수직 슬라이스 완성 후(post-MVP) 착수. MVP 품질 앵커는 컴포넌트 단위 테스트 + 소량 사람검수 골든셋. 역할 규율(D14: 정답판정 금지)은 유지 | 확정 | 하니스는 완성된 E2E 흐름·프롬프트가 있어야 가치(회귀·UX 비평) 발동. 페르소나 패널·REST 전 구간에 걸친 선행 부담이 핵심 경로(#5~#9)를 지연 | mvp §4·§5, 이슈 #16 |
 | D37 | **에이전트 프레임워크(LangGraph 등) 미도입** — Analysis Engine은 Spring 빈 + Spring AI `ChatClient`/`VectorStore`로 **명시적 워크플로** 구현(검색→조립→추론→검증→재생성≤N). RAG도 Advisor 자동화 대신 명시적 검색(주입 `source_id` 소유) | 확정 | 실행 경로가 설계 시점에 고정 = 에이전트 아님(H안 기각과 동일 근거). Python 계열 프레임워크는 D35(런타임 통합)와 충돌. 결정성·캐시·인용 감사가 1급 요건 | [[AnalysisEngine]], v0.6 §3.4 |
-
 | D38 | **법안 본문(fullText) 획득 경로 = 미해결 갭** (현행법은 해결 ✓) — 목록 API·상세 페이지·대체 API 3종 모두 본문 미제공(2026-07-21 실측). `RawBill` 필드 정의도 부재하여 명문화. Normalizer는 Phase 1(필드 매핑+revision, 본문 무관)/Phase 2(본문 파서)로 분리 | **해소됨(D42)** | 문서가 본문을 "🔵B 원문 파싱"으로 전제하고 프롬프트 요소4를 필수로 규정했으나, *획득 수단*을 어디에도 규정하지 않은 정합성 결손. 본문 없이는 LawDiff·인용 그라운딩·벤치 정답쌍 모두 불성립 → MVP 필수 관문. **2026-07-31: 국가법령정보(현행법) 본문 제공 확인 → 갭은 *법안(assembly)* 한정. 2026-08-01 D42로 해소 — MVP 대상이 의안이 아니라 *시행예정 법령*(`eflaw`)으로 확정돼 본문이 이미 확보됨. assembly 본문은 참고용 소스의 post-MVP 과제로 강등** | [[SourceConnector]] §본문 획득, [[Normalizer]] |
-
 | D39 | **Java 단일 구조 유지 재확인** (메모리 우려 검토 결과) — Python 분리 재도입 안 함. 대신 **전환 완료**: Spring 자격증명 경로 연결 → 커넥터 Java 이관 → Python은 진단·벤치 도구로만 축소 | 확정 | "RAG가 앱 인스턴스에서 돌아 메모리 한계" 우려는 우리 구조에 미해당 — 벡터 저장·HNSW 검색=Postgres(별도 인스턴스), 임베딩·추론=외부 API(D32·D19). JVM은 HTTP+파싱+top-k 수 KB만 다룸. 분리해도 pgvector 부담은 그대로이고 런타임·인스턴스만 증가(예산 역행, ADR-001 "동인은 띄워 둔 인스턴스") | 본 로그 §D39 |
 | D40 | **오프라인/온라인 실행 모드 분리**(v0.7) — 다이어그램·설계 규율을 배치 적재 vs 요청 응답으로 구분. Persona Builder(Nemotron 군집)는 다이어그램에서 제외(post-MVP), `PersonaImpact` 커맨드는 유지하되 세그먼트는 사용자 선택/수작업 정의 | 확정 | 두 모드는 지연 요구·장애 영향·확장 축이 근본적으로 다름. 분리로 "온라인에 넣기 전 오프라인 가능성을 먼저 묻는다"는 규율이 명시됨(LawFacts 선계산·임베딩 적재의 근거) | [[v0.7-offline-online-split]] |
 | D41 | **페르소나 = 회원가입 자기신고 프로필**(Nemotron 군집 폐기) — `UserProfile{purposes, age(정수), occupation, employmentType, householdType, housingType, regionSido}`. **성명·생년월일·연락처·상세주소 미수집**, 시도까지만. **나이는 구간이 아닌 정수** — 법령 기준이 만 19/34/65세처럼 특정 나이로 끊기므로 구간화 시 경계 사용자에게 오답. 캐시 키는 `userId`가 아니라 **프로필 속성 해시**. D10 주입 규율(비인용·`<persona>` 격리)은 승계 | 확정 | 고정 6세그먼트는 해상도 부족(같은 버킷 내 상황 상이). 자기신고가 더 정확·최신이고 외부 데이터셋·군집 파이프라인 의존 제거. **주의: 직접식별정보 미수집일 뿐 "개인정보 아님"은 아님** — 조합 재식별·계정 식별자 존재하므로 처리방침·동의·파기 필요 | [[component-specs]] §2 |
-
 | D42 | **MVP 분석 대상 = 공포 후 시행 대기 법령**(국가법령정보 `target=eflaw`), 의안은 post-MVP. 도메인 모델 **`Law` 신설·`Bill` 보류**(C안). 신구조문대비표(HWP) 파싱 **폐기** | 확정 | 서비스 정의가 "적용될 확률이 높거나 적용 예정인 법안"이므로 통과율 ~20%인 의원발의는 참고용에 가깝다. 시행예정 법령은 **적용 확실성 100%**이고 전문·개정문·제개정이유·부칙이 **이미 연동된 출처에 전부 존재**(2026-08-01 실측, 899건). `조문변경여부='Y'` 플래그가 변경 조문을 직접 지목해(주택법 137개 중 6개) LawDiff 대상 선별·토큰 비용까지 해결. eflaw 응답에 `billNo`·발의자·소관위·심사단계가 없어 `Bill`을 쓰면 절반이 null → 모델 분리 | [[v0.8-pending-law-corpus|아키텍처 v0.8]], [[SourceConnector]] §MVP 본문 경로, [[component-specs]] §1.1 |
 | D43 | 한 법령에 **시행 대기 개정이 복수**일 때 LawDiff 기준 시점 | **Open** | 실측: 주택법 현행본 공포 제21447호(2026-03-05)인데 시행예정본은 제21323호(2026-02-03) — *나중에 공포된 쪽이 먼저 시행*. `lawId`↔시행예정본이 1:N이므로 "무엇이 바뀌나"를 어느 버전 기준으로 보여줄지 규정 필요 | [[v0.8-pending-law-corpus|아키텍처 v0.8]], [[component-specs]] §1.1 |
-
 | D44 | **`BillFacts` → `LawFacts` 개명**(참조 키 `bill_ref` → `law_ref`) + **`bill-attributes` → `law-attributes` 문서 개편**(의안 고유 속성 제거, 획득 계층 3→2). v0.4~v0.7 동결 스냅샷은 옛 이름 유지, v0.8·살아있는 문서는 갱신 | 확정 | 이름이 *의안 전용*으로 읽혀 "의안을 post-MVP로 미뤘는데 왜 계속 나오나"라는 오해를 만들었다. 실체는 **분석 대상이 무엇이든 붙는 페르소나 무관 Layer A 파생 캐시**이고 v0.8 오프라인 다이어그램에 MVP로 들어가 있다. 개명 자체는 설계 변화가 없다. 속성 카탈로그는 의안 기준 서술이 남아 있어 본문까지 법령 기준으로 재작성했다 — 특히 **🔵B(원문 파싱) 계층이 소멸**했다(API가 조문·부칙·개정문을 모두 제공). 옛 경로는 동결 스냅샷 v0.4~v0.7의 링크를 살리려 **묘비 문서**로 남긴다 | [[component-specs]] §1.3, [[v0.8-pending-law-corpus]] §4.5 |
-
 | D45 | **공개 API 표면 고정 — 분석 중심 구조** — `POST /api/v1/analyses`(자연어 질의)가 상위 리소스, `/laws/*`(검색·목록·사실)는 그것이 참조하는 **읽기 전용 데이터**. 분석을 law 하위에 두지 않는다(사용자는 lawId를 모른 채 질문). 4종 커맨드는 *사용자 선택 모드가 아니라 답변 구조·그라운딩 가드레일*이고 **Query Planner**(질의→차원)가 고른다. 시행일을 경로에 포함(`/laws/{lawId}/{efYd}`, D43), 해소 4상태는 HTTP 200, 프로필 없으면 부분성공(`unmet`) | 확정 | `/api/v1/...` 가 6개 문서에서 언급만 되고 정의된 적 없었다. 초안은 `/laws/{id}/analysis` 로 분석을 법령 하위에 뒀으나, 이는 '검색→선택→분석' 브라우징 흐름을 API에 박아 **자연어 자유 질의**를 배제한다. 분석이 상위 리소스이고 법령은 그 입력이라는 것이 올바른 구조. Query Planner 는 자연어 질의 모델이 새로 요구하는 미구현 컴포넌트 | [[service-api-spec]] |
-
 | D46 | **Query Planner = NL→타입 DTO→dispatch** (컴파일러/ORM 유비, 명칭은 Query Planner) — 자연어를 `AnalysisQuery`(타입 DTO)로 번역(Haiku), 타입이 검색·실행 전략 결정. QueryType **5종**: `LOOKUP`(발견)+`SUMMARY`·`DIFF`(Layer A)+`IMPACT`·`ACTION`(Layer B). Target 2형: `Reference`(해소)·`Discovery`(코퍼스 검색). 주 타입 1+집합, 자유도 보존 | 확정 | D45가 남긴 Query Planner 공백 해소. **자연어 입력 ≠ 동적 제어** — 번역기가 타입 객체를 뱉으면 이후 경로는 고정이라 결정성·캐시·인용 감사 보존(D37 *강화*, 에이전트 아님). 타입이 검색 전략을 골라 LOOKUP·SUMMARY·DIFF는 캐시/no-RAG(비용 레버). LOOKUP은 '찾아줘' 검색 동작을 대응 | [[QueryPlanner]], [[v0.9-nl-query-planner]] |
 | D47 | **아키텍처 v0.9** — 온라인 경로를 자연어 질의 중심으로(Query Planner 신설). 옛 `AnalysisPipeline`+`CommandRegistry`→`QueryDispatcher`, `AnalysisCommand`→`DimensionHandler` | 확정 | 커맨드가 *사용자 선택 모드*가 아니라 답변 구조·그라운딩 가드레일임을 구조에 반영 | [[v0.9-nl-query-planner]] |
-
 | D48 | **백엔드 동시성 기법은 측정 선행** — single-flight·격리수준·outbox는 관측 지표로 병목을 증명한 뒤 적용. 관측 스택 확정: Micrometer→Prometheus→Grafana, Micrometer Tracing→OTel→Tempo, k6 부하, postgres_exporter. 각 기법 = 문제→신호→기법→트리거 | 확정 | speculative한 락은 없는 병목을 만들고 복잡도만 늘린다. "측정 없는 최적화 금지"를 문서 구조로 강제 — k6로 스탬피드 100:100을 먼저 관측하고 single-flight 후 100:1 증명 | [[observability]], [[concurrency-and-reliability]] |
 | D49 | **알림은 인앱 알림함 우선**(외부 채널 opt-in) — 연락처 미수집(D41)이라 이메일·푸시 불가. 인앱 알림함은 PII 불필요. Outbox+dedup로 정확히 한 번 | 확정 | D41 최소수집과 알림 기능의 긴장 해소 — 연락처를 받지 않고도 통지 제공. 외부 발송은 명시적 별도 동의 후에만 | [[concurrency-and-reliability]] §3, [[service-api-spec]] §3.6 |
-
 | D50 | **로그 스택 = Grafana Loki**(구조화 JSON + trace-id 상관, Prometheus·Tempo와 Grafana 단일 UI). 운영 로그(휘발 TTL) vs **감사 로그**(append-only 영구) 분리. 로그 PII 규율(userId 대신 프로필 해시, 질의 원문 마스킹) | 확정 | ELK/Elasticsearch는 로그 검색 최강이나 ES 운영 부담이 커 우리 규모엔 과함. 이미 Grafana 진영이라 Loki가 정합(한 UI·경량·라벨 색인). AWS 관리형 대안 CloudWatch. 감사 로그는 법률 서비스 책임성(D08 그라운딩)·D41 로그 뒷문 차단 | [[observability]] §4, [[concurrency-and-reliability]] §4 |
-
 | D51 | **캐싱 모델 3층 확정** — ① Layer A 오프라인 선계산(법령 사실·diff → context 재료) ② **Anthropic prompt caching**(안정 prefix=가드레일+법령 사실, 읽기 ~10%)으로 context 재사용 ③ 답변 캐시는 **완전 동일 질의만**(키에 **질문 해시** 포함). Semantic 답 캐시 기본 미사용. **차원=캐시 키 아님**(라우팅·구조·가드레일). 개인화 답 = 캐시 context + 프로필 + 실제 질문 → Opus 1콜 | 확정 | 이전 "차원별(프로필+법령+dimension) 답 캐시"는 같은 버킷의 다른 질의("구체적으로 더")에 같은 답을 주고, 개인화 답 재사용률이 낮아 선계산 낭비. prompt caching(context)과 semantic caching(완성 답)은 다른 층 — 전자를 주로. 선례: Harvey AI 법률 RAG(Postgres+pgvector·검색+그라운딩·질의별 생성) | [[component-specs]] §3.4, [[concurrency-and-reliability]] §1 |
-
 | D52 | **문서 정리 — MVP 범위 밖 항목 축약·현행화** — ① `Bill` 스키마(§1.2) 삭제(복원은 git·[[SourceConnector]] 계약) ② **프롬프트 정의서 현행 재작성**(Bill·Nemotron·`BILL:` → Law·자기신고 프로필·`LAW:{lawId}@{efYd}`·차원·D51 캐싱) ③ Evaluation Harness 등 post-MVP 블록 한 줄 축약 ④ `ImpactResult` 정렬(`affected_segments`→`affected_profiles`, `stage_info`→`effective_info`) | 확정 | 프롬프트 정의서가 통째로 구 설계라 component-specs가 '동일 스키마'로 참조하며 잘못된 곳을 가리켰다. 결정로그·동결 스냅샷(v0.x)·의도적 post-MVP 경계 마커는 보존(축약 유지) | [[component-specs]] §1·§3, [[analysis-prompt-spec]] |
 
 > **D37 재검토 트리거:** ① 대형 옴니버스 법안의 map-reduce + Generator-Critic이 3단 이상 *동적* 분기로 확장 ② 멀티턴 대화형 탐색(상태 지속·중단 재개) 도입. 그때도 `AnalysisEngine` 인터페이스 뒤에 격리해 도입 가능하므로 본 결정은 가역적(JVM 대안: LangGraph4j·Embabel).
@@ -135,8 +125,11 @@ RAG·RDB는 "두뇌(모델)를 경량으로 바꾸는 장치"가 아니라, 파�
 
 ## 다음 결정 대기 (Open)
 
-- Evaluation Harness 패널 크기·골든셋 규모 (D14 세부)
-- 세그먼트 군집 알고리즘·검증 방식 (D18 구현 세부)
-- Proposed 항목 검증 후 승격: D04(저장소)·D07(엔진)·D14(평가하니스)
+- **D43 (Open) — 복수 시행예정본의 LawDiff 기준 시점.** 한 `lawId`에 시행 대기 개정이 겹칠 때 "무엇이 바뀌나"를 어느 버전 기준으로 보여줄지. **DiffBuilder 구현(2026-08-14)으로 실코드가 이 선택을 요구** → 우선순위 상승. (현재 유일한 열린 설계 결정)
+- Evaluation Harness 패널 크기·골든셋 규모 — **post-MVP**(D36으로 MVP 제외 확정). 수직 슬라이스 완성 후 착수.
 
-> 설계 결정(D01~D20)은 모두 확정/Proposed로 정리됨. 남은 것은 대부분 *구현 세부*이며, 문서 스펙대로 개발 시 MVP happy-path E2E 동작이 보장된다([[component-specs]] §5 정합성 검증).
+> **정리된 항목(더 이상 열려 있지 않음):**
+> - ~~세그먼트 군집 알고리즘·검증(구 D18)~~ → **D41로 폐기**(자기신고 프로필로 대체, 군집 파이프라인 자체가 사라짐).
+> - Proposed였던 D04(저장소)는 D22·D27·D31·D42가 반복 재확인 → 사실상 확정(정식 승격은 실부하 측정 후). D07(2계층 엔진)은 D37·D51이 그 위에 구현을 얹어 채택됨.
+
+> 결정은 **D52까지** 진행됐다. 미해결은 **D43 하나**이고 나머지는 구현 세부다 — 문서 스펙대로 개발 시 MVP happy-path E2E 동작이 보장된다([[component-specs]] §5 정합성 검증).
