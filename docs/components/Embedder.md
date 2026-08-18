@@ -8,9 +8,6 @@ related: ["reference/embedding-benchmark.md", "components/component-specs.md", "
 
 # Embedder (Spring, 공유)
 
-> **v0.2 (2026-08-02):** 런타임이 Spring(Spring AI `EmbeddingModel`)으로 확정됐다(D35). 역할·파라미터·벤치 계획은 불변.
-
-
 > 텍스트 → 벡터. **적재·검색이 공유**하는 외부 임베딩 API 추상화. 벤더 교체 지점(벤치 대상). 관련: [[embedding-benchmark]] · [[component-specs]] §3.3 · [[decision-log|D32·D33]]
 
 ## 역할
@@ -52,7 +49,7 @@ public interface Embedder {
 - **벤더 교체 지점.** OpenAI↔Upstage를 같은 인터페이스로 갈아끼워 [[embedding-benchmark|벤치]]를 통제변인 1개로 수행. 벤치 후 `provider` 확정.
 - **`mode` 1급 파라미터.** query/document 분리 모델의 정확도 이득을 살리되, 대칭 모델(OpenAI)에선 무시 → 추상화로 차이 흡수.
 - **추론 모델과 별개.** Opus(생성)와 다른 벤더/모델. 모델 변경 시 **전 코퍼스 재색인** 필요하므로 한 번 확정하면 고정.
-- 데이터 민감도 낮음(공개 법령·합성 페르소나) → 외부 API 적합.
+- 데이터 민감도 낮음(공개 법령) → 외부 API 적합.
 
 ## 의존 / 관련
 - 사용처: [[RAGIndexer]](passage), [[AnalysisEngine]]·[[SourceAnalyzer]](query)

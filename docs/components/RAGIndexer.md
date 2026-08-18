@@ -8,8 +8,6 @@ related: ["components/component-specs.md", "architecture/v0.8-pending-law-corpus
 
 # RAGIndexer (Spring, 적재)
 
-> **v0.2 (D42·D44, 2026-08-02):** 탐색용 네임스페이스가 `bill` → **`pending`** 으로 바뀌었고, 적재 대상이 *법안 요약* → **시행예정 법령 요약**이 됐다. 런타임은 Spring(D35).
-
 > 코퍼스를 임베딩해 **Vector Index에 적재**. 두 네임스페이스: *분석용(시행중 법령 조문)* + *탐색용(시행예정 법령 요약·LawFacts)*. 관련: [[component-specs]] §4 #4 · [[v0.8-pending-law-corpus]] §4.5
 
 ## 역할

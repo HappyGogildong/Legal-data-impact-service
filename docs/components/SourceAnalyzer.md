@@ -9,8 +9,6 @@ related: ["components/component-specs.md", "architecture/v0.8-pending-law-corpus
 
 # SourceAnalyzer (Spring, 식별)
 
-> **v0.1 → v0.2 (D42, 2026-08-02):** 해소 대상이 *의안* → **시행예정 법령**으로 바뀌었다. **의안번호 분기 제거**(법령에 의안번호가 없고 사용자가 법령ID `001809` 를 입력하지도 않는다), **커넥터 의존 제거**(`LawLookup` 포트 경유). 런타임은 Spring(D35).
-
 > 사용자 입력 → **어떤 시행예정 법령인가**를 해소(resolve). 분석가가 아니라 *식별자(resolver)*. 관련: [[component-specs]] §4 #2 · [[v0.8-pending-law-corpus]] §3.2
 
 ## 역할

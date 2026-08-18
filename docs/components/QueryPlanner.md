@@ -62,7 +62,7 @@ AnalysisQuery {
 
 - **`QueryTranslator`** (interface) + `SpringAiQueryTranslator` — `ChatClient.prompt().user(nl).call().entity(AnalysisQueryDraft.class)`. **모델 Haiku 4.5**(추출·분류는 저비용; Opus는 실제 분석 생성용 — 티어링, component-specs §3.3). *유일한 LLM 자유도.*
 - **`QueryPlanner`** — `plan(query, explicitLawRef?, profilePresence)`: translate → (Reference면 `SourceAnalyzer.resolve`, 실패 시 `Unresolved` / Discovery면 검색 스펙 구성) → 프로필 없으면 Layer B 제거(`unmet`) → 검증된 `AnalysisQuery`.
-- **`QueryDispatcher`** — `AnalysisQuery`를 QueryType별 핸들러로 라우팅·조립(옛 `AnalysisPipeline`+`CommandRegistry` 승계). `types`+`Target` 보고 결정론적으로 결정. Discovery+분석은 팬아웃.
+- **`QueryDispatcher`** — `AnalysisQuery`를 QueryType별 핸들러로 라우팅·조립한다. `types`+`Target` 보고 결정론적으로 결정. Discovery+분석은 팬아웃.
 - **`DimensionHandler`** (interface) + 스텁 — 실제 RAG/LLM/검색 실행은 Embedder·Law Store·AnalysisEngine·LawDiscovery 의존이라 후속. 지금은 라우팅 결정·계약 확정까지.
 
 ## 4. 구조 결정 의도 (왜 이렇게)

@@ -8,8 +8,6 @@ related: ["components/component-specs.md", "prompts/analysis-prompt-spec.md", "a
 
 # AnalysisEngine (Spring, 해석)
 
-> **v0.2 (D41·D42, 2026-08-02):** 분석 대상이 `Bill` → **`Law`(시행예정)**, 개인화 입력이 *페르소나 세그먼트* → **자기신고 프로필**로 바뀌었다. Python↔Spring REST 계약은 D35로 소멸해 **내부 호출**이다.
-
 > **쿼리 임베딩+RAG 검색 → 프롬프트 빌드 → 외부 foundation API(Opus) 추론 → 1차 인용검증.** 관련: [[component-specs]] §4 #11 · [[analysis-prompt-spec]] · [[v0.8-pending-law-corpus]] §4.6
 
 ## 역할

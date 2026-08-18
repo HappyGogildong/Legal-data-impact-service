@@ -15,8 +15,6 @@ related:
 
 **관련:** [[components-io-and-scope|컴포넌트·MVP 범위]] · [[analysis-prompt-spec|프롬프트 정의서]] · [[v0.8-pending-law-corpus|아키텍처 v0.8]] · [[decision-log|결정 로그]]
 
-> **v0.1 → v0.2 (D41·D42·D44, 2026-08-02):** 분석 대상이 *의안* → **시행예정 법령**(§1.1 `Law` 신설, `Bill`은 post-MVP 보류), 개인화 입력이 *페르소나 세그먼트* → **자기신고 프로필**(§2), 파생 캐시가 `BillFacts` → **`LawFacts`**(§1.3). §3 계약은 Python↔Spring REST가 아니라 **내부 호출**이고(D35), §3.2 수집·해소 스키마는 법령 기준으로 다시 썼다.
-
 ## 0. 목적·범위·표기법
 
 [[components-io-and-scope]]의 카탈로그를 **개발 가능한 수준의 상세 스펙**으로 확장한다. **MVP 활성 컴포넌트(IN)** 만 다루며, §2 사용자 프로필 스키마·§3 REST 계약을 포함하고, §5에서 **정합성 검증**으로 "스펙대로 개발 시 E2E 동작 가능"함을 확인한다.
@@ -31,7 +29,7 @@ related:
 
 속성 출처·용도의 전체 카탈로그는 [[law-attributes|법령 속성 카탈로그]] 참고. 아래는 그중 모델에 반영하는 필드.
 
-> **모델 분리 (D42, 2026-08-01):** MVP 분석 대상은 *의안*이 아니라 **공포 후 시행 대기 법령**이다(`target=eflaw`). 아래 **`Law`가 MVP의 유일한 분석 대상 모델**이고, **`Bill`(의안)은 post-MVP로 보류**하고 스키마는 삭제했다(복귀 시 git·[[SourceConnector]] 계약에서 복원, D52). eflaw 응답에 `billNo`·발의자·소관위·심사단계가 **아예 없어** `Bill`을 쓰면 절반이 항상 null이라 두 모델을 합치지 않는다.
+> **모델 범위.** MVP 분석 대상은 **공포 후 시행 대기 법령**(`target=eflaw`)이며 아래 **`Law`가 유일한 분석 모델**이다. 의안(`Bill`)은 **post-MVP** — eflaw 응답에 `billNo`·발의자·소관위·심사단계가 없어 두 모델을 합치면 절반이 항상 null이 되므로 분리한다(의안 계약은 [[SourceConnector]]).
 
 ### 1.1 `Law` — MVP 분석 대상 (공포된 법령)
 
@@ -100,12 +98,10 @@ Article {
 
 ### 1.3 `LawFacts` — Layer A 파생 캐시 (MVP 유효)
 
-**페르소나와 무관한** 사실 파생층이라 한 번 만들면 모든 사용자가 재사용한다. 분석 대상이 무엇이든 붙는 Layer A 캐시다.
-
-> **개명 (D44, 2026-08-02):** ~~`BillFacts`~~ → **`LawFacts`**. 이름이 의안 전용으로 읽혀 MVP 범위를 오해하게 만들었다 — 실제로는 분석 대상이 무엇이든 붙는 Layer A 파생 캐시다. 참조 키도 `bill_ref` → `law_ref`.
+**프로필과 무관한** 사실 파생층이라 한 번 만들면 모든 사용자가 재사용한다(Layer A 캐시). 참조 키는 `law_ref`.
 
 ```ts
-LawFacts {                  // 🟡C 파생 — 원본에 저장 X. Layer A 캐시(페르소나 무관). D07.
+LawFacts {                  // 🟡C 파생 — 원본에 저장 X. Layer A 캐시(프로필 무관). D07.
   law_ref: string           // "LAW:{lawId}@{effectiveDate}"
   revision: string           // 기준 revision (캐시 키)
   impactScope: enum("보편"|"도메인특정"|"소수")
@@ -147,7 +143,6 @@ Action { what: string, deadline: string, basis: string[] }
 | 시행중 법령 조문 | `LAW:{lawId}:art:{no}` | diff 기준선 |
 | 부칙 | `LAW:{lawId}@{effectiveDate}:addenda:{no}` | 시행일·경과조치 근거 |
 | 개정문 | `LAW:{lawId}@{effectiveDate}:amend` | 자구 변경 근거 |
-| 의안 | `BILL:{billNo}:art:{no}` · `PREC:{billNo}` | *post-MVP* |
 
 **`revision` 산출 규칙 (캐시 무효화 키, 갭 4 확정):**
 ```
@@ -190,7 +185,7 @@ AnalysisQuery {                    // QueryTranslator(Haiku)가 번역, QueryPla
 
 ## 2. 계약 A — 사용자 프로필 (User Profile · 자기신고)
 
-**D41로 개정.** ~~Nemotron 군집 6개 세그먼트~~ → **회원가입 시 자기신고 프로필**. 고정 6버킷은 개인화 해상도가 낮고(같은 버킷 안에서 상황이 크게 다름), 외부 데이터셋·군집 파이프라인 의존이 붙었다. 사용자가 직접 답한 속성이 더 정확하고 최신이며 Nemotron 의존이 사라진다.
+프로필은 **회원가입 시 자기신고**로 받는다. 고정 세그먼트(버킷)는 개인화 해상도가 낮고(같은 버킷 안에서도 상황이 크게 다름) 외부 데이터셋·군집 파이프라인 의존이 붙는다 — 사용자가 직접 답한 속성이 더 정확하고 최신이다.
 
 ### 수집 항목 (전부 선택 — 채울수록 개인화 정확도↑)
 
@@ -213,7 +208,7 @@ Purpose = enum("생활·주거"|"세금·재정"|"근로·고용"|"사업·창�
 
 **`age`를 구간이 아닌 정수로 두는 이유:** 한국 법령의 적용 기준은 **특정 나이로 끊긴다** — 만 19세(성년·청약), 34세(청년 정책 상한), 65세(노인 복지) 등. `"19-29"` 같은 구간으로 뭉개면 *경계에 걸린 사용자에게 정반대 결론*을 줄 수 있다(19세와 29세는 적용 법령이 크게 다르다). `LawFacts.thresholds`(적용 기준: 금액·연령·규모)와 정확히 대조하려면 정수가 필요하다.
 
-**`purposes`가 개인화의 핵심 축이다** — 같은 30세 사무직이라도 *창업 준비 중*인지 *양육 중*인지에 따라 같은 법령에서 볼 조문이 달라진다. 고정 세그먼트로는 잡히지 않던 구분이다. (관심 도메인은 `purposes`와 중복돼 별도 필드로 두지 않는다.)
+**`purposes`가 개인화의 핵심 축이다** — 같은 30세 사무직이라도 *창업 준비 중*인지 *양육 중*인지에 따라 같은 법령에서 볼 조문이 달라진다. 고정 세그먼트로는 잡기 어려운 구분이다. (관심 도메인은 `purposes`와 중복돼 별도 필드로 두지 않는다.)
 
 ### 개인정보 최소 수집
 
@@ -228,19 +223,19 @@ Purpose = enum("생활·주거"|"세금·재정"|"근로·고용"|"사업·창�
 >
 > 설계 규율: ① 프로필은 **언제든 수정·삭제 가능**해야 한다. ② 분석 결과 캐시 키에는 `userId`가 아니라 **프로필 속성 해시**를 쓴다 — 동일 속성 사용자 간 캐시를 재사용하면서 개인 단위 추적을 피한다.
 
-### 프롬프트 주입 규율 (D10에서 승계 — 불변)
+### 프롬프트 주입 규율 (불변)
 
-- 프로필은 **"수신자 정보"일 뿐 인용 가능한 법적 source가 아니다** — `<persona>` 블록 전용, `<context>`(법령)와 분리.
+- 프로필은 **"수신자 정보"일 뿐 인용 가능한 법적 source가 아니다** — `<profile>` 블록 전용, `<context>`(법령)와 분리.
 - 런타임은 `userId`로 **lookup**(벡터 RAG 아님). 주입 시 `userId`는 제외하고 **속성만** 직렬화.
-- **정량 인구통계 용도 금지** — 자기신고 표본이라 인구 대표성이 없다. ~~`population_weight`~~ 제거(Nemotron 분포 기반이었음); triage 인구 가중치는 별도 근거가 필요하다([[triage-policy]] §6 Open).
+- **정량 인구통계 용도 금지** — 자기신고 표본이라 인구 대표성이 없다. triage 인구 가중치를 쓰려면 별도 근거가 필요하다([[triage-policy]] §6 Open).
 
 > 도메인 특정 법령의 *기업/기관* 영향은 개인 프로필로 미충족 — 별도 엔티티 프로파일은 MVP 범위 밖(후속).
 
 ---
 
-## 3. 계약 B — 오케스트레이터 ↔ Analysis Engine (D35로 REST→내부 호출)
+## 3. 계약 B — 오케스트레이터 ↔ Analysis Engine (내부 호출)
 
-> **D35:** 파이프라인이 Spring으로 통합되어 아래 REST 계약은 **내부 메서드 호출/DTO**로 승계된다(필드·오류 의미는 동일, `injected_source_ids` 포함). HTTP 스키마는 이력·참고용으로 보존.
+> 파이프라인이 Spring 단일 런타임이라 아래 계약은 **내부 메서드 호출/DTO**다(필드·오류 의미 동일, `injected_source_ids` 포함). HTTP 스키마 표기는 계약을 명세하기 위한 것이다.
 
 **경계:** 오케스트레이터(#8)가 해소 게이트를 통과한 입력을 Analysis Engine(#11)에 넘긴다. RAG 검색·프롬프트 빌드·foundation API 호출·구조화 응답은 #11이 수행한다. **같은 Spring 애플리케이션 안의 내부 호출**이며(D35), 아래 HTTP 표기는 필드·오류 의미를 보존하기 위한 이력 표기다.
 
@@ -354,7 +349,7 @@ Content-Type: application/json
 
 **개인화 답 = 캐시된 context + 프로필 + 실제 질문 + 가드레일 → Opus 1콜.** 질문마다 생성하므로 *서로 다른 질문은 다른 답*이다.
 
-**차원(dimension)은 캐시 키가 아니다** — context 라우팅(무엇을 당길지) + 출력 구조 + 그라운딩 가드레일이다. 이전 설계의 "차원별(프로필+법령+dimension) 답 캐시"는 D51로 폐기.
+**차원(dimension)은 캐시 키가 아니다** — context 라우팅(무엇을 당길지) + 출력 구조 + 그라운딩 가드레일이다.
 
 > **근거.** Anthropic *prompt caching* = context/prefix 재사용, *semantic caching* = 완성 답 재사용(유사 질의) — 다른 층이다. 우리는 전자를 주로, 후자는 완전 반복에만. 도메인 선례 Harvey AI(법률 RAG · Postgres+pgvector · 검색+그라운딩+질의별 생성)도 같은 골격.
 
@@ -432,7 +427,7 @@ Content-Type: application/json
 - 입력: `{ query, lawRef?, scope? }` → 출력: `PlanResult = Planned(AnalysisQuery) | Unresolved(ResolutionResult)`.
 - 의존: `ChatClient`(Haiku), #2 SourceAnalyzer(Reference 해소), LawDiscovery(Discovery 검색, 후속).
 
-### #8 QueryDispatcher / Orchestrator (Spring)  *(옛 AnalysisPipeline 승계, D47)*
+### #8 QueryDispatcher / Orchestrator (Spring)
 - 역할: 검증된 `AnalysisQuery`를 **QueryType별 핸들러로 라우팅**·조립 → 검증 → 캐시.
 - 입력: `AnalysisQuery` (해소·발견 완료). 출력: 타입별 결과 묶음.
 - 동작:
@@ -442,10 +437,10 @@ Content-Type: application/json
   4. **Verification Gate(#12)** 통과분만. 근거 부족 차원은 `unmet`으로 부분성공.
 - 의존: #4, #7, #7b, #11, #12, `DimensionHandler` 레지스트리.
 
-### #9 DimensionHandler Registry (Spring)  *(옛 Command Registry 승계)*
+### #9 DimensionHandler Registry (Spring)
 - 역할: `DimensionHandler` 구현체 자동 발견(`@Component`) → `QueryType → Handler`.
 
-### #10 DimensionHandler ×5 (Spring)  *(옛 AnalysisCommand 승계)*
+### #10 DimensionHandler ×5 (Spring)
 각 핸들러 = `type() / needsProfile() / needsRag() / 실행`. 사용자 선택 모드가 아니라 플래너가 고르는 내부 분해(D46).
 | 핸들러 | 입력 | kind | 출력 핵심 |
 |---|---|---|---|
@@ -475,7 +470,7 @@ Content-Type: application/json
 - 동작: 검색→**법령 선택(시행일 포함)**→(프로필 기반)4종 호출→결과·인용·**시행일**·면책 표시. 프로필 미설정 시 안내 후 입력 유도. 같은 법령에 시행예정본이 여럿이면 **가장 이른 시행일 기준으로 표시**하고 다른 시행일 선택 UI 제공(D43).
 
 ### #15 Evaluation Harness (오프라인/CI)
-- 역할: 합성 페르소나 패널로 E2E smoke·회귀(구동·정성), 정답판정 금지.
+- 역할: 합성 프로필 패널로 E2E smoke·회귀(구동·정성), 정답판정 금지.
 - 입력: 프로필 패널 + 법령셋 + `prompt_version`.
 - 출력: smoke 결과 + UX 비평 + 커버리지 리포트.
 - 동작: 프로필별 에이전트가 실제 REST 흐름 호출 → 스키마/인용 누락·UX 이슈 수집. 정답 앵커는 규칙검증+사람 골든셋. **post-MVP 이연(D36)**.
@@ -502,31 +497,15 @@ happy-path를 따라 **생산자 출력 ⊇ 소비자 입력 요건**을 점검�
 - source_id 형식: 공통모델 §1 = 프롬프트 정의서 §2 ✅
 - ImpactResult 필드: 공통모델 §1 = 프롬프트 정의서 §4 ✅
 - 커맨드 4종·requirements: §4#10 = [[components-io-and-scope]] §4 = [[decision-log]] D25 ✅
-- 프로필 비인용 격리: §2 = 프롬프트 정의서 §3 = D10(D41로 승계) ✅
+- 프로필 비인용 격리: §2 = 프롬프트 정의서 §3 = D41 ✅
 - 캐시 키(Layer A 프로필 제외): §3.1 = 프롬프트 정의서 §2 ✅
 
-**발견된 갭 / 개발 전 닫을 것**
-1. **현행법 diff 처리 수준 (확정·MVP 포함 / D42로 단순화):** MVP에 `LawDiff` 포함. ~~신구조문대비표를 1차 diff로~~ **폐기** — 같은 `lawId`의 **시행중본(`target=law&ID=`) ↔ 시행예정본(`target=eflaw&MST=`)** 이 동일 스키마로 조문 전문을 주므로 직접 대조한다. 대상 조문은 `조문변경여부='Y'`가 지목하고(주택법 137개 중 6개), 자구 변경 근거는 `개정문`, 시행 시점은 `부칙`이 제공한다. **조문 정렬(alignment) 과제도 함께 소멸**(조문번호가 곧 정렬키). 남은 것은 시행예정본이 복수일 때의 기준 시점(**D43**).
-2. ~~resolve/ingest 스키마 미확정~~ — **닫힘**: §3.2에 법령 기준으로 확정(D42).
-3. ~~인용 존재성 검증의 source_id 집합 전달~~ — **닫힘**: §3.1 응답에 `injected_source_ids: string[]` 추가, #12가 이를 검증 입력으로 사용.
-4. ~~revision 산출 규칙~~ — **닫힘**: §1 에 명문화(분석영향 필드 해시).
-5. ~~시행예정본 복수 시 기준 시점(D43)~~ — **닫힘(D43 확정)**: 정본 단위 `(lawId,efYd)`, 기준선=시행중본, 시행일 미지정 시 **가장 이른 미래 시행일본으로 해소 + 나머지 안내**(`SourceAnalyzer.resolvedAmong`). 타임라인 병합은 post-MVP.
+**diff 처리 (MVP 포함).** 같은 `lawId`의 시행중본(`target=law&ID=`) ↔ 시행예정본(`target=eflaw&MST=`)이 동일 스키마로 조문 전문을 주므로 직접 대조한다. 대상 조문은 `조문변경여부='Y'`가 지목(주택법 137개 중 6개), 자구 변경 근거는 `개정문`, 시행 시점은 `부칙`이 제공한다. 조문번호가 곧 정렬키다. 복수 시행예정본의 기준 시점은 [[decision-log|D43]].
 
-**결론:** 갭 1~5 모두 닫혔다(D43 포함). 스펙대로 구현 시 happy-path E2E 동작이 보장된다.
+**결론:** 위 매칭표대로 생산자 출력 ⊇ 소비자 입력이 성립 — 스펙대로 구현 시 happy-path E2E 동작이 보장된다.
 
 ---
 
-## 6. Open (개발 전 확정) — 전부 닫힘
+## 6. 개발 전 확정 — 완료
 
-- [x] §3.1 응답에 `injected_source_ids` 추가(정합성 갭 3)
-- [x] `revision` 산출 규칙(갭 4) → §1 확정
-- [x] resolve/ingest 엔드포인트 스키마 → §3.2 확정
-- [x] ~~세그먼트 군집 개수·기준~~ → **폐기(D41)**. 자기신고 `UserProfile`로 대체 → §2
-- [x] foundation 모델 픽 + 토큰 예산 → §3.3 확정(Opus 4.8)
-- [x] 임베딩 모델 배치 → §3.3 **외부 API 확정**(자체 호스팅 제외, dim 1536), 벤더는 벤치 후
-- [x] 현행법 diff MVP 처리 수준 → §5 갭1 **MVP 포함**(시행중본↔시행예정본 직접 대조, D42)
-- [x] 조문 정렬(alignment) → **해소(D42)** — 동일 스키마·동일 조문번호
-- [x] resolve 응답의 법령 식별자 형식 → §3.2 확정(`{lawId, effectiveDate}`)
-- [x] 시행예정본이 복수인 법령의 **기본 기준 시점** (**D43**) — 가장 이른 시행일 해소+안내로 확정
-
-> 남은 작업은 대부분 *구현*. 본 스펙대로 개발 시 happy-path E2E 동작 보장.
+개발 전 확정이 필요한 설계 항목은 모두 확정됐고 미해결 설계 결정은 없다([[decision-log]] '다음 결정 대기'). 남은 작업은 구현이다.
