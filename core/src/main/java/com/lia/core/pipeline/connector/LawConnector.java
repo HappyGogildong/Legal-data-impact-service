@@ -1,5 +1,6 @@
 package com.lia.core.pipeline.connector;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -7,6 +8,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.HttpClientSettings;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -26,8 +30,8 @@ import com.lia.core.observability.Obs;
  *   <li>{@code law}   — 시행중 법령 = <b>diff 기준선</b></li>
  * </ul>
  *
- * <p>{@link SourceConnector}(RawBill 계약)를 구현하지 않는다 — 다루는 것이 의안이 아니라
- * 법령이고 {@code billNo}·발의자·심사단계가 존재하지 않는다. 의안 커넥터는 post-MVP다.
+ * <p>의안(Bill) 커넥터 계약({@code RawBill})은 구현하지 않는다 — 다루는 것이 의안이 아니라
+ * 법령이고 {@code billNo}·발의자·심사단계가 존재하지 않는다. 의안 커넥터는 post-MVP다(D42).
  *
  * <p>설계: docs/components/SourceConnector.md §MVP 본문 경로 · 아키텍처 v0.8 §4.1
  */
@@ -50,8 +54,18 @@ public class LawConnector {
     public LawConnector(RestClient.Builder builder, LiaSourceProperties.Law props,
                         ObservationRegistry observations) {
         this.props = props;
-        this.http = builder.baseUrl(props.base()).build();
+        this.http = builder.baseUrl(props.base()).requestFactory(timeoutFactory(props.timeout())).build();
         this.observations = observations == null ? ObservationRegistry.NOOP : observations;
+    }
+
+    /**
+     * 연결·읽기 타임아웃을 건 요청 팩토리. 이게 없으면 서버가 본문(실측 299KB)을
+     * 흘리다 멈춰도 스레드가 무기한 붙잡힌다. {@code props.timeout()}(초)을 실제로 적용한다.
+     */
+    private static ClientHttpRequestFactory timeoutFactory(double seconds) {
+        Duration t = Duration.ofMillis((long) (seconds * 1000));
+        return ClientHttpRequestFactoryBuilder.detect()
+                .build(HttpClientSettings.defaults().withTimeouts(t, t));
     }
 
     public String sourceType() {
@@ -205,11 +219,13 @@ public class LawConnector {
                 throw e;                        // API 논리 오류는 재시도 무의미
             } catch (RuntimeException e) {      // 5xx/네트워크 → 지수 백오프
                 last = e;
-                try {
-                    Thread.sleep((long) (500 * Math.pow(2, attempt)));
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw e;
+                if (attempt < props.maxRetries() - 1) {   // 마지막 회차엔 자지 않는다(목적 없는 지연 제거)
+                    try {
+                        Thread.sleep((long) (500 * Math.pow(2, attempt)));
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw e;
+                    }
                 }
             }
         }
