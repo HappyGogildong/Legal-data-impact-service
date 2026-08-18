@@ -72,6 +72,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | `domain/law` — `Law`·`Article`·`Addendum` | ✅ |
 | `DiffBuilder` — 변경 조문 ↔ 기준선 대조(신설·삭제 확정, `diffVsCurrent`) | ✅ |
 | 관측 환경(증분1) — Actuator·Micrometer→Prometheus·Tracing→Tempo·pg-exporter + 파이프라인 계측 | ✅ |
+| RAG 평가·회귀 프레임워크 — 결정론 게이트 스캐폴딩(`com.lia.core.eval`), 거부 게이트 가동 | ✅ |
 | Law Store(RDB) · Embedder · RAG Indexer | ⬜ 다음 |
 | Query Planner — `QueryTranslator`·`QueryPlanner`·`QueryDispatcher` | ⬜ |
 | Analysis Engine · 차원 핸들러 4종 · 인용검증 게이트 | ⬜ |

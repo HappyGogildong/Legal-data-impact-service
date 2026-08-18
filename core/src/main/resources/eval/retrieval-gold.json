@@ -1,0 +1,14 @@
+[
+  {
+    "query": "주택법 제18조 뭐가 바뀌었어?",
+    "expectedSourceIds": ["LAW:001809@2026-08-04:art:18"]
+  },
+  {
+    "query": "사업계획 통합심의 관련 개정 조문",
+    "expectedSourceIds": ["LAW:001809@2026-08-04:art:18"]
+  },
+  {
+    "query": "주택법 벌칙 개정",
+    "expectedSourceIds": ["LAW:001809@2026-08-04:art:104"]
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "query": "가상의무슨법 바뀌면 어떻게 돼?",
+    "expectedState": "NOT_FOUND_YET"
+  },
+  {
+    "query": "아직 공포 안 된 무슨무슨 특별법 알려줘",
+    "expectedState": "NOT_FOUND_YET"
+  },
+  {
+    "query": "오늘 점심 뭐 먹지",
+    "expectedState": "UNVERIFIED"
+  }
+]
