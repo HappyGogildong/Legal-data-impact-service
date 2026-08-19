@@ -57,6 +57,11 @@ management:
   metrics:
     tags:
       application: lia-core          # 모든 지표 공통 태그
+  otlp:
+    metrics:
+      export:
+        enabled: false               # 지표는 Prometheus 스크레이프만. OTLP 메트릭 push 비활성
+                                     # (starter-opentelemetry가 딸려 넣은 OtlpMeterRegistry가 :4318/v1/metrics로 쏘던 것)
   tracing:
     sampling:
       probability: 1.0               # dev: 전량 샘플링. prod에서 낮춘다
@@ -64,7 +69,7 @@ management:
     tracing:
       export:
         otlp:
-          endpoint: http://localhost:4318/v1/traces   # → Tempo(OTLP HTTP)
+          endpoint: http://localhost:4318/v1/traces   # → Tempo(OTLP HTTP). 트레이스만 OTLP
 
 logging:
   level:
