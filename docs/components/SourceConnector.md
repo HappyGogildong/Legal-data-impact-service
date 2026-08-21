@@ -8,7 +8,7 @@ related: ["components/component-specs.md", "architecture/v0.5-bill-discovery.md"
 
 # SourceConnector (Spring, 수집)
 
-> 출처별 API 호출을 흡수해 **표준 Raw 객체**만 하류로 내보내는 어댑터. 관련: [[component-specs]] §4 #1 · [[v0.5-bill-discovery]] §3.1
+> 출처별 API 호출을 흡수해 **표준 Raw 객체**만 하류로 내보내는 어댑터. 관련: [[component-specs]] §4 #1 · [[law-domain-basics|법령 도메인 기초(eflaw·law·제개정구분)]] · [[v0.5-bill-discovery]] §3.1
 
 > **범위:** MVP는 **`LawConnector`(현행법·`RawLaw`)** 하나만 쓴다. 의안(`RawBill`) 커넥터는 **post-MVP** — 계약만 아래에 보존한다(코드 미구현).
 
