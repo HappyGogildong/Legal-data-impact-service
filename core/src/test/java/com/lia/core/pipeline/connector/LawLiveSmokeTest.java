@@ -101,7 +101,10 @@ class LawLiveSmokeTest {
 
         RawLaw current = connector.fetchCurrent(pending.lawId());
 
-        assertNotNull(current, "시행중본 조회 실패");
+        if (current == null) {   // 제정 법령 — 현행본 없음(diff 기준선 부재 = 전부 신설). 정상 상태.
+            System.out.printf("[live] %s — 현행본 없음(제정 → 기준선 없이 전부 신설)%n", pending.title());
+            return;
+        }
         assertEquals(pending.lawId(), current.lawId(), "법령ID가 연결키로 동작하지 않는다");
         assertTrue(current.hasBody(), "시행중본에 조문이 없다");
         assertTrue(current.effectiveDate().isBefore(pending.effectiveDate().plusDays(1)),

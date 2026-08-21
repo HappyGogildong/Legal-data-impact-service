@@ -75,7 +75,17 @@ public final class LawEnvelope {
 
     // --- 본문 ------------------------------------------------------------
 
-    /** 본문 응답의 {@code 법령} 블록. 없으면 예외. */
+    /**
+     * 본문에 {@code 법령} 블록이 있는가. 없으면 <b>현행본 없음</b>을 뜻한다 —
+     * 제정(신규) 법령을 {@code target=law} 로 조회하면 국가법령정보가
+     * {@code {"Law": "일치하는 법령이 없습니다..."}} 를 돌려주기 때문이다(영문 루트).
+     * fetchCurrent 는 이걸로 "diff 기준선 부재"를 판별한다(도메인 상태이지 오류가 아님).
+     */
+    public static boolean hasLawBody(Map<String, Object> payload) {
+        return payload != null && payload.get("법령") instanceof Map;
+    }
+
+    /** 본문 응답의 {@code 법령} 블록. 없으면 예외(현행본 부재 판별은 {@link #hasLawBody}). */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> lawRoot(Map<String, Object> payload) {
         Object root = payload.get("법령");

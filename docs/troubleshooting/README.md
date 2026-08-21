@@ -20,6 +20,8 @@ related:
 |---|---|---|---|
 | [001](001-lawapi-display1-single-object.md) | 국가법령정보 `display=1` 단일 객체 함정 | API 통합 | 예외 없이 **조용한 0건** → 응답 구조가 건수에 따라 달라짐 |
 | [002](002-delegation-regex-korean-morphology.md) | 위임조항 정규식 한글 형태소 누락 | 파싱 | `정한다` ≠ `정하는` — 단위 테스트가 포착 |
+| [003](003-boot4-tracing-autoconfig-moved.md) | Boot 4.0 트레이스가 Tempo에 안 뜸 | 관측·Spring 4 | 자동설정이 starter-actuator에서 분리 → `starter-opentelemetry` 필요 |
+| [004](004-jejeong-law-no-baseline-english-envelope.md) | 제정 법령 현행본 부재 → 영문 `Law` 봉투 | 커넥터·도메인 | "환경 차이"로 보인 간헐 실패가 실은 **날짜 의존 데이터** |
 
 ## 부하 테스트 시 추가 예정 (감지 신호 매핑)
 

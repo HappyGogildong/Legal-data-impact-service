@@ -89,7 +89,12 @@ class NormalizerLiveSmokeTest {
     @EnabledIf("hasOc")
     void 시행중_기준선도_같은_경로로_정규화된다() {
         RawLaw pending = connector.listPending(FROM, TO, 1).get(0);
-        Law current = normalizer.normalize(connector.fetchCurrent(pending.lawId()));
+        RawLaw baselineRaw = connector.fetchCurrent(pending.lawId());
+        if (baselineRaw == null) {   // 제정 — 현행본 없음. 기준선 정규화 스킵(전부 신설 케이스).
+            System.out.printf("[live] %s — 현행본 없음(제정), 기준선 정규화 스킵%n", pending.title());
+            return;
+        }
+        Law current = normalizer.normalize(baselineRaw);
 
         assertEquals(Law.Status.시행중, current.status());
         assertEquals(pending.lawId(), current.lawId(), "법령ID 연결이 깨졌다");

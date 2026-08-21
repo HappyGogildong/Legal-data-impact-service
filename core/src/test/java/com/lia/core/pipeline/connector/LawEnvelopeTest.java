@@ -109,6 +109,18 @@ class LawEnvelopeTest {
         void 법령_블록이_없으면_예외다() {
             assertThrows(LawApiException.class, () -> LawEnvelope.lawRoot(Map.of("LawSearch", Map.of())));
         }
+
+        @Test
+        @DisplayName("현행본 없음 봉투(제정)는 법령블록이 없다고 판별한다")
+        void 현행본_없음_봉투를_판별한다() {
+            // 제정 법령을 target=law 로 조회하면 오는 영문 루트 에러 봉투(실측)
+            Map<String, Object> noMatch = Map.of(
+                    "Law", "일치하는 법령이 없습니다. 법령명을 확인하여 주십시오");
+            assertFalse(LawEnvelope.hasLawBody(noMatch), "현행본 없음(제정)을 diff 기준선 부재로 판별해야 한다");
+            assertTrue(LawEnvelope.hasLawBody(lawRoot() == null ? Map.of() : Map.of("법령", lawRoot())),
+                    "정상 본문은 법령 블록이 있다");
+            assertFalse(LawEnvelope.hasLawBody(null));
+        }
     }
 
     @Nested

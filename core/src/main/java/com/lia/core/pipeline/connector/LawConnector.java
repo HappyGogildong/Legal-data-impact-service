@@ -152,6 +152,9 @@ public class LawConnector {
      *
      * <p><b>반드시 {@code 법령ID} 로 조회한다.</b> {@code MST}(법령일련번호)는 버전마다
      * 달라서 시행중↔시행예정 연결에 쓸 수 없다(실측 확인).
+     *
+     * @return 현행본. <b>{@code null} 이면 현행본 없음</b>(제정 법령 등) — diff 기준선이
+     *         없다는 도메인 상태이며, DiffBuilder 가 전부 신설로 처리한다. 설계: docs/reference/law-domain-basics.md §3
      */
     public RawLaw fetchCurrent(String lawId) {
         return Observation.createNotStarted(Obs.CONNECTOR_FETCH, observations)
@@ -161,7 +164,13 @@ public class LawConnector {
                     var uri = UriComponentsBuilder.fromPath("/DRF/lawService.do")
                             .queryParam("target", "law")
                             .queryParam("ID", lawId);
-                    return fromBody(request(uri), "시행중", null);
+                    Map<String, Object> payload = request(uri);
+                    // 제정(신규) 법령은 현행본이 없어 국가법령정보가 {"Law":"일치하는 법령이 없습니다..."}
+                    // 를 준다. 오류가 아니라 diff 기준선 부재(전부 신설) — DiffBuilder(baseline=null) 처리.
+                    if (!LawEnvelope.hasLawBody(payload)) {
+                        return null;
+                    }
+                    return fromBody(payload, "시행중", null);
                 });
     }
 
