@@ -10,7 +10,7 @@ related: ["components/component-specs.md", "architecture/v0.5-bill-discovery.md"
 
 > 출처별 API 호출을 흡수해 **표준 Raw 객체**만 하류로 내보내는 어댑터. 관련: [[component-specs]] §4 #1 · [[law-domain-basics|법령 도메인 기초(eflaw·law·제개정구분)]] · [[v0.5-bill-discovery]] §3.1
 
-> **범위:** MVP는 **`LawConnector`(현행법·`RawLaw`)** 하나만 쓴다. 의안(`RawBill`) 커넥터는 **post-MVP** — 계약만 아래에 보존한다(코드 미구현).
+> **범위:** MVP는 **`LawConnector`(현행법·`RawLaw`)** 하나만 쓴다 — 그 **클래스 스펙은 [[LawConnector]]**(계약·봉투 규약·타임아웃). 이 문서는 **커넥터 추상화 + 의안(`RawBill`) post-MVP 계약**을 다룬다(코드 미구현).
 
 ## 역할
 출처마다 다른 인증·페이징·필드명을 **커넥터 안에 가두고**, 밖으로는 **표준 Raw 객체**만 노출한다(MVP는 `RawLaw`, 의안은 post-MVP `RawBill`). 새 출처 = 새 구현체 1개(하류 무수정).

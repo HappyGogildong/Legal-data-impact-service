@@ -1,75 +1,49 @@
 ---
-title: SourceAnalyzer — 컴포넌트 설계
+title: SourceAnalyzer — 클래스 스펙
 status: Draft
-version: 0.2
-date: 2026-08-02
+date: 2026-08-22
 tags: [component, pipeline, resolver]
-related: ["components/component-specs.md", "architecture/v0.8-pending-law-corpus.md"]
+related: ["components/component-specs.md", "architecture/v0.8-pending-law-corpus.md", "reference/law-domain-basics.md"]
 ---
 
-# SourceAnalyzer (Spring, 식별)
+# SourceAnalyzer
 
-> 사용자 입력 → **어떤 시행예정 법령인가**를 해소(resolve). 분석가가 아니라 *식별자(resolver)*. 관련: [[component-specs]] §4 #2 · [[v0.8-pending-law-corpus]] §3.2
+> 사용자 입력 → **어떤 시행예정 법령인가**를 해소(resolve). 분석가가 아니라 *식별자(resolver)* — 입력 내용을 사실로 받지 않는다(fail-closed). 코드: `pipeline/resolve/SourceAnalyzer`. 상태 스키마: [[component-specs]] §4 #2.
 
-## 역할
+## Responsibility
+- **담당:** 법령명/모호 자연어 → 실재 시행예정 법령 해소. **4상태**(RESOLVED/AMBIGUOUS/NOT_FOUND_YET/UNVERIFIED) 판정. 복수 시행예정본 → **가장 이른 본으로 해소 + 나머지 `alternatives`**(D43).
+- **담당 안 함:** 분석·생성(입력을 사실로 받지 않음) · 본문 fetch(`LawConnector`) · 저장소 조회 *구현*(`LawLookup` 포트 뒤).
 
-법령명 또는 **모호한 자연어**를 받아 실재하는 시행예정 법령으로 해소한다. **신뢰 출처에서 확인되지 않으면 분석하지 않는다(fail-closed)** — 입력 *내용*을 사실로 받지 않는다.
+## Collaborators
+- 아웃바운드 포트: **`LawLookup`**(정확 매칭) · `semanticSearch`(의미검색, 선택). 현재 `LawConnector` 어댑터 → 적재 후 Law Store+Vector Index로 **구현만 교체**(무수정).
+- 계측: `ObservationRegistry`(선택, `NOOP`) — `lia.resolve{state}`.
+- 외부 시스템: 없음(포트 뒤).
 
-## 입력 / 출력
+## Contract
+- `resolve(input) → ResolutionResult`
+  - **전제:** 임의 문자열(null 허용 → 미해소로 귀결).
+  - **보장:** 정확히 4상태 중 하나. **`RESOLVED`만 `analyzable()`=true**. 미해소는 절대 `resolved`를 담지 않고 안내 문구 필수(생성자 강제). 출처 장애도 예외로 새지 않고 fail-closed 상태로 떨어진다.
 
-| | 타입 | 설명 |
-|---|---|---|
-| 입력 | `String` (법령명 / 자연어 서술) | URL·기사 본문은 확장점(스텁) |
-| 출력 | `ResolutionResult{ state, resolved?\|candidates?\|similar?, message? }` | 4상태 |
+## Behavior (해소 3단계)
+1. **법령명 정확·퍼지 매칭**(`LawLookup`, 토큰 유사도) — 단일 강매칭→`RESOLVED` / **같은 `lawId` 복수→가장 이른 본 `RESOLVED`+`alternatives`**(D43) / 다른 법령 복수·약매칭→`AMBIGUOUS`.
+2. **의미검색**(`pending` ns, [[RAGIndexer]]) — 1 실패 시 모호 서술을 후보화(주입된 경우).
+3. **fail-closed 판정** — 못 찾으면: 법령스러우면 `NOT_FOUND_YET`, 아니면 `UNVERIFIED`.
+- 임계: `confident=88`(단정), `ambiguous-min=60`(후보).
 
-해소 4상태: `RESOLVED` / `AMBIGUOUS` / `NOT_FOUND_YET` / `UNVERIFIED`.
+## Invariants
+- **resolver ≠ analyzer** — "어떤 법령인가"만 판정, 데이터는 신뢰 출처 원문에서만.
+- 4상태 불변식은 **타입이 강제**(`ResolutionResult` 생성자): 非RESOLVED면 `resolved=null`, 미해소는 안내 문구 필수, `alternatives`는 RESOLVED 전용([[decision-log|D23]]).
 
-> **불변식은 타입이 강제한다.** `RESOLVED` 가 아니면 `resolved` 는 반드시 `null` 이고, 미해소 상태는 안내 문구가 필수다. 규율이 문서와 관례에만 있으면 언젠가 우회되므로 생성자에서 막는다(D23).
+## Error Handling
+- 조회 예외(출처 장애)도 **빈 결과로 흡수** → `NOT_FOUND_YET`/`UNVERIFIED`. 스택트레이스가 사용자에게 새지 않고, 없는 결과를 지어내지도 않는다.
 
-## 파라미터 (설정)
+## Side Effects
+- **없음**(순수 판정 + 포트 조회).
 
-| 파라미터 | 기본 | 설명 |
-|---|---|---|
-| `confident` | 88.0 | 단정(RESOLVED) 임계 — 토큰 유사도 |
-| `ambiguous-min` | 60.0 | 후보 채택 최소 유사도 |
-| `lookahead-years` | 2 | 훑을 시행예정 범위(오늘 ~ N년) |
-| `semantic-top-k` | 5 | 의미검색 후보 수 |
+## Design Constraints
+- **fail-closed** — 미등록(`NOT_FOUND_YET`) vs 허위(`UNVERIFIED`)를 구분해 안내를 다르게(D23): "아직 없는 법" ≠ "지어낸 법".
+- **포트 격리** — 저장소가 생겨도 `SourceAnalyzer`는 무수정, `LawLookup` 구현만 교체([[v0.8-pending-law-corpus]] §3.2).
 
-## 동작
-
-1. **법령명 정확·퍼지 매칭** — `LawLookup.searchByName` → 토큰 유사도 정렬
-   - 단일 강매칭 → `RESOLVED`
-   - 강매칭 복수, **같은 `법령ID`** → `RESOLVED`(가장 이른 시행일본) + 나머지 `alternatives` 안내(D43)
-   - 강매칭 복수, **서로 다른 법령** → `AMBIGUOUS`(어느 법령인지)
-   - 약매칭만 → `AMBIGUOUS`(후보 제시)
-2. **의미검색** — 1이 실패하면 탐색용 네임스페이스(`pending`, [[RAGIndexer]])로 후보화. 모호 서술("집 구할 때 뭔가 바뀐다던데")을 커버
-3. **fail-closed 판정** — 여기까지 못 찾으면
-   - 법령스러운 표현이면 → `NOT_FOUND_YET` ("아직 공포되지 않았거나, 이미 시행 중이어서 분석 대상이 아닐 수 있습니다")
-   - 아니면 → `UNVERIFIED` ("확인되지 않은 정보입니다")
-
-## 인터페이스 (Java, `com.lia.core.pipeline.resolve`)
-
-```java
-public class SourceAnalyzer {
-    ResolutionResult resolve(String input);
-}
-
-public interface LawLookup {                       // 아웃바운드 포트
-    List<RawLaw> searchByName(String query, int limit);
-}
-```
-
-> **포트를 두는 이유.** [[v0.8-pending-law-corpus|v0.8]] §3.2에서 해소는 **Law Store·Vector Index(오프라인 적재분)** 를 읽는 것이지 출처 API를 직접 부르는 것이 아니다. 저장소가 없는 지금은 `LawConnector` 를 어댑터로 꽂아 두고, 적재가 끝나면 **구현만 교체한다**(`SourceAnalyzer` 무수정).
-
-## 구조 결정 의도 (왜 이렇게)
-
-- **resolver ≠ analyzer.** "어떤 법령인가"만 판정하고, 데이터는 항상 신뢰 출처 원문에서 온다 → 뉴스·소문이 분석으로 둔갑하지 않는다(그라운딩).
-- **fail-closed.** 확인 안 되면 분석을 거부한다. 4상태로 **미등록(`NOT_FOUND_YET`)과 허위 의심(`UNVERIFIED`)을 구분**해 안내 문구를 다르게 한다([[decision-log|D23]]) — "아직 없는 법"과 "지어낸 법"은 사용자에게 전혀 다른 이야기다.
-- **정확매칭 + 의미검색 2단계.** 모호 plain text는 정확매칭이 안 되므로 탐색용 임베딩으로 후보화한다([[decision-log|D30]]).
-- **같은 법령의 복수 시행예정본은 가장 이른 시행일로 해소하고 나머지를 안내한다(D43 확정).** 실측에서 자본시장법이 3건(2026-10-01·11-13, 2027-02-04)이었다 — 가장 이른 2026-10-01을 기본으로 답하고 `alternatives`로 나머지를 노출(`@efYd`로 특정). 임의로 고르지 않으므로 틀린 시행일을 주지 않는다.
-- **출처 장애도 fail-closed로 떨어진다.** 조회가 예외를 던지면 빈 결과로 처리해 `NOT_FOUND_YET`/`UNVERIFIED` 로 간다 — 장애가 사용자에게 스택트레이스로 새지 않고, 없는 결과를 지어내지도 않는다.
-
-## 의존 / 관련
-
-- 의존: `LawLookup` 포트 → (현재) [[SourceConnector|LawConnector]] · (예정) Law Store + Vector Index `pending` ns
-- 게이트 소비: AnalysisPipeline(#8) 0단계 — `RESOLVED` 만 통과
+## 의존 / 후속
+- 포트: `LawLookup` → (현재) [[SourceConnector|LawConnector]] · (예정) Law Store + Vector Index `pending` ns
+- 게이트 소비: `QueryDispatcher`/Orchestrator(#8) — `RESOLVED`만 통과

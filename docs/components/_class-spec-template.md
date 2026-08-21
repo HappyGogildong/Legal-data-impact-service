@@ -53,6 +53,7 @@ tags: [component, template, convention]
 | Controller / API | `## HTTP Contract` (Method·URL·Request·Response·Status) |
 | DTO | `## Schema` · `## Validation` · `## Mapping` |
 | Connector / Adapter | `## External API Contract` · `## 봉투·오류 규약` |
+| Pipeline / Transformer | `## Behavior`(핵심 단계·함정 — 알고리즘 의도이지 시그니처 미러링 아님) · `## 실측 검증`(실 데이터로 확인한 사실, 있으면) |
 
 ## 적용 범위
 
