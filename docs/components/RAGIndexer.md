@@ -1,57 +1,52 @@
 ---
-title: RAGIndexer — 컴포넌트 설계
+title: RAGIndexer — 클래스 스펙 (spec-first)
 status: Draft
-date: 2026-06-30
+date: 2026-08-22
 tags: [component, pipeline, rag, indexing]
-related: ["components/component-specs.md", "architecture/v0.8-pending-law-corpus.md", "reference/embedding-benchmark.md"]
+related: ["components/component-specs.md", "components/Embedder.md", "components/LawStore.md", "reference/embedding-benchmark.md", "adr/decision-log.md"]
 ---
 
-# RAGIndexer (Spring, 적재)
+# RAGIndexer
 
-> 코퍼스를 임베딩해 **Vector Index에 적재**. 두 네임스페이스: *분석용(시행중 법령 조문)* + *탐색용(시행예정 법령 요약·LawFacts)*. 관련: [[component-specs]] §4 #4 · [[v0.8-pending-law-corpus]] §4.5
+> **시행예정 코퍼스**를 임베딩해 벡터 인덱스([[LawStore]] `chunks`)에 적재. 검색 *전에* 오프라인으로. **구현 전 계약(spec-first)**. 관련: [[component-specs]] §4 #4 · [[decision-log|D30·D55]].
 
-## 역할
-검색 *전에* 코퍼스를 벡터화해 둔다(오프라인/수집 시점). Analysis Engine은 검색만, Indexer는 적재만 — 책임 분리.
+## Responsibility
+- **담당:** 시행예정 법령의 **변경 조문**(article) + **요약/LawFacts**(summary)를 청킹 → [[Embedder]]로 임베딩 → [[LawStore]] `chunks` upsert. `source_id` 동반. 증분 재색인.
+- **담당 안 함:** 임베딩 *생성*([[Embedder]]) · 벡터 저장 *구현*([[LawStore]]) · 검색([[SourceAnalyzer]]/dispatch) · 조문 텍스트 병합([[Normalizer]]). **시행중 조문은 색인하지 않는다**(기준선은 diff용 정확 fetch).
 
-## 입력 / 출력
-| | 타입 | 설명 |
-|---|---|---|
-| 입력(분석용) | 시행중 법령 조문(`Law.articles`) | [[SourceConnector|LawConnector]] `fetchCurrent` → [[Normalizer]] |
-| 입력(탐색용) | 시행예정 법령 **요약·LawFacts·affectedDomains** | [[Normalizer]]·Layer A 파생 산출 |
-| 출력 | Vector Index 엔트리(벡터 + `source_id` 메타) | pgvector upsert |
+## Collaborators
+- [[Embedder]](`mode=PASSAGE`) · [[LawStore]] `chunks`(PgVectorStore).
+- 입력: [[Normalizer]](변경 조문 텍스트) · Layer A 파생(요약·LawFacts·affectedDomains).
+- 외부 시스템: 없음(임베딩은 Embedder, 저장은 LawStore).
 
-## 파라미터 (설정)
-| 파라미터 | 예 | 설명 |
-|---|---|---|
-| `namespace` | `law` \| `pending` | 분석용(시행중)/탐색용(시행예정) 분리 |
-| `chunk_policy` | 조문 단위(기본) | 시행중=조문, 시행예정=요약 1~3벡터 |
-| `embedder` | 공유 [[Embedder]] | `mode="passage"` |
-| `batch_size` | 64~ | 대량 적재 |
+## Contract
+- `index(pending, facts?) → void` — 시행예정 `Law` + (선택) `LawFacts`를 청킹·임베딩·적재.
+  - **전제:** `pending`은 시행예정본, 변경 조문(`changed=true`) 텍스트 확보.
+  - **보장:** `pending` 네임스페이스에 조문·요약 chunks가 `source_id` 메타와 함께 색인. 같은 `source_id` 재색인은 멱등(삭제-후-삽입).
 
-## 동작
-1. 코퍼스 → 청크(시행중 법령=조문 단위, 시행예정 법령=요약/LawFacts)
-2. `source_id` 부여: `LAW:{lawId}:art:{no}`(분석용) / `LAW:{lawId}@{effectiveDate}`(탐색용)
-   ⚠️ 탐색용은 **시행일을 포함**한다 — 같은 법령ID에 시행예정본이 복수일 수 있다(D43)
-3. [[Embedder]] `mode="passage"`로 임베딩
-4. pgvector에 upsert(네임스페이스 + `source_id` 메타 동반)
-5. 증분: `revision` 변동분만 재적재
+## Behavior (색인 단계)
+1. **대상 선별** — 변경 조문(`Law.changedArticles()`) + 요약/LawFacts. (전문·미변경 조문·시행중본 제외 — 저장·노이즈 절감.)
+2. **청킹**(D55) —
+   - **조문 단위**: 변경 조문 1개 = 1 청크. **과대 조문**(> `max_input_tokens`)만 **오버랩 분할**(하위 청크 `art:no#k`, 같은 출처 조문).
+   - **요약**: 요약/LawFacts = 법령 단위 1~few 벡터.
+3. **`source_id` 부여** — 조문 `LAW:{lawId}@{efYd}:art:{no}` · 요약 `LAW:{lawId}@{efYd}`. **시행일 포함**(복수 시행예정본, D43). 메타: `source_id·lawId·efYd·kind(article|summary)·namespace=pending·changed`.
+4. **임베딩** — [[Embedder]] `mode=PASSAGE`(배치).
+5. **적재** — [[LawStore]] `chunks` upsert(`source_id` 기준).
+6. **증분** — `revision` 변동분만 재색인(해당 법의 chunks 삭제 후 재적재).
 
-## 인터페이스 (Java, `com.lia.core.pipeline.index`)
-```java
-public class RagIndexer {                                  // com.lia.core.pipeline.index
-    void indexCurrent(Law current);                        // namespace="law"     — 조문 단위
-    void indexPending(Law pending, LawFacts facts);        // namespace="pending" — 요약 단위
-}
-```
+## Invariants
+- **단일 네임스페이스 `pending`** — 시행중 조문을 섞지 않는다(현행과 곧 바뀔 내용이 뒤섞이면 검색 노이즈, D30).
+- **`source_id` 동반 필수** — 검색 결과가 곧 인용 근거(그라운딩 게이트 입력, 인용 무결성).
+- **적재·검색 동일 임베딩 모델**([[Embedder]] 공유) — 벡터공간 일치.
+- **변경 조문만**(비용 레버 137→6) — 전문 임베딩 안 함.
 
-## 구조 결정 의도 (왜 이렇게)
-- **적재 ≠ 검색.** 임베딩 적재를 Analysis Engine에서 분리(v0.3→v0.4의 핵심 교정, [[decision-log|D29]]). 적재는 배치·무상태, 검색은 런타임.
-- **두 네임스페이스.** *분석용(시행중 법령)* 과 *탐색용(시행예정 법령)* 은 목적이 달라 분리 — 같은 인덱스에 섞으면 "현행 조문"과 "곧 바뀔 내용"이 뒤섞여 검색 노이즈가 된다([[decision-log|D30]]).
-- **법령 전문은 임베딩하지 않음.** 분석 시 대상 법령은 컨텍스트에 통째로 들어가므로, 탐색용은 *요약/LawFacts*만 넣는다(저장·노이즈 절감). 게다가 변경 조문만 다루면 되므로(실측 137→6) 전문 임베딩의 실익이 더 작다.
-- **`source_id` 동반 적재.** 검색 결과가 곧 인용 근거가 되도록(그라운딩 게이트 입력).
-- **동일 임베딩 모델**([[Embedder]] 공유)로 검색과 벡터공간 일치.
+## Error Handling
+- Embedder/LawStore 실패 → 적재 배치가 재시도. 부분 실패 시 `source_id` 멱등이라 재실행 안전.
 
-## 의존 / 관련
-- 의존: [[Embedder]](passage), Vector Index(pgvector)
-- 입력: [[Normalizer]](시행중 조문 · 시행예정 요약), Layer A 파생(LawFacts)
-- 벤치: [[embedding-benchmark]](적재→검색 정확도)
+## Side Effects
+- **벡터 인덱스 쓰기**([[LawStore]] `chunks`) · [[Embedder]] 통한 **외부 API 호출**.
+
+## Design Constraints
+- **적재 ≠ 검색** — 오프라인 배치·무상태(D29/D40). 검색은 런타임.
+- **법령 전문 임베딩 안 함** — 해소된 법은 context에 통째로 들어가고, 변경 조문만 다루면 되므로(137→6) 전문 벡터 실익이 작다.
+- **모델 변경 = 전 코퍼스 재색인**([[Embedder]] 확정 후 고정).
