@@ -74,8 +74,9 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 관측 환경(증분1) — Actuator·Micrometer→Prometheus·Tracing→Tempo·pg-exporter + 파이프라인 계측 | ✅ |
 | RAG 평가·회귀 프레임워크 — 결정론 게이트 스캐폴딩(`com.lia.core.eval`), 거부 게이트 가동 | ✅ |
 | 컴포넌트 클래스 스펙 규약 + 핵심 4종(DiffBuilder·Normalizer·SourceAnalyzer·LawConnector) | ✅ |
-| Law Store — **spec-first 작성**(JSONB 정본+pgvector chunks, D54) | 🟡 스펙 완료·구현 대기 |
-| Embedder · RAG Indexer | ⬜ 다음 |
+| Law Store — **spec-first**(JSONB 정본+pgvector chunks, D54) | 🟡 스펙 완료·구현 대기 |
+| Embedder — **spec-first**(외부 API·dim 1536·벤더 벤치, D32/D33) | 🟡 스펙 완료·구현 대기 |
+| RAG Indexer · 청킹 정책 | ⬜ 다음 |
 | Query Planner — `QueryTranslator`·`QueryPlanner`·`QueryDispatcher` | ⬜ |
 | Analysis Engine · 차원 핸들러 4종 · 인용검증 게이트 | ⬜ |
 | 웹 프론트엔드 · User Profile Store | ⬜ |
