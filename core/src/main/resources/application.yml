@@ -30,6 +30,15 @@ lia:
 spring:
   application:
     name: lia-core
+  datasource:                                   # Law Store (D54). 값은 .env/compose 로 오버라이드
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/lia}
+    username: ${SPRING_DATASOURCE_USERNAME:lia}
+    password: ${SPRING_DATASOURCE_PASSWORD:lia}
+    hikari:
+      initialization-fail-timeout: -1           # 시작 시 즉시 연결 안 함 — DB 없어도 컨텍스트는 뜬다(쿼리 시 연결)
+  flyway:
+    enabled: true                               # 시작 시 스키마 마이그레이션(실행엔 DB 필요). 테스트·demo는 끔
+    locations: classpath:db/migration
   ai:
     anthropic:                      # AnalysisEngine 추론 (D19: Opus 4.8)
       api-key: ${ANTHROPIC_API_KEY:}

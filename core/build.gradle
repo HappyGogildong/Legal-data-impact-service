@@ -22,6 +22,7 @@ dependencyManagement {
     imports {
         // Spring AI 2.0 GA (2026-05-28). Boot 4 전용 — 3.x와 혼용 불가
         mavenBom "org.springframework.ai:spring-ai-bom:2.0.0"
+        mavenBom "org.testcontainers:testcontainers-bom:1.20.4"   // 테스트 전용(버전 관리)
     }
 }
 
@@ -43,15 +44,17 @@ dependencies {
     // --- Spring AI (D35 매핑) ---
     implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'  // AnalysisEngine 추론 (ChatClient, Opus 4.8)
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'     // Embedder (Upstage는 base-url 오버라이드)
-    // RAGIndexer 단계에서 활성화 (pgvector VectorStore + JDBC):
+    // --- 영속 (Law Store, D54: JSONB 정본) ---
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'          // JdbcClient + HikariCP
+    implementation 'org.flywaydb:flyway-core'                                   // 스키마 마이그레이션
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+    // RAGIndexer 단계에서 활성화 (pgvector 벡터 저장):
     // implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
-    // implementation 'org.springframework.boot:spring-boot-starter-jdbc'
-    // runtimeOnly 'org.postgresql:postgresql'
-
-    // 도메인 영속화 단계에서 활성화:
-    // implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:postgresql'                          // Law Store 통합 테스트(실 Postgres)
+    testImplementation 'org.testcontainers:junit-jupiter'
 }
 
 // 자격증명 단일 소스(D39): 레포 루트 .env 를 읽어 JVM 환경변수로 주입한다.
