@@ -81,13 +81,13 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | Analysis Engine · 차원 핸들러 4종 · 인용검증 게이트 | ⬜ |
 | 웹 프론트엔드 · User Profile Store | ⬜ |
 
-단위 테스트 **62개** 통과. (실 API 라이브 스모크 3건은 국가법령정보 응답 이슈로 조사 대기 — 아래 참고.)
+단위 테스트 **80개** + Law Store 통합 3건(실 Postgres, Testcontainers) 통과.
 
-> ⚠️ **라이브 스모크 실패(조사 대기).** `LawLiveSmokeTest`·`NormalizerLiveSmokeTest`가 `본문 응답에 '법령' 블록이 없다: [Law]`로 실패한다 — 시행중(`target=law`) 본문 응답 최상위 키가 `법령`이 아닌 `Law`로 관측됨(API/자격증명 쪽, 코드 변경 무관). 커넥터 파싱 대응 필요 시 트러블슈팅에 기록한다.
+> ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 
 ### 구현 순서 (큐)
 
-Diff Builder(#17) → Embedder(#6) → RAG Indexer(#7) → Query Planner(#18) → Analysis Engine(#9) → Query Dispatcher(#10) → 수직 슬라이스(#13).
+Diff Builder ✅ · **Law Store ✅** → **적재 파이프라인 조립**(Normalizer→DiffBuilder→LawStore) → Embedder·RAG Indexer 구현 → Query Planner → Analysis Engine → 수직 슬라이스.
 
 ---
 
