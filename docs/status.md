@@ -74,7 +74,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 관측 환경(증분1) — Actuator·Micrometer→Prometheus·Tracing→Tempo·pg-exporter + 파이프라인 계측 | ✅ |
 | RAG 평가·회귀 프레임워크 — 결정론 게이트 스캐폴딩(`com.lia.core.eval`), 거부 게이트 가동 | ✅ |
 | 컴포넌트 클래스 스펙 규약 + 핵심 4종(DiffBuilder·Normalizer·SourceAnalyzer·LawConnector) | ✅ |
-| Law Store — **near-term 구현**(`law_versions` upsert·find·findBaseline, Flyway V1, JdbcClient+JSONB) | ✅ 코드·컨텍스트 / 🟡 통합테스트 Docker 대기 |
+| Law Store — **near-term 구현**(`law_versions` upsert·find·findBaseline, Flyway V1, JdbcClient+JSONB) | ✅ 실 Postgres 통합테스트 통과(Testcontainers 3/3) |
 | Embedder — **spec-first**(외부 API·dim 1536·벤더 벤치, D32/D33) | 🟡 스펙 완료·구현 대기 |
 | RAG Indexer — **spec-first**(변경조문 청킹·요약 벡터·pending ns, D55) | 🟡 스펙 완료·구현 대기 |
 | Query Planner — `QueryTranslator`·`QueryPlanner`·`QueryDispatcher` | ⬜ |
