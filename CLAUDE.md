@@ -97,7 +97,7 @@ com.lia.core
 
 - `docs/architecture/vX.Y-*.md`는 **동결 스냅샷 — 절대 수정 금지**. 설계 변경은 새 버전 파일 추가 + `docs/ARCHITECTURE.md` 색인(이력 표·Changelog) 갱신.
 - 설계 결정은 `docs/adr/decision-log.md`에 D번호로 추가(개정 시 기존 행을 "개정됨→Dxx"로 표시). ADR 승격 대상은 `docs/adr/`.
-- 파이프라인 컴포넌트마다 `docs/components/<Name>.md` 설계 문서(역할/입출력/파라미터/동작/**구조 결정 의도**)를 유지 — 코드 변경 시 함께 갱신.
+- **컴포넌트는 구현 전 `docs/components/<Name>.md` spec-first가 필수다.** 새 클래스(서비스·오케스트레이터·커넥터·스토어·파이프라인 단계 등 행위·계약이 있는 것)의 코드를 쓰기 전에 먼저 스펙 문서를 만들어 계약을 못 박고, 그 계약이 구현을 이끈다. 규약·템플릿은 [`_class-spec-template.md`](docs/components/_class-spec-template.md). 문서는 **코드가 못 말하는 것만**(역할 경계·계약·불변식·부작용·구조 결정 의도) 담고 필드/시그니처는 미러링하지 않는다. 코드 변경 시 함께 갱신.
 - **작업은 이 레포에서만 한다.** 문서(docs/*.md)는 **2곳 byte-identical 동기화**: ① 이 레포 `docs/` — **단일 소스, 편집은 여기서만** ② Obsidian 볼트 `D:\rbgusgus\obvsidian\2024-2\프로젝트\입법 영향 분석\` (볼트 루트 = docs/에 대응, 아카이빙 미러). 문서 수정 후 `cp` + `diff`로 맞춘다. 코드·CLAUDE.md·인프라·mkdocs.yml은 동기화 대상 아님.
   - ~~`D:\workspace\law-impact-analysis`~~ — 2026-07-21 동기화 대상에서 제외. 더 이상 갱신·참조하지 않는다(기존 사본은 stale).
 - **git**: 이 폴더가 메인 작업 폴더이며 `HappyGogildong/Legal-data-impact-service`(PUBLIC)에 연결돼 있다. 커밋은 의미 단위로 나누고, **푸시·이슈 생성 등 외부 반영은 사용자 확인 후** 수행한다. 푸시 전 `.env`가 추적되지 않는지 반드시 확인.
