@@ -407,7 +407,7 @@ Content-Type: application/json
 - ⚠️ `조문내용`만 읽으면 본문이 빈다. 부칙은 이력 전체(실측 42개)가 오므로 필터 없이 쓰면 옛 경과조치를 이번 개정으로 오인한다. 상세: [[Normalizer]]
 
 ### #4 Law Store (RDB / Postgres+pgvector)
-- 역할: 법령 정본(`Law`/`Article`/`Addendum`) + `LawFacts`(Layer A 캐시) + `ImpactResult`(Layer B 캐시) + 벡터.
+- 역할: 법령 정본(`Law`/`Article`/`Addendum`) + `LawFacts`(Layer A 캐시) + `ImpactResult`(Layer B 캐시). **벡터 chunks는 별도 [[ChunkStore]]**(PgVectorStore)가 소유 — JSONB 정본(JdbcClient)과 벡터(PgVectorStore)를 분리(2026-08-27).
 - 입력/출력: Law/Article/LawFacts/ImpactResult CRUD; 검색 쿼리→Law[].
 - 동작: upsert. **유니크 키는 `(lawId, effectiveDate)`** — `lawId` 단독은 안 된다. 같은 법령에 시행예정본이 복수일 수 있다(D43). `LawFacts` 캐시 키=`lawId@effectiveDate + revision`(프로필 무관), `ImpactResult` 답변 캐시 키=§3.4(질문 해시 포함·완전 동일 질의 전용, D51).
 - 의존: 없음.
