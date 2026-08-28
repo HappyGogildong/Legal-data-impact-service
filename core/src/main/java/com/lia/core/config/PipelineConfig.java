@@ -9,15 +9,19 @@ import org.springframework.web.client.RestClient;
 import io.micrometer.observation.ObservationRegistry;
 
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.vectorstore.VectorStore;
 
 import com.lia.core.pipeline.connector.LawConnector;
 import com.lia.core.pipeline.diff.DiffBuilder;
 import com.lia.core.pipeline.embed.Embedder;
 import com.lia.core.pipeline.embed.EmbeddingProperties;
 import com.lia.core.pipeline.embed.OpenAiEmbedder;
+import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
+import com.lia.core.store.ChunkStore;
+import com.lia.core.store.PgVectorChunkStore;
 
 /**
  * 파이프라인 빈 조립 (D35: Python config.py 팩토리의 Spring 대응).
@@ -67,6 +71,18 @@ public class PipelineConfig {
     @Bean
     public Embedder embedder(EmbeddingModel embeddingModel, EmbeddingProperties props) {
         return new OpenAiEmbedder(embeddingModel, props);
+    }
+
+    /** 벡터 chunks 저장(D54) — 자동설정된 PgVectorStore를 래핑. add/search 시 내부 임베딩. */
+    @Bean
+    public ChunkStore chunkStore(VectorStore vectorStore) {
+        return new PgVectorChunkStore(vectorStore);
+    }
+
+    /** 시행예정 코퍼스 색인(D55) — 변경조문·요약 청킹 → ChunkStore. 오프라인 배치. */
+    @Bean
+    public RAGIndexer ragIndexer(ChunkStore chunkStore) {
+        return new RAGIndexer(chunkStore);
     }
 
     @Bean

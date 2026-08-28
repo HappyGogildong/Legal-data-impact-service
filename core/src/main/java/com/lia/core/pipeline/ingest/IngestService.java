@@ -15,6 +15,7 @@ import com.lia.core.observability.Obs;
 import com.lia.core.pipeline.connector.LawConnector;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.diff.DiffBuilder;
+import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.store.LawStore;
 
@@ -38,14 +39,16 @@ public class IngestService {
     private final Normalizer normalizer;
     private final DiffBuilder diffBuilder;
     private final LawStore lawStore;
+    private final RAGIndexer ragIndexer;
     private final ObservationRegistry observations;
 
     public IngestService(LawConnector connector, Normalizer normalizer, DiffBuilder diffBuilder,
-                         LawStore lawStore, ObservationRegistry observations) {
+                         LawStore lawStore, RAGIndexer ragIndexer, ObservationRegistry observations) {
         this.connector = connector;
         this.normalizer = normalizer;
         this.diffBuilder = diffBuilder;
         this.lawStore = lawStore;
+        this.ragIndexer = ragIndexer;
         this.observations = observations == null ? ObservationRegistry.NOOP : observations;
     }
 
@@ -81,6 +84,12 @@ public class IngestService {
             IngestResult r = store(pending, baseline);
             stored++;
             if (r.hasBaseline()) withBaseline++;
+
+            // 색인은 배치에서만(store는 임베딩 프리 유지). 인덱싱용 정규화는 정본 경로와 별개 —
+            // 변경조문·요약 청킹에 diff는 불필요(changed 플래그는 Normalizer 산출).
+            if (ragIndexer != null) {
+                ragIndexer.index(normalizer.normalize(pending));
+            }
             log.info("[ingest] {} @{} — 변경 {}개, 기준선 {}", r.lawId(), r.effectiveDate(),
                     r.changedCount(), r.hasBaseline() ? "있음" : "없음(제정)");
         }

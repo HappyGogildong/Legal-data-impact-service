@@ -49,8 +49,8 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'                                   // 스키마 마이그레이션
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
-    // RAGIndexer 단계에서 활성화 (pgvector 벡터 저장):
-    // implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
+    // 벡터 저장 (ChunkStore) — Spring AI PgVectorStore (add/search 시 EmbeddingModel 내부 임베딩)
+    implementation 'org.springframework.ai:spring-ai-starter-vector-store-pgvector'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.testcontainers:postgresql'                          // Law Store 통합 테스트(실 Postgres)

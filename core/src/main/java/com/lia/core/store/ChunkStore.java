@@ -11,6 +11,9 @@ import java.util.List;
  */
 public interface ChunkStore {
 
-    /** {@code source_id} 기준 삭제-후-삽입(멱등). 저장 시 {@code content}가 자동 임베딩된다. */
+    /** {@code source_id} 기준 upsert(멱등). 저장 시 {@code content}가 자동 임베딩된다. */
     void upsert(List<Chunk> chunks);
+
+    /** 질의 유사도 top-k. 질의 임베딩은 구현체 안에서 수행. 이번 증분은 라운드트립 검증용. */
+    List<Chunk> search(String query, int topK);
 }

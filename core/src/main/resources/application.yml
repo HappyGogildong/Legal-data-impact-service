@@ -55,6 +55,12 @@ spring:
           model: text-embedding-3-small
       # Upstage 벤치 시: base-url/모델 오버라이드 (OpenAI-호환)
       # base-url: https://api.upstage.ai
+    vectorstore:
+      pgvector:                       # ChunkStore (D54·D55) — add/search 시 위 openai 모델로 내부 임베딩
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1536              # lia.embedding.dim 과 일치해야 함
+        initialize-schema: true       # vector_store 테이블·확장·인덱스 자동 생성(벡터 스키마는 PgVectorStore 소유)
 
 server:
   port: 8080

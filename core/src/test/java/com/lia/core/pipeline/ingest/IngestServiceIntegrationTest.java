@@ -54,7 +54,7 @@ class IngestServiceIntegrationTest {
         var ds = new DriverManagerDataSource(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
         jdbc = JdbcClient.create(ds);
         store = new LawStore(jdbc, JSON);
-        ingest = new IngestService(null, new Normalizer(), new DiffBuilder(), store, null);
+        ingest = new IngestService(null, new Normalizer(), new DiffBuilder(), store, null, null);
     }
 
     @BeforeEach

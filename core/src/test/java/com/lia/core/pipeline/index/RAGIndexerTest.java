@@ -25,6 +25,7 @@ class RAGIndexerTest {
     static class CapturingChunkStore implements ChunkStore {
         final List<Chunk> captured = new ArrayList<>();
         @Override public void upsert(List<Chunk> chunks) { captured.addAll(chunks); }
+        @Override public List<Chunk> search(String query, int topK) { return List.of(); }
     }
 
     private final CapturingChunkStore store = new CapturingChunkStore();

@@ -88,8 +88,8 @@ flowchart TB
 
 | 컴포넌트 | 역할 | 담당 파일 (역할) | 상태 |
 |---|---|---|---|
-| **RAGIndexer** | **청킹** — 변경 조문 + 제개정이유 요약을 잘라 `source_id` 부여 → ChunkStore에 적재(임베딩은 안 함) | `pipeline/index/RAGIndexer.java` 대상 선별·조문/요약 청킹·문자수 휴리스틱 과대 분할·`source_id`(`LAW:{lawId}@{efYd}:art:{no}`) | 🟡 |
-| **ChunkStore** | 벡터 chunks **upsert·검색**. `source_id` 멱등, pgvector. **content 내부 임베딩** | `store/ChunkStore.java` `PgVectorStore` 래핑·`Chunk`↔`Document` 매핑·삭제후삽입 · `Chunk` 값타입(source_id·content·metadata) · `vector_store` 테이블은 PgVectorStore 소유 | 🟡 |
+| **RAGIndexer** | **청킹** — 변경 조문 + 제개정이유 요약을 잘라 `source_id` 부여 → ChunkStore에 적재(임베딩은 안 함) | `pipeline/index/RAGIndexer.java` 대상 선별·조문/요약 청킹·문자수 휴리스틱 과대 분할·`source_id`(`LAW:{lawId}@{efYd}:art:{no}`) | ✅ |
+| **ChunkStore** | 벡터 chunks **upsert·검색**. `source_id` 멱등, pgvector. **content 내부 임베딩** | `store/ChunkStore.java` 포트 · `store/PgVectorChunkStore.java` `PgVectorStore` 래핑·`Chunk`↔`Document` 매핑·삭제후삽입 · `Chunk` 값타입 · `vector_store` 테이블은 PgVectorStore 소유 | ✅ |
 | **Embedder** | 텍스트 → 1536차원 벡터. **RAG 핫패스 밖** — 모델·dim 고정 + 원시 임베딩 유틸(eval). PgVectorStore와 같은 EmbeddingModel 공유 | `pipeline/embed/Embedder.java` 포트(Mode PASSAGE/QUERY) · `OpenAiEmbedder.java` Spring AI 위임·L2 정규화·dim 가드 · `EmbeddingProperties.java` dim 단일 소스(1536) | ✅ |
 
 ### 오케스트레이션 · 계측
