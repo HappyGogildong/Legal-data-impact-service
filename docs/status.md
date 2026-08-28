@@ -80,17 +80,17 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | RAG Indexer — **구현**(변경조문 청킹·`amendReason` 요약·문자수 오버랩 분할·source_id, D55) | ✅ 단위 2(Fake ChunkStore) |
 | ChunkStore — **구현**(포트 + `PgVectorChunkStore`, PgVectorStore 래핑·삭제후삽입 멱등·내부 임베딩) | ✅ 실 pgvector 통합 2(라운드트립·멱등) |
 | IngestService 색인 배선 — `ingestPending`이 `store` 뒤 `index` 호출(store는 임베딩 프리) | ✅ 배선·카나리아 |
-| Query Planner — `QueryTranslator`·`QueryPlanner`·`QueryDispatcher` | ⬜ |
-| Analysis Engine · 차원 핸들러 4종 · 인용검증 게이트 | ⬜ |
+| Query Planner — **계획까지**(`QueryTranslator` 포트+Haiku·`QueryPlanner`: NL→PlanResult, 해소·프로필 게이팅·비법령 거부, D46) | ✅ 단위 4(Fake 번역기)·라이브 스모크 옵트인. Dispatcher/핸들러 실행은 후속 |
+| Analysis Engine · `QueryDispatcher` · 차원 핸들러 4종 · 인용검증 게이트 | ⬜ |
 | 웹 프론트엔드 · User Profile Store | ⬜ |
 
-단위 테스트 **89개**(+RAGIndexer 2) + 통합 7건(실 Postgres/pgvector, Testcontainers: Law Store 3 + 적재 조립 2 + ChunkStore 2) 통과.
+단위 테스트 **93개**(+QueryPlanner 4) + 통합 7건(실 Postgres/pgvector, Testcontainers: Law Store 3 + 적재 조립 2 + ChunkStore 2) 통과.
 
 > ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 
 ### 구현 순서 (큐)
 
-Diff Builder ✅ · Law Store ✅ · 적재 조립 ✅ · Embedder ✅ · **RAG Indexer + ChunkStore ✅**(청킹·pgvector·배치 배선) → **Query Planner**(자연어→AnalysisQuery, D46) → Analysis Engine → 수직 슬라이스.
+Diff Builder ✅ · Law Store ✅ · 적재 조립 ✅ · Embedder ✅ · RAG Indexer+ChunkStore ✅ · **Query Planner 계획 ✅**(NL→PlanResult) → **Analysis Engine**(QueryDispatcher·차원 핸들러·RAG+LLM·인용검증) → 수직 슬라이스.
 
 ---
 

@@ -8,6 +8,7 @@ import org.springframework.web.client.RestClient;
 
 import io.micrometer.observation.ObservationRegistry;
 
+import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 
@@ -18,6 +19,9 @@ import com.lia.core.pipeline.embed.EmbeddingProperties;
 import com.lia.core.pipeline.embed.OpenAiEmbedder;
 import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.normalize.Normalizer;
+import com.lia.core.pipeline.plan.QueryPlanner;
+import com.lia.core.pipeline.plan.QueryTranslator;
+import com.lia.core.pipeline.plan.SpringAiQueryTranslator;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
 import com.lia.core.store.ChunkStore;
@@ -89,5 +93,17 @@ public class PipelineConfig {
     public SourceAnalyzer sourceAnalyzer(LawLookup lookup, ObservationRegistry observations) {
         // 의미검색(semanticSearch)은 Embedder/VectorStore 구현 후 주입 (v0.8 §4.5)
         return new SourceAnalyzer(lookup, observations);
+    }
+
+    /** 자연어 → AnalysisQueryDraft 번역(D46) — 유일한 LLM 자유도. Haiku 4.5. */
+    @Bean
+    public QueryTranslator queryTranslator(AnthropicChatModel anthropicChatModel) {
+        return new SpringAiQueryTranslator(anthropicChatModel);
+    }
+
+    /** 자연어 → PlanResult. 번역 후 결정론(해소·게이팅·fail-closed, D46). */
+    @Bean
+    public QueryPlanner queryPlanner(QueryTranslator translator, SourceAnalyzer sourceAnalyzer) {
+        return new QueryPlanner(translator, sourceAnalyzer);
     }
 }
