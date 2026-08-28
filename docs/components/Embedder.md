@@ -11,6 +11,8 @@ related: ["reference/embedding-benchmark.md", "components/component-specs.md", "
 > 텍스트 → 벡터. **적재·검색이 공유**하는 외부 임베딩 API 추상화. Spring AI `EmbeddingModel` 위임. 벤치·차원: [[embedding-benchmark]] · [[decision-log|D32·D33]].
 >
 > **구현 순서 (2026-08-27 확정):** **포트 + OpenAI 구현체 우선**. Upstage는 D33 벤치 시 같은 포트로 추가(통제변인 = 모델 하나만 교체). 신뢰성은 **Spring AI에 위임(얕게)** — 자체 재시도·배치 분할 없음(D48 측정 선행).
+>
+> **역할 범위 (2026-08-27 정정):** RAG 적재·검색 **핫패스에는 Embedder가 없다.** [[ChunkStore]]의 `PgVectorStore`가 `add`/`similaritySearch` 시 `EmbeddingModel`로 **직접 내부 임베딩**하기 때문이다. Embedder 포트의 실역할 = ① **모델·dim 고정**(EmbeddingProperties, PgVectorStore 설정과 정합) ② **원시 임베딩 유틸** — [[rag-evaluation-framework|eval Retriever]]·수동 유사도 등 PgVectorStore 밖에서 벡터가 필요한 곳. 벤더 확정(D33)은 Embedder와 PgVectorStore가 **같은 `EmbeddingModel` 빈**을 공유하므로 한 곳에서 바뀐다.
 
 ## Responsibility
 - **담당:** 텍스트(들) → 고정 차원 벡터. `passage`/`query` 모드 처리. **벤더 교체 지점**(단일 인터페이스).

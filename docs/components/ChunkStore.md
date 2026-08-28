@@ -15,12 +15,15 @@ related: ["components/component-specs.md", "components/RAGIndexer.md", "componen
 - **담당 안 함:** 임베딩 *생성*([[Embedder]]) · 청킹·대상 선별([[RAGIndexer]]) · 정본 저장([[LawStore]] `law_versions`) · 검색 *전략*([[SourceAnalyzer]]).
 
 ## Collaborators
-- **Spring AI `PgVectorStore`** — 벡터 테이블(`vector_store`: id·content·metadata jsonb·embedding) 관리·HNSW 색인·유사도 검색.
+- **Spring AI `PgVectorStore`** — 벡터 테이블(`vector_store`: id·content·metadata jsonb·embedding) 관리·HNSW 색인·유사도 검색. **`add`/`similaritySearch` 시 설정된 `EmbeddingModel`(공유 OpenAI 모델)로 내부 임베딩** — 적재·검색이 같은 모델을 쓰는 게 여기서 보장된다.
 - 소비자: [[RAGIndexer]](적재 upsert) · (후속) [[SourceAnalyzer]]/dispatch(검색).
+- [[Embedder]] 포트는 이 경로에 없음 — PgVectorStore가 EmbeddingModel을 직접 쓴다(Embedder는 설정 핀·eval 유틸).
+
+- `Chunk`(source_id·content·metadata) → Spring AI `Document`로 매핑해 `PgVectorStore.add`에 넘긴다. **content 임베딩은 PgVectorStore가 내부에서** 수행(우리가 벡터를 만들지 않음).
 
 ## Persistence Contract
-- `upsert(List<Chunk>)` — `source_id` 기준 **삭제-후-삽입**. 같은 source_id 재적재는 덮어쓰기(revision 변동 재색인 안전). 배치.
-- `search(String query, int k, filter?) → List<Chunk>` — 유사도 top-k. filter=`namespace=pending`(+lawId 등). 임베딩은 `PgVectorStore`가 내부에서 질의 텍스트를 [[Embedder]] 공유 모델로 임베딩. **이번 증분에서는 라운드트립 검증용**이 주 용도(본격 검색은 [[SourceAnalyzer]] landing 시).
+- `upsert(List<Chunk>)` — `source_id` 기준 **삭제-후-삽입**(멱등, revision 변동 재색인 안전). 배치. add 시 `content`가 자동 임베딩됨.
+- `search(String query, int k, filter?) → List<Chunk>` — 유사도 top-k. filter=`namespace=pending`(+lawId 등). `PgVectorStore`가 **질의를 내부 임베딩**해 검색. **이번 증분에서는 라운드트립 검증용**이 주 용도(본격 검색은 [[SourceAnalyzer]] landing 시).
 - (후속) `deleteByLaw(lawId, efYd)` — 법령 폐기·재색인 정리.
 
 ## Schema · Index
@@ -31,13 +34,13 @@ related: ["components/component-specs.md", "components/RAGIndexer.md", "componen
 ## Invariants
 - **`law_versions`가 SSOT, chunks는 파생** — 언제든 재생성 가능(인용의 진실은 정본). `chunk.metadata.source_id`는 [[LawStore]]의 실제 조문과 일치해야 한다(그라운딩 무결성).
 - upsert 멱등 — source_id 삭제-후-삽입이라 재실행 수렴.
-- 색인·검색 **동일 임베딩 모델·dim**([[Embedder]] 공유) — 벡터공간 일치.
+- 색인·검색 **동일 임베딩 모델·dim** — PgVectorStore가 add/search에 같은 `EmbeddingModel`을 써 벡터공간 일치.
 
 ## Error Handling
 - PgVectorStore/DB 장애 → 상위(적재 배치·질의 경로)로 전파. 부분 실패는 source_id 멱등으로 재실행 안전.
 
 ## Side Effects
-- **DB 쓰기·읽기**(pgvector). 검색 시 질의 임베딩을 위해 [[Embedder]] 경유 **외부 API 호출** 가능.
+- **DB 쓰기·읽기**(pgvector). add/search 시 PgVectorStore가 `EmbeddingModel`로 **외부 임베딩 API 호출**(content·질의).
 
 ## Observability
 - Spring AI **`db.vector.client.operation`** 내장 계측(add/query)에 위임 — 별도 `lia.*` 없음. 질의 임베딩은 `gen_ai.*`([[Embedder]]).
@@ -47,4 +50,4 @@ related: ["components/component-specs.md", "components/RAGIndexer.md", "componen
 - **스키마 소유권** — 벡터=PgVectorStore, 관계형=Flyway. 이중 관리 금지.
 
 ## 검증
-- **통합**(Testcontainers `pgvector/pgvector:pg16`): `upsert`→`search` 라운드트립(넣은 source_id가 top-k에), 멱등 재upsert(중복 없음). `FakeEmbedder`로 결정론 벡터 주입 또는 실 임베딩 게이트.
+- **통합**(Testcontainers `pgvector/pgvector:pg16`): `upsert`→`search` 라운드트립(넣은 source_id가 top-k에), 멱등 재upsert(중복 없음). PgVectorStore에 **결정론 Fake `EmbeddingModel`** 주입 → 실 API·비용 없이 add/search 임베딩 재현.

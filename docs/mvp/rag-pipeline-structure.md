@@ -28,8 +28,8 @@ flowchart TB
         DF["DiffBuilder<br/>변경조문 ↔ 시행중본 대조"]
         LS["LawStore<br/>JSONB 정본 · law_versions"]
         RI["RAGIndexer<br/>청킹 · source_id 부여"]
-        EM["Embedder<br/>OpenAI 임베딩"]
         CS["ChunkStore<br/>pgvector · vector_store"]
+        EM["EmbeddingModel OpenAI<br/>PgVectorStore가 내부 사용"]
         IS["IngestService<br/>오케스트레이터"]
     end
 
@@ -44,16 +44,16 @@ flowchart TB
     NM -->|Law 정본| DF
     DF -->|diff 반영 정본| LS
     NM -->|변경조문 · 제개정이유| RI
-    RI -->|PASSAGE 텍스트| EM
-    EM -->|벡터| RI
-    RI -->|Chunk| CS
+    RI -->|Chunk · source_id| CS
+    CS -->|content 내부 임베딩| EM
+    EM -->|벡터| CS
     IS -.조립·순서.-> LC
     IS -.-> DF
     IS -.-> RI
 
     Q --> SA
-    SA -->|QUERY 텍스트| EM
-    SA -->|유사도 top-k| CS
+    SA -->|검색| CS
+    CS -->|질의 내부 임베딩| EM
     CS -->|source_id| LS
     LS -->|정본 근거| AE
     SA --> AE
@@ -61,13 +61,15 @@ flowchart TB
 
 **두 저장소를 잇는 키 = `source_id`.** 검색은 벡터(`ChunkStore`)에서 후보를 찾고, 그 `source_id`로 정본(`LawStore`)을 되짚어 **인용 근거**로 쓴다(그라운딩). 벡터는 파생물이라 언제든 재생성 가능하고, 인용의 진실은 정본이다.
 
+> **임베딩은 `ChunkStore` 안 PgVectorStore가 한다.** `add`(적재)·`similaritySearch`(질의) 모두 설정된 `EmbeddingModel`(OpenAI)로 내부 임베딩하므로 **적재·검색 동일 모델**이 자동 보장된다. RAGIndexer는 벡터를 만들지 않고 Chunk만 넘긴다. [[Embedder]] 포트는 이 핫패스 밖 — 모델·dim 고정과 eval 유틸용이며, PgVectorStore와 **같은 `EmbeddingModel` 빈**을 공유한다.
+
 ## 2. 왜 이렇게 나눴나 (핵심 개념)
 
 - **JSONB 정본 (LawStore).** 법령 1버전을 통째로 JSONB 한 컬럼에 넣는다. `Law`는 우리가 저작하지 않는 **외부 권위 사실**이라 관계형으로 쪼개 정규화할 실익이 적고, 통째로 읽고 쓰는 불변 스냅샷으로 다루는 게 맞다. 정확 조회·diff 기준선·context 조립·인용은 여기서 나온다.
 - **청킹 (RAGIndexer).** 임베딩 검색용으로 **변경 조문만**(전문 아님) + **제개정이유 요약**을 잘라 벡터화한다. `조문변경여부='Y'` 플래그가 변경 조문을 지목해 주택법 137조문 → 6조문으로 좁힌다(토큰·노이즈 절감). 조문 1개=1청크, 과대 조문만 오버랩 분할.
 - **정본 ≠ 벡터, 소유자도 둘.** `LawStore`(`JdbcClient`+Flyway, JSONB)와 `ChunkStore`(`PgVectorStore`, 벡터)는 다른 라이브러리·다른 테이블이라 **분리**한다. 한 클래스에 두 영속 메커니즘을 섞지 않는다.
 - **단일 네임스페이스 `pending`.** 시행중 조문은 색인하지 않는다 — 현행과 곧 바뀔 내용이 섞이면 검색 노이즈. 시행중본은 diff 기준선으로 정확 fetch만 한다.
-- **적재·검색 동일 임베딩 모델.** `Embedder` 포트를 색인(PASSAGE)과 검색(QUERY)이 공유 — 인덱스↔쿼리 모델 불일치(가장 흔한 RAG 붕괴)를 구조적으로 차단.
+- **적재·검색 동일 임베딩 모델.** `ChunkStore`의 PgVectorStore가 `add`·`similaritySearch`에 **같은 `EmbeddingModel`**을 써서, 인덱스↔쿼리 모델 불일치(가장 흔한 RAG 붕괴)를 구조적으로 차단. (`Embedder` 포트는 같은 모델을 공유하되 핫패스 밖 — 설정 핀·eval.)
 
 ## 3. 컴포넌트별 역할 · 담당 파일
 
@@ -86,9 +88,9 @@ flowchart TB
 
 | 컴포넌트 | 역할 | 담당 파일 (역할) | 상태 |
 |---|---|---|---|
-| **RAGIndexer** | **청킹** — 변경 조문 + 제개정이유 요약을 잘라 `source_id` 부여 → 임베딩 → 벡터 저장 | `pipeline/index/RAGIndexer.java` 대상 선별·조문/요약 청킹·문자수 휴리스틱 과대 분할·`source_id`(`LAW:{lawId}@{efYd}:art:{no}`) | 🟡 |
-| **Embedder** | 텍스트 → 1536차원 벡터. 적재·검색 공유. OpenAI 위임 | `pipeline/embed/Embedder.java` 포트(Mode PASSAGE/QUERY) · `OpenAiEmbedder.java` Spring AI 위임·L2 정규화·dim 가드 · `EmbeddingProperties.java` dim 단일 소스(1536) | ✅ |
-| **ChunkStore** | 벡터 chunks **upsert·검색**. `source_id` 멱등, pgvector | `store/ChunkStore.java` `PgVectorStore` 래핑·`Chunk`↔`Document` 매핑·삭제후삽입 · `Chunk` 값타입(source_id·content·metadata) · `vector_store` 테이블은 PgVectorStore 소유 | 🟡 |
+| **RAGIndexer** | **청킹** — 변경 조문 + 제개정이유 요약을 잘라 `source_id` 부여 → ChunkStore에 적재(임베딩은 안 함) | `pipeline/index/RAGIndexer.java` 대상 선별·조문/요약 청킹·문자수 휴리스틱 과대 분할·`source_id`(`LAW:{lawId}@{efYd}:art:{no}`) | 🟡 |
+| **ChunkStore** | 벡터 chunks **upsert·검색**. `source_id` 멱등, pgvector. **content 내부 임베딩** | `store/ChunkStore.java` `PgVectorStore` 래핑·`Chunk`↔`Document` 매핑·삭제후삽입 · `Chunk` 값타입(source_id·content·metadata) · `vector_store` 테이블은 PgVectorStore 소유 | 🟡 |
+| **Embedder** | 텍스트 → 1536차원 벡터. **RAG 핫패스 밖** — 모델·dim 고정 + 원시 임베딩 유틸(eval). PgVectorStore와 같은 EmbeddingModel 공유 | `pipeline/embed/Embedder.java` 포트(Mode PASSAGE/QUERY) · `OpenAiEmbedder.java` Spring AI 위임·L2 정규화·dim 가드 · `EmbeddingProperties.java` dim 단일 소스(1536) | ✅ |
 
 ### 오케스트레이션 · 계측
 
@@ -108,8 +110,8 @@ flowchart TB
 
 ```
 [적재]  API → LawConnector → Normalizer → DiffBuilder → LawStore(JSONB 정본)
-[색인]                       Normalizer → RAGIndexer(청킹) → Embedder → ChunkStore(pgvector)
-[질의]  질의 → SourceAnalyzer → Embedder(QUERY) → ChunkStore(top-k) → source_id → LawStore(정본) → AnalysisEngine
+[색인]                       Normalizer → RAGIndexer(청킹·source_id) → ChunkStore(pgvector, content 내부 임베딩)
+[질의]  질의 → SourceAnalyzer → ChunkStore.search(top-k, 질의 내부 임베딩) → source_id → LawStore(정본) → AnalysisEngine
 ```
 
 - 적재와 색인은 **오프라인 배치**(무상태·재실행 안전), 질의는 **온라인**. 온라인에 새 작업을 넣기 전 "오프라인으로 미리 할 수 없나"를 먼저 묻는다(D40).
