@@ -100,7 +100,8 @@ com.lia.core
 - **컴포넌트는 구현 전 `docs/components/<Name>.md` spec-first가 필수다.** 새 클래스(서비스·오케스트레이터·커넥터·스토어·파이프라인 단계 등 행위·계약이 있는 것)의 코드를 쓰기 전에 먼저 스펙 문서를 만들어 계약을 못 박고, 그 계약이 구현을 이끈다. 규약·템플릿은 [`_class-spec-template.md`](docs/components/_class-spec-template.md). 문서는 **코드가 못 말하는 것만**(역할 경계·계약·불변식·부작용·구조 결정 의도) 담고 필드/시그니처는 미러링하지 않는다. 코드 변경 시 함께 갱신.
 - **작업은 이 레포에서만 한다.** 문서(docs/*.md)는 **2곳 byte-identical 동기화**: ① 이 레포 `docs/` — **단일 소스, 편집은 여기서만** ② Obsidian 볼트 `D:\rbgusgus\obvsidian\2024-2\프로젝트\입법 영향 분석\` (볼트 루트 = docs/에 대응, 아카이빙 미러). 문서 수정 후 `cp` + `diff`로 맞춘다. 코드·CLAUDE.md·인프라·mkdocs.yml은 동기화 대상 아님.
   - ~~`D:\workspace\law-impact-analysis`~~ — 2026-07-21 동기화 대상에서 제외. 더 이상 갱신·참조하지 않는다(기존 사본은 stale).
-- **git**: 이 폴더가 메인 작업 폴더이며 `HappyGogildong/Legal-data-impact-service`(PUBLIC)에 연결돼 있다. 커밋은 의미 단위로 나누고, **푸시·이슈 생성 등 외부 반영은 사용자 확인 후** 수행한다. 푸시 전 `.env`가 추적되지 않는지 반드시 확인.
+- **git**: 이 폴더가 메인 작업 폴더이며 `HappyGogildong/Legal-data-impact-service`(PUBLIC)에 연결돼 있다. 커밋은 의미 단위로 나누고, **푸시·PR·이슈 생성 등 외부 반영은 사용자 확인 후** 수행한다. 푸시 전 `.env`가 추적되지 않는지 반드시 확인.
+  - **브랜치 전략(2026-08-27 채택) — feature 브랜치 + PR + 머지 커밋.** 컴포넌트/기능마다 `feat/<name>` 브랜치를 파고 TDD RED/GREEN 커밋을 세밀히 남긴다. 완성 후 PR을 열어 관련 이슈에 연결(`Closes #N`)하고 **merge commit(`--no-ff`)으로 병합**해 세부 커밋을 보존한다. `main`은 항상 통합가능 상태로 유지. PR은 `/code-review ultra` 대상이자 기능 단위 기록이 된다.
 - **작업 트래킹**: GitHub Issues(라벨 `area:*`/`type:*`/`priority:*`, 마일스톤 M1~M4). 완료 작업도 이슈로 남기고 close해 이력을 유지한다. 코드 변경 시 관련 이슈 번호를 커밋/PR에 참조.
 - mermaid 다이어그램의 엣지 라벨에 괄호 `()`를 쓰면 파싱이 깨진다(노드 라벨은 따옴표라 무관).
 
