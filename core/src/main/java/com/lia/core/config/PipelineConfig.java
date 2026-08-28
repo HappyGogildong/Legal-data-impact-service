@@ -8,8 +8,13 @@ import org.springframework.web.client.RestClient;
 
 import io.micrometer.observation.ObservationRegistry;
 
+import org.springframework.ai.embedding.EmbeddingModel;
+
 import com.lia.core.pipeline.connector.LawConnector;
 import com.lia.core.pipeline.diff.DiffBuilder;
+import com.lia.core.pipeline.embed.Embedder;
+import com.lia.core.pipeline.embed.EmbeddingProperties;
+import com.lia.core.pipeline.embed.OpenAiEmbedder;
 import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
@@ -53,6 +58,16 @@ public class PipelineConfig {
     @Bean
     public DiffBuilder diffBuilder(ObservationRegistry observations) {
         return new DiffBuilder(observations);
+    }
+
+    /**
+     * 적재·검색 공유 임베딩(D32). Spring AI {@link EmbeddingModel}(OpenAI 자동설정) 위임.
+     * 벤더 확정 후 같은 포트에 구현체만 교체(D33). 온라인 경로가 아니라 여기서 조립한다.
+     */
+    @Bean
+    public Embedder embedder(EmbeddingModel embeddingModel, EmbeddingProperties props,
+                             ObservationRegistry observations) {
+        return new OpenAiEmbedder(embeddingModel, props, observations);
     }
 
     @Bean

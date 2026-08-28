@@ -25,7 +25,7 @@ related: ["reference/embedding-benchmark.md", "components/component-specs.md", "
 | 타입 | 역할 |
 |---|---|
 | `Embedder` (인터페이스) | 벤더 교체 지점. `dim()` · `embed(text, mode)` · `embed(texts, mode)`. |
-| `OpenAiEmbedder` (`@Component`) | Spring AI `EmbeddingModel` 위임 구현체. mode 흡수·정규화·dim 가드. |
+| `OpenAiEmbedder` (POJO, `@Bean` in `PipelineConfig`) | Spring AI `EmbeddingModel` 위임 구현체. mode 흡수·정규화·dim 가드. 프레임워크 비의존 — Normalizer/DiffBuilder와 같은 배선 패턴(생성자 주입·NOOP 기본). |
 | `EmbeddingProperties` (`@ConfigurationProperties("lia.embedding")`) | **dim(기본 1536) 단일 소스** — [[LawStore]] `chunks`·[[RAGIndexer]]가 같은 값을 참조해 dim 불변식을 한 곳에서 강제. |
 | `FakeEmbedder` (test) | 결정론 벡터(해시 기반). 실 API 없이 계약 검증 + (후속) [[rag-evaluation-framework]] 하네스 재사용. |
 
@@ -70,7 +70,7 @@ related: ["reference/embedding-benchmark.md", "components/component-specs.md", "
 
 ## 검증
 - **단위(Fake):** `FakeEmbedder`로 순서·dim·정규화 계약. `OpenAiEmbedder`는 `EmbeddingModel` 목(mock)으로 mode 무시·dim 가드 검증. 기본 `./gradlew test`에서 **실 API 호출 없음**.
-- **라이브 스모크(수동):** `@EnabledIfEnvironmentVariable(named="OPENAI_API_KEY", …)`로 게이트 — 실 호출로 dim=1536·정규화 실측. **비용이 나므로 사용자가 직접 실행**(Normalizer 라이브 스모크 패턴 동일).
+- **라이브 스모크(수동):** **명시적 옵트인** `LIA_EMBED_LIVE=1` + `OPENAI_API_KEY` 둘 다 있을 때만 실행 — 키가 있어도 기본 `./gradlew test`에서는 **스킵**(전체 실행·CI의 우발적 과금 방지). 실 호출로 dim=1536·정규화 실측. **비용이 나므로 사용자가 직접 실행**: `LIA_EMBED_LIVE=1 ./gradlew test --tests "*EmbedderLiveSmokeTest"`.
 
 ## Design Constraints
 - **외부 API only**(D32) — 인프라 예산 없음, 공개 법령이라 데이터 민감도 낮아 적합.

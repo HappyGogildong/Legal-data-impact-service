@@ -76,19 +76,19 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 컴포넌트 클래스 스펙 규약 + 핵심 4종(DiffBuilder·Normalizer·SourceAnalyzer·LawConnector) | ✅ |
 | Law Store — **near-term 구현**(`law_versions` upsert·find·findBaseline, Flyway V1, JdbcClient+JSONB) | ✅ 실 Postgres 통합테스트 통과(Testcontainers 3/3) |
 | `IngestService` — **적재 파이프라인 조립**(Normalizer→DiffBuilder→LawStore, `store`/`ingestPending`) | ✅ 실 Postgres 조립 통합테스트 통과(기준선·제정 2/2) |
-| Embedder — **spec-first**(외부 API·dim 1536·벤더 벤치, D32/D33) | 🟡 스펙 완료·구현 대기 |
+| Embedder — **포트 + OpenAI 구현체**(Spring AI 위임·정규화·dim 가드·mode 흡수, D32) | ✅ 단위 7 통과(Fake 4·OpenAi 3)·라이브 스모크 옵트인. 벤더 최종확정은 D33 벤치 |
 | RAG Indexer — **spec-first**(변경조문 청킹·요약 벡터·pending ns, D55) | 🟡 스펙 완료·구현 대기 |
 | Query Planner — `QueryTranslator`·`QueryPlanner`·`QueryDispatcher` | ⬜ |
 | Analysis Engine · 차원 핸들러 4종 · 인용검증 게이트 | ⬜ |
 | 웹 프론트엔드 · User Profile Store | ⬜ |
 
-단위 테스트 **80개** + 통합 5건(실 Postgres, Testcontainers: Law Store 3 + 적재 파이프라인 조립 2) 통과.
+단위 테스트 **87개**(+Embedder 7) + 통합 5건(실 Postgres, Testcontainers: Law Store 3 + 적재 파이프라인 조립 2) 통과.
 
 > ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 
 ### 구현 순서 (큐)
 
-Diff Builder ✅ · Law Store ✅ · **적재 파이프라인 조립 ✅**(Normalizer→DiffBuilder→LawStore) → **Embedder·RAG Indexer 구현** → Query Planner → Analysis Engine → 수직 슬라이스.
+Diff Builder ✅ · Law Store ✅ · 적재 파이프라인 조립 ✅ · **Embedder ✅**(포트+OpenAI) → **RAG Indexer 구현**(변경조문 청킹·요약 벡터·pending ns, D55) → Query Planner → Analysis Engine → 수직 슬라이스.
 
 ---
 

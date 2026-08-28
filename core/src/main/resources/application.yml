@@ -26,6 +26,8 @@ lia:
       base: https://www.law.go.kr   #   target=law   → 시행중 법령(diff 기준선)
       timeout: 20
       max-retries: 3
+  embedding:                        # Embedder(D32) — dim 단일 소스. 모델/키는 spring.ai.openai
+    dim: 1536                       #   LawStore chunks(pgvector) 차원과 반드시 일치
 
 spring:
   application:
