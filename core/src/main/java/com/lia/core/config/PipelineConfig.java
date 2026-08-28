@@ -62,12 +62,11 @@ public class PipelineConfig {
 
     /**
      * 적재·검색 공유 임베딩(D32). Spring AI {@link EmbeddingModel}(OpenAI 자동설정) 위임.
-     * 벤더 확정 후 같은 포트에 구현체만 교체(D33). 온라인 경로가 아니라 여기서 조립한다.
+     * 벤더 확정 후 같은 포트에 구현체만 교체(D33). 계측은 Spring AI 내장(gen_ai.*)에 위임.
      */
     @Bean
-    public Embedder embedder(EmbeddingModel embeddingModel, EmbeddingProperties props,
-                             ObservationRegistry observations) {
-        return new OpenAiEmbedder(embeddingModel, props, observations);
+    public Embedder embedder(EmbeddingModel embeddingModel, EmbeddingProperties props) {
+        return new OpenAiEmbedder(embeddingModel, props);
     }
 
     @Bean

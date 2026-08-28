@@ -26,8 +26,7 @@ public final class Obs {
     public static final String RESOLVE = "lia.resolve";
     /** 적재 1건 end-to-end(데모 러너/배치). */
     public static final String INGEST = "lia.ingest";
-    /** Embedder.embed — 외부 임베딩 API 호출(네트워크+비용). 벤치 지연·적재 throughput 측정 지점(D33). */
-    public static final String EMBED = "lia.embed";
+    // 임베딩 계측은 Spring AI 내장(gen_ai.client.operation, GenAI 컨벤션)에 위임 — lia.embed 두지 않음.
 
     // --- hook: 온라인 경로 landing 시 발화 (LiaMetrics) ---
     public static final String LLM_CALLS = "lia.analysis.llm.calls";

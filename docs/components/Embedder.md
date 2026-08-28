@@ -25,7 +25,7 @@ related: ["reference/embedding-benchmark.md", "components/component-specs.md", "
 | 타입 | 역할 |
 |---|---|
 | `Embedder` (인터페이스) | 벤더 교체 지점. `dim()` · `embed(text, mode)` · `embed(texts, mode)`. |
-| `OpenAiEmbedder` (POJO, `@Bean` in `PipelineConfig`) | Spring AI `EmbeddingModel` 위임 구현체. mode 흡수·정규화·dim 가드. 프레임워크 비의존 — Normalizer/DiffBuilder와 같은 배선 패턴(생성자 주입·NOOP 기본). |
+| `OpenAiEmbedder` (POJO, `@Bean` in `PipelineConfig`) | Spring AI `EmbeddingModel` 위임 구현체. mode 흡수·정규화·dim 가드. 프레임워크 비의존(생성자 주입). 계측은 Spring AI 내장(gen_ai.*)에 위임 — 자체 span 없음. |
 | `EmbeddingProperties` (`@ConfigurationProperties("lia.embedding")`) | **dim(기본 1536) 단일 소스** — [[LawStore]] `chunks`·[[RAGIndexer]]가 같은 값을 참조해 dim 불변식을 한 곳에서 강제. |
 | `FakeEmbedder` (test) | 결정론 벡터(해시 기반). 실 API 없이 계약 검증 + (후속) [[rag-evaluation-framework]] 하네스 재사용. |
 
@@ -66,7 +66,9 @@ related: ["reference/embedding-benchmark.md", "components/component-specs.md", "
 - **외부 API 호출**(네트워크·비용). 저장·상태 변경 없음(벡터 반환만).
 
 ## Observability
-- `Obs.EMBED` span/timer(`lia.embed`) — 벤치의 지연 지표(쿼리 임베딩 p50/p95, [[embedding-benchmark]] §2)·적재 throughput 측정 지점(D48).
+- **Spring AI 내장 계측에 위임** — `OpenAiEmbeddingModel`은 ObservationRegistry 빈이 있으면 자동으로 `gen_ai.client.operation`(타이머+span, OTel GenAI 컨벤션: `gen_ai.system`·`gen_ai.request.model`·`gen_ai.request.embedding.dimensions`·`gen_ai.usage.input_tokens`/`total_tokens`) + `gen_ai.client.token.usage`를 낸다. 벤치의 지연(p50/p95)·토큰·차원이 여기서 잡힌다([[embedding-benchmark]] §2).
+- **`lia.embed`를 두지 않는 이유:** 우리가 `embed()`를 다시 `observe`로 감싸면 `gen_ai.*` 위의 이중 스팬일 뿐이고, 정규화 오버헤드(µs급) 외엔 새 정보가 없다. normalize/diff가 `lia.*`를 유지하는 것은 그쪽이 외부계측이 없는 순수 CPU 단계라서다(임베딩은 Spring AI가 이미 계측). 지원 벤더 = OpenAI·Mistral·Ollama이며 Upstage도 OpenAI-호환 클라이언트라 동일 적용.
+- **대시보드 주의:** 임베딩 지표는 `lia.*`가 아니라 `gen_ai_client_operation_seconds*`에 있다 — Grafana에 포함할 것.
 
 ## 검증
 - **단위(Fake):** `FakeEmbedder`로 순서·dim·정규화 계약. `OpenAiEmbedder`는 `EmbeddingModel` 목(mock)으로 mode 무시·dim 가드 검증. 기본 `./gradlew test`에서 **실 API 호출 없음**.
