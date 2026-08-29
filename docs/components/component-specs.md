@@ -451,11 +451,11 @@ Content-Type: application/json
 | `ActionHandler` | Law + 부칙(시행일) + **UserProfile** | B | actions(deadline, basis) |
 
 ### #11 Analysis Engine (Spring · Spring AI)
-- 역할: **시행중 법령 RAG 검색**(MVP 활성) + 프롬프트 빌드 + **foundation API 호출** + 1차 인용검증.
-- 입력: §3.1 요청.
-- 출력: §3.1 응답(ImpactResult 또는 오류).
-- 동작: source_id 부여 → 프롬프트 정의서 §3 템플릿 조립 → API 호출(constrained JSON) → 스키마·인용 존재성 1차 검증 → 실패 시 재생성(≤N).
-- 의존: foundation 모델 API.
+- 역할: **정본에서 context 조립**(LawStore 정확 조회 — 벡터 검색 아님, [[AnalysisEngine]] 정합화 2026-08-27) + 프롬프트 빌드 + **foundation API 호출**(Opus) + 1차 인용검증.
+- 입력: §3.1 요청(`law`+`baseline`+`profile?`+`options`).
+- 출력: §3.1 응답(ImpactResult 또는 오류) + `injected_source_ids`.
+- 동작: source_id 부여 → 프롬프트 정의서 §3 템플릿 조립(변경조문·baseline 대응·개정문·부칙·프로필) → API 호출(constrained JSON) → 스키마·인용 존재성 1차 검증 → 실패 시 재생성(≤N).
+- 의존: **Law Store**(정본·캐시) · foundation 모델 API(Opus). *벡터 검색(ChunkStore)은 Discovery 전용이라 분석 경로 무관.*
 
 ### #12 Verification Gate (Spring)
 - 역할: 최종 응답 게이트.
