@@ -1,15 +1,17 @@
 ---
-title: Query Planner — 컴포넌트 설계
+title: Query Planner — 컴포넌트 설계 · 구현 착수
 status: Draft
-version: 0.1
-date: 2026-08-02
+version: 0.2
+date: 2026-08-27
 tags: [component, pipeline, planner, nl]
-related: ["components/component-specs.md", "mvp/service-api-spec.md", "architecture/v0.9-nl-query-planner.md"]
+related: ["components/component-specs.md", "components/SourceAnalyzer.md", "mvp/service-api-spec.md", "architecture/v0.9-nl-query-planner.md"]
 ---
 
 # Query Planner (Spring, 질의 계획)
 
 > 자연어 질의를 **엄격한 타입 DTO(`AnalysisQuery`)** 로 번역하고, 타입에 따라 해소·검색·실행을 라우팅한다. LLM=번역기 → 타입 DTO → 결정론 dispatch[^orm]. 관련: [[v0.9-nl-query-planner]] §2 · [[service-api-spec]] · [[component-specs]] §1
+>
+> **이번 증분 (2026-08-27 확정) — 계획까지(`PlanResult`).** `QueryTranslator` + `QueryPlanner`만. Reference는 [[SourceAnalyzer]]에 연결, Discovery는 criteria 구성까지(검색 실행 없음). **`QueryDispatcher`·`DimensionHandler` 실제 실행은 [[AnalysisEngine]] 랜딩 시 후속.** 패키지 `com.lia.core.pipeline.plan`(ResolutionResult가 `pipeline/resolve`에 사는 것과 동형). 비법령·오프토픽(S9)은 **번역기의 `isLawQuery` 신호**로 Planner가 조기 거부(UNVERIFIED).
 
 ## 역할
 
@@ -60,10 +62,34 @@ AnalysisQuery {
 
 ## 3. 컴포넌트
 
-- **`QueryTranslator`** (interface) + `SpringAiQueryTranslator` — `ChatClient.prompt().user(nl).call().entity(AnalysisQueryDraft.class)`. **모델 Haiku 4.5**(추출·분류는 저비용; Opus는 실제 분석 생성용 — 티어링, component-specs §3.3). *유일한 LLM 자유도.*
-- **`QueryPlanner`** — `plan(query, explicitLawRef?, profilePresence)`: translate → (Reference면 `SourceAnalyzer.resolve`, 실패 시 `Unresolved` / Discovery면 검색 스펙 구성) → 프로필 없으면 Layer B 제거(`unmet`) → 검증된 `AnalysisQuery`.
-- **`QueryDispatcher`** — `AnalysisQuery`를 QueryType별 핸들러로 라우팅·조립한다. `types`+`Target` 보고 결정론적으로 결정. Discovery+분석은 팬아웃.
-- **`DimensionHandler`** (interface) + 스텁 — 실제 RAG/LLM/검색 실행은 Embedder·Law Store·AnalysisEngine·LawDiscovery 의존이라 후속. 지금은 라우팅 결정·계약 확정까지.
+### 이번 증분 (계획까지)
+
+- **`QueryTranslator`** (포트) — `AnalysisQueryDraft translate(String query)`. **유일한 LLM 자유도**를 인터페이스로 격리한다. *포트를 두는 이유는 "교체 예정"이 아니라 **테스트 심***: 플래너의 결정론 로직을 LLM 없이(비용 0·결정론) 검증하려면 번역 결과를 가짜로 주입해야 한다(`ChatClient` 목은 플루언트 체인이라 지저분하고 행위 대신 구현을 테스트).
+- **`SpringAiQueryTranslator`** (구현) — `ChatClient.prompt().user(nl).call().entity(AnalysisQueryDraft.class)`. **모델 Haiku 4.5**(추출·분류는 저비용; Opus는 실제 분석 생성용 — 티어링, [[component-specs]] §3.3).
+- **`AnalysisQueryDraft`** (번역기 LLM 출력) — `primaryType·types·`**`isLawQuery`**`(법령의도 신호)·targetKind(REFERENCE|DISCOVERY)·lawName?·articleNo?·keywords·conditions·domains·intentSummary`. 플래너가 해소 후 `AnalysisQuery`로 매핑.
+- **`QueryPlanner`** — `plan(query, explicitLawRef?, profilePresent) → PlanResult`:
+  1. `translate` → draft.
+  2. **`!draft.isLawQuery` → `Unresolved(UNVERIFIED)`** — 오프토픽(S9) 조기 거부(fail-closed).
+  3. REFERENCE(또는 explicitLawRef): `SourceAnalyzer.resolve` → `RESOLVED`→`Planned`(Reference) / `AMBIGUOUS`·`NOT_FOUND_YET`·`UNVERIFIED`→`Unresolved`.
+  4. DISCOVERY: `DiscoveryCriteria` 구성 → `Planned`(검색 실행은 dispatch라 이번 범위 밖).
+  5. **프로필 게이팅**: `profilePresent` 아니면 Layer B(`IMPACT`·`ACTION`) 제거·`profileBound=false`. 타입이 비면 기본 `SUMMARY`(Reference)/`LOOKUP`(Discovery) — **분류 실패로 거부하지 않는다**(best-effort, 자유도 보존).
+
+### 후속 (AnalysisEngine 랜딩 시)
+
+- **`QueryDispatcher`** — `AnalysisQuery`를 QueryType별 핸들러로 라우팅·조립. `types`+`Target` 결정론. Discovery+분석은 top-K 팬아웃.
+- **`DimensionHandler`** (interface) + 구현 — 실제 RAG/LLM/검색 실행. Embedder·ChunkStore·AnalysisEngine·LawDiscovery 의존.
+
+## 3.1 타입 (`pipeline/plan`)
+
+- `QueryType` enum(5종) · `Target` sealed: `Reference(LawRef)` | `Discovery(DiscoveryCriteria)` · `LawRef{lawId, effectiveDate?, articleNo?}`.
+- `AnalysisQuery{primaryType, types:Set, target, entities, intentSummary, filters(articleScope), profileBound, options}` — **생성자가 불변식 강제**(fail-closed 승계: primaryType∈types 등).
+- `PlanResult` sealed: `Planned(AnalysisQuery)` | `Unresolved(ResolutionResult)`.
+
+## 3.2 계측 · 검증
+
+- **계측**: 별도 `lia.plan` 스팬 없음 — Haiku 호출은 Spring AI `gen_ai.*`, 해소는 기존 `lia.resolve`가 커버(이중 스팬 회피, 임베딩 교훈 동일).
+- **단위**: `FakeQueryTranslator`(캔드 draft) + `SourceAnalyzer`(기존 `FakeLookup` 패턴) → Reference RESOLVED→Planned / 비법령→Unresolved(UNVERIFIED) / 무프로필→Layer B 제거 / Discovery→Planned criteria / AMBIGUOUS→Unresolved.
+- **라이브 스모크(수동·게이트)**: `SpringAiQueryTranslator` 실 Haiku 호출 — `LIA_PLAN_LIVE`+`ANTHROPIC_API_KEY` 옵트인(비용, 사용자 실행). 기본 test에서 스킵.
 
 ## 4. 구조 결정 의도 (왜 이렇게)
 
