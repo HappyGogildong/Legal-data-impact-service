@@ -18,8 +18,15 @@ import com.lia.core.store.ChunkStore;
  */
 public class RAGIndexer {
 
-    /** 단일 청크 최대 문자수 — 초과 시 오버랩 분할(D55). 8191토큰 한도의 보수적 문자 환산. */
-    static final int MAX_CHARS = 6000;
+    /**
+     * 단일 청크 최대 문자수 — 초과 시 오버랩 분할(D55). 임베딩 입력 토큰 한도를 넘지 않도록
+     * <b>보수적으로 잡은 문자 기준</b>이다(토크나이저 의존 회피).
+     *
+     * <p>주의: 문자수 ≠ 토큰수. `text-embedding-3-small`(cl100k)에서 <b>한국어는 음절당 토큰이 많아</b>
+     * (대략 2~3토큰/음절) 6000자면 8191토큰 한도를 넘길 수 있다. 그래서 영어 기준이 아니라
+     * 한국어 기준으로 보수적으로 2500자로 둔다. 정밀 제한이 필요하면 jtokkit(cl100k) 토큰 카운트로 교체.
+     */
+    static final int MAX_CHARS = 2500;
 
     /** 분할 시 인접 청크가 겹치는 문자수 — 경계에서 잘린 문맥 손실 완화. */
     static final int OVERLAP = 200;
@@ -41,12 +48,13 @@ public class RAGIndexer {
                     meta(pending, "article", article.no(), article.changed()));
         }
 
-        String summary = pending.amendReason();
-        if (summary != null && !summary.isBlank()) {
-            addChunks(chunks, pending.ref(), summary, meta(pending, "summary", null, null));
+        String amendReason = pending.amendReason();
+        if (amendReason != null && !amendReason.isBlank()) {
+            addChunks(chunks, pending.ref(), amendReason, meta(pending, "summary", null, null));
         }
 
-        chunkStore.upsert(chunks);
+        // 정본 단위 완전 교체 — 재색인 시 저장 상태 == 현재 법령 상태(stale 청크 없음).
+        chunkStore.replaceVersion(pending.lawId(), pending.effectiveDate().toString(), chunks);
     }
 
     /** content가 한도 이내면 단일 청크, 초과면 오버랩 분할해 {@code sourceId#k} 로 담는다. */

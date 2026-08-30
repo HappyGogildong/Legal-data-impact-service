@@ -21,7 +21,7 @@ class ChunkStoreLawSearchTest {
     static class FakeChunkStore implements ChunkStore {
         final List<Chunk> hits;
         FakeChunkStore(List<Chunk> hits) { this.hits = hits; }
-        @Override public void upsert(List<Chunk> chunks) {}
+        @Override public void replaceVersion(String lawId, String efYd, List<Chunk> chunks) {}
         @Override public List<Chunk> search(String query, int topK) { return hits.stream().limit(topK).toList(); }
     }
 

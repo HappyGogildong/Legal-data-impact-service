@@ -24,7 +24,13 @@ class RAGIndexerTest {
     /** 넣은 Chunk를 붙잡아 두는 테스트 더블. */
     static class CapturingChunkStore implements ChunkStore {
         final List<Chunk> captured = new ArrayList<>();
-        @Override public void upsert(List<Chunk> chunks) { captured.addAll(chunks); }
+        String seenLawId;
+        String seenEfYd;
+        @Override public void replaceVersion(String lawId, String efYd, List<Chunk> chunks) {
+            this.seenLawId = lawId;
+            this.seenEfYd = efYd;
+            captured.addAll(chunks);
+        }
         @Override public List<Chunk> search(String query, int topK) { return List.of(); }
     }
 
@@ -39,6 +45,10 @@ class RAGIndexerTest {
                 "제2조 미변경 정의 …");  // 미변경 → 색인 제외
 
         indexer.index(law);
+
+        // 정본 단위 replace — 올바른 (lawId, efYd) 스코프로 호출(stale 제거의 전제)
+        assertEquals("001809", store.seenLawId);
+        assertEquals("2026-08-04", store.seenEfYd);
 
         // 조문 2 + 요약 1 = 3
         assertEquals(3, store.captured.size());

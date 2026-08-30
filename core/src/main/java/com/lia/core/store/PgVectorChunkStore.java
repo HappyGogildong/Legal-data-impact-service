@@ -28,15 +28,15 @@ public class PgVectorChunkStore implements ChunkStore {
     }
 
     @Override
-    public void upsert(List<Chunk> chunks) {
-        if (chunks.isEmpty()) return;
-        List<String> sourceIds = chunks.stream().map(Chunk::sourceId).toList();
-
-        // 삭제-후-삽입: 같은 source_id 기존분 제거(멱등) → 새로 삽입
-        Filter.Expression sameSource = new FilterExpressionBuilder()
-                .in("source_id", sourceIds.toArray()).build();
-        vectorStore.delete(sameSource);
-        vectorStore.add(chunks.stream().map(PgVectorChunkStore::toDocument).toList());
+    public void replaceVersion(String lawId, String efYd, List<Chunk> chunks) {
+        // 정본 단위 완전 교체: (lawId, efYd)의 기존 청크를 전부 삭제 → 현재 세트 삽입.
+        // source_id 단위가 아니라 정본 단위라 stale(사라진 하위 청크·삭제 조문)이 남지 않는다.
+        FilterExpressionBuilder b = new FilterExpressionBuilder();
+        Filter.Expression version = b.and(b.eq("lawId", lawId), b.eq("efYd", efYd)).build();
+        vectorStore.delete(version);
+        if (!chunks.isEmpty()) {
+            vectorStore.add(chunks.stream().map(PgVectorChunkStore::toDocument).toList());
+        }
     }
 
     @Override
