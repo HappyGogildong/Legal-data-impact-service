@@ -101,7 +101,9 @@ RAG 구성(**chunk size · embedding · top-k · reranker · query rewriting · 
 | `RagEvalRunner` | config+골든+`Retriever` → `EvalReport` | ✅ |
 | `RegressionGate` | baseline·임계 비교 → 통과/실패 | ✅ |
 | `Retriever`(포트) | 검색 격리 — `FakeRetriever`(단위) / `ChunkStoreRetriever`(실물) | ✅ 포트 |
-| `ChunkStoreRetriever` | **실물 리트리버** — `ChunkStore.search`(pgvector, 내부 임베딩) → `Retrieved(sourceId, 순위점수)`. 평가·런타임이 같은 검색 사용 | 🟡 이번 브랜치 |
+| `ChunkStoreRetriever` | **실물 리트리버** — `ChunkStore.search`(pgvector, 내부 임베딩) → `Retrieved(sourceId, 순위점수)`. 평가·런타임이 같은 검색 사용 | ✅ |
+| `SelfRetrievalGold` | **자기검색 골든셋** 생성 — 각 법령 요약(제개정이유) query → 그 법령 source_ids(요약+변경조문). 비자명 의미검색 증명 | ✅ |
+| `RagEvalLiveTest` | 게이트 실 평가 — 실 법령 적재(실 OpenAI)→ `RagEvalRunner`(자기검색) → Recall@k·MRR 기준선. `LIA_RAG_EVAL=1` 수동 | ✅ 옵트인 |
 
 단위 테스트: 합성 랭킹·citations로 지표 수학·게이트 로직 검증(RAG 불필요). `ChunkStoreRetriever`는 Fake `ChunkStore`로 매핑·순서 검증(단위) + 실 임베딩 게이트 스모크(수동).
 
