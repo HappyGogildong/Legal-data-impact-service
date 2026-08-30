@@ -11,8 +11,18 @@ import java.util.List;
  */
 public interface ChunkStore {
 
-    /** {@code source_id} 기준 upsert(멱등). 저장 시 {@code content}가 자동 임베딩된다. */
-    void upsert(List<Chunk> chunks);
+    /**
+     * 한 정본 {@code (lawId, efYd)}의 벡터를 <b>현재 세트로 완전 교체</b>한다 — 그 정본의 기존 청크를
+     * 모두 삭제한 뒤 {@code chunks}를 삽입. <b>재색인 시 저장 상태 == 현재 법령 상태</b>를 보장한다
+     * (분할 개수가 줄거나 조문이 삭제/이동돼도 stale 청크가 남지 않음).
+     *
+     * <p>{@code source_id} 단위 upsert가 아니라 <b>정본 단위 replace</b>인 이유: 한 정본의 청크 집합은
+     * 함께 바뀌므로(분할 수 변동 등) 개별 id 덮어쓰기로는 사라진 청크를 정리할 수 없다.
+     * {@code chunks}가 비면 그 정본의 청크를 전부 지운다(삭제 반영). 저장 시 {@code content} 자동 임베딩.
+     *
+     * @param lawId 법령ID · @param efYd 시행일(ISO, chunk 메타 {@code efYd}와 일치)
+     */
+    void replaceVersion(String lawId, String efYd, List<Chunk> chunks);
 
     /** 질의 유사도 top-k. 질의 임베딩은 구현체 안에서 수행. 이번 증분은 라운드트립 검증용. */
     List<Chunk> search(String query, int topK);

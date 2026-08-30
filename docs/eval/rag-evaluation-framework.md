@@ -100,15 +100,18 @@ RAG 구성(**chunk size · embedding · top-k · reranker · query rewriting · 
 | `RefusalMetric` | 거부 정확도(fail-closed) — 실 `SourceAnalyzer` 가동 | ✅ |
 | `RagEvalRunner` | config+골든+`Retriever` → `EvalReport` | ✅ |
 | `RegressionGate` | baseline·임계 비교 → 통과/실패 | ✅ |
-| `Retriever`(포트) | 검색 격리 — 지금 `FakeRetriever`, RAG landing 시 벡터스토어로 교체 | ✅ 포트 |
+| `Retriever`(포트) | 검색 격리 — `FakeRetriever`(단위) / `ChunkStoreRetriever`(실물) | ✅ 포트 |
+| `ChunkStoreRetriever` | **실물 리트리버** — `ChunkStore.search`(pgvector, 내부 임베딩) → `Retrieved(sourceId, 순위점수)`. 평가·런타임이 같은 검색 사용 | 🟡 이번 브랜치 |
 
-단위 테스트: 합성 랭킹·citations로 지표 수학·게이트 로직 검증(RAG 불필요).
+단위 테스트: 합성 랭킹·citations로 지표 수학·게이트 로직 검증(RAG 불필요). `ChunkStoreRetriever`는 Fake `ChunkStore`로 매핑·순서 검증(단위) + 실 임베딩 게이트 스모크(수동).
+
+> **런타임 검색 배선(이번 브랜치).** `SourceAnalyzer.semanticSearch`(pending ns 의미검색)를 `ChunkStore`-backed 어댑터로 주입한다 — chunk 히트를 `lawId`로 dedupe해 `RawLaw` 후보로. 이를 위해 [[RAGIndexer]] chunk 메타에 `title`을 추가한다(후보 표시·매칭용). 평가(자기검색)는 `ChunkStoreRetriever`만 쓰고, 이 배선은 런타임 Discovery/AMBIGUOUS 폴백용이다.
 
 ---
 
 ## 6. 로드맵
 
-**근term(RAG와 함께):** `Retriever` 포트를 실제 벡터 검색으로 교체 → 실 골든셋으로 retrieval 게이트 가동. 거부 게이트는 이미 가동 가능. config 스윕으로 임베딩 벤더(D33)·top-k·청킹 확정.
+**근term(RAG와 함께):** `Retriever` 포트를 실제 벡터 검색으로 교체(`ChunkStoreRetriever`, 이번 브랜치) → 골든셋으로 retrieval 게이트 가동. **1차 골든셋 = 자기검색**(요약 텍스트 query → 그 법령 source_ids; 비자명 의미검색 증명)로 기준선 확보. 벤더는 **OpenAI 임시 확정**(D33 벤치·시나리오 B 저작질의는 설계 정합화·리서치 후로 보류). 거부 게이트는 이미 가동 가능.
 
 **post-MVP(D36):** RAGAS/Python 답변품질(Relevance·Correctness·인용 지지) · 합성 페르소나 E2E · 사람검수 correctness 골든셋 · CI(GitHub Actions) 통합·baseline 자동 갱신.
 

@@ -22,6 +22,7 @@ import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.pipeline.plan.QueryPlanner;
 import com.lia.core.pipeline.plan.QueryTranslator;
 import com.lia.core.pipeline.plan.SpringAiQueryTranslator;
+import com.lia.core.pipeline.resolve.ChunkStoreLawSearch;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
 import com.lia.core.store.ChunkStore;
@@ -89,10 +90,12 @@ public class PipelineConfig {
         return new RAGIndexer(chunkStore);
     }
 
+    /** 해소기 — 정확매칭(LawLookup) + pending ns 의미검색(ChunkStore) 폴백. 임계 88/60(D23). */
     @Bean
-    public SourceAnalyzer sourceAnalyzer(LawLookup lookup, ObservationRegistry observations) {
-        // 의미검색(semanticSearch)은 Embedder/VectorStore 구현 후 주입 (v0.8 §4.5)
-        return new SourceAnalyzer(lookup, observations);
+    public SourceAnalyzer sourceAnalyzer(LawLookup lookup, ChunkStore chunkStore,
+                                         ObservationRegistry observations) {
+        var semanticSearch = new ChunkStoreLawSearch(chunkStore, 5);
+        return new SourceAnalyzer(lookup, semanticSearch, 88.0, 60.0, observations);
     }
 
     /** 자연어 → AnalysisQueryDraft 번역(D46) — 유일한 LLM 자유도. Haiku 4.5. */
