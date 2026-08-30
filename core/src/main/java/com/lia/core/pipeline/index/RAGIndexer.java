@@ -71,6 +71,7 @@ public class RAGIndexer {
         m.put("kind", kind);
         m.put("namespace", NAMESPACE);
         m.put("lawId", law.lawId());
+        m.put("title", law.title());            // 의미검색 히트를 RawLaw 후보로 되살릴 때 필요
         m.put("efYd", law.effectiveDate().toString());
         if (articleNo != null) m.put("articleNo", articleNo);
         if (changed != null) m.put("changed", changed);
