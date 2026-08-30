@@ -57,20 +57,57 @@ public class RAGIndexer {
         chunkStore.replaceVersion(pending.lawId(), pending.effectiveDate().toString(), chunks);
     }
 
-    /** content가 한도 이내면 단일 청크, 초과면 오버랩 분할해 {@code sourceId#k} 로 담는다. */
+    /**
+     * content가 한도 이내면 단일 청크, 초과면 <b>구조(항/호/목) 경계로 분할</b>해 {@code sourceId#k} 로 담는다.
+     *
+     * <p>{@link com.lia.core.pipeline.normalize.Normalizer}가 항→호→목을 {@code \n}로 병합하므로,
+     * 줄 = 항/호/목 단위다. 줄 경계를 지키며 그리디 패킹해 <b>단위 중간을 자르지 않는다</b>(법령 RAG 품질).
+     * 한 줄이 그 자체로 한도를 넘는 예외에만 문자 분할로 폴백. 인접 청크는 직전 줄 하나를 겹쳐(오버랩) 문맥 보존.
+     */
     private static void addChunks(List<Chunk> out, String sourceId, String content, Map<String, Object> meta) {
-        if (content == null) return;
+        if (content == null || content.isBlank()) return;
         if (content.length() <= MAX_CHARS) {
             out.add(new Chunk(sourceId, content, meta));
             return;
         }
+        List<String> pieces = new ArrayList<>();
+        StringBuilder buf = new StringBuilder();
+        String lastLine = null;
+        for (String line : content.split("\n", -1)) {
+            if (line.length() > MAX_CHARS) {                 // 단일 항이 한도 초과 — 이 줄만 문자 분할(폴백)
+                if (buf.length() > 0) { pieces.add(buf.toString()); buf.setLength(0); }
+                charSplit(pieces, line);
+                lastLine = null;
+                continue;
+            }
+            int add = line.length() + (buf.length() == 0 ? 0 : 1);
+            if (buf.length() > 0 && buf.length() + add > MAX_CHARS) {
+                pieces.add(buf.toString());
+                buf.setLength(0);
+                if (lastLine != null && lastLine.length() + 1 + line.length() <= MAX_CHARS) {
+                    buf.append(lastLine);                    // 1줄 오버랩(들어갈 때만 — 한도 보존)
+                }
+            }
+            if (buf.length() > 0) buf.append('\n');
+            buf.append(line);
+            lastLine = line;
+        }
+        if (buf.length() > 0) pieces.add(buf.toString());
+
+        if (pieces.size() == 1) {
+            out.add(new Chunk(sourceId, pieces.get(0), meta));
+        } else {
+            for (int k = 0; k < pieces.size(); k++) out.add(new Chunk(sourceId + "#" + k, pieces.get(k), meta));
+        }
+    }
+
+    /** 단일 줄(항/호/목)이 한도를 넘는 예외 — 문자 오버랩 분할로 폴백. */
+    private static void charSplit(List<String> pieces, String line) {
         int step = MAX_CHARS - OVERLAP;
-        int part = 0;
-        for (int start = 0; start < content.length(); start += step) {
-            int end = Math.min(start + MAX_CHARS, content.length());
-            out.add(new Chunk(sourceId + "#" + part, content.substring(start, end), meta));
-            part++;
-            if (end == content.length()) break;
+        for (int start = 0; start < line.length(); start += step) {
+            int end = Math.min(start + MAX_CHARS, line.length());
+            pieces.add(line.substring(start, end));
+            if (end == line.length()) break;
         }
     }
 

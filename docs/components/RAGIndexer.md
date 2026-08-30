@@ -31,7 +31,9 @@ related: ["components/component-specs.md", "components/Embedder.md", "components
 ## Behavior (색인 단계)
 1. **대상 선별** — `Law.changedArticles()` + `amendReason` 요약. (전문·미변경 조문·시행중본 제외 — 저장·노이즈 절감.)
 2. **청킹**(D55) —
-   - **조문 단위**: 변경 조문 1개 = 1 청크. **과대 조문**(문자수 > 임계 `MAX_CHARS`)만 **오버랩 분할**(하위 청크 `art:{no}#k`, 같은 출처 조문). ⚠️ **문자수 ≠ 토큰수** — `text-embedding-3-small`(cl100k)에서 한국어는 음절당 토큰이 많아(대략 2~3토큰/음절) 6000자면 8191토큰을 넘길 수 있다. 그래서 임계를 **한국어 기준 보수적으로 2500자**로 둔다(영어 기준 아님). 정밀 제한이 필요하면 jtokkit(cl100k) 토큰 카운트로 교체(D48 — 지금은 의존성 회피).
+   - **조문 단위**: 변경 조문 1개 = 1 청크. **과대 조문**(문자수 > 임계 `MAX_CHARS`)만 분할(하위 청크 `art:{no}#k`).
+   - **구조 기반 분할**: Normalizer가 항→호→목을 `\n`로 병합하므로 줄 = 항/호/목 단위다. **줄 경계를 지키며 그리디 패킹**해 단위 중간을 자르지 않는다(법령 RAG 품질). 인접 청크는 직전 1줄 오버랩으로 문맥 보존. 한 줄(항)이 그 자체로 한도를 넘는 예외에만 문자 분할 폴백.
+   - ⚠️ **문자수 ≠ 토큰수** — `text-embedding-3-small`(cl100k)에서 한국어는 음절당 토큰이 많아(대략 2~3토큰/음절) 6000자면 8191토큰을 넘길 수 있다. 그래서 임계를 **한국어 기준 보수적으로 2500자**(`MAX_CHARS`)로 둔다. 정밀 제한이 필요하면 jtokkit(cl100k) 토큰 카운트로 교체(D48 — 지금은 의존성 회피).
    - **요약**: `amendReason` = 법령 단위 1 청크(과대 시 동일 분할).
 3. **`source_id` 부여** — 조문 `LAW:{lawId}@{efYd}:art:{no}` · 요약 `LAW:{lawId}@{efYd}`. **시행일 포함**(복수 시행예정본, D43). 메타: `source_id·lawId·efYd·kind(article|summary)·namespace=pending·changed·articleNo?`.
 4. **적재** — [[ChunkStore]] `replaceVersion(lawId, efYd, chunks)`: **정본 단위 완전 교체**라 재색인 시 사라진 청크(분할 수 감소·조문 삭제)가 stale로 남지 않는다. **임베딩은 ChunkStore 내부**에서 PgVectorStore가 `content`로 수행 — RAGIndexer는 벡터를 다루지 않는다.
@@ -58,5 +60,5 @@ related: ["components/component-specs.md", "components/Embedder.md", "components
 - **`store()`는 임베딩 프리** — 적재 정본 조립(IngestService.store)에 임베딩을 섞지 않는다(무키 통합테스트 보호). 색인은 `ingestPending` 배치 단계에서만.
 
 ## 검증
-- **단위:** Fake `ChunkStore`(upsert된 Chunk 캡처) → 청크 개수·`source_id` 형식·과대 분할·요약 청크·미변경 조문 제외·메타(namespace=pending·kind·changed) 검증. **순수 로직, 임베딩·DB 무관**(RAGIndexer는 벡터를 만들지 않음).
+- **단위:** Fake `ChunkStore`(replaceVersion된 Chunk 캡처) → 청크 개수·`source_id` 형식·**항 경계 분할(중간 안 자름)**·문자 폴백·요약 청크·미변경 조문 제외·정본 스코프·메타 검증. **순수 로직, 임베딩·DB 무관**.
 - **통합:** [[ChunkStore]] 통합테스트(Testcontainers pgvector)로 replaceVersion→search 라운드트립 · **재색인 stale 제거** · 정본 스코프 격리 확인(임베딩 포함).

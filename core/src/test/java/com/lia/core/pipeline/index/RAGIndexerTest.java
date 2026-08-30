@@ -94,6 +94,30 @@ class RAGIndexerTest {
         assertTrue(store.captured.stream().anyMatch(c -> c.sourceId().equals(law.sourceId(law.article("104")))));
     }
 
+    @Test
+    void 과대_조문은_항_경계로_분할되어_중간을_자르지_않는다() {
+        // 6개 항(줄) 각 ~505자 → 총 ~3030 > MAX_CHARS(2500). 항 경계(\n)로 나뉘어야
+        List<String> lines = new ArrayList<>();
+        for (int i = 0; i < 6; i++) lines.add("제%d항 ".formatted(i + 1) + "가".repeat(500));
+        Law law = law(String.join("\n", lines), "제104조 짧음", "제2조 미변경");
+
+        indexer.index(law);
+
+        String base = law.sourceId(law.article("18"));
+        List<Chunk> parts = store.captured.stream()
+                .filter(c -> c.sourceId().startsWith(base + "#")).toList();
+
+        assertTrue(parts.size() >= 2, "분할되지 않음");
+        java.util.Set<String> orig = new java.util.HashSet<>(lines);
+        for (Chunk p : parts) {
+            assertTrue(p.content().length() <= RAGIndexer.MAX_CHARS, "청크가 한도 초과");
+            for (String l : p.content().split("\n")) {
+                assertTrue(orig.contains(l),
+                        "항 경계를 어기고 줄 중간에서 잘렸다: " + l.substring(0, Math.min(15, l.length())));
+            }
+        }
+    }
+
     // --- fixture ---------------------------------------------------------
 
     private static Chunk chunk(List<Chunk> chunks, String sourceId) {
