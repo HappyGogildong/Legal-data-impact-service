@@ -81,7 +81,7 @@ class AnalysisEngineTest {
 
     static ImpactResult result(ImpactResult.Claim... claims) {
         return new ImpactResult("LAW:001809@2026-08-04", "SUMMARY", "요약",
-                List.of(claims), List.of(), List.of(), List.of(), null, List.of(), "참고용", null);
+                List.of(claims), List.of(), List.of(), null, List.of(), "참고용", null);
     }
 
     static ImpactResult.Claim claim(String statement, String... citations) {

@@ -14,8 +14,7 @@ public record ImpactResult(
         String command,                // 차원(SUMMARY·DIFF·…)
         String summary,
         List<Claim> claims,
-        List<String> affectedProfiles,
-        List<Impact> impacts,
+        List<Impact> impacts,          // Layer B(내 영향). 사용자 본인 관점 — 타 대상군 나열 안 함
         List<Action> actions,
         EffectiveInfo effectiveInfo,
         List<String> uncertainties,
