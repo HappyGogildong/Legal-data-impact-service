@@ -48,7 +48,7 @@ public class SpringAiReasoner implements Reasoner {
         StringBuilder sb = new StringBuilder();
         sb.append("[CONTEXT] law_ref=").append(ctx.lawRef()).append('\n');
         for (SourceBlock b : ctx.blocks()) {
-            sb.append('[').append(b.sourceId()).append(" | ").append(b.kind()).append("] ")
+            sb.append('[').append(b.sourceId()).append(" | ").append(b.type()).append("] ")
               .append(b.text()).append('\n');
         }
         sb.append("\n[TASK] 차원=").append(ctx.dimension())

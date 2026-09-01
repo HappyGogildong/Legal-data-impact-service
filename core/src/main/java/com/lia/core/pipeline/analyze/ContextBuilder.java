@@ -21,25 +21,25 @@ public class ContextBuilder {
         Law law = req.law();
         List<SourceBlock> blocks = new ArrayList<>();
 
-        // 변경 조문 — 인용키 LAW:{lawId}@{efYd}:art:{no}
+        // 변경 조문 — source_id 포맷은 Law이 권위(문자열 조합 금지)
         for (Article a : law.changedArticles()) {
-            blocks.add(new SourceBlock(law.sourceId(a), "article", a.text()));
+            blocks.add(new SourceBlock(law.sourceId(a), SourceType.ARTICLE, a.text()));
         }
-        // 개정문 — 자구 변경 근거. 인용키 …:amend
+        // 개정문 — 자구 변경 근거
         if (law.amendText() != null && !law.amendText().isBlank()) {
-            blocks.add(new SourceBlock(law.ref() + ":amend", "amend", law.amendText()));
+            blocks.add(new SourceBlock(law.amendSourceId(), SourceType.AMEND, law.amendText()));
         }
-        // 부칙 — 시행일·경과조치·적용례. 인용키 …:addenda:{no}
+        // 부칙 — 시행일·경과조치·적용례
         for (Addendum ad : law.addenda()) {
-            blocks.add(new SourceBlock(law.ref() + ":addenda:" + ad.no(), "addenda", ad.text()));
+            blocks.add(new SourceBlock(law.addendumSourceId(ad), SourceType.ADDENDA, ad.text()));
         }
-        // DIFF — 변경 조문의 시행중(baseline) 대응 조문. 인용키 LAW:{lawId}:art:{no}(시행일 없음)
+        // DIFF — 변경 조문의 시행중(baseline) 대응 조문. baseline=null이면 제정(전부 신설, D42) → 스킵
         if (req.dimension() == QueryType.DIFF && req.baseline() != null) {
             Law baseline = req.baseline();
             for (Article a : law.changedArticles()) {
                 Article base = baseline.article(a.no());
                 if (base != null) {
-                    blocks.add(new SourceBlock(baseline.sourceId(base), "baseline", base.text()));
+                    blocks.add(new SourceBlock(baseline.sourceId(base), SourceType.BASELINE, base.text()));
                 }
             }
         }

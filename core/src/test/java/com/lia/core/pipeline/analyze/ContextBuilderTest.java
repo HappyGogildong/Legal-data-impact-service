@@ -14,6 +14,7 @@ import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalysisContext.SourceBlock;
+import com.lia.core.pipeline.analyze.SourceType;
 import com.lia.core.pipeline.plan.QueryType;
 
 /**
@@ -36,7 +37,7 @@ class ContextBuilderTest {
 
         SourceBlock art18 = ctx.blocks().stream()
                 .filter(b -> b.sourceId().equals(law.sourceId(law.article("18")))).findFirst().orElseThrow();
-        assertEquals("article", art18.kind());
+        assertEquals(SourceType.ARTICLE, art18.type());
         assertTrue(art18.text().contains("통합심의"), "조문 본문이 블록에 담겨야");
     }
 
@@ -51,9 +52,9 @@ class ContextBuilderTest {
 
         SourceBlock amend = ctx.blocks().stream()
                 .filter(b -> b.sourceId().equals(law.ref() + ":amend")).findFirst().orElseThrow();
-        assertEquals("amend", amend.kind());
+        assertEquals(SourceType.AMEND, amend.type());
         SourceBlock addenda = ctx.blocks().stream()
-                .filter(b -> b.kind().equals("addenda")).findFirst().orElseThrow();
+                .filter(b -> b.type() == SourceType.ADDENDA).findFirst().orElseThrow();
         assertTrue(addenda.text().contains("공포 후 6개월"), "부칙 본문");
     }
 
@@ -70,7 +71,7 @@ class ContextBuilderTest {
 
         SourceBlock base18 = ctx.blocks().stream()
                 .filter(b -> b.sourceId().equals("LAW:001809:art:18")).findFirst().orElseThrow();
-        assertEquals("baseline", base18.kind());
+        assertEquals(SourceType.BASELINE, base18.type());
         assertTrue(base18.text().contains("개별로 심의"), "옛 조문 본문");
     }
 
@@ -82,6 +83,25 @@ class ContextBuilderTest {
                 Law.AmendKind.일부개정, Law.LawType.법률, "국토교통부",
                 LocalDate.of(2019, 12, 31), "16000", LocalDate.of(2020, 1, 1),
                 null, null, null, null, List.of(), arts, List.of(), null, null, "base", Instant.now());
+    }
+
+    @Test
+    void context_blocks는_불변이다() {
+        AnalysisContext ctx = builder.build(new AnalyzeRequest(QueryType.SUMMARY, housing(), null));
+        assertThrows(UnsupportedOperationException.class,
+                () -> ctx.blocks().add(new SourceBlock("x", SourceType.ARTICLE, "y")));
+    }
+
+    @Test
+    void law가_null인_요청은_생성에서_거부된다() {
+        assertThrows(NullPointerException.class,
+                () -> new AnalyzeRequest(QueryType.SUMMARY, null, null));
+    }
+
+    @Test
+    void dimension이_null인_요청은_생성에서_거부된다() {
+        assertThrows(NullPointerException.class,
+                () -> new AnalyzeRequest(null, housing(), null));
     }
 
     private static Law housing() {
