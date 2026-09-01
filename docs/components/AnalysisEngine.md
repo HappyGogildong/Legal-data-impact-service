@@ -56,8 +56,15 @@ related: ["components/component-specs.md", "components/QueryPlanner.md", "compon
 - `FaithfulnessGate`는 지금 `com.lia.core.eval`에 있으나 실은 **도메인 그라운딩 규칙**이라 `domain/analysis`로 이전 검토(런타임이 eval을 의존하는 어색함 해소). eval의 `faithfulness` 지표가 같은 규칙을 감싼다.
 
 ## 도메인 타입 (`domain/analysis`)
-- `ImpactResult`(§4) + `Claim`·`Impact`·`Action`·`EffectiveInfo`·`Meta`. **LLM 출력이라 record는 관대**(필드 생략 허용), **불변식(인용 존재성)은 `FaithfulnessGate`가 강제**(record 아님).
-- `AnalyzeRequest{dimension, law, baseline?, options}` · `AnalyzeResponse{result, injectedSourceIds}`. (이번 증분 `profile` 미사용 — Layer A.)
+- `ImpactResult`(§4) + `Claim`·`Impact`·`Action`·`EffectiveInfo`·`Meta`. **LLM 출력이라 record는 관대**(필드 생략 허용), **불변식(인용 존재성)은 `FaithfulnessGate`가 강제**(record 아님). `affected_profiles`는 제거(D57).
+- `AnalyzeRequest{dimension, law, baseline?}` — **우리 판정 타입이라 생성자가 `dimension·law` 비-null 강제**(ContextBuilder는 assembly layer라 방어 안 함). `AnalyzeResponse{result, injectedSourceIds}`. (이번 증분 `profile` 미사용 — Layer A.)
+- `AnalysisContext`·`SourceBlock`은 **불변**(`List.copyOf`). `SourceBlock.type`은 문자열이 아니라 **`SourceType` enum**(ARTICLE·AMEND·ADDENDA·BASELINE — 오타 컴파일 차단, 프롬프트/필터 안전). *baseline은 엄밀히 role이나 MVP에선 type로 둠(role 분리 후속).*
+
+## source_id 생성 권위 (리뷰 반영)
+- **모든 `source_id` 포맷은 `Law` 애그리거트가 만든다** — `sourceId(Article)`(art) · `amendSourceId()` · `addendumSourceId(Addendum)` · `ref()`(요약). `ContextBuilder`·`RAGIndexer`·검색은 **포맷을 몰라도 되게** 한다(문자열 조합 금지). source_id는 lawId@efYd를 인코딩하므로 그걸 아는 `Law`가 유일한 권위(§1.3).
+- **인용 대상만 source_id를 갖는다** — 조문·부칙·개정문·요약(근거). 메타(제목·소관부처·날짜·revision)는 증거가 아니라 식별키라 없음.
+- **baseline source_id = `LAW:{lawId}:art:{no}`(시행일 없음) 유지**(§1.3) — 시행중본은 시점상 1개라 모호하지 않고, 법 변경 시 pending `revision`이 바뀌어 캐시 무효화(D51)라 revision 내 역추적 안정.
+- **DIFF + baseline=null = 제정**(현행본 없음, D42)의 정상 상태 → fail-fast 아님(전부 신설).
 
 > **`source_id` 부여 ≠ Layer A 캐시.** `source_id`는 `ContextBuilder`가 조립 시 각 근거 블록에 붙이는 **인용·그라운딩 키**(`LAW:{lawId}@{efYd}:art:{no}`)다. Layer A **캐시**는 프로필 무관 결과(ImpactResult/LawFacts)를 `revision`으로 재사용하는 별개 층(D07/D51, 이번 범위 밖) — 그 캐시된 결과 *안의 인용*이 곧 source_id다. 지금은 요청 시 온디맨드 산출.
 
