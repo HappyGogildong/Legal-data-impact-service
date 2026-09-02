@@ -122,7 +122,6 @@ ImpactResult {               // 프롬프트 정의서 §4와 동일 스키마
   command: string
   summary: string
   claims: Claim[]
-  affected_profiles: string[]  // 이 법령이 두드러지게 영향 주는 프로필 유형
   impacts: Impact[]
   actions: Action[]
   effective_info: { status: enum("시행중"|"시행예정"), effective_date: date?, enforcement: enum("즉시"|"유예"|"단계적")? }

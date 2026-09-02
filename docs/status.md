@@ -16,7 +16,7 @@ related: ["ARCHITECTURE.md", "backend/observability.md", "adr/decision-log.md"]
 
 > 실측 성과 수치(p99·QPS 등)는 부하 테스트 단계에서 채운다 — 이 프로젝트는 **측정하지 않은 수치를 쓰지 않는다**([D48](backend/observability.md)). 아래는 현재까지의 기술적 하이라이트다.
 
-- ⚡ **비용 인지 설계** — 자연어 질의를 타입 DTO로 번역하는 [Query Planner](components/QueryPlanner.md)로 캐시(Layer A)/LLM(Layer B)를 분기. 요약·비교는 LLM 호출 0. `조문변경여부` 플래그로 분석 대상을 **137 → 6 조문(약 20분의 1)** 으로 축소(주택법 실측).
+- ⚡ **비용 인지 설계** — 자연어 질의를 타입 DTO로 번역하는 [Query Planner](components/query/QueryPlanner.md)로 캐시(Layer A)/LLM(Layer B)를 분기. 요약·비교는 LLM 호출 0. `조문변경여부` 플래그로 분석 대상을 **137 → 6 조문(약 20분의 1)** 으로 축소(주택법 실측).
 - 🔄 **법령 수집 파이프라인** — 국가법령정보 *시행 대기 법령*을 배치 수집·정규화·조문 diff 선계산(**실측 899건**). 오프라인(적재)·온라인(질의) 실행 모드 분리.
 - 📊 **측정 선행 Observability** — Prometheus·Loki·Grafana·Tempo + k6. single-flight 등 동시성 기법은 **지표로 병목을 증명한 뒤** 적용(speculative 최적화 배제).
 
@@ -83,16 +83,16 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | RAG 검색 경로 — `ChunkStoreRetriever`(실물 Retriever) + `SourceAnalyzer.semanticSearch` 배선(ChunkStore) + chunk 메타 title | ✅ 단위 2·실 왕복 스모크 옵트인 |
 | RAG 성능 평가(자기검색 기준선) — `SelfRetrievalGold` + `RagEvalLiveTest`(실 적재→Recall@k). 벤더 OpenAI 임시확정 | ✅ 단위 2·실 평가 옵트인(수동). 시나리오 B는 리서치 후 |
 | Query Planner — **계획까지**(`QueryTranslator` 포트+Haiku·`QueryPlanner`: NL→PlanResult, 해소·프로필 게이팅·비법령 거부, D46) | ✅ 단위 4(Fake 번역기)·라이브 스모크 옵트인. Dispatcher/핸들러 실행은 후속 |
-| Analysis Engine · `QueryDispatcher` · 차원 핸들러 4종 · 인용검증 게이트 | ⬜ |
+| Analysis Engine — **Layer A**(SUMMARY·DIFF): `ContextBuilder`(정본→source_id 블록)·`Reasoner` 포트+`SpringAiReasoner`(Opus)·`AnalysisEngine`(조립→추론→인용검증→재생성≤N→폴백) | ✅ 단위 10(ContextBuilder 6·Engine 4, FakeReasoner)·라이브 스모크 옵트인. Layer B·`QueryDispatcher`·차원핸들러·캐시는 후속 |
 | 웹 프론트엔드 · User Profile Store | ⬜ |
 
-단위 테스트 **97개** + 통합 **8건**(실 Postgres/pgvector, Testcontainers: Law Store 3 + 적재 조립 2 + ChunkStore 3) 통과. (실 임베딩 스모크·평가 4종은 옵트인·수동)
+단위 테스트 **107개**(+AnalysisEngine 10) + 통합 **8건**(실 Postgres/pgvector, Testcontainers: Law Store 3 + 적재 조립 2 + ChunkStore 3) 통과. (실 임베딩·번역·해석 스모크/평가 5종은 옵트인·수동)
 
 > ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 
 ### 구현 순서 (큐)
 
-Diff Builder ✅ · Law Store ✅ · 적재 조립 ✅ · Embedder ✅ · RAG Indexer+ChunkStore ✅ · **Query Planner 계획 ✅**(NL→PlanResult) → **Analysis Engine**(QueryDispatcher·차원 핸들러·RAG+LLM·인용검증) → 수직 슬라이스.
+… Query Planner 계획 ✅ · **Analysis Engine Layer A ✅**(SUMMARY·DIFF: 조립→Opus→인용검증) → **QueryDispatcher + 차원핸들러**(#10, 계획↔해석 연결) · UserProfile→Layer B(IMPACT·ACTION) → 수직 슬라이스.
 
 ---
 

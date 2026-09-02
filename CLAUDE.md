@@ -109,6 +109,6 @@ com.lia.core
 
 설계 문서 v0.6(**Spring 통합, D35·D39**). **Python 파이프라인 제거 완료** — 커넥터·SourceAnalyzer(4상태)·설정이 Java로 이관돼 실 API 검증까지 통과(테스트 15건). 다음: Normalizer(#5, 신구조문대비표 파서) → LawConnector/MolegConnector(#11) → Spring AI Embedder(#6)/RAGIndexer(#7) → 임베딩 벤치(#8). `mcp/`는 아직 PoC 스텁.
 
-**MVP 수집 경로(D42, 2026-08-02):** 분석 대상은 의안이 아니라 **공포 후 시행 대기 법령**(`target=eflaw`). 전문·개정문·제개정이유·부칙이 모두 제공되므로 D38(법안 본문 갭)은 해소됐고, 의안 경로는 post-MVP로 강등돼 **코드에서 삭제**했다(`SourceConnector`·`RawBill`·`Assembly*`). 계약은 `docs/components/SourceConnector.md`에 보존.
+**MVP 수집 경로(D42, 2026-08-02):** 분석 대상은 의안이 아니라 **공포 후 시행 대기 법령**(`target=eflaw`). 전문·개정문·제개정이유·부칙이 모두 제공되므로 D38(법안 본문 갭)은 해소됐고, 의안 경로는 post-MVP로 강등돼 **코드에서 삭제**했다(`SourceConnector`·`RawBill`·`Assembly*`). 계약은 `docs/components/ingest/SourceConnector.md`에 보존.
 
 **실측 함정(국가법령정보):** ① `display=1` 이면 `law`가 배열이 아니라 **단일 객체** ② 인증 실패도 **HTTP 200** + `{"result":"사용자 정보 검증에 실패..."}` ③ `조문내용`만 읽으면 본문이 빔(`항→호→목` 재귀 병합 필수) ④ 부칙은 이력 전체 → `부칙공포번호`로 필터 ⑤ 연결키는 **`법령ID`**(MST는 버전마다 다름). 재현: `python tools/probe_eflaw.py`

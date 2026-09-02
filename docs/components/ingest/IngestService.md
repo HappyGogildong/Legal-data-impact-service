@@ -3,7 +3,7 @@ title: IngestService — 클래스 스펙
 status: Draft
 date: 2026-08-27
 tags: [component, service, orchestrator, ingest, pipeline]
-related: ["components/component-specs.md", "components/LawConnector.md", "components/Normalizer.md", "components/DiffBuilder.md", "components/LawStore.md", "reference/law-domain-basics.md", "adr/decision-log.md"]
+related: ["components/component-specs.md", "components/ingest/LawConnector.md", "components/ingest/Normalizer.md", "components/ingest/DiffBuilder.md", "components/store/LawStore.md", "reference/law-domain-basics.md", "adr/decision-log.md"]
 ---
 
 # IngestService

@@ -5,7 +5,7 @@ date: 2026-08-19
 tags: [reference, domain, law, glossary]
 related:
   - "reference/law-attributes.md"
-  - "components/SourceConnector.md"
+  - "components/ingest/SourceConnector.md"
   - "components/component-specs.md"
   - "adr/decision-log.md"
 ---

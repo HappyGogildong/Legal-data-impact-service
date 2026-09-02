@@ -7,7 +7,7 @@ tags: [prompt, llm, analysis-engine, spec]
 related:
   - "architecture/v0.9-nl-query-planner.md"
   - "components/component-specs.md"
-  - "components/QueryPlanner.md"
+  - "components/query/QueryPlanner.md"
   - "backend/observability.md"
 ---
 
@@ -113,7 +113,6 @@ Spring AI 구조화 출력(constrained decoding)으로 **스키마 강제**. [[c
     { "statement": "전세 세입자는 사용검사 전 현장점검을 요청할 권리가 생긴다",
       "citations": ["LAW:001809@2026-08-04:art:49"], "confidence": 0.82 }
   ],
-  "affected_profiles": ["전세 세입자", "입주예정자"],
   "impacts": [
     { "aspect": "주거", "direction": "영향 있음", "detail": "...", "citations": ["LAW:001809@2026-08-04:art:49"] }
   ],
@@ -143,7 +142,7 @@ Spring AI 구조화 출력(constrained decoding)으로 **스키마 강제**. [[c
 |---|---|---|---|
 | `SUMMARY` | 4 | summary, claims | A |
 | `DIFF` | 4, 5 | claims(조문 대조), impacts | A |
-| `IMPACT` | 4, 6, 7 | affected_profiles, impacts | B |
+| `IMPACT` | 4, 6, 7 | impacts(내 영향) | B |
 | `ACTION` | 4, 부칙, 7 | actions(기한·근거) | B |
 
 ---

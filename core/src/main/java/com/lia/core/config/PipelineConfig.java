@@ -18,6 +18,10 @@ import com.lia.core.pipeline.embed.Embedder;
 import com.lia.core.pipeline.embed.EmbeddingProperties;
 import com.lia.core.pipeline.embed.OpenAiEmbedder;
 import com.lia.core.pipeline.index.RAGIndexer;
+import com.lia.core.pipeline.analyze.AnalysisEngine;
+import com.lia.core.pipeline.analyze.ContextBuilder;
+import com.lia.core.pipeline.analyze.Reasoner;
+import com.lia.core.pipeline.analyze.SpringAiReasoner;
 import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.pipeline.plan.QueryPlanner;
 import com.lia.core.pipeline.plan.QueryTranslator;
@@ -108,5 +112,27 @@ public class PipelineConfig {
     @Bean
     public QueryPlanner queryPlanner(QueryTranslator translator, SourceAnalyzer sourceAnalyzer) {
         return new QueryPlanner(translator, sourceAnalyzer);
+    }
+
+    // --- 해석 (AnalysisEngine, Layer A) ---
+
+    /** 인용검증 재생성 상한 — 초과 시 근거부족 폴백(환각 미노출). */
+    private static final int ANALYZE_MAX_ATTEMPTS = 3;
+
+    @Bean
+    public ContextBuilder contextBuilder() {
+        return new ContextBuilder();
+    }
+
+    /** Opus 추론(§3·§4). ChatModel 명시 주입(openai/anthropic 공존 모호 해소). */
+    @Bean
+    public Reasoner reasoner(AnthropicChatModel anthropicChatModel) {
+        return new SpringAiReasoner(anthropicChatModel);
+    }
+
+    /** 조립→추론→인용검증→재생성(≤N)→폴백. 검색 없음(정합화). */
+    @Bean
+    public AnalysisEngine analysisEngine(ContextBuilder contextBuilder, Reasoner reasoner) {
+        return new AnalysisEngine(contextBuilder, reasoner, ANALYZE_MAX_ATTEMPTS);
     }
 }

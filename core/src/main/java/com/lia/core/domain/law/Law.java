@@ -106,6 +106,16 @@ public record Law(
         return ref() + ":art:" + article.no();
     }
 
+    /** 개정문 인용키 — `LAW:{lawId}@{efYd}:amend`. */
+    public String amendSourceId() {
+        return ref() + ":amend";
+    }
+
+    /** 부칙 인용키 — `LAW:{lawId}@{efYd}:addenda:{no}`. */
+    public String addendumSourceId(Addendum addendum) {
+        return ref() + ":addenda:" + addendum.no();
+    }
+
     /** 전문 — 실조문 본문 병합(저장 필드가 아니라 파생값). */
     public String fullText() {
         return realArticles().stream()

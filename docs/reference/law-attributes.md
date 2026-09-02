@@ -6,7 +6,7 @@ date: 2026-08-02
 tags: [reference, law, attributes, data-model]
 related:
   - "components/component-specs.md"
-  - "components/SourceConnector.md"
+  - "components/ingest/SourceConnector.md"
   - "prompts/analysis-prompt-spec.md"
   - "adr/ADR-001-knowledge-store-sizing.md"
 ---

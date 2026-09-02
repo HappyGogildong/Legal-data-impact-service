@@ -3,7 +3,7 @@ title: LawConnector — 클래스 스펙
 status: Draft
 date: 2026-08-22
 tags: [component, pipeline, connector]
-related: ["components/component-specs.md", "components/SourceConnector.md", "reference/law-domain-basics.md", "docs/troubleshooting/004-jejeong-law-no-baseline-english-envelope.md"]
+related: ["components/component-specs.md", "components/ingest/SourceConnector.md", "reference/law-domain-basics.md", "docs/troubleshooting/004-jejeong-law-no-baseline-english-envelope.md"]
 ---
 
 # LawConnector
