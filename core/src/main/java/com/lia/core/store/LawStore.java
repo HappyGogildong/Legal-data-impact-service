@@ -22,7 +22,7 @@ import com.lia.core.domain.law.Law;
  * 캐시와 벡터는 후속. 스키마: {@code db/migration/V1__law_versions.sql}. 설계: docs/components/LawStore.md
  */
 @Repository
-public class LawStore {
+public class LawStore implements LawSource {
 
     private final JdbcClient jdbc;
     private final ObjectMapper json;
