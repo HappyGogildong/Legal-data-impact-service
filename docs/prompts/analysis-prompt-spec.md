@@ -7,7 +7,7 @@ tags: [prompt, llm, analysis-engine, spec]
 related:
   - "architecture/v0.9-nl-query-planner.md"
   - "components/component-specs.md"
-  - "components/QueryPlanner.md"
+  - "components/query/QueryPlanner.md"
   - "backend/observability.md"
 ---
 

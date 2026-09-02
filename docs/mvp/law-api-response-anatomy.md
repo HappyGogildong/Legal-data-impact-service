@@ -9,7 +9,7 @@ related:
   - "reference/law-domain-basics.md"
   - "reference/law-attributes.md"
   - "components/component-specs.md"
-  - "components/Normalizer.md"
+  - "components/ingest/Normalizer.md"
 ---
 
 # 법령 API 응답 구조 해부 (주택법 예시)

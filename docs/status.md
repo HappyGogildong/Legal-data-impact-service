@@ -16,7 +16,7 @@ related: ["ARCHITECTURE.md", "backend/observability.md", "adr/decision-log.md"]
 
 > 실측 성과 수치(p99·QPS 등)는 부하 테스트 단계에서 채운다 — 이 프로젝트는 **측정하지 않은 수치를 쓰지 않는다**([D48](backend/observability.md)). 아래는 현재까지의 기술적 하이라이트다.
 
-- ⚡ **비용 인지 설계** — 자연어 질의를 타입 DTO로 번역하는 [Query Planner](components/QueryPlanner.md)로 캐시(Layer A)/LLM(Layer B)를 분기. 요약·비교는 LLM 호출 0. `조문변경여부` 플래그로 분석 대상을 **137 → 6 조문(약 20분의 1)** 으로 축소(주택법 실측).
+- ⚡ **비용 인지 설계** — 자연어 질의를 타입 DTO로 번역하는 [Query Planner](components/query/QueryPlanner.md)로 캐시(Layer A)/LLM(Layer B)를 분기. 요약·비교는 LLM 호출 0. `조문변경여부` 플래그로 분석 대상을 **137 → 6 조문(약 20분의 1)** 으로 축소(주택법 실측).
 - 🔄 **법령 수집 파이프라인** — 국가법령정보 *시행 대기 법령*을 배치 수집·정규화·조문 diff 선계산(**실측 899건**). 오프라인(적재)·온라인(질의) 실행 모드 분리.
 - 📊 **측정 선행 Observability** — Prometheus·Loki·Grafana·Tempo + k6. single-flight 등 동시성 기법은 **지표로 병목을 증명한 뒤** 적용(speculative 최적화 배제).
 

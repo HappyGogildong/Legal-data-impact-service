@@ -3,7 +3,7 @@ title: ChunkStore — 클래스 스펙 (spec-first)
 status: Draft
 date: 2026-08-27
 tags: [component, store, vector, pgvector, rag]
-related: ["components/component-specs.md", "components/RAGIndexer.md", "components/Embedder.md", "components/LawStore.md", "adr/decision-log.md"]
+related: ["components/component-specs.md", "components/rag/RAGIndexer.md", "components/rag/Embedder.md", "components/store/LawStore.md", "adr/decision-log.md"]
 ---
 
 # ChunkStore

@@ -3,7 +3,7 @@ title: LawStore — 클래스 스펙 (spec-first)
 status: Draft
 date: 2026-08-22
 tags: [component, store, repository, pgvector]
-related: ["components/component-specs.md", "components/Normalizer.md", "components/Embedder.md", "reference/law-domain-basics.md", "adr/decision-log.md"]
+related: ["components/component-specs.md", "components/ingest/Normalizer.md", "components/rag/Embedder.md", "reference/law-domain-basics.md", "adr/decision-log.md"]
 ---
 
 # LawStore

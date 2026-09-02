@@ -3,7 +3,7 @@ title: AnalysisEngine — 컴포넌트 설계 (정합화)
 status: Draft
 date: 2026-08-27
 tags: [component, pipeline, llm, grounding]
-related: ["components/component-specs.md", "components/QueryPlanner.md", "components/LawStore.md", "prompts/analysis-prompt-spec.md", "adr/decision-log.md"]
+related: ["components/component-specs.md", "components/query/QueryPlanner.md", "components/store/LawStore.md", "prompts/analysis-prompt-spec.md", "adr/decision-log.md"]
 ---
 
 # AnalysisEngine (Spring, 해석)

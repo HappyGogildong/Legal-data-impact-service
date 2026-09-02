@@ -9,7 +9,7 @@ related:
   - "components/component-specs.md"
   - "prompts/analysis-prompt-spec.md"
   - "architecture/v0.9-nl-query-planner.md"
-  - "components/QueryPlanner.md"
+  - "components/query/QueryPlanner.md"
   - "backend/concurrency-and-reliability.md"
 ---
 

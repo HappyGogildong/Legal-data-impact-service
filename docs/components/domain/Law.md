@@ -3,7 +3,7 @@ title: Law — 클래스 스펙 (도메인)
 status: Reference
 date: 2026-09-01
 tags: [component, domain, law]
-related: ["components/component-specs.md", "components/Article.md", "components/Addendum.md", "components/Normalizer.md", "components/LawStore.md", "adr/decision-log.md"]
+related: ["components/component-specs.md", "components/domain/Article.md", "components/domain/Addendum.md", "components/ingest/Normalizer.md", "components/store/LawStore.md", "adr/decision-log.md"]
 ---
 
 # Law

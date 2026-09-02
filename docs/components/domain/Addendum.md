@@ -3,7 +3,7 @@ title: Addendum — 클래스 스펙 (도메인)
 status: Reference
 date: 2026-09-01
 tags: [component, domain, law]
-related: ["components/component-specs.md", "components/Law.md", "components/Normalizer.md", "adr/decision-log.md"]
+related: ["components/component-specs.md", "components/domain/Law.md", "components/ingest/Normalizer.md", "adr/decision-log.md"]
 ---
 
 # Addendum

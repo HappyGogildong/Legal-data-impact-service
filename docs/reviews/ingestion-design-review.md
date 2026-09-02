@@ -3,7 +3,7 @@ title: 적재 설계 검토 — 내부 정합성 + 외부 대조
 status: Review
 date: 2026-08-22
 tags: [review, ingestion, rag, architecture]
-related: ["components/LawStore.md", "components/Embedder.md", "components/RAGIndexer.md", "adr/decision-log.md", "reference/law-domain-basics.md"]
+related: ["components/store/LawStore.md", "components/rag/Embedder.md", "components/rag/RAGIndexer.md", "adr/decision-log.md", "reference/law-domain-basics.md"]
 ---
 
 # 적재 설계 검토 — 내부 정합성 + 외부 대조
