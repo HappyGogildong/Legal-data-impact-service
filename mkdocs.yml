@@ -100,6 +100,7 @@ nav:
       - 분석 (analyze):
           - Analysis Engine: components/analyze/AnalysisEngine.md
   - 참조 (Reference):
+      - Law 도메인 이해 (초심자용): reference/law-domain-understanding.md
       - 법령 속성 카탈로그: reference/law-attributes.md
       - Triage 정책: reference/triage-policy.md
       - 임베딩 벤치마크 계획: reference/embedding-benchmark.md
