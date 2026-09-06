@@ -3,7 +3,7 @@ title: RAGIndexer — 클래스 스펙 (설계 확정 · 구현 착수)
 status: Draft
 date: 2026-08-27
 tags: [component, pipeline, rag, indexing]
-related: ["components/component-specs.md", "components/rag/Embedder.md", "components/rag/ChunkStore.md", "components/store/LawStore.md", "components/ingest/IngestService.md", "reference/embedding-benchmark.md", "adr/decision-log.md"]
+related: ["components/component-specs.md", "components/embed/Embedder.md", "components/store/ChunkStore.md", "components/store/LawStore.md", "components/ingest/IngestService.md", "reference/embedding-benchmark.md", "adr/decision-log.md"]
 ---
 
 # RAGIndexer

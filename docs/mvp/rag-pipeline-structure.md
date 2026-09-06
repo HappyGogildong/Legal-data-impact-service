@@ -7,8 +7,8 @@ tags: [mvp, rag, pipeline, architecture, components]
 related:
   - "mvp/components-io-and-scope.md"
   - "components/component-specs.md"
-  - "components/rag/RAGIndexer.md"
-  - "components/rag/ChunkStore.md"
+  - "components/index/RAGIndexer.md"
+  - "components/store/ChunkStore.md"
   - "components/store/LawStore.md"
   - "adr/decision-log.md"
 ---

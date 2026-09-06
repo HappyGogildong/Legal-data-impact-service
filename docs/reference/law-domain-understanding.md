@@ -5,9 +5,9 @@ version: 0.1
 date: 2026-09-02
 tags: [reference, domain, law, onboarding]
 related:
-  - "components/domain/Law.md"
-  - "components/domain/Article.md"
-  - "components/domain/Addendum.md"
+  - "components/domain/law/Law.md"
+  - "components/domain/law/Article.md"
+  - "components/domain/law/Addendum.md"
   - "reference/law-domain-basics.md"
 ---
 
