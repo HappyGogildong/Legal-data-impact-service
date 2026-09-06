@@ -96,8 +96,9 @@ nav:
           - ChunkStore: components/rag/ChunkStore.md
       - 질의 (query):
           - Query Planner: components/query/QueryPlanner.md
-          - Query Dispatcher: components/query/QueryDispatcher.md
           - SourceAnalyzer: components/query/SourceAnalyzer.md
+      - 분배 (dispatch):
+          - Query Dispatcher: components/dispatch/QueryDispatcher.md
       - 저장 (store):
           - LawStore: components/store/LawStore.md
       - 분석 (analyze):
