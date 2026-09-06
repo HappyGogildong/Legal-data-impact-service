@@ -53,8 +53,10 @@ public class QueryDispatcher {
             for (QueryType t : query.types()) unmet.put(t, reason);
             return new DispatchResult(query.primaryType(), filled, unmet);
         }
+        Law law = lawOpt.get();
         Law baseline = laws.findBaseline(ref.lawId()).orElse(null); // 제정이면 null(정상, D42)
-        DispatchContext ctx = new DispatchContext(lawOpt.get(), baseline, query);
+        boolean enactment = law.amendKind() == Law.AmendKind.제정;   // 제정만 baseline이 원래 없음
+        DispatchContext ctx = new DispatchContext(law, baseline, query);
 
         for (QueryType t : query.types()) {
             Optional<DimensionHandler> handler = registry.get(t);
@@ -65,6 +67,11 @@ public class QueryDispatcher {
             DimensionHandler h = handler.get();
             if (h.needsProfile() && !query.profileBound()) {
                 unmet.put(t, "프로필 필요 (Layer B)");
+                continue;
+            }
+            // 개정본인데 baseline이 없으면 데이터 이상 — 조용히 '제정'으로 오인하지 않는다(fail-closed).
+            if (h.needsBaseline() && baseline == null && !enactment) {
+                unmet.put(t, "기준선 미적재 — 개정본(" + law.amendKind() + ")인데 시행중본 없음");
                 continue;
             }
             filled.put(t, h.handle(ctx));

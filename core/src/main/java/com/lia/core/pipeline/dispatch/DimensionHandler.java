@@ -21,6 +21,13 @@ public interface DimensionHandler {
     /** RAG 검색이 필요한가. 기본 false(정본 정확 조회로 충분한 Layer A). */
     default boolean needsRag() { return false; }
 
+    /**
+     * 시행중 기준선(baseline)이 있어야 하는가(대조·영향 차원). 기본 false.
+     * {@code true}이면 dispatcher가 "개정본인데 baseline 없음"(데이터 이상)을 unmet으로 거른다
+     * — 제정(baseline이 원래 없음)과 구별하기 위함.
+     */
+    default boolean needsBaseline() { return false; }
+
     /** 해소된 정본 컨텍스트로 이 차원을 실행. */
     AnalyzeResponse handle(DispatchContext ctx);
 }

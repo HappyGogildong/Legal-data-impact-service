@@ -4,7 +4,7 @@ status: Draft
 version: 0.2
 date: 2026-09-03
 tags: [component, pipeline, dispatcher, orchestration]
-related: ["components/component-specs.md", "components/query/QueryPlanner.md", "components/analyze/AnalysisEngine.md", "components/store/LawStore.md", "architecture/v0.9-nl-query-planner.md"]
+related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "components/analyze/AnalysisEngine.md", "components/store/LawStore.md", "architecture/v0.9-nl-query-planner.md"]
 ---
 
 # QueryDispatcher (Spring, 차원 라우팅·조립)
@@ -29,7 +29,7 @@ related: ["components/component-specs.md", "components/query/QueryPlanner.md", "
 | 클래스 | 역할 |
 |---|---|
 | `QueryDispatcher` | 오케스트레이터 — target 해석 → 차원 라우팅 → `DispatchResult` 조립. 흐름·게이트만. |
-| `DimensionHandler` (포트) | 한 차원의 실행 계약 — `type() / needsProfile() / needsRag() / handle(ctx)`. 실행 본체는 AnalysisEngine 위임. |
+| `DimensionHandler` (포트) | 한 차원의 실행 계약 — `type() / needsProfile() / needsRag() / needsBaseline() / handle(ctx)`. 실행 본체는 AnalysisEngine 위임. |
 | `DimensionHandlerRegistry` | `QueryType → DimensionHandler` 매핑. `@Component` 자동수집, 중복 타입 fail-fast, 구성 후 불변. |
 | `SummaryHandler` | SUMMARY(Layer A) — 정본을 SUMMARY로 위임. 비교 아님 → baseline 미사용. |
 | `DiffHandler` | DIFF(Layer A) — 정본+기준선을 DIFF로 위임. baseline null이면 제정(D42). |
@@ -60,7 +60,10 @@ related: ["components/component-specs.md", "components/query/QueryPlanner.md", "
 
 1. `registry.get(type)` 없으면 → `unmet("핸들러 미구현")`. (현재 LOOKUP·IMPACT·ACTION)
 2. `handler.needsProfile() && !query.profileBound()` → `unmet("프로필 필요")`. (미래 Layer B가 프로필 없이 올 때)
-3. 그 외 → `filled(handler.handle(ctx))`.
+3. `handler.needsBaseline() && baseline==null && !제정` → `unmet("기준선 미적재")`. **개정본인데 시행중본이 없는 데이터 이상을 조용히 '제정'으로 오인하지 않는다** — `제정`(baseline이 원래 없음)만 통과시킨다.
+4. 그 외 → `filled(handler.handle(ctx))`.
+
+> **`baseline == null`의 두 의미를 가른다:** ① `제정`(정상, 대조 대상 없음) ② 개정본인데 미적재(이상). `Law.amendKind() == 제정`으로 구별해 ①만 진행하고 ②는 `unmet`으로 거른다. 아니면 개정 법령이 "전부 신설"로 오분석된다(그라운딩 붕괴).
 
 ## Invariants
 

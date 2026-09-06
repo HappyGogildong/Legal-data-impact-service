@@ -65,14 +65,24 @@ class QueryDispatcherTest {
                 "의도", ArticleScope.CHANGED_ONLY, profileBound, null);
     }
 
-    static Law law() {
+    static Law law() { return law(Law.AmendKind.일부개정); }
+
+    static Law law(Law.AmendKind kind) {
         List<Article> arts = List.of(new Article("18", "제목", "제18조 통합심의.",
                 true, ChangeType.개정, null, null, LocalDate.of(2026, 8, 4), true, null));
         return new Law("001809", "283191", "주택법", Law.Status.시행예정,
-                Law.AmendKind.일부개정, Law.LawType.법률, "국토교통부",
+                kind, Law.LawType.법률, "국토교통부",
                 LocalDate.of(2026, 2, 3), "21323", LocalDate.of(2026, 8, 4),
                 "공포 후 6개월", Law.EnforcementType.유예, "이유", "개정문",
                 List.of(), arts, List.of(), null, null, "rev1", Instant.now());
+    }
+
+    static DimensionHandler baselineHandler(QueryType type, AnalyzeResponse resp) {
+        return new DimensionHandler() {
+            public QueryType type() { return type; }
+            public boolean needsBaseline() { return true; }
+            public AnalyzeResponse handle(DispatchContext ctx) { return resp; }
+        };
     }
 
     private QueryDispatcher dispatcher(FakeLawSource src, DimensionHandler... hs) {
@@ -147,6 +157,29 @@ class QueryDispatcherTest {
 
         assertTrue(r.filled().isEmpty());
         assertTrue(r.unmet().get(QueryType.SUMMARY).contains("정본 미적재"));
+    }
+
+    @Test
+    void 개정본인데_baseline이_없으면_baseline_필요_차원은_unmet() {
+        FakeLawSource src = new FakeLawSource();
+        src.versions.put("001809@2026-08-04", law(Law.AmendKind.일부개정)); // 개정본, baseline 미등록
+        QueryDispatcher d = dispatcher(src, baselineHandler(QueryType.DIFF, resp("D")));
+
+        DispatchResult r = d.dispatch(refQuery(Set.of(QueryType.DIFF), QueryType.DIFF, false));
+
+        assertTrue(r.filled().isEmpty(), "개정본 baseline 이상은 조용히 제정으로 오인하지 말 것");
+        assertTrue(r.unmet().get(QueryType.DIFF).contains("기준선"));
+    }
+
+    @Test
+    void 제정본은_baseline이_없어도_baseline_필요_차원이_filled() {
+        FakeLawSource src = new FakeLawSource();
+        src.versions.put("001809@2026-08-04", law(Law.AmendKind.제정)); // 제정 = baseline 원래 없음(정상)
+        QueryDispatcher d = dispatcher(src, baselineHandler(QueryType.DIFF, resp("D")));
+
+        DispatchResult r = d.dispatch(refQuery(Set.of(QueryType.DIFF), QueryType.DIFF, false));
+
+        assertTrue(r.fullySatisfied(), "제정본은 baseline null이 정상 → 진행");
     }
 
     @Test

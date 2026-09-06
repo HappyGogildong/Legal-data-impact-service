@@ -77,4 +77,11 @@ class LayerAHandlerTest {
         assertEquals(QueryType.DIFF, eng.captured.dimension());
         assertSame(baseline, eng.captured.baseline());
     }
+
+    @Test
+    void DiffHandler는_baseline을_요구하고_SummaryHandler는_아니다() {
+        CapturingEngine eng = new CapturingEngine();
+        assertTrue(new DiffHandler(eng).needsBaseline(), "DIFF는 대조 대상 baseline 필요");
+        assertFalse(new SummaryHandler(eng).needsBaseline(), "SUMMARY는 baseline 불필요");
+    }
 }

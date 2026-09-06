@@ -20,6 +20,9 @@ public class DiffHandler implements DimensionHandler {
 
     @Override public QueryType type() { return QueryType.DIFF; }
 
+    /** 대조 대상 시행중 기준선이 필요하다(개정본 한정 — 제정은 dispatcher가 예외 처리). */
+    @Override public boolean needsBaseline() { return true; }
+
     @Override public AnalyzeResponse handle(DispatchContext ctx) {
         return engine.analyze(new AnalyzeRequest(QueryType.DIFF, ctx.law(), ctx.baseline()));
     }
