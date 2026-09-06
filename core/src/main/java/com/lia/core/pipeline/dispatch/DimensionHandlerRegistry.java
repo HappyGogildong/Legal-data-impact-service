@@ -1,5 +1,6 @@
 package com.lia.core.pipeline.dispatch;
 
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +31,7 @@ public class DimensionHandlerRegistry {
                                 + " vs " + h.getClass().getSimpleName() + ")");
             }
         }
-        this.byType = m;
+        this.byType = Collections.unmodifiableMap(m); // 구성 후 read-only (EnumMap 이점 유지, copyOf는 EnumMap 버림)
     }
 
     public Optional<DimensionHandler> get(QueryType type) {
