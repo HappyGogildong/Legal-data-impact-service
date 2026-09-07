@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.connector.RawLaw;

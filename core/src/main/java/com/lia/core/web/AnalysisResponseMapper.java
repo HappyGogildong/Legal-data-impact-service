@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
+import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.connector.RawLaw;

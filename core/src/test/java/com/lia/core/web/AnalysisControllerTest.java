@@ -13,6 +13,8 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
+import com.lia.core.application.analysis.AnalysisOutcome;
+import com.lia.core.application.analysis.AnalyzeUseCase;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.dispatch.DispatchResult;
@@ -24,13 +26,13 @@ import com.lia.core.pipeline.plan.Target;
 import com.lia.core.pipeline.resolve.ResolutionResult;
 
 /**
- * AnalysisController 단위 — 응답 매핑(스펙 키)·검증(빈 query)만 본다. AnalysisService는 목.
+ * AnalysisController 단위 — 위임·상태·검증(빈 query)만 본다. AnalyzeUseCase는 목, 매핑은 실 매퍼.
  * HTTP 라우팅/상태코드/직렬화는 수동 curl(검증 2단계)로 확인(Boot 4.0 test-slice 미사용).
  */
 class AnalysisControllerTest {
 
-    private final AnalysisService service = mock(AnalysisService.class);
-    private final AnalysisController controller = new AnalysisController(service, new AnalysisResponseMapper());
+    private final AnalyzeUseCase useCase = mock(AnalyzeUseCase.class);
+    private final AnalysisController controller = new AnalysisController(useCase, new AnalysisResponseMapper());
 
     private static AnalysisOutcome analyzed() {
         LawRef ref = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
@@ -48,7 +50,7 @@ class AnalysisControllerTest {
     @SuppressWarnings("unchecked")
     @Test
     void 분석되면_RESOLVED_law_ref_answer_unmet을_매핑한다() {
-        when(service.analyze(any(), any())).thenReturn(analyzed());
+        when(useCase.analyze(any(), any())).thenReturn(analyzed());
 
         ResponseEntity<Map<String, Object>> resp =
                 controller.analyze(new AnalyzeApiRequest("주택법 뭐가 바뀌어?", null, null));
@@ -71,7 +73,7 @@ class AnalysisControllerTest {
 
     @Test
     void 미해소면_resolution과_message를_200으로_전달한다() {
-        when(service.analyze(any(), any()))
+        when(useCase.analyze(any(), any()))
                 .thenReturn(new AnalysisOutcome.Unresolved(ResolutionResult.notFoundYet("그 법을 아직 못 찾았어요.")));
 
         ResponseEntity<Map<String, Object>> resp =

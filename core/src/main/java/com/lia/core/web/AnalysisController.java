@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.lia.core.application.analysis.AnalysisOutcome;
+import com.lia.core.application.analysis.AnalyzeUseCase;
+
 /**
  * {@code POST /api/v1/analyses} — 자연어 질의 분석 진입점([[service-api-spec]] §3.0).
  * <b>HTTP 경계만</b> 담당한다: 요청 검증(빈 query→400) → {@link AnalysisService} 위임 →
@@ -18,11 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/analyses")
 public class AnalysisController {
 
-    private final AnalysisService service;
+    private final AnalyzeUseCase useCase;
     private final AnalysisResponseMapper mapper;
 
-    public AnalysisController(AnalysisService service, AnalysisResponseMapper mapper) {
-        this.service = service;
+    public AnalysisController(AnalyzeUseCase useCase, AnalysisResponseMapper mapper) {
+        this.useCase = useCase;
         this.mapper = mapper;
     }
 
@@ -31,7 +34,7 @@ public class AnalysisController {
         if (req == null || req.query() == null || req.query().isBlank()) {
             throw new IllegalArgumentException("query는 필수입니다.");
         }
-        AnalysisOutcome outcome = service.analyze(req.query().strip(), req.explicitRef());
+        AnalysisOutcome outcome = useCase.analyze(req.query().strip(), req.explicitRef());
         return ResponseEntity.ok(mapper.toBody(outcome)); // 해소 결과·분석 모두 200
     }
 }

@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.application.analysis;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -37,10 +37,10 @@ import com.lia.core.pipeline.resolve.SourceAnalyzer;
 import com.lia.core.store.LawSource;
 
 /**
- * AnalysisService 단위 — 실 {@link QueryPlanner}+{@link QueryDispatcher} 체인을 기존 Fake(번역·해소·정본·추론)로
- * 조립해 <b>in-JVM 관통</b>을 본다. 실 LLM·DB 없음. plan→dispatch 글루와 4상태/부분성공 흐름 검증.
+ * AnalyzeUseCase 단위 — 실 {@link QueryPlanner}+{@link QueryDispatcher} 체인을 기존 Fake(번역·해소·정본·추론)로
+ * 조립해 <b>in-JVM 관통</b>을 본다. 실 LLM·DB 없음. plan→dispatch 글루와 4상태/부분성공·explicitRef 분기 검증.
  */
-class AnalysisServiceTest {
+class AnalyzeUseCaseTest {
 
     /** "주택법"만 해소되는 Fake 코퍼스(QueryPlannerTest와 동일 패턴). */
     static class FakeLookup implements LawLookup {
@@ -79,7 +79,7 @@ class AnalysisServiceTest {
                 List.of(), arts, List.of(), null, null, "rev1", Instant.now());
     }
 
-    private AnalysisService service(AnalysisQueryDraft draft, boolean lawLoaded) {
+    private AnalyzeUseCase useCase(AnalysisQueryDraft draft, boolean lawLoaded) {
         QueryTranslator translator = q -> draft;
         QueryPlanner planner = new QueryPlanner(translator, new SourceAnalyzer(new FakeLookup()));
         FakeLawSource src = new FakeLawSource();
@@ -87,7 +87,7 @@ class AnalysisServiceTest {
         AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
         DimensionHandlerRegistry registry =
                 new DimensionHandlerRegistry(List.of(new SummaryHandler(engine), new DiffHandler(engine)));
-        return new AnalysisService(planner, new QueryDispatcher(src, registry));
+        return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry));
     }
 
     @Test
@@ -96,7 +96,7 @@ class AnalysisServiceTest {
                 QueryType.SUMMARY, Set.of(QueryType.SUMMARY), true, TargetKind.REFERENCE,
                 "주택법", null, List.of(), List.of(), List.of(), "요약");
 
-        AnalysisOutcome out = service(draft, true).analyze("주택법 뭐가 바뀌어?", null);
+        AnalysisOutcome out = useCase(draft, true).analyze("주택법 뭐가 바뀌어?", null);
 
         AnalysisOutcome.Analyzed a = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
         assertTrue(a.result().filled().containsKey(QueryType.SUMMARY), "SUMMARY 차원이 채워져야");
@@ -112,7 +112,7 @@ class AnalysisServiceTest {
                 null, null, List.of(), List.of(), List.of(), "요약");
         LawRef pinned = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
 
-        AnalysisOutcome out = service(draft, true).analyze("법명 안 대는 자연어", pinned);
+        AnalysisOutcome out = useCase(draft, true).analyze("법명 안 대는 자연어", pinned);
 
         AnalysisOutcome.Analyzed a = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
         Target.Reference ref = assertInstanceOf(Target.Reference.class, a.query().target(),
@@ -127,7 +127,7 @@ class AnalysisServiceTest {
                 QueryType.SUMMARY, Set.of(QueryType.SUMMARY), false, TargetKind.REFERENCE,
                 null, null, List.of(), List.of(), List.of(), "점심 메뉴");
 
-        AnalysisOutcome out = service(draft, false).analyze("오늘 점심 뭐 먹지", null);
+        AnalysisOutcome out = useCase(draft, false).analyze("오늘 점심 뭐 먹지", null);
 
         AnalysisOutcome.Unresolved u = assertInstanceOf(AnalysisOutcome.Unresolved.class, out);
         assertEquals(ResolutionState.UNVERIFIED, u.resolution().state());
