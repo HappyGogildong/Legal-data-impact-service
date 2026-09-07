@@ -108,6 +108,8 @@ nav:
           - Query Dispatcher: components/dispatch/QueryDispatcher.md
       - analyze:
           - Analysis Engine: components/analyze/AnalysisEngine.md
+      - application:
+          - AnalyzeUseCase: components/application/AnalyzeUseCase.md
       - web:
           - Analysis API: components/web/AnalysisApi.md
   - 참조 (Reference):

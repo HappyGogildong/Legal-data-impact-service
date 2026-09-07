@@ -1,47 +1,36 @@
 ---
-title: Analysis API — 온라인 오케스트레이터 + REST (spec-first)
+title: Analysis API — REST 어댑터 (web 계층)
 status: Draft
-version: 0.1
-date: 2026-09-07
-tags: [component, web, rest, orchestrator]
-related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "components/dispatch/QueryDispatcher.md", "mvp/service-api-spec.md"]
+version: 0.2
+date: 2026-09-08
+tags: [component, web, rest, adapter]
+related: ["components/component-specs.md", "components/application/AnalyzeUseCase.md", "mvp/service-api-spec.md"]
 ---
 
-# Analysis API (Spring Web, 온라인 관통 경로)
+# Analysis API (web 계층, HTTP 어댑터)
 
-> 자연어 질의를 받아 **계획→디스패치→그라운딩 답**으로 잇는 온라인 진입점. 계획([[QueryPlanner]])과 실행([[QueryDispatcher]])을 잇는 **글루 + HTTP 표면**이다 — 새 지능이 아니라 배선. 계약 SSOT: [[service-api-spec]] §3.0 · [[component-specs]] §4 #8(QueryDispatcher/Orchestrator).
+> `POST /api/v1/analyses`의 **HTTP 인바운드 어댑터**. 요청 파싱·검증·상태코드와 응답 매핑만 담당하고, 유스케이스 조합은 [[AnalyzeUseCase]](application)에 위임한다. 계약 SSOT: [[service-api-spec]] §3.0.
 
-## Responsibility
+## 계층·경계
 
-- **담당**: 온라인 요청 오케스트레이션(`plan()` → `dispatch()`), 4상태(미해소)·부분성공(`unmet`) 처리, `POST /api/v1/analyses` HTTP 계약(요청 파싱·응답 매핑·검증 400).
-- **담당 안 함**: 번역·해소([[QueryPlanner]]) · 차원 라우팅·핸들러([[QueryDispatcher]]) · 프롬프트·LLM·인용검증([[AnalysisEngine]]) · 인증/세션 · 웹 UI(#14).
+```
+web (이 문서)         →  application            →  pipeline · domain · store
+Controller·Mapper·DTO    AnalyzeUseCase             QueryPlanner · QueryDispatcher ...
+```
 
-> **이번 증분 = Layer A Reference 관통.** `profilePresent=false` 고정(UserProfile Store #12 미구현) → Layer B(IMPACT·ACTION)는 dispatcher가 `unmet`으로 처리. Discovery/LOOKUP(#19)은 후속.
-
-## Collaborators
-
-- [[QueryPlanner]] (빈) — `plan(query, explicitRef, profilePresent) → PlanResult`.
-- [[QueryDispatcher]] (@Component) — `dispatch(AnalysisQuery) → DispatchResult`.
-- 외부 시스템: 없음(직접). LLM·DB는 위 둘 뒤로 격리.
+- **담당**: HTTP 요청/응답 경계 — 요청 DTO 파싱·검증(빈 query→400), [[AnalyzeUseCase]] 위임, 결과→JSON 매핑, 상태코드.
+- **담당 안 함**: plan→dispatch 조합·4상태 판정([[AnalyzeUseCase]]) · 번역·해소·라우팅(pipeline).
 
 ## 구조 (컴포넌트) — `com.lia.core.web`
 
 | 클래스 | 역할 |
 |---|---|
-| `AnalysisController` | `@RestController` — **HTTP 경계만**: `POST /api/v1/analyses` 요청 파싱·검증(빈 query→400) → `AnalysisService` 위임 → `AnalysisResponseMapper`로 본문 매핑 후 상태코드(200)만 얹음. |
-| `AnalysisService` | 오케스트레이터(웹 타입 비의존) — `plan()` 결과를 `switch`: `Unresolved` 그대로 / `Planned` → `dispatch()`. **`profilePresent=false` 고정.** |
-| `AnalysisResponseMapper` | **표현(presentation) 매핑** — `AnalysisOutcome` → 스펙 응답 `Map`(snake_case `law_ref`·차원 소문자 `answer` 키·`unmet`·candidates). 컨트롤러에서 분리해 독립 단위 테스트. |
-| `AnalysisOutcome` (sealed) | `Analyzed(AnalysisQuery, DispatchResult)` \| `Unresolved(ResolutionResult)`. 매퍼가 두 경우를 빠짐없이 처리. |
+| `AnalysisController` | `@RestController` — **HTTP 경계만**: `POST /api/v1/analyses` 검증(빈 query→400) → `AnalyzeUseCase` 위임 → `AnalysisResponseMapper`로 본문 매핑 후 200. |
+| `AnalysisResponseMapper` | **표현 매핑** `@Component` — `AnalysisOutcome`→스펙 응답 `Map`(snake_case `law_ref`·차원 소문자 `answer` 키·`unmet`·candidates). 컨트롤러에서 분리해 독립 단위 테스트. |
 | `AnalyzeApiRequest` / `LawRefDto` | 요청 `{query, lawRef?, scope?}`. `LawRefDto`→`plan.LawRef` 변환(`explicitRef()`). |
 | `ApiExceptionHandler` | `@RestControllerAdvice` — 검증 실패→400([[service-api-spec]] §4.1: **시스템 오류만 4xx**). |
 
-> **응답을 typed DTO가 아니라 `Map`으로 두는 이유**: 응답이 희소·다형적(RESOLVED vs 미해소)이고 가장 복잡한 `answer`가 동적 차원 키 Map이라 DTO 이득이 적고, 소비자(웹 #14)가 아직 없다(YAGNI). typed `AnalyzeApiResponse`는 #14가 계약을 소비할 때 도입한다(그때 snake_case도 한 번에 정식 처리).
-
-## Contract
-
-`AnalysisService.analyze(String query, LawRef explicitRef) → AnalysisOutcome`
-- **전제**: `query` 비어있지 않음(컨트롤러가 선검증).
-- **보장**: `plan()`이 `Unresolved`면 그대로 전달(fail-closed, 분석 안 함); `Planned`면 `dispatch()` 결과를 `Analyzed`로. 예외 없음.
+> **응답을 typed DTO가 아니라 `Map`으로 두는 이유**: 응답이 희소·다형적(RESOLVED vs 미해소)이고 가장 복잡한 `answer`가 동적 차원 키 Map이라 DTO 이득이 적고, 소비자(웹 #14)가 아직 없다(YAGNI). typed `AnalyzeApiResponse`는 #14가 계약을 소비할 때 도입한다(snake_case도 그때 정식 처리).
 
 ## HTTP Contract ([[service-api-spec]] §3.0)
 
@@ -49,24 +38,18 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 - **응답은 해소 4상태·분석 모두 HTTP 200** (4xx/5xx는 시스템 오류 전용, §4.1). 빈 `query` → **400**.
 - **Analyzed** → `{ resolution:"RESOLVED", law_ref:"LAW:{lawId}@{efYd}", answer:{ <차원소문자>: ImpactResult }, unmet:[...], uncertainties, disclaimer }`.
 - **Unresolved** → `{ resolution:<NOT_FOUND_YET|AMBIGUOUS|UNVERIFIED>, message, candidates? }`.
-- `answer` 키는 채워진 차원(SUMMARY·DIFF) 소문자. `unmet`은 못 채운 차원(현재 Layer B·LOOKUP)·사유.
-
-## Invariants
-- **fail-closed 승계**: 미해소는 분석으로 새지 않는다(`plan()` 게이트가 이미 강제, 오케스트레이터는 통과만).
-- **부분성공**: 일부 차원 실패는 전체 실패가 아니라 `unmet` 표기(§3.0).
 
 ## Error Handling
-- 빈/누락 `query` → 400(`ApiExceptionHandler`). 그 외 해소·분석의 "실패"는 예외가 아니라 200 본문(resolution/unmet)으로 표현.
-- `scope`·`law.title`은 이번 증분 미사용(§Out of scope).
+- 빈/누락 `query` → 400(`ApiExceptionHandler`). 해소 실패·근거 부족은 예외가 아니라 200 본문(resolution/unmet).
+- `scope`·`law.title`은 이번 증분 미사용(후속).
 
 ## Side Effects
-- 없음(순수 오케스트레이션) — 하위 컴포넌트가 정본 읽기·LLM 호출. 쓰기·캐시 없음(답변 캐시 D51은 후속).
+- 없음 — 하위 계층이 정본 읽기·LLM 호출.
 
-## 검증 (단위 8)
-- `AnalysisServiceTest`(3) — 실 `QueryPlanner`(FakeTranslator)+`QueryDispatcher`(FakeLawSource·FakeReasoner 핸들러)로 in-JVM 관통: 해소 NL→Analyzed(SUMMARY filled) · **explicitRef 주면 해소 생략하고 그 참조로 분석** · 미해소→Unresolved.
-- `AnalysisResponseMapperTest`(2) — 매핑을 컨트롤러 없이 직접: Analyzed(law_ref·answer 키·unmet·disclaimer) · Unresolved(resolution·message·candidates).
-- `AnalysisControllerTest`(3, 순수 단위·목) — 위임·상태(200)·빈 query 예외. **Boot 4.0 `test-autoconfigure`에 `@WebMvcTest` 미제공**이라 슬라이스 대신 순수 단위로.
-- 수동 라이브: 정본 선적재 + `LiaCoreApplication` 기동 → `curl POST /api/v1/analyses`(HTTP 라우팅·상태·직렬화 확인).
+## 검증 (단위 5)
+- `AnalysisResponseMapperTest`(2) — 매핑 직접: Analyzed(law_ref·answer 키·unmet·disclaimer) · Unresolved(resolution·message·candidates).
+- `AnalysisControllerTest`(3, 순수 단위·`AnalyzeUseCase` 목·실 매퍼) — 위임·상태(200)·빈 query 예외. **Boot 4.0 `test-autoconfigure`에 `@WebMvcTest` 미제공**이라 슬라이스 대신 순수 단위로. HTTP 라우팅/직렬화는 수동 curl.
+- 수동 라이브: 정본 선적재 + `LiaCoreApplication` 기동 → `curl POST /api/v1/analyses`.
 
 ## 의존 / 관련
-[[QueryPlanner]] · [[QueryDispatcher]] · [[AnalysisEngine]] · [[service-api-spec]] §3.0 · [[component-specs]] §4 #8. 후속: UserProfile(#12)→Layer B · LawDiscovery(#19)→LOOKUP · 웹 UI(#14).
+[[AnalyzeUseCase]](application·유스케이스) · [[service-api-spec]] §3.0 · [[component-specs]] §4 #8. 후속: 웹 UI(#14, typed DTO 도입 시점).

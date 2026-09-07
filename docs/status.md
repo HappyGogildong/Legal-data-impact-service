@@ -85,7 +85,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | Query Planner — **계획까지**(`QueryTranslator` 포트+Haiku·`QueryPlanner`: NL→PlanResult, 해소·프로필 게이팅·비법령 거부, D46) | ✅ 단위 4(Fake 번역기)·라이브 스모크 옵트인. Dispatcher/핸들러 실행은 후속 |
 | Analysis Engine — **Layer A**(SUMMARY·DIFF): `ContextBuilder`(정본→source_id 블록)·`Reasoner` 포트+`SpringAiReasoner`(Opus)·`AnalysisEngine`(조립→추론→인용검증→재생성≤N→폴백) | ✅ 단위 10(ContextBuilder 6·Engine 4, FakeReasoner)·라이브 스모크 옵트인 |
 | QueryDispatcher + 차원핸들러 — **Layer A 슬라이스**(D47): `DimensionHandler` 포트+레지스트리·`QueryDispatcher`(Reference 정본 1회조회→차원 라우팅→부분성공 `unmet`)·`Summary`/`Diff` 핸들러(AnalysisEngine 위임)·`LawSource` 포트 | ✅ 단위 11(Dispatcher 7·Handler 2·Registry 2). ImpactHandler·ActionHandler·LookupHandler·캐시·독립 검증게이트는 의존 착지 후 |
-| Analysis API — **최소 수직 슬라이스**(#13): `AnalysisService`(plan→dispatch 글루·4상태/부분성공)·`AnalysisResponseMapper`(표현 매핑 분리)·`POST /api/v1/analyses` 컨트롤러(HTTP만)·400 검증. Reference·Layer A만(profilePresent=false) | ✅ 단위 8(Service in-JVM 관통 3[explicitRef 분기 포함]·Controller 3·Mapper 2). 웹 UI·Discovery·Layer B는 후속 |
+| Analysis API — **최소 수직 슬라이스**(#13): `application/AnalyzeUseCase`(plan→dispatch 유스케이스·4상태/부분성공·애노테이션 없는 @Bean)·`web`(컨트롤러 HTTP만·`AnalysisResponseMapper` 표현 매핑·`POST /api/v1/analyses`·400). 계층 web→application→pipeline. Reference·Layer A만(profilePresent=false) | ✅ 단위 8(UseCase in-JVM 관통 3[explicitRef 포함]·Controller 3·Mapper 2). 웹 UI·Discovery·Layer B는 후속 |
 | 웹 프론트엔드 · User Profile Store | ⬜ |
 
 단위 테스트 **136개**(+AnalysisEngine 10 · +QueryDispatcher 11 · +Analysis API 8) + 통합 **8건**(실 Postgres/pgvector, Testcontainers: Law Store 3 + 적재 조립 2 + ChunkStore 3) 통과. (실 임베딩·번역·해석 스모크/평가 5종은 옵트인·수동)
