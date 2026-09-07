@@ -108,6 +108,8 @@ nav:
           - Query Dispatcher: components/dispatch/QueryDispatcher.md
       - analyze:
           - Analysis Engine: components/analyze/AnalysisEngine.md
+      - web:
+          - Analysis API: components/web/AnalysisApi.md
   - 참조 (Reference):
       - Law 도메인 이해 (초심자용): reference/law-domain-understanding.md
       - 법령 속성 카탈로그: reference/law-attributes.md
