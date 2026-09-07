@@ -28,12 +28,14 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 | 클래스 | 역할 |
 |---|---|
-| `AnalysisController` | `@RestController` — `POST /api/v1/analyses`. 요청 DTO 파싱·검증(빈 query→400) → `AnalysisService` → 응답 DTO 매핑. |
+| `AnalysisController` | `@RestController` — **HTTP 경계만**: `POST /api/v1/analyses` 요청 파싱·검증(빈 query→400) → `AnalysisService` 위임 → `AnalysisResponseMapper`로 본문 매핑 후 상태코드(200)만 얹음. |
 | `AnalysisService` | 오케스트레이터(웹 타입 비의존) — `plan()` 결과를 `switch`: `Unresolved` 그대로 / `Planned` → `dispatch()`. **`profilePresent=false` 고정.** |
-| `AnalysisOutcome` (sealed) | `Analyzed(AnalysisQuery, DispatchResult)` \| `Unresolved(ResolutionResult)`. 컨트롤러가 두 경우를 빠짐없이 매핑. |
-| `AnalyzeApiRequest` / `LawRefDto` | 요청 `{query, lawRef?, scope?}`. `LawRefDto`→`plan.LawRef` 변환. |
-| `AnalyzeApiResponse` | 응답 — RESOLVED(answer·unmet) \| 미해소(resolution·message·candidates). |
+| `AnalysisResponseMapper` | **표현(presentation) 매핑** — `AnalysisOutcome` → 스펙 응답 `Map`(snake_case `law_ref`·차원 소문자 `answer` 키·`unmet`·candidates). 컨트롤러에서 분리해 독립 단위 테스트. |
+| `AnalysisOutcome` (sealed) | `Analyzed(AnalysisQuery, DispatchResult)` \| `Unresolved(ResolutionResult)`. 매퍼가 두 경우를 빠짐없이 처리. |
+| `AnalyzeApiRequest` / `LawRefDto` | 요청 `{query, lawRef?, scope?}`. `LawRefDto`→`plan.LawRef` 변환(`explicitRef()`). |
 | `ApiExceptionHandler` | `@RestControllerAdvice` — 검증 실패→400([[service-api-spec]] §4.1: **시스템 오류만 4xx**). |
+
+> **응답을 typed DTO가 아니라 `Map`으로 두는 이유**: 응답이 희소·다형적(RESOLVED vs 미해소)이고 가장 복잡한 `answer`가 동적 차원 키 Map이라 DTO 이득이 적고, 소비자(웹 #14)가 아직 없다(YAGNI). typed `AnalyzeApiResponse`는 #14가 계약을 소비할 때 도입한다(그때 snake_case도 한 번에 정식 처리).
 
 ## Contract
 
@@ -60,10 +62,11 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 ## Side Effects
 - 없음(순수 오케스트레이션) — 하위 컴포넌트가 정본 읽기·LLM 호출. 쓰기·캐시 없음(답변 캐시 D51은 후속).
 
-## 검증
-- `AnalysisServiceTest` — 실 `QueryPlanner`(FakeTranslator)+`QueryDispatcher`(FakeLawSource·FakeReasoner 핸들러)로 in-JVM 관통: 해소 NL→Analyzed(SUMMARY filled), 미해소→Unresolved.
-- `AnalysisControllerTest`(`@WebMvcTest`+`@MockBean`) — 200 JSON 매핑·빈 query 400·미해소 200.
-- 수동 라이브: 정본 선적재 + `LiaCoreApplication` 기동 → `curl POST /api/v1/analyses`.
+## 검증 (단위 8)
+- `AnalysisServiceTest`(3) — 실 `QueryPlanner`(FakeTranslator)+`QueryDispatcher`(FakeLawSource·FakeReasoner 핸들러)로 in-JVM 관통: 해소 NL→Analyzed(SUMMARY filled) · **explicitRef 주면 해소 생략하고 그 참조로 분석** · 미해소→Unresolved.
+- `AnalysisResponseMapperTest`(2) — 매핑을 컨트롤러 없이 직접: Analyzed(law_ref·answer 키·unmet·disclaimer) · Unresolved(resolution·message·candidates).
+- `AnalysisControllerTest`(3, 순수 단위·목) — 위임·상태(200)·빈 query 예외. **Boot 4.0 `test-autoconfigure`에 `@WebMvcTest` 미제공**이라 슬라이스 대신 순수 단위로.
+- 수동 라이브: 정본 선적재 + `LiaCoreApplication` 기동 → `curl POST /api/v1/analyses`(HTTP 라우팅·상태·직렬화 확인).
 
 ## 의존 / 관련
 [[QueryPlanner]] · [[QueryDispatcher]] · [[AnalysisEngine]] · [[service-api-spec]] §3.0 · [[component-specs]] §4 #8. 후속: UserProfile(#12)→Layer B · LawDiscovery(#19)→LOOKUP · 웹 UI(#14).
