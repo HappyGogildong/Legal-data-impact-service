@@ -3,7 +3,7 @@ title: DiffBuilder — 클래스 스펙
 status: Draft
 date: 2026-08-19
 tags: [component, pipeline, diff]
-related: ["components/component-specs.md", "components/ingest/Normalizer.md", "reference/law-domain-basics.md", "adr/decision-log.md"]
+related: ["components/component-specs.md", "components/normalize/Normalizer.md", "reference/law-domain-basics.md", "adr/decision-log.md"]
 ---
 
 # DiffBuilder

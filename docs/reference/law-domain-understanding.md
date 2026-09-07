@@ -5,9 +5,9 @@ version: 0.1
 date: 2026-09-02
 tags: [reference, domain, law, onboarding]
 related:
-  - "components/domain/Law.md"
-  - "components/domain/Article.md"
-  - "components/domain/Addendum.md"
+  - "components/domain/law/Law.md"
+  - "components/domain/law/Article.md"
+  - "components/domain/law/Addendum.md"
   - "reference/law-domain-basics.md"
 ---
 
@@ -74,17 +74,17 @@ List<Addendum> addenda;
 예를 들어:
 
 - 법률
-    
+
 - 대통령령
-    
+
 - 총리령
-    
+
 - 부령
-    
+
 - 조례
-    
+
 - 규칙
-    
+
 
 등을 포함하는 넓은 개념으로 사용할 수 있다.
 

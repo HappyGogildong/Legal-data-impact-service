@@ -4,7 +4,7 @@ status: Draft
 version: 0.2
 date: 2026-08-27
 tags: [component, pipeline, planner, nl]
-related: ["components/component-specs.md", "components/query/SourceAnalyzer.md", "mvp/service-api-spec.md", "architecture/v0.9-nl-query-planner.md"]
+related: ["components/component-specs.md", "components/resolve/SourceAnalyzer.md", "mvp/service-api-spec.md", "architecture/v0.9-nl-query-planner.md"]
 ---
 
 # Query Planner (Spring, 질의 계획)

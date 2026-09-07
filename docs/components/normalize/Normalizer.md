@@ -3,7 +3,7 @@ title: Normalizer — 클래스 스펙
 status: Draft
 date: 2026-08-22
 tags: [component, pipeline, normalizer]
-related: ["components/component-specs.md", "reference/law-attributes.md", "components/ingest/SourceConnector.md", "reference/law-domain-basics.md"]
+related: ["components/component-specs.md", "reference/law-attributes.md", "components/connector/SourceConnector.md", "reference/law-domain-basics.md"]
 ---
 
 # Normalizer

@@ -3,7 +3,7 @@ title: LawStore — 클래스 스펙 (spec-first)
 status: Draft
 date: 2026-08-22
 tags: [component, store, repository, pgvector]
-related: ["components/component-specs.md", "components/ingest/Normalizer.md", "components/rag/Embedder.md", "reference/law-domain-basics.md", "adr/decision-log.md"]
+related: ["components/component-specs.md", "components/normalize/Normalizer.md", "components/embed/Embedder.md", "components/dispatch/QueryDispatcher.md", "reference/law-domain-basics.md", "adr/decision-log.md"]
 ---
 
 # LawStore
@@ -20,7 +20,15 @@ related: ["components/component-specs.md", "components/ingest/Normalizer.md", "c
 - **Postgres 16 + pgvector**(로컬 도커 `pgvector/pgvector:pg16`, prod RDS — D34).
 - 영속: **`JdbcClient`**(JSONB payload 매핑 — Hibernate 불필요) + Flyway(관계형 마이그레이션).
 - 벡터는 [[ChunkStore]](Spring AI `PgVectorStore`)가 별도로 소유.
-- 소비자: [[SourceAnalyzer|LawLookup]] 구현(해소) · [[AnalysisEngine]](context 조립·정본 인용).
+- 소비자: [[SourceAnalyzer|LawLookup]] 구현(해소) · [[AnalysisEngine]](context 조립·정본 인용) · [[QueryDispatcher]](`LawSource`로 정본·기준선 조회).
+
+## LawSource 포트 (정본 정확조회)
+
+`LawStore`가 구현하는 **좁은 읽기 포트**(`store.LawSource`) — `find(lawId, efYd)`(시행예정 정본)·`findBaseline(lawId)`(시행중 기준선) 두 계약만 노출한다.
+
+- **왜 포트인가:** 소비자([[QueryDispatcher]])를 `LawStore` 전체가 아니라 **필요한 조회 계약**에만 결합시키고, 단위 테스트 시임(Fake)을 준다. 의존 방향은 dispatch → store(정방향).
+- **`resolve.LawLookup`과 다른 관심사** — 그쪽은 *커넥터 기반 해소*(이름→ref), 이쪽은 **저장된 정본 읽기**. 벡터 검색이 아니다(Discovery 전용, D56).
+- **계약:** `find`는 미적재면 empty, `findBaseline`은 제정이라 없으면 empty(정상, D42).
 
 ## 저장 모델 (JSONB 정본 + pgvector chunks)
 

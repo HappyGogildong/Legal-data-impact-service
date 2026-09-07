@@ -77,7 +77,52 @@ class AnalysisEngineTest {
                 () -> engine.analyze(new AnalyzeRequest(QueryType.SUMMARY, law, null)));
     }
 
+    @Test
+    void impacts의_환각_인용도_거부되고_재생성된다() {
+        Law law = housing();
+        String good = law.sourceId(law.article("18"));      // 주입됨
+        String hallucinated = "LAW:999@2099-01-01:art:1";   // 주입 안 됨
+
+        AnalysisEngine engine = engine(scripted(
+                resultWith(List.of(claim("정상 주장", good)),
+                        List.of(impact("주거", hallucinated))),   // claims 정상이나 impacts 환각 → 게이트 실패
+                resultWith(List.of(claim("정상 주장", good)), List.of())));  // 재생성 통과
+
+        AnalyzeResponse resp = engine.analyze(new AnalyzeRequest(QueryType.DIFF, law, null));
+
+        assertTrue(resp.result().impacts().isEmpty(),
+                "impacts에 주입 안 된 source_id가 있으면 거부되고 재생성돼야");
+    }
+
+    @Test
+    void claims가_null이면_NPE없이_근거부족_폴백() {
+        Law law = housing();
+        ImpactResult nullClaims = new ImpactResult("LAW:001809@2026-08-04", "SUMMARY", "요약",
+                null, List.of(), List.of(), null, List.of(), "참고", null);   // claims 생략
+        AnalysisEngine engine = engine(scripted(nullClaims));
+
+        assertThrows(InsufficientGroundingException.class,
+                () -> engine.analyze(new AnalyzeRequest(QueryType.SUMMARY, law, null)));
+    }
+
+    @Test
+    void claims가_비어도_근거부족_폴백() {
+        Law law = housing();
+        AnalysisEngine engine = engine(scripted(result()));   // claims 빈 배열 = 근거 없음
+        assertThrows(InsufficientGroundingException.class,
+                () -> engine.analyze(new AnalyzeRequest(QueryType.SUMMARY, law, null)));
+    }
+
     // --- fixtures --------------------------------------------------------
+
+    static ImpactResult resultWith(List<ImpactResult.Claim> claims, List<ImpactResult.Impact> impacts) {
+        return new ImpactResult("LAW:001809@2026-08-04", "DIFF", "요약",
+                claims, impacts, List.of(), null, List.of(), "참고", null);
+    }
+
+    static ImpactResult.Impact impact(String aspect, String... citations) {
+        return new ImpactResult.Impact(aspect, "영향 있음", "상세", List.of(citations));
+    }
 
     static ImpactResult result(ImpactResult.Claim... claims) {
         return new ImpactResult("LAW:001809@2026-08-04", "SUMMARY", "요약",

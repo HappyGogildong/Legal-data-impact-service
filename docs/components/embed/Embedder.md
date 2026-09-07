@@ -3,7 +3,7 @@ title: Embedder — 클래스 스펙 (설계 확정 · 구현 착수)
 status: Draft
 date: 2026-08-27
 tags: [component, pipeline, embedding]
-related: ["reference/embedding-benchmark.md", "components/component-specs.md", "components/store/LawStore.md", "components/rag/RAGIndexer.md", "adr/decision-log.md"]
+related: ["reference/embedding-benchmark.md", "components/component-specs.md", "components/store/LawStore.md", "components/index/RAGIndexer.md", "adr/decision-log.md"]
 ---
 
 # Embedder

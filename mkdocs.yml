@@ -50,6 +50,8 @@ plugins:
 nav:
   - 🚀 시작하기(온보딩): onboarding.md
   - 홈(색인): ARCHITECTURE.md
+  - 제품 (Product):
+      - 기능 스펙: product/feature-spec.md
   - 아키텍처 버전:
       - v0.9 — 현행 (자연어 질의·Query Planner): architecture/v0.9-nl-query-planner.md
       - v0.8 — 시행 대기 법령 코퍼스: architecture/v0.8-pending-law-corpus.md
@@ -78,26 +80,33 @@ nav:
       - 002 · 위임 정규식 한글: troubleshooting/002-delegation-regex-korean-morphology.md
   - 컴포넌트 스펙:
       - 상세 스펙·계약·정합성: components/component-specs.md
-      - 도메인 (domain):
-          - Law: components/domain/Law.md
-          - Article: components/domain/Article.md
-          - Addendum: components/domain/Addendum.md
-      - 적재 (ingest):
-          - LawConnector: components/ingest/LawConnector.md
-          - SourceConnector: components/ingest/SourceConnector.md
-          - Normalizer: components/ingest/Normalizer.md
-          - DiffBuilder: components/ingest/DiffBuilder.md
+      - domain/law:
+          - Law: components/domain/law/Law.md
+          - Article: components/domain/law/Article.md
+          - Addendum: components/domain/law/Addendum.md
+      - connector:
+          - LawConnector: components/connector/LawConnector.md
+          - SourceConnector: components/connector/SourceConnector.md
+      - normalize:
+          - Normalizer: components/normalize/Normalizer.md
+      - diff:
+          - DiffBuilder: components/diff/DiffBuilder.md
+      - ingest:
           - IngestService: components/ingest/IngestService.md
-      - RAG (rag):
-          - Embedder: components/rag/Embedder.md
-          - RAG Indexer: components/rag/RAGIndexer.md
-          - ChunkStore: components/rag/ChunkStore.md
-      - 질의 (query):
-          - Query Planner: components/query/QueryPlanner.md
-          - SourceAnalyzer: components/query/SourceAnalyzer.md
-      - 저장 (store):
+      - embed:
+          - Embedder: components/embed/Embedder.md
+      - index:
+          - RAG Indexer: components/index/RAGIndexer.md
+      - store:
           - LawStore: components/store/LawStore.md
-      - 분석 (analyze):
+          - ChunkStore: components/store/ChunkStore.md
+      - plan:
+          - Query Planner: components/plan/QueryPlanner.md
+      - resolve:
+          - SourceAnalyzer: components/resolve/SourceAnalyzer.md
+      - dispatch:
+          - Query Dispatcher: components/dispatch/QueryDispatcher.md
+      - analyze:
           - Analysis Engine: components/analyze/AnalysisEngine.md
   - 참조 (Reference):
       - Law 도메인 이해 (초심자용): reference/law-domain-understanding.md
