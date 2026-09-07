@@ -52,7 +52,7 @@ related:
 | D30 | **법안 의미검색(LawFacts·요약 임베딩)** 추가 — 모호 plain text 식별 → 후보(AMBIGUOUS). *분석용 RAG(현행법)*와 별개 *탐색용* | 확정 | 법안명·번호 없는 효과/주제 질의 커버; fail-closed 유지 | [[v0.5-bill-discovery]], component-specs §4 #2·#4 |
 | D31 | D30에도 **저장소(ADR-001) 불변** — 탐색 임베딩 ~1~3GB(벡터 총 <1M) | 확정 | 헤드룸·트리거(5~10M) 내; 스키마 진화 | ADR-001 |
 | D32 | **임베딩은 외부 API**(자체 호스팅 제외), 공유 `Embedder`, dim 1536, 벤더 벤치 후 | 확정 | 인프라 예산 없음; 공개 데이터라 외부 API 적합; 1536=ADR-001 가정 일치 | component-specs §3.3 |
-| D33 | **임베딩 벤치 항목 확정** — OpenAI vs Upstage, 시나리오 A(조문→현행법, ~~신구조문대비표~~ **개정문+조문대조=정답**, D42)·B(모호질의→법안), Recall@5·MRR | 확정 | 벤더를 데이터로 확정; 수집 파이프라인 선행 | [[embedding-benchmark]] |
+| D33 | **임베딩 벤치 항목 확정** — OpenAI vs Upstage, 시나리오 A(조문→현행법, ~~신구조문대비표~~ **개정문+조문대조=정답**, D42)·B(모호질의→법안), Recall@5·MRR | 개정됨(D58) | 벤더를 데이터로 확정; 수집 파이프라인 선행 | [[embedding-benchmark]] |
 | D34 | **DB 프로비저닝** — 개발=로컬 도커 `pgvector/pgvector:pg16`, 프로덕션=AWS RDS PostgreSQL+pgvector(ADR-001). `CREATE EXTENSION vector`, 임베딩 dim 1536. 스키마 소유권: 관계형(bill/article/impact)=Spring(JPA/Flyway), 임베딩=파이프라인 | 확정 | 지금은 AWS 불필요(로컬 무료); 스키마 이중관리 방지 | docker-compose.yml, db/init.sql |
 | D35 | **파이프라인을 Spring으로 통합** — Boot 4.0 + Spring AI 2.0(GA 2026-05-28)으로 Python 서버 대체. 3-런타임 → **2-런타임**(Spring / TS웹). Python↔Spring REST 계약은 내부 호출로 소멸, 도메인 모델 단일화 | 확정 | D05·D19·D32로 Python 선택 근거(무거운 ML 생태계) 소멸 — 실체는 HTTP+파싱+오케스트레이션. v0.2부터 예약된 경로. 기존 Python 코드는 포팅 사양·벤치 도구로 활용 | [[v0.6-spring-consolidation]], [[spring-migration]] |
 | D36 | **Evaluation Harness(합성 페르소나 E2E)를 MVP에서 제외** — 수직 슬라이스 완성 후(post-MVP) 착수. MVP 품질 앵커는 컴포넌트 단위 테스트 + 소량 사람검수 골든셋. 역할 규율(D14: 정답판정 금지)은 유지 | 확정 | 하니스는 완성된 E2E 흐름·프롬프트가 있어야 가치(회귀·UX 비평) 발동. 페르소나 패널·REST 전 구간에 걸친 선행 부담이 핵심 경로(#5~#9)를 지연 | mvp §4·§5, 이슈 #16 |
@@ -77,6 +77,7 @@ related:
 | D55 | **청킹 정책 + RAG 색인 스킴 확정** — 색인 대상 = **시행예정 법령**(옛 "시행중 조문/`law` ns" 폐기 — 기준선은 diff용 정확 fetch). 단일 네임스페이스 **`pending`**, `kind`(article\|summary) 메타. 청킹 = **변경 조문 단위**(1조문=1청크, `source_id=…:art:{no}`) + **과대 조문 오버랩 분할**(하위 청크, 같은 출처) + **요약/LawFacts는 법령 단위 벡터**(discovery). `source_id` 동반 필수 | 확정 | 조문번호=인용·검색·평가(Recall@K) 단위라 조문 단위가 그라운딩과 정렬(슬라이딩은 조문 경계를 넘어 정렬 흐림). Reference 경로는 변경 조문을 직접 주입하므로 조문 벡터는 discovery-with-analysis·교차법령·평가용. **D33 §Open(청크 정책) 닫힘**, D30(discovery 임베딩) 승계 | [[RAGIndexer]], [[LawStore]], [[embedding-benchmark]] |
 | D56 | **RAG의 존재 근거 = Discovery 의미검색** (vs "분석 AI가 MCP로 법령 API 실시간 조회") — 벡터 RAG는 **개념 질의→법령 식별(Discovery/LOOKUP) 전용**이다. 검색은 청크를 근거로 주입하지 않고 "어떤 법인가"만 식별하며, 그라운딩은 **정본 전문 정확 조회**(AnalysisEngine 정합화). 따라서 **명명 질의(Reference)·분석 경로엔 벡터가 불필요**하고, 벡터는 오직 LOOKUP을 위한 것 | 확정 | 법령 API는 **법명·키워드 검색만** 되고 의미검색이 없다 — 시민의 일상어("전세 세입자한테 불리한")를 법률용어 법령에 잇는 건 임베딩만 가능(개념↔용어 간극). MCP 실시간 조회는 **최신성은 무승부**지만 개념 검색은 못 한다. 즉 **"법 이름을 모르는 시민"을 위한 Discovery가 핵심 기능이라는 베팅**이 RAG 유지의 전제. 명명 질의만이면 벡터는 과투자·MCP+캐시로 충분 | `PHILOSOPHY.md §3`(레포 루트), [[QueryPlanner]], [[AnalysisEngine]], D46·D55 |
 | D57 | **`ImpactResult`에서 `affected_profiles` 제거** — 개인화 답은 **사용자 본인 영향(`impacts`)만** 담는다. "이 법이 영향 주는 타 대상군" 나열은 노이즈. 사용자 프로필은 **입력**(`<profile>` 주입)이라 출력엔 원래 없음. "영향 대상" 신호가 필요하면 **`LawFacts`(Layer A 파생, triage/discovery)** 에 둔다(사용자용 답 아님) | 확정 | 서비스가 "당신"에게 맞춘 답을 주는데 대상군 명부는 불필요. Discovery가 이미 사용자↔법 매칭을 했으므로 관련성은 검증됨. `affected_profiles`는 인용 없는 라벨이라 그라운딩 대상도 아니었음 | [[AnalysisEngine]], [[component-specs]] §1.3, [[analysis-prompt-spec]] §4·§5 |
+| D58 | **임베딩 벤더 = OpenAI 확정 (비용 근거)** — OpenAI vs Upstage 벤치(D33)로 *데이터*로 가리려던 것을, **비용을 이유로 OpenAI로 확정**한다. Upstage 비교 벤치(이슈 #8)는 **드롭**(필요 시 post-MVP 재검토). dim 1536(D32) 유지, `PgVectorStore`·[[Embedder]]가 이미 OpenAI `EmbeddingModel`로 배선·검증됨(전환 비용 0) | 확정 | 현 규모(시행예정 ~899건)·MVP 단계에선 벤더 간 품질 미세차보다 **비용·단순성**이 우선. OpenAI는 이미 파이프라인에 통합돼 있어 추가 벤치는 순비용. 품질 회귀는 RAG 평가 프레임워크(D53, Recall@5≥0.80·faithfulness=1)가 상시 감지하므로 후에 벤더를 바꿔도 안전망이 있다 — 즉 "지금 데이터로 확정" 대신 "싼 기본값 + 회귀 게이트"가 더 경제적 | [[embedding-benchmark]], [[Embedder]], D32·D33, 이슈 #8 |
 
 > **D37 재검토 트리거:** ① 대형 옴니버스 법안의 map-reduce + Generator-Critic이 3단 이상 *동적* 분기로 확장 ② 멀티턴 대화형 탐색(상태 지속·중단 재개) 도입. 그때도 `AnalysisEngine` 인터페이스 뒤에 격리해 도입 가능하므로 본 결정은 가역적(JVM 대안: LangGraph4j·Embabel).
 
@@ -141,4 +142,4 @@ RAG·RDB는 "두뇌(모델)를 경량으로 바꾸는 장치"가 아니라, 파�
 > - ~~세그먼트 군집 알고리즘·검증(구 D18)~~ → **D41로 폐기**(자기신고 프로필로 대체).
 > - Proposed였던 D04(저장소)는 D22·D27·D31·D42가 반복 재확인 → 사실상 확정(정식 승격은 실부하 측정 후). D07(2계층 엔진)은 D37·D51이 그 위에 구현을 얹어 채택됨.
 
-> 결정은 **D57까지** 진행됐고 **열린 설계 결정은 없다** — 문서 스펙대로 개발 시 MVP happy-path E2E 동작이 보장된다([[component-specs]] §5 정합성 검증).
+> 결정은 **D58까지** 진행됐고 **열린 설계 결정은 없다** — 문서 스펙대로 개발 시 MVP happy-path E2E 동작이 보장된다([[component-specs]] §5 정합성 검증).
