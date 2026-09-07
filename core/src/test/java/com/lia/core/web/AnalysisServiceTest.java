@@ -26,9 +26,11 @@ import com.lia.core.pipeline.dispatch.QueryDispatcher;
 import com.lia.core.pipeline.dispatch.SummaryHandler;
 import com.lia.core.pipeline.plan.AnalysisQueryDraft;
 import com.lia.core.pipeline.plan.AnalysisQueryDraft.TargetKind;
+import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryPlanner;
 import com.lia.core.pipeline.plan.QueryTranslator;
 import com.lia.core.pipeline.plan.QueryType;
+import com.lia.core.pipeline.plan.Target;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.ResolutionState;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
@@ -99,6 +101,24 @@ class AnalysisServiceTest {
         AnalysisOutcome.Analyzed a = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
         assertTrue(a.result().filled().containsKey(QueryType.SUMMARY), "SUMMARY 차원이 채워져야");
         assertTrue(a.result().fullySatisfied(), "SUMMARY 단일 질의는 완전 충족");
+    }
+
+    @Test
+    void explicitRef가_있으면_법명_해소를_건너뛰고_그_참조로_분석한다() {
+        // targetKind=DISCOVERY + 법명 없음 → explicitRef 없으면 Discovery로 갔을 초안.
+        // explicitRef를 주면 해소를 건너뛰고 그 참조로 Reference 분석해야 한다.
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.SUMMARY, Set.of(QueryType.SUMMARY), true, TargetKind.DISCOVERY,
+                null, null, List.of(), List.of(), List.of(), "요약");
+        LawRef pinned = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
+
+        AnalysisOutcome out = service(draft, true).analyze("법명 안 대는 자연어", pinned);
+
+        AnalysisOutcome.Analyzed a = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
+        Target.Reference ref = assertInstanceOf(Target.Reference.class, a.query().target(),
+                "explicitRef가 Discovery 초안을 Reference로 강제");
+        assertEquals("001809", ref.lawRef().lawId());
+        assertTrue(a.result().filled().containsKey(QueryType.SUMMARY));
     }
 
     @Test

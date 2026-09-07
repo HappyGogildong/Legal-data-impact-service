@@ -30,7 +30,7 @@ import com.lia.core.pipeline.resolve.ResolutionResult;
 class AnalysisControllerTest {
 
     private final AnalysisService service = mock(AnalysisService.class);
-    private final AnalysisController controller = new AnalysisController(service);
+    private final AnalysisController controller = new AnalysisController(service, new AnalysisResponseMapper());
 
     private static AnalysisOutcome analyzed() {
         LawRef ref = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
