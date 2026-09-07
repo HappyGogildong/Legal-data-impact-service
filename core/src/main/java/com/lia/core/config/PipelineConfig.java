@@ -26,6 +26,8 @@ import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.pipeline.plan.QueryPlanner;
 import com.lia.core.pipeline.plan.QueryTranslator;
 import com.lia.core.pipeline.plan.SpringAiQueryTranslator;
+import com.lia.core.application.analysis.AnalyzeUseCase;
+import com.lia.core.pipeline.dispatch.QueryDispatcher;
 import com.lia.core.pipeline.resolve.ChunkStoreLawSearch;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
@@ -134,5 +136,11 @@ public class PipelineConfig {
     @Bean
     public AnalysisEngine analysisEngine(ContextBuilder contextBuilder, Reasoner reasoner) {
         return new AnalysisEngine(contextBuilder, reasoner, ANALYZE_MAX_ATTEMPTS);
+    }
+
+    /** 온라인 유스케이스(plan→dispatch). 애노테이션 없는 코어를 여기서 배선(프레임워크 비의존). */
+    @Bean
+    public AnalyzeUseCase analyzeUseCase(QueryPlanner queryPlanner, QueryDispatcher queryDispatcher) {
+        return new AnalyzeUseCase(queryPlanner, queryDispatcher);
     }
 }
