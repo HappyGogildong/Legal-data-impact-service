@@ -60,7 +60,7 @@ class AnalysisControllerTest {
         assertEquals("RESOLVED", body.get("resolution"));
         assertEquals("LAW:001809@2026-08-04", body.get("law_ref"));
         assertTrue(((Map<String, Object>) body.get("answer")).containsKey("summary"), "채워진 차원 소문자 키");
-        assertTrue(((List<String>) body.get("unmet")).contains("impact"), "못 채운 차원 표기");
+        assertTrue(((Map<String, String>) body.get("unmet")).containsKey("impact"), "못 채운 차원+사유");
         assertEquals("참고용", body.get("disclaimer"));
     }
 

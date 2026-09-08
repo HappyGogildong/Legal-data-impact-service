@@ -6,6 +6,7 @@ import org.springframework.ai.chat.model.ChatModel;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.analyze.AnalysisContext.SourceBlock;
+import com.lia.core.pipeline.plan.QueryType;
 
 /**
  * {@link Reasoner}의 Spring AI 구현 — 조립된 context → Opus 4.8 → 구조화 {@link ImpactResult}(§3·§4).
@@ -17,6 +18,7 @@ import com.lia.core.pipeline.analyze.AnalysisContext.SourceBlock;
 public class SpringAiReasoner implements Reasoner {
 
     static final String MODEL = "claude-opus-4-8";
+    static final String PROMPT_VERSION = "0.2";   // analysis-prompt-spec 버전
 
     private static final String SYSTEM = """
             역할: 대한민국 시행 예정 법령 영향 분석가.
@@ -40,7 +42,23 @@ public class SpringAiReasoner implements Reasoner {
 
     @Override
     public ImpactResult reason(AnalysisContext context) {
-        return chat.prompt().user(userMessage(context)).call().entity(ImpactResult.class);
+        ImpactResult raw = chat.prompt().user(userMessage(context)).call().entity(ImpactResult.class);
+        return stampMeta(raw, context.dimension());   // meta는 LLM이 아니라 우리가 확정(모델명·버전·계층)
+    }
+
+    /**
+     * {@code meta}를 권위 있는 값으로 덮어쓴다 — LLM은 content만 신뢰하고 메타데이터는 우리가 채운다.
+     * (구조화 출력에서 모델이 {@code model:"gpt"} 등 잘못 채우던 것을 교정.)
+     */
+    static ImpactResult stampMeta(ImpactResult r, QueryType dimension) {
+        ImpactResult.Meta meta = new ImpactResult.Meta(MODEL, PROMPT_VERSION, layer(dimension));
+        return new ImpactResult(r.lawRef(), r.command(), r.summary(), r.claims(), r.impacts(),
+                r.actions(), r.effectiveInfo(), r.uncertainties(), r.disclaimer(), meta);
+    }
+
+    /** 차원 → 계층(A: SUMMARY·DIFF 선계산 / B: IMPACT·ACTION 프로필별). */
+    private static String layer(QueryType dimension) {
+        return dimension.isLayerB() ? "B" : "A";
     }
 
     /** CONTEXT(source_id별 근거 블록) + TASK(차원) 조립. 프롬프트 §3. */
