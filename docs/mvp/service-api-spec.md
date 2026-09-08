@@ -136,7 +136,7 @@ BASE  /api/v1
     }
   },
   "unmet": { "impact": "프로필 필요 (Layer B)" },  // 못 채운 차원→사유 맵. 사유별 대응이 다름(정본 미적재·프로필 필요·핸들러 미구현)
-  "uncertainties": ["세부기준 일부가 대통령령에 위임되어 확정 전입니다."],
+  // uncertainties 는 차원별 내용이라 각 answer.<차원>(ImpactResult) 안에만 둔다(전역 중복 제거)
   "disclaimer": "법률 자문이 아닌 참고용 정보입니다."
 }
 ```

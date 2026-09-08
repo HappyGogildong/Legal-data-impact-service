@@ -43,11 +43,10 @@ public class AnalysisResponseMapper {
         a.result().unmet().forEach((dim, reason) -> unmet.put(key(dim), reason));
         body.put("unmet", unmet);
 
-        // 불확실성·면책은 주 차원(없으면 아무 채워진 차원)의 결과에서 가져온다.
+        // 면책만 응답 전역(상수)으로 올린다. 불확실성은 차원별 내용이라 answer.<차원>에만 둔다(중복 방지).
         AnalyzeResponse primary = a.result().filled().getOrDefault(a.result().primaryType(),
                 a.result().filled().values().stream().findFirst().orElse(null));
         if (primary != null) {
-            body.put("uncertainties", primary.result().uncertainties());
             body.put("disclaimer", primary.result().disclaimer());
         }
         return body;

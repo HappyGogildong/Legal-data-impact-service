@@ -36,7 +36,7 @@ Controller·Mapper·DTO    AnalyzeUseCase             QueryPlanner · QueryDispa
 
 - `POST /api/v1/analyses` · 요청 `{ "query": <필수>, "lawRef"?: {lawId, effectiveDate, articleNo?}, "scope"?: [...] }`.
 - **응답은 해소 4상태·분석 모두 HTTP 200** (4xx/5xx는 시스템 오류 전용, §4.1). 빈 `query` → **400**.
-- **Analyzed** → `{ resolution:"RESOLVED", law_ref:"LAW:{lawId}@{efYd}", answer:{ <차원소문자>: ImpactResult }, unmet:{ <차원소문자>: <사유> }, uncertainties, disclaimer }`. `unmet`은 **차원별 사유 맵**(정본 미적재·프로필 필요·핸들러 미구현 등 — 클라이언트 대응이 사유마다 다름).
+- **Analyzed** → `{ resolution:"RESOLVED", law_ref:"LAW:{lawId}@{efYd}", answer:{ <차원소문자>: ImpactResult }, unmet:{ <차원소문자>: <사유> }, disclaimer }`. `unmet`은 **차원별 사유 맵**(정본 미적재·프로필 필요·핸들러 미구현 등). `uncertainties`는 **차원별 내용**이라 각 `answer.<차원>` 안에만 둔다(전역 중복 제거). `disclaimer`만 응답 전역(상수).
 - **Unresolved** → `{ resolution:<NOT_FOUND_YET|AMBIGUOUS|UNVERIFIED>, message, candidates? }`.
 
 ## Error Handling
