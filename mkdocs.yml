@@ -111,8 +111,13 @@ nav:
           - Analysis Engine: components/analyze/AnalysisEngine.md
       - application:
           - AnalyzeUseCase: components/application/AnalyzeUseCase.md
+      - auth:
+          - Auth (OAuth2·세션): components/auth/Auth.md
+      - profile:
+          - UserProfile (도메인·Store): components/profile/UserProfile.md
       - web:
           - Analysis API: components/web/AnalysisApi.md
+          - Profile API: components/web/ProfileApi.md
   - 참조 (Reference):
       - Law 도메인 이해 (초심자용): reference/law-domain-understanding.md
       - 법령 속성 카탈로그: reference/law-attributes.md

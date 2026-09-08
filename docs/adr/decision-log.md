@@ -79,6 +79,7 @@ related:
 | D57 | **`ImpactResult`에서 `affected_profiles` 제거** — 개인화 답은 **사용자 본인 영향(`impacts`)만** 담는다. "이 법이 영향 주는 타 대상군" 나열은 노이즈. 사용자 프로필은 **입력**(`<profile>` 주입)이라 출력엔 원래 없음. "영향 대상" 신호가 필요하면 **`LawFacts`(Layer A 파생, triage/discovery)** 에 둔다(사용자용 답 아님) | 확정 | 서비스가 "당신"에게 맞춘 답을 주는데 대상군 명부는 불필요. Discovery가 이미 사용자↔법 매칭을 했으므로 관련성은 검증됨. `affected_profiles`는 인용 없는 라벨이라 그라운딩 대상도 아니었음 | [[AnalysisEngine]], [[component-specs]] §1.3, [[analysis-prompt-spec]] §4·§5 |
 | D58 | **임베딩 벤더 = OpenAI 확정 (비용 근거)** — OpenAI vs Upstage 벤치(D33)로 *데이터*로 가리려던 것을, **비용을 이유로 OpenAI로 확정**한다. Upstage 비교 벤치(이슈 #8)는 **드롭**(필요 시 post-MVP 재검토). dim 1536(D32) 유지, `PgVectorStore`·[[Embedder]]가 이미 OpenAI `EmbeddingModel`로 배선·검증됨(전환 비용 0) | 확정 | 현 규모(시행예정 ~899건)·MVP 단계에선 벤더 간 품질 미세차보다 **비용·단순성**이 우선. OpenAI는 이미 파이프라인에 통합돼 있어 추가 벤치는 순비용. 품질 회귀는 RAG 평가 프레임워크(D53, Recall@5≥0.80·faithfulness=1)가 상시 감지하므로 후에 벤더를 바꿔도 안전망이 있다 — 즉 "지금 데이터로 확정" 대신 "싼 기본값 + 회귀 게이트"가 더 경제적 | [[embedding-benchmark]], [[Embedder]], D32·D33, 이슈 #8 |
 | D59 | **배포 = 컨테이너화 + docker compose 자립 실행**(self-host/staging) — `core/Dockerfile`(멀티스테이지 JDK21→JRE21) + compose(db healthcheck·`depends_on healthy`·in-network env 오버라이드) + GitHub Actions CI(단위+Testcontainers, 라이브 스모크 skip). 프로파일 대신 **env-var 오버라이드**(Spring relaxed binding)로 in-network 설정(OTLP→`tempo`·datasource→`db`). mcp(스텁)·클라우드 매니지드·웹 UI 배포·이미지 push는 후속 | 확정 | 백엔드가 REST로 관통했으나 `build:./core` 참조에 Dockerfile이 없어 `compose up`이 불가했다. 현 성숙도(UI 전·데모)엔 재현 가능한 자립 스택이 실익이 크고, 클라우드 매니지드(ECS/RDS/시크릿매니저·D34 RDS는 eventual)는 UI·타겟 확정 후가 경제적. 새 프로파일 파일 대신 env 오버라이드로 설정 표면을 최소화 | [[deployment]], [[observability]], D34·D48 |
+| D60 | **인증 = 소셜 OAuth2(Kakao/Naver/Google) + 서버 세션-쿠키** — UserProfile(#12)의 신원 기반. 비밀번호·성명·이메일 미저장(계정=provider+opaque subject→내부 UUID `userId`). 세션-쿠키(HttpOnly·Secure·SameSite): 같은 도메인 웹 UI(#14) 최적·즉시 무효화(로그아웃/파기 D41)·XSS 기본 방어. 구현 슬라이스 ①인증 → ②UserProfile store+API → ③Layer B(프로필→프롬프트) | 확정 | 프로덕션·한국 시민 대상·최소 PII(D41): 자체 비밀번호는 유출·재설정 책임을 지지만 소셜은 IdP에 위임(최소수집 정합). JWT의 무상태 이점은 지금 불필요하고 즉시 파기 요건에 불리 — 세션이 적합(확장 시 Spring Session으로 저장소만 교체) | [[Auth]], [[UserProfile]], [[ProfileApi]], D41 |
 
 > **D37 재검토 트리거:** ① 대형 옴니버스 법안의 map-reduce + Generator-Critic이 3단 이상 *동적* 분기로 확장 ② 멀티턴 대화형 탐색(상태 지속·중단 재개) 도입. 그때도 `AnalysisEngine` 인터페이스 뒤에 격리해 도입 가능하므로 본 결정은 가역적(JVM 대안: LangGraph4j·Embabel).
 
@@ -143,4 +144,4 @@ RAG·RDB는 "두뇌(모델)를 경량으로 바꾸는 장치"가 아니라, 파�
 > - ~~세그먼트 군집 알고리즘·검증(구 D18)~~ → **D41로 폐기**(자기신고 프로필로 대체).
 > - Proposed였던 D04(저장소)는 D22·D27·D31·D42가 반복 재확인 → 사실상 확정(정식 승격은 실부하 측정 후). D07(2계층 엔진)은 D37·D51이 그 위에 구현을 얹어 채택됨.
 
-> 결정은 **D59까지** 진행됐고 **열린 설계 결정은 없다** — 문서 스펙대로 개발 시 MVP happy-path E2E 동작이 보장된다([[component-specs]] §5 정합성 검증).
+> 결정은 **D60까지** 진행됐다 — 문서 스펙대로 개발 시 MVP happy-path E2E 동작이 보장된다([[component-specs]] §5 정합성 검증).
