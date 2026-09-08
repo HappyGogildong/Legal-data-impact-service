@@ -1,6 +1,6 @@
 # LIA 관측 — Prometheus scrape 설정 (D48)
-# core 는 호스트에서 gradle bootRun 으로 띄운다고 가정 → host.docker.internal.
-# core 를 컨테이너로 띄우면 targets 를 'core:8080' 으로 바꾼다.
+# 두 실행 모드 모두 지원: 컨테이너 core('core:8080') · 호스트 bootRun('host.docker.internal:8080').
+# 사용하지 않는 대상은 down 으로 표시될 뿐 무해하다.
 global:
   scrape_interval: 5s
   evaluation_interval: 5s
@@ -9,7 +9,9 @@ scrape_configs:
   - job_name: lia-core
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets: ['host.docker.internal:8080']
+      - targets: ['core:8080']                  # 컨테이너 실행(docker compose up core)
+        labels: { service: lia-core }
+      - targets: ['host.docker.internal:8080']  # 호스트 bootRun
         labels: { service: lia-core }
 
   - job_name: postgres

@@ -1,0 +1,8 @@
+# 이미지 빌드 컨텍스트에서 제외 (wrapper·빌드스크립트·src 는 유지)
+build/
+.gradle/
+.idea/
+*.iml
+*.md
+bin/
+out/

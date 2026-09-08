@@ -1,5 +1,6 @@
-# 입법 영향 분석기 — 로컬 PoC 오케스트레이션
-# 세 런타임 + 저장소를 한 번에 띄운다.
+# 입법 영향 분석기 — 자립 실행 오케스트레이션
+#   docker compose up -d db core            (앱 + DB)
+#   docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d   (관측 포함)
 services:
   db:
     image: pgvector/pgvector:pg16   # postgres:16 + pgvector 확장 포함
@@ -11,22 +12,39 @@ services:
     volumes:
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # 최초 기동 시 1회 실행
       - lia_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lia -d lia"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   core:
-    build: ./core
-    env_file: .env            # 자격증명 단일 소스(D39): ASSEMBLY_API_KEY, MOLEG_OC, LAW_OC,
-                              # OPENAI_API_KEY, ANTHROPIC_API_KEY → application.yml 의 ${VAR}
+    build: ./core                 # core/Dockerfile (멀티스테이지)
+    env_file: .env                # 자격증명 단일 소스(D39): LAW_OC/OPENAI_API_KEY/ANTHROPIC_API_KEY → application.yml ${VAR}
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/lia
+      # in-network 오버라이드(Spring relaxed binding — 새 프로파일 불필요):
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces  # tempo 없어도 export 실패는 무해
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "0.1"   # prod 예시(staging은 조정)
     ports: ["8080:8080"]
-    depends_on: [db]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 3s
+      start_period: 45s
+      retries: 5
 
-  mcp:
-    build: ./mcp
-    environment:
-      CORE_BASE_URL: http://core:8080
-    ports: ["3000:3000"]
-    depends_on: [core]
+  # mcp: PoC 스텁(Node/TS) — Dockerfile 미존재라 이번 배포 범위에서 제외.
+  #      복구 시 mcp/Dockerfile 추가 후 아래 주석 해제.
+  # mcp:
+  #   build: ./mcp
+  #   environment:
+  #     CORE_BASE_URL: http://core:8080
+  #   ports: ["3000:3000"]
+  #   depends_on: [core]
 
 volumes:
   lia_pgdata:
