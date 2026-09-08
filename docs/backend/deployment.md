@@ -50,6 +50,7 @@ docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
 
 - **비밀값**: 현재 `.env`(env_file)가 단일 소스. **클라우드 배포 시 시크릿 매니저**로 대체(후속).
 - **Flyway**: 기동 시 `law_versions` 마이그레이션(DB 필요). Hikari `initialization-fail-timeout:-1`이라 DB 늦게 떠도 컨텍스트는 부팅.
+  - ⚠️ **Boot 4.0 함정**: 오토컨피그가 모듈로 분리돼 `org.flywaydb:flyway-core`만으론 기동 시 migrate가 **안 걸린다** — `org.springframework.boot:spring-boot-flyway`(오토컨피그 모듈)가 있어야 `spring.flyway.enabled`가 실제로 동작한다. (통합테스트는 `Flyway.configure().migrate()` 수동 실행이라 이 누락을 못 잡았고, `docker compose up` 실측으로 발견.)
 
 ## 헬스체크
 - `db`: `pg_isready`. `core`: actuator `/actuator/health`(compose·Dockerfile 양쪽). `core`는 `db` healthy 후 기동.

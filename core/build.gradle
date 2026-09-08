@@ -46,7 +46,8 @@ dependencies {
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'     // Embedder (Upstage는 base-url 오버라이드)
     // --- 영속 (Law Store, D54: JSONB 정본) ---
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'          // JdbcClient + HikariCP
-    implementation 'org.flywaydb:flyway-core'                                   // 스키마 마이그레이션
+    implementation 'org.springframework.boot:spring-boot-flyway'                // Boot 4.0: Flyway 오토컨피그(기동 시 migrate). 모듈 분리로 별도 의존 필요
+    implementation 'org.flywaydb:flyway-core'                                   // 스키마 마이그레이션(라이브러리)
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
     // 벡터 저장 (ChunkStore) — Spring AI PgVectorStore (add/search 시 EmbeddingModel 내부 임베딩)
