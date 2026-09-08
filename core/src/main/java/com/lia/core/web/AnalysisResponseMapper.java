@@ -38,7 +38,10 @@ public class AnalysisResponseMapper {
         Map<String, ImpactResult> answer = new LinkedHashMap<>();
         a.result().filled().forEach((dim, resp) -> answer.put(key(dim), resp.result()));
         body.put("answer", answer);
-        body.put("unmet", a.result().unmet().keySet().stream().map(AnalysisResponseMapper::key).toList());
+        // 못 채운 차원 → 사유 맵(차원별 대응이 다름: 정본 미적재·프로필 필요·핸들러 미구현).
+        Map<String, String> unmet = new LinkedHashMap<>();
+        a.result().unmet().forEach((dim, reason) -> unmet.put(key(dim), reason));
+        body.put("unmet", unmet);
 
         // 불확실성·면책은 주 차원(없으면 아무 채워진 차원)의 결과에서 가져온다.
         AnalyzeResponse primary = a.result().filled().getOrDefault(a.result().primaryType(),

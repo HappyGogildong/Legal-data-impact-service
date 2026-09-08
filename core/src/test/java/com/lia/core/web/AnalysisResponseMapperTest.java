@@ -47,7 +47,8 @@ class AnalysisResponseMapperTest {
         assertEquals("RESOLVED", body.get("resolution"));
         assertEquals("LAW:001809@2026-08-04", body.get("law_ref"));
         assertTrue(((Map<String, Object>) body.get("answer")).containsKey("summary"), "차원 소문자 키");
-        assertTrue(((List<String>) body.get("unmet")).contains("impact"));
+        Map<String, String> unmet = (Map<String, String>) body.get("unmet");
+        assertEquals("프로필 필요 (Layer B)", unmet.get("impact"), "못 채운 차원은 사유와 함께");
         assertEquals("참고용", body.get("disclaimer"));
     }
 
