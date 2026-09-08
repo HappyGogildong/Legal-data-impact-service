@@ -38,6 +38,18 @@ docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
 #   Grafana :3001 (anon admin) · Prometheus :9090 · Tempo :3200
 ```
 
+## 로컬 데모 시드 (선택)
+
+정본이 없으면 분석은 `unmet`(정본 미적재)이다. 번들 주택법을 적재해 실제 answer를 보려면 **`seed` 프로파일**로 한 번 기동한다(임베딩 프리·운영 무영향, `com.lia.core.dev.SeedRunner`):
+
+```bash
+# compose core 서비스에 SPRING_PROFILES_ACTIVE=seed 를 준 채 1회 기동 → law_versions 적재
+# 이후 explicit lawRef 로 질의:
+curl -X POST localhost:8080/api/v1/analyses -H "Content-Type: application/json" \
+  -d "{\"query\":\"주택법 뭐가 바뀌어?\",\"lawRef\":{\"lawId\":\"001809\",\"effectiveDate\":\"2026-08-04\"}}"
+```
+실 배치 적재(`IngestService.ingestPending`, 실 API)의 트리거(오프라인 스케줄러)는 후속.
+
 ## 설정 — env-var 오버라이드 (프로파일 최소화)
 
 `application.yml`이 이미 `${VAR}` 주입 지점을 갖고 있어, 컨테이너 실행은 **compose `environment`로 오버라이드**한다(새 프로파일 파일 불필요, Spring relaxed binding):
