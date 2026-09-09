@@ -9,7 +9,7 @@ related: ["components/component-specs.md", "components/profile/UserProfile.md", 
 
 # Auth (Spring Security, 소셜 OAuth2 + 서버 세션)
 
-> UserProfile(#12)의 전제인 **신원/계정 기반**. 소셜 OAuth2 로그인으로 사용자를 식별하고 **서버 세션(HttpOnly 쿠키)**으로 상태를 유지한다. 최소 PII(D41) — 비밀번호·성명·이메일을 저장하지 않는다. 관련: [[UserProfile]] · [[ProfileApi]] · [[service-api-spec]] §3.4.
+> UserProfile(#12)의 전제인 **신원/계정 기반**. 소셜 OAuth2 로그인으로 사용자를 식별하고 **서버 세션(HttpOnly 쿠키)**으로 상태를 유지한다. 최소 PII(D41) — 비밀번호·성명은 저장하지 않는다. **이메일은 알림 채널로 저장**(있을 때·동의 기반, 알림 기능 예정). 관련: [[UserProfile]] · [[ProfileApi]] · [[service-api-spec]] §3.4.
 
 ## 설계 결정 (D60 예정)
 - **소셜 OAuth2**(Kakao/Naver/Google) — 자격증명·비밀번호 책임을 IdP에 위임(최소 PII·D41 정합, 한국 시민 서비스 관례).
@@ -29,7 +29,7 @@ related: ["components/component-specs.md", "components/profile/UserProfile.md", 
 | 클래스 | 역할 |
 |---|---|
 | `SecurityConfig` | `@EnableWebSecurity` — `SecurityFilterChain`: OAuth2 Login, 세션 정책, 인가 규칙(아래), CSRF, 로그아웃. |
-| `Account` (record) | `userId(UUID)` · `provider` · `providerId`(opaque subject) · `createdAt`. **성명·이메일 없음.** |
+| `Account` (record) | `userId(UUID)` · `provider` · `providerId`(opaque subject) · `email?`(알림 채널, IdP 제공 시) · `createdAt`. **성명·비밀번호 없음.** |
 | `AccountStore` | JdbcClient — `findByProvider(provider, providerId)` · `create(...)` · `delete(userId)`. 테이블 `accounts`. |
 | `OAuth2LoginSuccessHandler` (또는 `OidcUserService`) | 로그인 성공 시 `provider+subject` → `AccountStore` 조회/생성 → 세션 principal에 `userId` 부여. |
 | `CurrentUser` | 세션 principal → `userId` 추출 헬퍼(컨트롤러용). |
@@ -44,11 +44,11 @@ related: ["components/component-specs.md", "components/profile/UserProfile.md", 
 | 그 외 상태변경 | **CSRF 토큰** 필요(쿠키 인증) |
 
 ## Persistence Contract
-- `accounts(user_id uuid PK, provider text, provider_id text, created_at timestamptz, UNIQUE(provider, provider_id))` — Flyway `V2__accounts.sql`.
+- `accounts(user_id uuid PK, provider text, provider_id text, email text NULL, created_at timestamptz, UNIQUE(provider, provider_id))` — Flyway `V2__accounts.sql`. `email`은 알림 발송용(nullable — Kakao 등 미제공 가능).
 - `findByProvider` 로 재로그인 시 기존 `userId` 회수(멱등). `delete(userId)` 는 파기(프로필도 함께, [[UserProfile]] cascade/명시 삭제).
 
 ## Invariants
-- **최소 수집**: `provider`+opaque `providerId`+`userId`만. IdP가 준 이름·이메일은 **저장하지 않는다**(D41).
+- **최소 수집**: `provider`+opaque `providerId`+`userId`(+알림용 `email`). IdP가 준 **이름은 저장하지 않는다**(D41). 이메일은 알림 채널로만 보관(D41의 연락처 미수집을 알림 목적에 한해 수정 — 동의·파기 대상).
 - `userId` 는 버전 불변 내부 UUID(프로필·캐시·로그의 계정 키). 프롬프트엔 절대 주입 안 함(D41·D10).
 - 한 (provider, providerId) → 정확히 하나의 `userId`.
 
@@ -65,7 +65,7 @@ related: ["components/component-specs.md", "components/profile/UserProfile.md", 
 
 ## 프라이버시 (D41, 횡단)
 - 가입(최초 로그인) 시 **수집 동의 + 개인정보처리방침** 게이트. `DELETE` 계정=파기(세션 무효화 + accounts·user_profiles 삭제).
-- IdP 반환 PII(이름·이메일)는 세션 처리 후 **버린다**(미저장).
+- IdP 반환 **이름은 버린다**(미저장). 이메일은 알림 동의 시에만 저장, `DELETE` 파기 대상.
 
 ## 검증
 - 단위: `AccountStore`(Testcontainers — findByProvider 멱등·delete) · `OAuth2LoginSuccessHandler`(provider+subject→userId 생성/회수, Fake AccountStore).
