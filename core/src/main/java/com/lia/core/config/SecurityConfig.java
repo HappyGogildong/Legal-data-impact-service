@@ -9,12 +9,15 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
+import com.lia.core.auth.OAuth2LoginSuccessHandler;
+
 @Configuration
 public class SecurityConfig {
 
   @Bean
   SecurityFilterChain filterChain(
       HttpSecurity http,
+      OAuth2LoginSuccessHandler loginSuccessHandler,
       // oauth 프로파일일 때만 이 빈이 존재 → Optional 로 받아 조건부 처리
       ObjectProvider<ClientRegistrationRepository> clientRegistrations) throws Exception {
 
@@ -42,11 +45,10 @@ public class SecurityConfig {
 
     // 4) 소셜 로그인 — ClientRegistrationRepository 빈이 있을 때(=oauth 프로파일)만 붙인다.
     //    없는데 oauth2Login() 을 부르면 부팅 자체가 깨진다.
-    // ponytail: 성공 후 provider+subject→userId 매핑(OAuth2LoginSuccessHandler)은 슬라이스 ①
-    //           후속. 지금은 기본 로그인 흐름만 — 세션은 로그인 성공 시 자동 생성된다.
+    //    성공 시 loginSuccessHandler 가 provider+subject→userId 매핑 후 세션에 심는다.
     clientRegistrations.ifAvailable(repo -> {
       try {
-        http.oauth2Login(oauth -> oauth.defaultSuccessUrl("/", true));
+        http.oauth2Login(oauth -> oauth.successHandler(loginSuccessHandler));
       } catch (Exception e) {
         throw new IllegalStateException("oauth2Login 구성 실패", e);
       }
