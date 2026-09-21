@@ -4,7 +4,7 @@ status: Draft
 version: 0.1
 date: 2026-09-09
 tags: [component, auth, security, oauth2, session]
-related: ["components/component-specs.md", "components/profile/UserProfile.md", "components/web/ProfileApi.md", "mvp/service-api-spec.md", "adr/decision-log.md"]
+related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSuccessHandler.md", "components/component-specs.md", "components/profile/UserProfile.md", "components/web/ProfileApi.md", "mvp/service-api-spec.md", "adr/decision-log.md"]
 ---
 
 # Auth (Spring Security, 소셜 OAuth2 + 서버 세션)
@@ -26,13 +26,13 @@ related: ["components/component-specs.md", "components/profile/UserProfile.md", 
 - 소비자: [[ProfileApi]]·Layer B 경로가 세션 principal의 `userId`를 읽는다.
 
 ## 구조 (컴포넌트) — `com.lia.core.auth`
-| 클래스 | 역할 |
-|---|---|
-| `SecurityConfig` | `@EnableWebSecurity` — `SecurityFilterChain`: OAuth2 Login, 세션 정책, 인가 규칙(아래), CSRF, 로그아웃. |
-| `Account` (record) | `userId(UUID)` · `provider` · `providerId`(opaque subject) · `email?`(알림 채널, IdP 제공 시) · `createdAt`. **성명·비밀번호 없음.** |
-| `AccountStore` | JdbcClient — `findByProvider(provider, providerId)` · `create(...)` · `delete(userId)`. 테이블 `accounts`. |
-| `OAuth2LoginSuccessHandler` (또는 `OidcUserService`) | 로그인 성공 시 `provider+subject` → `AccountStore` 조회/생성 → 세션 principal에 `userId` 부여. |
-| `CurrentUser` | 세션 principal → `userId` 추출 헬퍼(컨트롤러용). |
+| 클래스 | 역할 | 상세 |
+|---|---|---|
+| `SecurityConfig` | `SecurityFilterChain`: OAuth2 Login, 세션 정책, 인가 규칙(아래), CSRF, 로그아웃. | [[SecurityConfig]] |
+| `Account` (record) | `userId(UUID)` · `provider` · `providerId`(opaque subject) · `email?`(알림 채널, IdP 제공 시) · `createdAt`. **성명·비밀번호 없음.** | — |
+| `AccountStore` | JdbcClient — `findByProvider(provider, providerId)` · `create(...)` · `delete(userId)`. 테이블 `accounts`. | — |
+| `OAuth2LoginSuccessHandler` | 로그인 성공 시 `provider+subject` → `AccountStore` 조회/생성 → 세션에 `userId` 부여. | [[OAuth2LoginSuccessHandler]] |
+| `CurrentUser` | 세션 → `userId` 추출 헬퍼(컨트롤러용). 세션 키 `USER_ID` 의 읽기 짝. | [[OAuth2LoginSuccessHandler]] |
 
 ## 인가 규칙 (SecurityFilterChain)
 | 경로 | 정책 |

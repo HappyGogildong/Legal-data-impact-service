@@ -113,6 +113,8 @@ nav:
           - AnalyzeUseCase: components/application/AnalyzeUseCase.md
       - auth:
           - Auth (OAuth2·세션): components/auth/Auth.md
+          - SecurityConfig (인가·CSRF): components/auth/SecurityConfig.md
+          - OAuth2 Login Success Handler: components/auth/OAuth2LoginSuccessHandler.md
       - profile:
           - UserProfile (도메인·Store): components/profile/UserProfile.md
       - web:
