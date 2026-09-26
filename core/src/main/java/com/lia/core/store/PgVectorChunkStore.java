@@ -43,7 +43,7 @@ public class PgVectorChunkStore implements ChunkStore {
     public List<Chunk> search(String query, int topK) {
         List<Document> hits = vectorStore.similaritySearch(
                 SearchRequest.builder().query(query).topK(topK).build());
-        return hits == null ? List.of() : hits.stream().map(PgVectorChunkStore::toChunk).toList();
+        return hits.stream().map(PgVectorChunkStore::toChunk).toList();
     }
 
     private static Document toDocument(Chunk c) {

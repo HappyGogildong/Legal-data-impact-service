@@ -28,6 +28,8 @@ lia:
       max-retries: 3
   embedding:                        # Embedder(D32) — dim 단일 소스. 모델/키는 spring.ai.openai
     dim: 1536                       #   LawStore chunks(pgvector) 차원과 반드시 일치
+  auth:
+    frontend-url: ${FRONTEND_URL:http://localhost:3000}   # 로그인 성공·실패 후 리다이렉트할 웹 UI(#14) 주소
 
 spring:
   application:
@@ -62,8 +64,16 @@ spring:
         dimensions: 1536              # lia.embedding.dim 과 일치해야 함
         initialize-schema: true       # vector_store 테이블·확장·인덱스 자동 생성(벡터 스키마는 PgVectorStore 소유)
 
+# 소셜 OAuth2 로그인(D60) 등록은 application-oauth.yml(profile=oauth)로 분리 — 키 없는 dev/CI 부팅 보호.
+
 server:
   port: 8080
+  servlet:
+    session:
+      cookie:
+        http-only: true               # XSS 방어(JS 접근 차단)
+        same-site: lax                # CSRF 완화(같은 도메인 UI)
+        # secure: 미설정 → HTTPS 요청에서만 Secure 플래그(로컬 HTTP dev 무해·prod HTTPS 자동)
 
 # --- 관측성 (D48 측정 선행) ---
 management:
