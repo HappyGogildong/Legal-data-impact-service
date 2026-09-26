@@ -3,6 +3,8 @@
 #   키가 있는 배포/로컬만 `--spring.profiles.active=oauth` 로 활성화한다. 키는 .env(D39).
 #   ⚠️ SecurityConfig.oauth2Login() 은 ClientRegistrationRepository 빈이 있어야 부팅 →
 #      이 프로파일이 켜졌을 때만 oauth2Login() 을 붙이도록 SecurityConfig 에서 조건부 처리.
+#   scope 는 식별자 + email(알림 채널)만 — 이름/닉네임 scope 는 요청하지 않는다(D41 최소 수집).
+#   요청하면 principal 속성으로 세션 SecurityContext 에 세션 내내 남는다.
 spring:
   security:
     oauth2:
@@ -11,14 +13,14 @@ spring:
           google:                     # Spring 내장 provider — registration 만
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            scope: [profile, email]
+            scope: [openid, email]    # profile 제외(이름). openid → OIDC, subject=sub
           kakao:
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
             client-authentication-method: client_secret_post   # kakao 는 secret 을 body 로
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/kakao"
-            scope: [profile_nickname, account_email]           # account_email = 알림 채널(동의 필요)
+            scope: [account_email]                             # 알림 채널(동의 필요). id 는 scope 무관 항상 반환
             client-name: Kakao
           naver:
             client-id: ${NAVER_CLIENT_ID}
@@ -26,7 +28,7 @@ spring:
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/naver"
-            scope: [name, email]
+            scope: [email]                                     # name 제외. naver 는 콘솔 제공항목 설정도 함께 최소화
             client-name: Naver
         provider:                     # kakao·naver 는 내장 아님 → 엔드포인트 명시
           kakao:
