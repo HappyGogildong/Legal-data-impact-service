@@ -28,6 +28,8 @@ lia:
       max-retries: 3
   embedding:                        # Embedder(D32) — dim 단일 소스. 모델/키는 spring.ai.openai
     dim: 1536                       #   LawStore chunks(pgvector) 차원과 반드시 일치
+  auth:
+    frontend-url: ${FRONTEND_URL:http://localhost:3000}   # 로그인 성공·실패 후 리다이렉트할 웹 UI(#14) 주소
 
 spring:
   application:

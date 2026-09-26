@@ -35,22 +35,27 @@ public class AccountStore {
                 .optional();
     }
 
-    /** 최초 로그인 시 계정 생성. userId 는 서버가 발급(UUID). email 은 알림용(nullable). */
-    public Account create(String provider, String providerId, String email) {
-        Account account = new Account(
-                UUID.randomUUID(), provider, providerId, email,
-                OffsetDateTime.now(ZoneOffset.UTC));
-        jdbc.sql("""
-                INSERT INTO accounts (user_id, provider, provider_id, email, created_at)
-                VALUES (:userId, :provider, :providerId, :email, :createdAt)
-                """)
-                .param("userId", account.userId())
-                .param("provider", account.provider())
-                .param("providerId", account.providerId())
-                .param("email", account.email())
-                .param("createdAt", account.createdAt())
-                .update();
-        return account;
+    /**
+     * 로그인 시 계정 회수, 없으면 생성(최초 로그인). userId 는 서버 발급(UUID), email 은 알림용(nullable).
+     *
+     * <p>경합 안전: 동시 최초 로그인(더블클릭·두 탭)이 둘 다 조회 miss 여도 {@code ON CONFLICT DO NOTHING}
+     * 이 UNIQUE(provider, provider_id) 충돌을 흡수하고, 재조회가 먼저 들어간 행을 돌려준다 — 같은 userId.
+     */
+    public Account findOrCreate(String provider, String providerId, String email) {
+        return findByProvider(provider, providerId).orElseGet(() -> {
+            jdbc.sql("""
+                    INSERT INTO accounts (user_id, provider, provider_id, email, created_at)
+                    VALUES (:userId, :provider, :providerId, :email, :createdAt)
+                    ON CONFLICT (provider, provider_id) DO NOTHING
+                    """)
+                    .param("userId", UUID.randomUUID())
+                    .param("provider", provider)
+                    .param("providerId", providerId)
+                    .param("email", email)
+                    .param("createdAt", OffsetDateTime.now(ZoneOffset.UTC))
+                    .update();
+            return findByProvider(provider, providerId).orElseThrow();
+        });
     }
 
     /** 계정 파기(D41). 프로필은 FK cascade 로 함께 삭제([[UserProfile]] ②). */
