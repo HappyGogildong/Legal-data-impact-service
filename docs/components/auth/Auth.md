@@ -4,12 +4,12 @@ status: Draft
 version: 0.1
 date: 2026-09-09
 tags: [component, auth, security, oauth2, session]
-related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSuccessHandler.md", "components/component-specs.md", "components/profile/UserProfile.md", "components/web/ProfileApi.md", "mvp/service-api-spec.md", "adr/decision-log.md"]
+related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSuccessHandler.md", "components/web/ConsentApi.md", "components/web/AccountApi.md", "components/application/AccountUseCase.md", "components/component-specs.md", "components/profile/UserProfile.md", "components/web/ProfileApi.md", "mvp/service-api-spec.md", "adr/decision-log.md"]
 ---
 
 # Auth (Spring Security, 소셜 OAuth2 + 서버 세션)
 
-> UserProfile(#12)의 전제인 **신원/계정 기반**. 소셜 OAuth2 로그인으로 사용자를 식별하고 **서버 세션(HttpOnly 쿠키)**으로 상태를 유지한다. 최소 PII(D41) — 비밀번호·성명은 저장하지 않는다. **이메일은 알림 채널로 저장**(있을 때·동의 기반, 알림 기능 예정). 관련: [[UserProfile]] · [[ProfileApi]] · [[service-api-spec]] §3.4.
+> UserProfile(#12)의 전제인 **신원/계정 기반**. 소셜 OAuth2 로그인으로 사용자를 식별하고 **서버 세션(HttpOnly 쿠키)**으로 상태를 유지한다. 최소 PII(D41) — 비밀번호·성명은 저장하지 않는다. **이메일은 알림 수신 동의 시에만 저장**(로그인만으로는 저장 안 함, D61). 관련: [[UserProfile]] · [[ProfileApi]] · [[ConsentApi]] · [[AccountApi]] · [[service-api-spec]] §3.4.
 
 ## 설계 결정 (D60 예정)
 - **소셜 OAuth2**(Kakao/Naver/Google) — 자격증명·비밀번호 책임을 IdP에 위임(최소 PII·D41 정합, 한국 시민 서비스 관례).
@@ -29,10 +29,13 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 | 클래스 | 역할 | 상세 |
 |---|---|---|
 | `SecurityConfig` | `SecurityFilterChain`: OAuth2 Login, 세션 정책, 인가 규칙(아래), CSRF, 로그아웃. | [[SecurityConfig]] |
-| `Account` (record) | `userId(UUID)` · `provider` · `providerId`(opaque subject) · `email?`(알림 채널, IdP 제공 시) · `createdAt`. **성명·비밀번호 없음.** | — |
-| `AccountStore` | JdbcClient — `findByProvider(provider, providerId)` · `findOrCreate(...)`(경합 안전) · `delete(userId)`. 테이블 `accounts`. | — |
-| `OAuth2LoginSuccessHandler` | 로그인 성공 시 `provider+subject` → `AccountStore` 조회/생성 → 세션에 `userId` 부여. | [[OAuth2LoginSuccessHandler]] |
+| `Account` (record) | `userId(UUID)` · `provider` · `providerId`(opaque subject) · `email?` · `emailConsentedAt?`(알림 동의 시에만, 둘은 함께 null) · `createdAt`. **성명·비밀번호 없음.** | — |
+| `AccountStore` | JdbcClient — `findByProvider` · `find(userId)` · `findOrCreate(provider, providerId)`(경합 안전) · `setNotificationEmail`·`clearNotificationEmail` · `delete(userId)`. 테이블 `accounts`. | — |
+| `OAuth2Identity` | provider별 사용자정보 → `(subject, email?)` 정규화. 로그인 핸들러와 알림 동의([[ConsentApi]])가 **같은 분기**를 공유. | [[OAuth2LoginSuccessHandler]] |
+| `OAuth2LoginSuccessHandler` | 로그인 성공 시 `provider+subject` → `AccountStore.findOrCreate` → 세션에 `userId` 부여. 이메일은 저장하지 않는다. | [[OAuth2LoginSuccessHandler]] |
 | `CurrentUser` | 세션 → `userId` 추출 헬퍼(컨트롤러용). 세션 키 `USER_ID` 의 읽기 짝. | [[OAuth2LoginSuccessHandler]] |
+
+계정 조회·삭제와 알림 이메일 동의의 규칙은 [[AccountUseCase]], HTTP는 [[AccountApi]]·[[ConsentApi]].
 
 ## 인가 규칙 (SecurityFilterChain)
 | 경로 | 정책 |
@@ -40,6 +43,7 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 | `/oauth2/**`·`/login/**`·`/logout` | 공개(로그인 흐름) |
 | `/api/v1/laws/**` · `POST /api/v1/analyses` | 공개(익명 Layer A 허용 — 프로필 없으면 Layer B는 `unmet`) |
 | `/api/v1/profile/**` | **인증 필수** |
+| `/api/v1/consents/**` · `/api/v1/account` | **인증 필수**(별도 규칙 없이 `anyRequest`가 보호) |
 | `/actuator/health`·`/prometheus` | 공개(관측) |
 | `/error` | 공개(오류 포워드 — 막으면 공개 API 오류가 403으로 바뀜) |
 | 그 외 | **인증 필수**(`anyRequest`) |
@@ -48,12 +52,13 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 근거·구현 함정은 [[SecurityConfig]].
 
 ## Persistence Contract
-- `accounts(user_id uuid PK, provider text, provider_id text, email text NULL, created_at timestamptz, UNIQUE(provider, provider_id))` — Flyway `V2__accounts.sql`. `email`은 알림 발송용(nullable — Kakao 등 미제공 가능).
-- `findOrCreate(provider, providerId, email)` — 로그인마다 호출. 있으면 회수(멱등), 없으면 생성. **경합 안전**: 동시 최초 로그인(더블클릭·두 탭)이 둘 다 조회 miss여도 `INSERT … ON CONFLICT (provider, provider_id) DO NOTHING` 후 재조회로 먼저 들어간 행을 돌려준다(같은 `userId`, UNIQUE 위반 500 없음).
-- `delete(userId)` 는 파기(프로필도 함께, [[UserProfile]] cascade/명시 삭제).
+- `accounts(user_id uuid PK, provider text, provider_id text, email text NULL, email_consented_at timestamptz NULL, created_at timestamptz, UNIQUE(provider, provider_id), CHECK ((email IS NULL) = (email_consented_at IS NULL)))` — Flyway `V2__accounts.sql` + `V4__account_email_consent.sql`(동의 컬럼·CHECK 추가, 동의 없이 저장됐던 기존 email은 null로).
+- `findOrCreate(provider, providerId)` — 로그인마다 호출. 있으면 회수(멱등), 없으면 생성(**email 없이**). **경합 안전**: 동시 최초 로그인(더블클릭·두 탭)이 둘 다 조회 miss여도 `INSERT … ON CONFLICT (provider, provider_id) DO NOTHING` 후 재조회로 먼저 들어간 행을 돌려준다(같은 `userId`, UNIQUE 위반 500 없음).
+- `setNotificationEmail(userId, email)` — email과 `email_consented_at`(지금)을 함께 저장. `clearNotificationEmail(userId)` — 둘 다 null. CHECK가 "동의 없는 이메일"을 DB에서 막는다.
+- `delete(userId)` 는 파기(프로필도 함께, [[UserProfile]] FK cascade).
 
 ## Invariants
-- **최소 수집**: `provider`+opaque `providerId`+`userId`(+알림용 `email`). IdP가 준 **이름은 저장하지 않는다**(D41). 이메일은 알림 채널로만 보관(D41의 연락처 미수집을 알림 목적에 한해 수정 — 동의·파기 대상).
+- **최소 수집**: `provider`+opaque `providerId`+`userId`(+알림 동의 시 `email`). IdP가 준 **이름은 저장하지 않는다**(D41). 이메일은 알림 채널로만, **알림 수신 동의가 있을 때만** 보관(D41의 연락처 미수집을 알림 목적에 한해 수정, D60·D61 — 동의·파기 대상).
 - `userId` 는 버전 불변 내부 UUID(프로필·캐시·로그의 계정 키). 프롬프트엔 절대 주입 안 함(D41·D10).
 - 한 (provider, providerId) → 정확히 하나의 `userId`.
 
@@ -67,15 +72,16 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 - 로그인 성공 → 프론트(`lia.auth.frontend-url`)로 리다이렉트. 로그아웃 → 204.
 
 ## Side Effects
-- **DB 쓰기**(accounts upsert on first login) · 세션 생성/삭제. IdP 호출(로그인 시).
+- **DB 쓰기**(최초 로그인 시 accounts insert — email 없이) · 세션 생성/삭제. IdP 호출(로그인 시).
 
 ## 프라이버시 (D41, 횡단)
-- 가입(최초 로그인) 시 **수집 동의 + 개인정보처리방침** 게이트. `DELETE` 계정=파기(세션 무효화 + accounts·user_profiles 삭제).
-- **이름은 애초에 요청하지 않는다** — scope는 식별자 + email만(Google `openid, email` · Kakao `account_email` · Naver `email`). 이름 scope를 요청하면 DB엔 안 넣어도 principal 속성으로 **세션 SecurityContext에 세션 내내 남는다**. 이메일은 알림 동의 시에만 저장, `DELETE` 파기 대상.
+- **동의 게이트**: 프로필은 수집 동의(만 14세 이상 확인 포함)가 있어야 만들어지고, 이메일은 알림 수신 동의가 있어야 저장된다 — 동의 모델은 [[component-specs]] §2·[[ConsentApi]](D61).
+- `DELETE /api/v1/account` = 파기(세션 무효화 + accounts 삭제 → user_profiles cascade), [[AccountApi]].
+- **이름은 애초에 요청하지 않는다** — scope는 식별자 + email만(Google `openid, email` · Kakao `account_email` · Naver `email`). 이름 scope를 요청하면 DB엔 안 넣어도 principal 속성으로 **세션 SecurityContext에 세션 내내 남는다**. 이메일도 로그인 중엔 principal에만 있고, 알림 동의 시에만 `accounts`에 저장된다.
 
 ## 검증
-- 통합: `AccountStoreIntegrationTest`(Testcontainers — 매핑 라운드트립·멱등·**동시 최초 로그인 경합**·delete).
-- 단위: `OAuth2LoginSuccessHandlerTest`(provider 3종 추출·회수/생성·프론트 리다이렉트·subject 누락 fail-closed, Fake AccountStore).
+- 통합: `AccountStoreIntegrationTest`(Testcontainers — 매핑 라운드트립·멱등·**동시 최초 로그인 경합**·delete·알림 이메일 저장/해제·**동의 없는 email을 CHECK가 거부**).
+- 단위: `OAuth2LoginSuccessHandlerTest`(provider 3종 추출·회수/생성·**로그인 시 email 미저장**·프론트 리다이렉트·subject 누락 fail-closed, Fake AccountStore).
 - 슬라이스: `SecurityConfigTest`(보호 401·공개 200·`/error`·SPA CSRF·로그아웃 204) — [[SecurityConfig]] §검증.
 - 라이브(수동): 실제 소셜 로그인 왕복.
 

@@ -80,8 +80,13 @@ BASE  /api/v1
 | `DELETE` | `/subscriptions/{id}` | 구독 해지 | 필요 |
 | `GET` | `/notifications` | 인앱 알림함(읽음 처리 포함) | 필요 |
 | `GET` | `/profile` | S3 내 프로필 조회 | 필요 |
-| `PUT` | `/profile` | S3 프로필 생성·수정 | 필요 |
-| `DELETE` | `/profile` | S3 프로필 파기(개인정보) | 필요 |
+| `PUT` | `/profile` | S3 프로필 속성 수정(현재 버전 동의 필요, 없으면 409) | 필요 |
+| `DELETE` | `/profile` | S3 프로필 파기(= 프로필 동의 철회) | 필요 |
+| `GET` | `/consents` | 프로필·알림 이메일 동의 상태 | 필요 |
+| `PUT` | `/consents/profile` | 프로필 수집 동의·재동의(만 14세 이상 확인) | 필요 |
+| `PUT` · `DELETE` | `/consents/notification-email` | 알림 이메일 수신 동의 / 철회 | 필요 |
+| `GET` | `/account` | 내 계정(provider·가입일) — 로그인 상태 확인 겸용 | 필요 |
+| `DELETE` | `/account` | 계정 삭제(파기, 프로필 포함) | 필요 |
 
 \* `/analyses`는 익명도 허용하되 **F3·F4(Layer B)는 인증 세션이 있을 때만** 채워진다(없으면 F1·F2까지).
 
@@ -256,21 +261,38 @@ GET /api/v1/laws/001809/2026-08-04
 
 > `/laws/{lawId}/{efYd}` 는 **읽기 전용**이다 — F1·F2에 해당하는 Layer A 사실을 담지만, 이것은 *브라우징·검색 상세용 조회*이지 분석 요청이 아니다. 개인화 분석은 `POST /analyses` 로만 한다.
 
-### 3.4 프로필 — `GET · PUT · DELETE /profile` (S3)
+### 3.4 프로필·동의·계정 — `/profile` · `/consents` · `/account` (S3)
+
+**동의가 먼저, 프로필 수정은 그 다음**(D61). 동의는 처리방침 버전당 한 번 하는 행위라 프로필 수정과 분리한다.
 
 ```jsonc
-// PUT /api/v1/profile   (전부 선택 입력)
+// 1) PUT /api/v1/consents/profile   → 프로필 수집 동의(행이 없으면 빈 프로필 생성). 재동의도 같은 호출
+{ "over14": true }
+// → 200 { "policyVersion": "draft-2026-09", "consentedAt": "…", "upToDate": true }
+
+// 2) PUT /api/v1/profile   (전부 선택 입력, 값은 라벨 문자열, 전체 교체)
 { "purposes": ["생활·주거", "관심사 모니터링"],
   "age": 29, "occupation": "사무",
   "employmentType": "임금근로", "householdType": "1인",
   "housingType": "전세", "regionSido": "서울특별시" }
+// → 200 위 속성 + updatedAt   /  409 { "error": "consent_required" } (동의 없음·옛 버전)
 
-// GET /api/v1/profile → 위 속성 + updatedAt (userId 는 응답에 포함하지 않는다)
-// DELETE /api/v1/profile → 204, 개인정보 파기
+// GET /api/v1/profile → 위 속성 + updatedAt (userId 는 응답에 포함하지 않는다) / 404
+// DELETE /api/v1/profile → 204, 파기 = 프로필 동의 철회
+
+// GET /api/v1/consents → { "profile": {policyVersion, consentedAt, upToDate} | null,
+//                          "notificationEmail": {email, consentedAt} | null }
+// PUT /api/v1/consents/notification-email → 200 { email, consentedAt }  (세션의 IdP 이메일 저장, 없으면 400)
+// DELETE /api/v1/consents/notification-email → 204
+
+// GET /api/v1/account → { provider, createdAt }   (userId·email 없음)
+// DELETE /api/v1/account → 204, 계정 파기(프로필 cascade) + 세션 무효화
 ```
 
-- 스키마는 [[component-specs]] §2 `UserProfile`. **`age` 는 정수**(구간화 안 함), 성명·생년월일·주민번호·연락처·상세주소·소득 **미수집**.
-- ⚠️ 직접식별정보를 안 받아도 조합 재식별 소지가 있어 **개인정보처리방침·수집 동의·파기 절차 필요**(D41). `DELETE` 는 파기 요건 충족용.
+- 스키마는 [[component-specs]] §2 `UserProfile`. **`age` 는 정수(14~120)**(구간화 안 함), 모든 필드가 닫힌 값(자유 문자열 없음), 성명·생년월일·주민번호·연락처·상세주소·소득 **미수집**.
+- **재동의 흐름**: 서버 처리방침 버전이 올라가면 `upToDate: false` → `PUT /profile` 409 → UI가 처리방침 표시 → `PUT /consents/profile` → 재시도. 클라이언트는 버전을 보내지 않는다(서버가 동의 시점 버전을 기록).
+- **이메일은 로그인만으로 저장하지 않는다** — 알림 수신 동의 시에만 세션 principal의 IdP 이메일을 저장(D60·D61).
+- ⚠️ 직접식별정보를 안 받아도 조합 재식별 소지가 있어 **개인정보처리방침·수집 동의·파기 절차 필요**(D41). 실제 처리방침 문서는 법무 산출물로 별도 준비. 컴포넌트: [[ProfileApi]] · [[ConsentApi]] · [[AccountApi]].
 
 ---
 
@@ -336,8 +358,9 @@ GET /api/v1/laws/trending?window=week&domain=주거&limit=10
 | 코드 | status | 의미 |
 |---|---|---|
 | 400 | `bad_request` | 스키마 위반·필수 파라미터 누락 |
-| 401 | `unauthenticated` | 인증 전용 엔드포인트(`/profile`)에 세션 없이 접근 |
-| 404 | `not_found` | `lawId`/`efYd` 조합이 저장소에 없음 |
+| 401 | `unauthenticated` | 인증 전용 엔드포인트(`/profile`·`/consents`·`/account`)에 세션 없이 접근 |
+| 404 | `not_found` | `lawId`/`efYd` 조합이 저장소에 없음 · 프로필 미생성 |
+| 409 | `consent_required` | 현재 처리방침 버전의 프로필 동의 없이 `PUT /profile` (D61) |
 | 422 | `insufficient_grounding` | 요청한 **모든** 차원이 인용검증 실패(일부만 실패면 200 + `unmet`) |
 | 429 | `rate_limited` | 모델·출처 API 한도 |
 | 503 | `upstream_error` | 모델 API 장애 |
