@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.lia.core.application.account.AccountNotFoundException;
 import com.lia.core.profile.Occupation;
 import com.lia.core.profile.Purpose;
 import com.lia.core.profile.UserProfile;
@@ -76,6 +77,20 @@ class ProfileUseCaseTest {
     @DisplayName("동의 상태 — 동의 없으면 empty")
     void 동의상태_없음() {
         assertTrue(useCase.consentStatus(userId).isEmpty());
+    }
+
+    @Test
+    @DisplayName("recordConsent 가 false(계정 없음) → agree 가 AccountNotFoundException")
+    void 동의_계정없음_401매핑() {
+        var storeWithoutAccount = new InMemoryUserProfileStore() {
+            @Override
+            public boolean recordConsent(UUID userId, String policyVersion) {
+                return false;
+            }
+        };
+        var useCase = new ProfileUseCase(storeWithoutAccount, CURRENT);
+
+        assertThrows(AccountNotFoundException.class, () -> useCase.agree(userId, true));
     }
 
     @Test

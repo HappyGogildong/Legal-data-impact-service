@@ -36,6 +36,8 @@ related: ["components/application/AccountUseCase.md", "components/auth/Auth.md",
 ## Side Effects
 - 세션 무효화·쿠키 삭제(HTTP). DB 쓰기는 [[AccountUseCase]] 경유.
 
+계정 삭제는 **현재 세션만** 파기한다 — 다른 기기의 세션은 남지만 계정에 묶인 호출은 401 이 된다(인메모리 세션 저장소는 사용자별 세션 조회가 안 됨; Spring Session 도입 시 `FindByIndexNameSessionRepository` 로 전 세션 파기).
+
 ## 검증
 - 웹 슬라이스(MockMvc): GET에 userId·email 없음 · DELETE 204 + 세션 무효화 · 삭제 후 프로필도 사라짐(가짜 store에서 cascade 흉내 대신, cascade 자체는 `UserProfileStore` 통합 테스트가 실 DB로 검증).
 

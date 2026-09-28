@@ -32,7 +32,7 @@ Spring 애노테이션 없음 — `config/UserConfig`의 `@Bean`이 배선([[Ana
 ## Contract
 | 메서드 | 전제 → 보장 | 실패 |
 |---|---|---|
-| `agree(userId, over14)` | `over14 == true` → 현재 버전으로 동의 기록(행 없으면 빈 프로필 생성, 있으면 버전·일시만 갱신). **재동의도 같은 호출** | `over14` false → `IllegalArgumentException`(400) |
+| `agree(userId, over14)` | `over14 == true` → 현재 버전으로 동의 기록(행 없으면 빈 프로필 생성, 있으면 버전·일시만 갱신). **재동의도 같은 호출** | `over14` false → `IllegalArgumentException`(400). 계정 없음 → `AccountNotFoundException`(401) |
 | `consentStatus(userId)` | → `Optional<ProfileConsent>`. `upToDate` = 기록 버전 == 현재 버전 | — |
 | `update(userId, profile)` | 현재 버전 동의 있음 → 속성 전체 교체, 저장된 `StoredProfile` 반환(동의 불변) | 동의 없음·옛 버전 → `ConsentRequiredException`(409) |
 | `find(userId)` | → `Optional<StoredProfile>` | — |

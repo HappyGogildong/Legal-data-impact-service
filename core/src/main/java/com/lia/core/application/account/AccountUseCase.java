@@ -29,14 +29,20 @@ public class AccountUseCase {
         store.delete(userId);
     }
 
-    /** 알림 이메일 수신 동의. IdP 가 이메일을 주지 않았으면(미제공·미동의) IllegalArgumentException. */
+    /**
+     * 알림 이메일 수신 동의. IdP 가 이메일을 주지 않았으면(미제공·미동의) IllegalArgumentException.
+     *
+     * @throws AccountNotFoundException 세션이 가리키는 계정이 없음(다른 기기에서 계정 삭제 등) — web 이 401 로 매핑
+     */
     public Account agreeNotificationEmail(UUID userId, String email) {
         if (email == null || email.isBlank()) {
             throw new IllegalArgumentException(
                     "로그인한 계정에서 이메일을 받을 수 없습니다. 소셜 로그인의 이메일 제공 동의를 확인하세요.");
         }
-        store.setNotificationEmail(userId, email);
-        return store.find(userId).orElseThrow();
+        if (!store.setNotificationEmail(userId, email)) {
+            throw new AccountNotFoundException();
+        }
+        return store.find(userId).orElseThrow(AccountNotFoundException::new);
     }
 
     /** 알림 동의 철회. 멱등. */

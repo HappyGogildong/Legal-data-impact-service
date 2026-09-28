@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.lia.core.application.account.AccountNotFoundException;
 import com.lia.core.application.profile.ConsentRequiredException;
 
 /**
@@ -27,5 +28,12 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> consentRequired(ConsentRequiredException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("error", "consent_required", "message", e.getMessage()));
+    }
+
+    /** 세션이 가리키는 계정이 이미 없음(다른 기기의 계정 삭제 등) — 401(service-api-spec §4.1). */
+    @ExceptionHandler(AccountNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> accountNotFound(AccountNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "unauthenticated", "message", e.getMessage()));
     }
 }

@@ -28,11 +28,17 @@ public class UserProfileStore {
         this.jdbc = jdbc;
     }
 
-    /** 프로필 동의 기록 — 행이 없으면 빈 프로필 생성, 있으면 버전·일시만 갱신(속성 보존). 재동의도 같은 호출. */
-    public void recordConsent(UUID userId, String policyVersion) {
-        jdbc.sql("""
+    /**
+     * 프로필 동의 기록 — 행이 없으면 빈 프로필 생성, 있으면 버전·일시만 갱신(속성 보존). 재동의도 같은 호출.
+     *
+     * @return 계정이 있어 기록됐으면 true. 계정이 없으면(다른 기기에서 계정 삭제 등) false — 행을 만들지 않는다
+     *         (FK 위반 500 대신, 호출자가 401 로 매핑).
+     */
+    public boolean recordConsent(UUID userId, String policyVersion) {
+        int updated = jdbc.sql("""
                 INSERT INTO user_profiles (user_id, policy_version, consented_at, updated_at)
-                VALUES (:userId, :policyVersion, :now, :now)
+                SELECT :userId, :policyVersion, :now, :now
+                WHERE EXISTS (SELECT 1 FROM accounts WHERE user_id = :userId)
                 ON CONFLICT (user_id) DO UPDATE SET
                   policy_version = EXCLUDED.policy_version, consented_at = EXCLUDED.consented_at
                 """)
@@ -40,6 +46,7 @@ public class UserProfileStore {
                 .param("policyVersion", policyVersion)
                 .param("now", OffsetDateTime.now(ZoneOffset.UTC))
                 .update();
+        return updated == 1;
     }
 
     /** 속성 전체 교체(보내지 않은 필드 → null) + updated_at. 동의 불변. 행이 없으면 아무것도 안 하고 false. */

@@ -30,7 +30,7 @@ ConsentController ─┴──→  AccountUseCase  ──→  AccountStore
 |---|---|---|
 | `find(userId)` | → `Optional<Account>` | — |
 | `delete(userId)` | accounts 삭제 → 프로필은 FK cascade로 함께 파기(D41) | — |
-| `agreeNotificationEmail(userId, email)` | email 있음 → email + 동의 일시 저장 | email null/빈값(IdP 미제공·미동의) → `IllegalArgumentException`(400) |
+| `agreeNotificationEmail(userId, email)` | email 있음 → email + 동의 일시 저장 | email null/빈값(IdP 미제공·미동의) → `IllegalArgumentException`(400). 계정 없음 → `AccountNotFoundException`(401) |
 | `withdrawNotificationEmail(userId)` | email·동의 일시를 null로. 멱등 | — |
 
 ## Business Rules

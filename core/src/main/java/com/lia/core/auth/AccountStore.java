@@ -65,13 +65,18 @@ public class AccountStore {
         });
     }
 
-    /** 알림 이메일 수신 동의 — email 과 동의 일시(지금)를 함께 저장. */
-    public void setNotificationEmail(UUID userId, String email) {
-        jdbc.sql("UPDATE accounts SET email = :email, email_consented_at = :now WHERE user_id = :userId")
+    /**
+     * 알림 이메일 수신 동의 — email 과 동의 일시(지금)를 함께 저장.
+     *
+     * @return 계정이 있어 갱신됐으면 true. 계정이 없으면(다른 기기에서 계정 삭제 등) false.
+     */
+    public boolean setNotificationEmail(UUID userId, String email) {
+        int updated = jdbc.sql("UPDATE accounts SET email = :email, email_consented_at = :now WHERE user_id = :userId")
                 .param("email", email)
                 .param("now", OffsetDateTime.now(ZoneOffset.UTC))
                 .param("userId", userId)
                 .update();
+        return updated == 1;
     }
 
     /** 알림 동의 철회 — email·동의 일시 모두 null. 멱등. */

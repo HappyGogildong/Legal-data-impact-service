@@ -45,7 +45,7 @@ related: ["components/application/ProfileUseCase.md", "components/application/Ac
 - principal이 OAuth2가 아니거나 IdP가 이메일을 주지 않았으면 이메일 null → [[AccountUseCase]]가 400.
 
 ## Error Handling
-- `over14`≠true · IdP 이메일 없음 → 400. 미인증 → 401. 세션에 `userId` 없음 → 401.
+- `over14`≠true · IdP 이메일 없음 → 400. 미인증 → 401. 세션에 `userId` 없음 → 401. 세션이 가리키는 계정이 없음(다른 기기에서 계정 삭제 등) → 401.
 
 ## Side Effects
 - 없음(위임).

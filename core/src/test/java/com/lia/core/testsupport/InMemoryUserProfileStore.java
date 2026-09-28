@@ -20,13 +20,15 @@ public class InMemoryUserProfileStore extends UserProfileStore {
         super(null);
     }
 
+    /** 인메모리는 accounts 를 모른다 — 계정 존재 여부와 무관하게 항상 true(실 store 는 계정 없으면 false). */
     @Override
-    public void recordConsent(UUID userId, String policyVersion) {
+    public boolean recordConsent(UUID userId, String policyVersion) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         StoredProfile current = rows.get(userId);
         rows.put(userId, current == null
                 ? new StoredProfile(UserProfile.empty(), policyVersion, now, now)
                 : new StoredProfile(current.profile(), policyVersion, now, current.updatedAt()));
+        return true;
     }
 
     @Override

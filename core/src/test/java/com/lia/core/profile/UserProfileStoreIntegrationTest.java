@@ -132,6 +132,15 @@ class UserProfileStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("계정 없는 userId 로 recordConsent → false, 행이 생기지 않는다")
+    void recordConsent_계정없음_false() {
+        UUID userId = UUID.randomUUID();   // accounts 에 없는 userId
+
+        assertFalse(store.recordConsent(userId, "v1"));
+        assertTrue(store.find(userId).isEmpty());
+    }
+
+    @Test
     @DisplayName("DB CHECK — 도메인을 우회해 age 13 을 넣으면 거부")
     void age_CHECK() {
         UUID userId = newAccount();

@@ -114,6 +114,14 @@ class AccountStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("없는 userId 로 setNotificationEmail → false")
+    void 알림이메일_계정없음_false() {
+        UUID userId = UUID.randomUUID();   // accounts 에 없는 userId
+
+        assertFalse(store.setNotificationEmail(userId, "x@y.z"));
+    }
+
+    @Test
     @DisplayName("DB CHECK — 동의 일시 없는 email 은 거부")
     void 동의없는이메일_CHECK() {
         UUID userId = store.findOrCreate("kakao", "subject-6").userId();

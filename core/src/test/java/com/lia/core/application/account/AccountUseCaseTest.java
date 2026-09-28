@@ -48,6 +48,15 @@ class AccountUseCaseTest {
     }
 
     @Test
+    @DisplayName("없는 userId 로 알림 동의 → AccountNotFoundException")
+    void 알림동의_계정없음() {
+        UUID missingUserId = UUID.randomUUID();
+
+        assertThrows(AccountNotFoundException.class,
+                () -> useCase.agreeNotificationEmail(missingUserId, "a@b.c"));
+    }
+
+    @Test
     @DisplayName("계정 삭제 → 조회 empty")
     void 계정삭제() {
         useCase.delete(userId);

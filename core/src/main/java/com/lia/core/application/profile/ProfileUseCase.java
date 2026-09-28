@@ -3,6 +3,7 @@ package com.lia.core.application.profile;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.lia.core.application.account.AccountNotFoundException;
 import com.lia.core.profile.StoredProfile;
 import com.lia.core.profile.UserProfile;
 import com.lia.core.profile.UserProfileStore;
@@ -24,13 +25,19 @@ public class ProfileUseCase {
         this.currentPolicyVersion = currentPolicyVersion;
     }
 
-    /** 프로필 수집 동의 — 행이 없으면 빈 프로필 생성, 있으면 버전·일시만 갱신. 재동의도 같은 호출. */
+    /**
+     * 프로필 수집 동의 — 행이 없으면 빈 프로필 생성, 있으면 버전·일시만 갱신. 재동의도 같은 호출.
+     *
+     * @throws AccountNotFoundException 세션이 가리키는 계정이 없음(다른 기기에서 계정 삭제 등) — web 이 401 로 매핑
+     */
     public ProfileConsent agree(UUID userId, boolean over14) {
         if (!over14) {
             throw new IllegalArgumentException("만 14세 이상만 이용할 수 있습니다(over14=true 필요).");
         }
-        store.recordConsent(userId, currentPolicyVersion);
-        return consentStatus(userId).orElseThrow();
+        if (!store.recordConsent(userId, currentPolicyVersion)) {
+            throw new AccountNotFoundException();
+        }
+        return consentStatus(userId).orElseThrow(AccountNotFoundException::new);
     }
 
     public Optional<ProfileConsent> consentStatus(UUID userId) {

@@ -112,6 +112,18 @@ class ConsentApiTest {
     }
 
     @Test
+    @DisplayName("세션이 가리키는 계정이 없음(다른 기기에서 계정 삭제) → 401 unauthenticated")
+    void 알림동의_계정없음_401() throws Exception {
+        UUID userId = UUID.randomUUID();   // accounts 에 없는 userId(계정이 삭제된 세션 흉내)
+        var google = oauth("google", Map.of("sub", "g-gone", "email", "user@gmail.com"), "sub");
+
+        mvc.perform(put("/api/v1/consents/notification-email").with(authentication(google))
+                        .sessionAttr(CurrentUser.SESSION_KEY, userId).with(csrf()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("unauthenticated"));
+    }
+
+    @Test
     @DisplayName("IdP 가 이메일을 안 줬거나(OAuth2 인데 email 없음) OAuth2 가 아닌 principal → 400")
     void 알림동의_이메일없음_400() throws Exception {
         UUID userId = accounts.findOrCreate("kakao", "k-no-email").userId();

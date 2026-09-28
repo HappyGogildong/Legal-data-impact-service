@@ -48,10 +48,14 @@ public class InMemoryAccountStore extends AccountStore {
         });
     }
 
+    /** @return 계정이 있어 갱신됐으면 true. 계정이 없으면(세션이 가리키는 계정이 삭제됨 등) false. */
     @Override
-    public void setNotificationEmail(UUID userId, String email) {
-        find(userId).ifPresent(account -> byUserId.put(userId, new Account(account.userId(), account.provider(),
-                account.providerId(), email, OffsetDateTime.now(ZoneOffset.UTC), account.createdAt())));
+    public boolean setNotificationEmail(UUID userId, String email) {
+        return find(userId).map(account -> {
+            byUserId.put(userId, new Account(account.userId(), account.provider(),
+                    account.providerId(), email, OffsetDateTime.now(ZoneOffset.UTC), account.createdAt()));
+            return true;
+        }).orElse(false);
     }
 
     @Override
