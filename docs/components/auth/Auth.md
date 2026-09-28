@@ -81,7 +81,7 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 
 ## 검증
 - 통합: `AccountStoreIntegrationTest`(Testcontainers — 매핑 라운드트립·멱등·**동시 최초 로그인 경합**·delete·알림 이메일 저장/해제·**동의 없는 email을 CHECK가 거부**).
-- 단위: `OAuth2LoginSuccessHandlerTest`(provider 3종 추출·회수/생성·**로그인 시 email 미저장**·프론트 리다이렉트·subject 누락 fail-closed, Fake AccountStore).
+- 단위: `OAuth2LoginSuccessHandlerTest`(subject 회수/생성·**로그인 시 email 미저장**·프론트 리다이렉트·subject 누락 fail-closed, 인메모리 `InMemoryAccountStore`). provider 3종 추출 자체는 `OAuth2IdentityTest`.
 - 슬라이스: `SecurityConfigTest`(보호 401·공개 200·`/error`·SPA CSRF·로그아웃 204) — [[SecurityConfig]] §검증.
 - 라이브(수동): 실제 소셜 로그인 왕복.
 

@@ -72,6 +72,6 @@ Spring principal(OAuth2User/OidcUser)은 **인증용으로 그대로** 두고(`.
 - **DB 쓰기**(최초 로그인 시 accounts insert — email 없이) · 세션 속성 쓰기/세션 파기 · HTTP 리다이렉트.
 
 ## 검증
-- 단위(Docker 불필요, `OAuth2LoginSuccessHandlerTest`): Fake AccountStore + 실제 principal/토큰 + Mock 요청·응답 — provider 3종 subject 추출 · 멱등 회수 · **이메일을 준 IdP여도 계정에 email 미저장** · 프론트 리다이렉트 · subject 누락 시 계정 미생성·세션 파기·오류 리다이렉트.
+- 단위(Docker 불필요, `OAuth2LoginSuccessHandlerTest`): 인메모리 `InMemoryAccountStore` + 실제 principal/토큰 + Mock 요청·응답 — subject 로 계정 회수/생성 · 멱등 회수 · **이메일을 준 IdP여도 계정에 email 미저장** · 프론트 리다이렉트 · subject 누락 시 계정 미생성·세션 파기·오류 리다이렉트.
 - 단위(`OAuth2IdentityTest`): provider 3종 `(subject, email)` 추출 · 중첩 속성 누락 시 null · 미지원 provider 예외.
 - 라이브(수동): 실제 소셜 로그인 왕복(`--spring.profiles.active=oauth` + provider 콘솔 redirect URI `{baseUrl}/login/oauth2/code/{provider}`).

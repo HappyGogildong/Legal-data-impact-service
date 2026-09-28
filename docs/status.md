@@ -91,7 +91,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | UserProfile — **슬라이스 ②**(D61): 프로필 도메인(enum 6종·age 14~120)·`UserProfileStore`(동의가 행을 만듦)·동의 모델(`/consents` 분리·현재 버전 동의 없으면 409·버전 기반 재동의)·알림 이메일은 동의 시에만 저장·계정 삭제 | ✅ 단위·통합·웹 슬라이스. ③ Layer B(프로필→프롬프트)는 후속. 실제 개인정보처리방침 문서는 법무 산출물로 별도 |
 | 웹 프론트엔드 (#14) | ⬜ |
 
-단위 테스트 **136개**(+AnalysisEngine 10 · +QueryDispatcher 11 · +Analysis API 8) + 통합 **8건**(실 Postgres/pgvector, Testcontainers: Law Store 3 + 적재 조립 2 + ChunkStore 3) 통과. (실 임베딩·번역·해석 스모크/평가 5종은 옵트인·수동)
+`./gradlew test --rerun-tasks` 기준 `tests=233 skipped=6 failures=0 errors=0`(2026-09-28) — 통합 **24건**(실 Postgres/pgvector, Testcontainers: Law Store 3 + 적재 조립 2 + ChunkStore 3 + UserProfileStore 8 + AccountStore 8) 포함 전부 통과. skip 6건은 실 임베딩·번역·해석 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
 
 > ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 
