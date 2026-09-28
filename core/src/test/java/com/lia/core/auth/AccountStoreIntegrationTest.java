@@ -3,7 +3,6 @@ package com.lia.core.auth;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -16,6 +15,7 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -24,9 +24,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * AccountStore 통합 테스트 — 실 Postgres(Testcontainers)에 findOrCreate·findByProvider·delete.
- * query(Account.class) 컬럼→레코드 매핑(UUID·timestamptz·nullable email) 라운드트립과
- * 동시 최초 로그인 경합(ON CONFLICT) 검증. Docker 없으면 자동 스킵.
+ * AccountStore 통합 테스트 — 실 Postgres(Testcontainers). 로그인 생성 계정은 email 없음,
+ * 알림 이메일은 동의 일시와 함께만 존재(CHECK), 동시 최초 로그인 경합, V4 데이터 정리.
+ * Docker 없으면 자동 스킵.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class AccountStoreIntegrationTest {
@@ -44,44 +44,33 @@ class AccountStoreIntegrationTest {
                 .dataSource(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword())
                 .locations("classpath:db/migration")
                 .load().migrate();
-        var ds = new DriverManagerDataSource(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
-        jdbc = JdbcClient.create(ds);
+        jdbc = JdbcClient.create(new DriverManagerDataSource(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword()));
         store = new AccountStore(jdbc);
     }
 
     @Test
-    @DisplayName("findOrCreate 후 findByProvider 로 동일 계정 회수(매핑 라운드트립)")
-    void findOrCreate_findByProvider_라운드트립() {
-        Account created = store.findOrCreate("kakao", "subject-1", "user@example.com");
+    @DisplayName("findOrCreate 후 find·findByProvider 로 동일 계정(매핑 라운드트립, email 없음)")
+    void findOrCreate_라운드트립() {
+        Account created = store.findOrCreate("kakao", "subject-1");
 
-        Optional<Account> got = store.findByProvider("kakao", "subject-1");
+        Account byProvider = store.findByProvider("kakao", "subject-1").orElseThrow();
+        Account byId = store.find(created.userId()).orElseThrow();
 
-        assertTrue(got.isPresent());
-        Account r = got.get();
-        assertEquals(created.userId(), r.userId(), "UUID 보존");
-        assertEquals("kakao", r.provider());
-        assertEquals("subject-1", r.providerId());
-        assertEquals("user@example.com", r.email());
-        assertNotNull(r.createdAt(), "timestamptz 매핑");
-    }
-
-    @Test
-    @DisplayName("email 미제공(null) 계정도 정상 저장·조회")
-    void findOrCreate_nullEmail() {
-        store.findOrCreate("naver", "subject-2", null);
-
-        Account r = store.findByProvider("naver", "subject-2").orElseThrow();
-        assertNull(r.email(), "nullable email");
+        assertEquals(created.userId(), byProvider.userId());
+        assertEquals(byProvider, byId);
+        assertNull(byId.email(), "로그인 생성 계정은 email 없음");
+        assertNull(byId.emailConsentedAt());
+        assertNotNull(byId.createdAt());
     }
 
     @Test
     @DisplayName("같은 (provider, providerId) 재로그인은 기존 userId 회수 — 멱등")
     void findOrCreate_멱등() {
-        Account first = store.findOrCreate("google", "subject-3", "g@example.com");
-        Account again = store.findOrCreate("google", "subject-3", "g@example.com");
+        Account first = store.findOrCreate("google", "subject-3");
+        Account again = store.findOrCreate("google", "subject-3");
 
         assertEquals(first.userId(), again.userId());
-        assertEquals(1, countRows("google", "subject-3"), "중복 행 없음");
+        assertEquals(1, countRows("google", "subject-3"));
     }
 
     @Test
@@ -93,15 +82,14 @@ class AccountStoreIntegrationTest {
         try {
             Callable<UUID> login = () -> {
                 start.await();   // 동시에 출발시켜 조회 miss 가 겹치게 한다
-                return store.findOrCreate("kakao", "race-subject", null).userId();
+                return store.findOrCreate("kakao", "race-subject").userId();
             };
-            List<Future<UUID>> results = IntStream.range(0, threads)
-                    .mapToObj(i -> pool.submit(login)).toList();
+            List<Future<UUID>> results = IntStream.range(0, threads).mapToObj(i -> pool.submit(login)).toList();
             start.countDown();
 
             UUID first = results.get(0).get();
             for (Future<UUID> result : results) {
-                assertEquals(first, result.get(), "모든 동시 로그인이 같은 userId");
+                assertEquals(first, result.get());
             }
             assertEquals(1, countRows("kakao", "race-subject"));
         } finally {
@@ -110,14 +98,62 @@ class AccountStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("알림 이메일 — 저장 시 동의 일시 함께, 해제 시 둘 다 null")
+    void 알림이메일_저장해제() {
+        UUID userId = store.findOrCreate("naver", "subject-5").userId();
+
+        store.setNotificationEmail(userId, "user@naver.com");
+        Account agreed = store.find(userId).orElseThrow();
+        assertEquals("user@naver.com", agreed.email());
+        assertNotNull(agreed.emailConsentedAt());
+
+        store.clearNotificationEmail(userId);
+        Account withdrawn = store.find(userId).orElseThrow();
+        assertNull(withdrawn.email());
+        assertNull(withdrawn.emailConsentedAt());
+    }
+
+    @Test
+    @DisplayName("DB CHECK — 동의 일시 없는 email 은 거부")
+    void 동의없는이메일_CHECK() {
+        UUID userId = store.findOrCreate("kakao", "subject-6").userId();
+
+        assertThrows(DataIntegrityViolationException.class, () ->
+                jdbc.sql("UPDATE accounts SET email = 'x@y.z' WHERE user_id = :id").param("id", userId).update());
+    }
+
+    @Test
     @DisplayName("delete 는 계정 파기 — 이후 조회 empty")
     void delete_파기() {
-        Account created = store.findOrCreate("kakao", "subject-4", null);
-        assertTrue(store.findByProvider("kakao", "subject-4").isPresent());
+        Account created = store.findOrCreate("kakao", "subject-4");
 
         store.delete(created.userId());
 
-        assertTrue(store.findByProvider("kakao", "subject-4").isEmpty(), "파기 후 조회 불가");
+        assertTrue(store.find(created.userId()).isEmpty());
+    }
+
+    @Test
+    @DisplayName("V4 — 동의 없이 저장돼 있던 기존 email 은 null 로 정리된다")
+    void V4_기존이메일정리() {
+        // 별도 스키마에 V3까지 올리고 email 을 넣은 뒤 V4 를 적용한다(공용 스키마와 격리)
+        Flyway.configure()
+                .dataSource(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword())
+                .locations("classpath:db/migration").schemas("v4check").target("3")
+                .load().migrate();
+        UUID userId = UUID.randomUUID();
+        jdbc.sql("""
+                INSERT INTO v4check.accounts (user_id, provider, provider_id, email, created_at)
+                VALUES (:id, 'kakao', 'legacy', 'legacy@kakao.com', now())
+                """).param("id", userId).update();
+
+        Flyway.configure()
+                .dataSource(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword())
+                .locations("classpath:db/migration").schemas("v4check")
+                .load().migrate();
+
+        String email = jdbc.sql("SELECT email FROM v4check.accounts WHERE user_id = :id")
+                .param("id", userId).query(String.class).optional().orElse(null);
+        assertNull(email);
     }
 
     private static long countRows(String provider, String providerId) {

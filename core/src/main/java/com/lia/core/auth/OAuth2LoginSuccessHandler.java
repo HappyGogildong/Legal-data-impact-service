@@ -21,6 +21,7 @@ import jakarta.servlet.http.HttpSession;
  * <p>{@code (provider, subject)} 로 {@link AccountStore#findOrCreate} → {@code userId} 를 세션 속성
  * ({@link CurrentUser#SESSION_KEY})에 저장 → 프론트({@code lia.auth.frontend-url})로 리다이렉트.
  * SavedRequest 를 쓰지 않는다 — 저장된 요청은 API URL(401 을 받은)이라 브라우저를 JSON 으로 보내게 된다.
+ * 이메일은 저장하지 않는다(로그인 중엔 principal 에만 있고 알림 동의 시 저장, D61).
  *
  * <p>provider별 추출은 {@link OAuth2Identity}. subject 가 없으면 fail-closed: 세션을 파기하고
  * 프론트 로그인 오류로 보낸다.
@@ -54,8 +55,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             return;
         }
 
-        UUID userId = accountStore.findOrCreate(token.getAuthorizedClientRegistrationId(), id.subject(), id.email())
-                .userId();
+        UUID userId = accountStore.findOrCreate(token.getAuthorizedClientRegistrationId(), id.subject())
+                .userId();   // email 은 저장하지 않는다 — 알림 동의로만(D61)
         request.getSession().setAttribute(CurrentUser.SESSION_KEY, userId);
 
         super.onAuthenticationSuccess(request, response, authentication);
