@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
+import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.application.profile.ProfileUseCase;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.config.SecurityConfig;
@@ -23,7 +24,8 @@ import com.lia.core.testsupport.InMemoryUserProfileStore;
 @TestConfiguration
 @EnableWebMvc
 @EnableWebSecurity
-@Import({SecurityConfig.class, ApiExceptionHandler.class, ProfileController.class})
+@Import({SecurityConfig.class, ApiExceptionHandler.class,
+        ProfileController.class, ConsentController.class, AccountController.class})
 class ApiSliceTestConfig {
 
     static final String POLICY = "v-test";
@@ -41,6 +43,11 @@ class ApiSliceTestConfig {
     @Bean
     ProfileUseCase profileUseCase(InMemoryUserProfileStore store) {
         return new ProfileUseCase(store, POLICY);
+    }
+
+    @Bean
+    AccountUseCase accountUseCase(InMemoryAccountStore store) {
+        return new AccountUseCase(store);
     }
 
     @Bean
