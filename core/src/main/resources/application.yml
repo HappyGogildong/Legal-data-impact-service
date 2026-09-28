@@ -30,6 +30,8 @@ lia:
     dim: 1536                       #   LawStore chunks(pgvector) 차원과 반드시 일치
   auth:
     frontend-url: ${FRONTEND_URL:http://localhost:3000}   # 로그인 성공·실패 후 리다이렉트할 웹 UI(#14) 주소
+  privacy:
+    policy-version: ${PRIVACY_POLICY_VERSION:draft-2026-09}   # 동의 시 기록할 처리방침 버전(D61). 실제 처리방침 게시 시 교체
 
 spring:
   application:
