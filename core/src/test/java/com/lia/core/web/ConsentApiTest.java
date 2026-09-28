@@ -124,6 +124,22 @@ class ConsentApiTest {
     }
 
     @Test
+    @DisplayName("익명 GET → 401")
+    void 조회_익명_401() throws Exception {
+        mvc.perform(get("/api/v1/consents")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("인증됐지만 CSRF 없음 → 403")
+    void 프로필동의_CSRF없음_403() throws Exception {
+        UUID userId = UUID.randomUUID();
+
+        mvc.perform(put("/api/v1/consents/profile").with(user("u")).sessionAttr(CurrentUser.SESSION_KEY, userId)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"over14\":true}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("IdP 가 이메일을 안 줬거나(OAuth2 인데 email 없음) OAuth2 가 아닌 principal → 400")
     void 알림동의_이메일없음_400() throws Exception {
         UUID userId = accounts.findOrCreate("kakao", "k-no-email").userId();

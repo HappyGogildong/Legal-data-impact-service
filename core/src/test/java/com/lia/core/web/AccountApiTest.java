@@ -59,6 +59,21 @@ class AccountApiTest {
     }
 
     @Test
+    @DisplayName("익명 GET → 401")
+    void 조회_익명_401() throws Exception {
+        mvc.perform(get("/api/v1/account")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("인증됐지만 CSRF 없음 → 403")
+    void 계정삭제_CSRF없음_403() throws Exception {
+        UUID userId = accounts.findOrCreate("naver", "n-no-csrf").userId();
+
+        mvc.perform(delete("/api/v1/account").with(user("u")).sessionAttr(CurrentUser.SESSION_KEY, userId))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("DELETE → 204, 계정 삭제, 세션 무효화, JSESSIONID 만료")
     void 계정삭제() throws Exception {
         UUID userId = accounts.findOrCreate("naver", "n-delete").userId();
