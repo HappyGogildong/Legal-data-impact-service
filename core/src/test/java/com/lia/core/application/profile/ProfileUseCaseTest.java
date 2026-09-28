@@ -94,6 +94,14 @@ class ProfileUseCaseTest {
     }
 
     @Test
+    @DisplayName("처리방침 버전이 공백/빈 값이면 생성자에서 IllegalArgumentException(부팅 시 fail-fast)")
+    void 생성자_처리방침버전_공백거부() {
+        assertThrows(IllegalArgumentException.class, () -> new ProfileUseCase(store, " "));
+        assertThrows(IllegalArgumentException.class, () -> new ProfileUseCase(store, ""));
+        assertThrows(IllegalArgumentException.class, () -> new ProfileUseCase(store, null));
+    }
+
+    @Test
     @DisplayName("delete → 파기(동의도 함께 사라짐)")
     void 파기() {
         useCase.agree(userId, true);

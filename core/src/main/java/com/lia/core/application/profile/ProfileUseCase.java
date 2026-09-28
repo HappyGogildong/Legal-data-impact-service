@@ -21,6 +21,9 @@ public class ProfileUseCase {
     private final String currentPolicyVersion;
 
     public ProfileUseCase(UserProfileStore store, String currentPolicyVersion) {
+        if (currentPolicyVersion == null || currentPolicyVersion.isBlank()) {
+            throw new IllegalArgumentException("처리방침 버전(lia.privacy.policy-version)이 비어 있습니다.");
+        }
         this.store = store;
         this.currentPolicyVersion = currentPolicyVersion;
     }
