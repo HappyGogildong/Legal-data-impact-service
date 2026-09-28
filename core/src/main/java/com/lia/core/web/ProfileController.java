@@ -15,7 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * {@code /api/v1/profile} — 프로필 속성 조회·수정·파기([[service-api-spec]] §3.4). <b>HTTP 경계만</b>:
- * 세션 userId → {@link ConsentController} 위임. 동의는 여기서 받지 않는다.
+ * 세션 userId → {@link ProfileUseCase} 위임. 동의는 여기서 받지 않는다({@link ConsentController}).
  */
 @RestController
 @RequestMapping("/api/v1/profile")

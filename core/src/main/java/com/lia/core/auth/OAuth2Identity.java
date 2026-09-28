@@ -22,9 +22,9 @@ public record OAuth2Identity(String subject, String email) {
         Map<String, Object> attributes = user.getAttributes();
         return switch (provider) {
             case "google" -> new OAuth2Identity(
-                    str(attributes.get("sub")), str(attributes.get("email")));
+                    stringOrNull(attributes.get("sub")), stringOrNull(attributes.get("email")));
             case "kakao" -> new OAuth2Identity(
-                    str(attributes.get("id")), nested(attributes, "kakao_account", "email"));
+                    stringOrNull(attributes.get("id")), nested(attributes, "kakao_account", "email"));
             case "naver" -> new OAuth2Identity(
                     nested(attributes, "response", "id"), nested(attributes, "response", "email"));
             default -> throw new IllegalStateException("지원하지 않는 provider: " + provider);
@@ -37,10 +37,10 @@ public record OAuth2Identity(String subject, String email) {
 
     private static String nested(Map<String, Object> attributes, String outer, String key) {
         Object inner = attributes.get(outer);
-        return inner instanceof Map<?, ?> map ? str(map.get(key)) : null;
+        return inner instanceof Map<?, ?> map ? stringOrNull(map.get(key)) : null;
     }
 
-    private static String str(Object value) {
+    private static String stringOrNull(Object value) {
         return value == null ? null : String.valueOf(value);
     }
 }
