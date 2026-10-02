@@ -47,7 +47,7 @@ related: ["components/profile/UserProfile.md", "components/application/ProfileUs
 ## Error Handling
 - 검증 실패(모르는 라벨·범위 밖 age) → 400(`ApiExceptionHandler`).
 - 현재 버전 동의 없음 → **409 `consent_required`**(`ConsentRequiredException` → `ApiExceptionHandler`). 403이 아닌 이유: 403은 CSRF 실패에도 쓰여 SPA가 구분하지 못한다.
-- 미인증 → 401([[SecurityConfig]]). 세션에 `userId` 없음(인증됐지만 매핑 없는 이상 상태) → 401.
+- 미인증 → 401([[SecurityConfig]]). 세션에 `userId` 없음(인증됐지만 매핑 없는 이상 상태) → 401. 세션이 삭제된 계정을 가리킴(다른 기기에서 계정 삭제) → 401 — 409·404로 보이지 않는다(`StaleSessionFilter`).
 - `GET` 미존재 → 404.
 
 ## Side Effects

@@ -34,6 +34,7 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 | `OAuth2Identity` | provider별 사용자정보 → `(subject, email?)` 정규화. 로그인 핸들러와 알림 동의([[ConsentApi]])가 **같은 분기**를 공유. | [[OAuth2LoginSuccessHandler]] |
 | `OAuth2LoginSuccessHandler` | 로그인 성공 시 `provider+subject` → `AccountStore.findOrCreate` → 세션에 `userId` 부여. 이메일은 저장하지 않는다. | [[OAuth2LoginSuccessHandler]] |
 | `CurrentUser` | 세션 → `userId` 추출 헬퍼(컨트롤러용). 세션 키 `USER_ID` 의 읽기 짝. | [[OAuth2LoginSuccessHandler]] |
+| `StaleSessionFilter` | `/api/**`에서 세션 `USER_ID`의 계정이 없으면 세션 파기 + 익명 처리(다른 기기에서 계정 삭제된 세션). | [[SecurityConfig]] |
 
 계정 조회·삭제와 알림 이메일 동의의 규칙은 [[AccountUseCase]], HTTP는 [[AccountApi]]·[[ConsentApi]].
 
@@ -65,9 +66,10 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 ## Session / Cookie
 - 서버 세션 + 세션 쿠키 **HttpOnly · Secure · SameSite=Lax**. 로그아웃/파기 시 세션 즉시 무효화.
 - 확장 시 `spring-session-jdbc`(또는 Redis)로 저장소만 교체 — 재설계 아님.
+- **삭제된 계정을 가리키는 세션은 무효다** — 계정 삭제는 현재 세션만 파기하므로, 다른 기기의 낡은 세션은 `StaleSessionFilter`가 `/api/**` 요청 시 파기하고 익명으로 처리한다([[SecurityConfig]] §세션-계정 정합).
 
 ## Error Handling
-- `/api/**` 미인증 → **401**(시스템 오류만 4xx, [[service-api-spec]] §4.1과 정합 — 인증은 401/403). CSRF 실패 → 403.
+- `/api/**` 미인증 → **401 `{"error": "unauthenticated"}`**(시스템 오류만 4xx, [[service-api-spec]] §4.1과 정합 — 인증은 401/403). 삭제된 계정을 가리키는 세션도 같은 401. CSRF 실패 → 403.
 - OAuth 콜백 실패 → 로그인 실패 처리. IdP 응답에 subject가 없으면 세션 파기 후 프론트 `/login?error=identity`(fail-closed, [[OAuth2LoginSuccessHandler]]).
 - 로그인 성공 → 프론트(`lia.auth.frontend-url`)로 리다이렉트. 로그아웃 → 204.
 
