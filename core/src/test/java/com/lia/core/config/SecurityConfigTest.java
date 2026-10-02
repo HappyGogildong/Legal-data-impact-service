@@ -5,6 +5,7 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -80,9 +81,11 @@ class SecurityConfigTest {
     // --- 인증 ------------------------------------------------------------
 
     @Test
-    @DisplayName("익명 → 보호 API 는 401 (403·302 아님)")
+    @DisplayName("익명 → 보호 API 는 401 (403·302 아님), 본문은 {error: unauthenticated}")
     void 익명_보호API_401() throws Exception {
-        mvc.perform(get("/api/v1/profile")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/profile"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("unauthenticated"));
     }
 
     @Test

@@ -2,7 +2,6 @@ package com.lia.core.web;
 
 import java.time.OffsetDateTime;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.authentication.logout.CompositeLogoutHandler;
 import org.springframework.security.web.authentication.logout.CookieClearingLogoutHandler;
@@ -12,8 +11,8 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
+import com.lia.core.application.account.AccountNotFoundException;
 import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.auth.CurrentUser;
 
@@ -43,7 +42,7 @@ public class AccountController {
     public AccountResponse get(HttpServletRequest request) {
         return accounts.find(CurrentUser.require(request))
                 .map(account -> new AccountResponse(account.provider(), account.createdAt()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "세션이 가리키는 계정이 없습니다."));
+                .orElseThrow(AccountNotFoundException::new);   // 다른 401 과 같은 {error: unauthenticated} 본문
     }
 
     /** 계정 파기 — 프로필 cascade, 세션 무효화, 쿠키 삭제. 되돌릴 수 없다. */

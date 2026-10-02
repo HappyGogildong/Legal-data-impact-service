@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
@@ -16,6 +16,13 @@ import com.lia.core.auth.OAuth2LoginSuccessHandler;
 
 @Configuration
 public class SecurityConfig {
+
+  /** /api/** 미인증 401 — 본문을 ApiExceptionHandler 의 {error, message} 와 같은 모양으로(SPA 는 401 한 가지만 처리). */
+  private static final AuthenticationEntryPoint API_UNAUTHENTICATED = (request, response, exception) -> {
+    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+    response.setContentType("application/json;charset=UTF-8");
+    response.getWriter().write("{\"error\":\"unauthenticated\",\"message\":\"로그인이 필요합니다.\"}");
+  };
 
   @Bean
   SecurityFilterChain filterChain(
@@ -39,7 +46,7 @@ public class SecurityConfig {
 
         // 2) API 미인증 → 401. 없으면 기본 403(oauth 프로파일은 302 /login)이라 SPA가 구분 못 한다.
         .exceptionHandling(ex -> ex.defaultAuthenticationEntryPointFor(
-            new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
+            API_UNAUTHENTICATED,
             PathPatternRequestMatcher.withDefaults().matcher("/api/**")))
 
         // 3) CSRF — 세션-쿠키 인증이라 켠다. spa(): XSRF-TOKEN 쿠키(JS 읽기 가능) + 원문 헤더 토큰 허용.

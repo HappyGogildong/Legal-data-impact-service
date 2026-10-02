@@ -55,7 +55,8 @@ class AccountApiTest {
     @DisplayName("세션이 가리키는 계정이 없으면 GET 401(로그인 상태 아님)")
     void 조회_계정없음_401() throws Exception {
         mvc.perform(get("/api/v1/account").with(user("u")).sessionAttr(CurrentUser.SESSION_KEY, UUID.randomUUID()))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("unauthenticated"));   // 다른 401 과 같은 본문
     }
 
     @Test
