@@ -36,9 +36,18 @@ Auth.md 인가 표의 **구현이자 근거**. 매처는 위→아래 첫 매칭
 > **`anyRequest().authenticated()` 는 보안 경계다.** profile 규칙이 따로 있어도 실제 보호는 이 줄이 한다 — 바꿀 때 주의.
 
 ## 미인증 응답 (401)
-- `/api/**` 미인증 → **`HttpStatusEntryPoint(401)`**(`defaultAuthenticationEntryPointFor`).
+- `/api/**` 미인증 → **401 + `{"error": "unauthenticated", "message": ...}`**(`defaultAuthenticationEntryPointFor`, JSON 본문을 쓰는 entry point).
 - 이유: entry point를 안 정하면 기본 프로파일은 `Http403ForbiddenEntryPoint`(403), oauth 프로파일은 oauth2Login entry point(302 `/login`, HTML)로 떨어진다. SPA가 "로그인 안 됨"(401)과 "권한 없음"(403)을 구분하려면 API는 상태코드여야 한다.
+- **본문 모양은 하나다** — 익명 401, 삭제된 계정을 가리키는 세션의 401(아래), 유스케이스의 `AccountNotFoundException` 401이 모두 같은 `{error: unauthenticated}`. SPA는 401 하나만 처리하면 된다.
 - `/api/**` 밖의 경로는 기본 entry point를 따른다(oauth 프로파일에서 브라우저 로그인 유도).
+
+## 세션-계정 정합 — 삭제된 계정을 가리키는 세션
+계정 삭제는 **현재 세션만** 파기한다(인메모리 세션 저장소는 사용자별 세션 조회가 안 됨). 다른 기기의 세션은 인증된 채로 삭제된 `userId`를 들고 남는다.
+→ `StaleSessionFilter`(`SecurityContextHolderFilter` 바로 뒤): `/api/**` 요청에서 세션 `USER_ID`의 계정이 **없으면** 세션을 파기하고 SecurityContext를 비운 뒤 **익명으로 계속 진행**한다.
+- 보호 API → 인가 단계에서 위 401(`unauthenticated`). 엔드포인트마다 따로 처리할 필요가 없다(동의 상태가 200 + null로 보이거나 프로필 수정이 409로 보이던 문제 제거).
+- 공개 API(`/laws`, `POST /analyses`) → 익명으로 정상 처리(낡은 세션 때문에 공개 기능이 막히지 않는다).
+- `/api/**` 밖(로그인 흐름)은 건너뛴다 — 재로그인을 방해하지 않게.
+- 비용: 세션에 `USER_ID`가 있는 API 요청마다 accounts 기본키 조회 1회. Spring Session 도입 시 계정 삭제가 전 세션을 파기하면 이 필터는 방어선으로만 남는다.
 
 ## CSRF 결정
 - **켠다** — 세션-쿠키 인증이라 브라우저가 쿠키를 자동 첨부 → CSRF 공격면 존재.
@@ -68,3 +77,4 @@ Auth.md 인가 표의 **구현이자 근거**. 매처는 위→아래 첫 매칭
 - `SecurityConfigTest` — Boot 없이 최소 웹 컨텍스트(`@EnableWebMvc`+`@EnableWebSecurity`+이 설정)와 스텁 컨트롤러를 MockMvc로 검사(Boot 4는 `@WebMvcTest`가 별도 모듈). oauth 프로파일이 아니라 키 없는 부팅 경로 그대로.
   - 익명 보호/미등록 API 401 · 인증 200 · laws·health 공개 · analyses CSRF 예외 · `/error` ERROR 디스패치 통과 · 토큰 없는 상태변경 403 · **SPA 흐름**(GET으로 받은 쿠키값을 헤더에 원문으로) 통과 · 로그아웃 204.
   - 리뷰 전 설정으로 되돌리면 401·`/error`·SPA·로그아웃 테스트 5개가 실패함을 확인(테스트가 실제로 회귀를 잡음).
+  - 삭제된 계정을 가리키는 세션: 보호 API 401(`unauthenticated` 본문) + 세션 파기 · 공개 API는 익명으로 정상 처리 · 익명 401도 같은 본문.

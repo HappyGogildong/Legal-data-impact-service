@@ -87,16 +87,17 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | QueryDispatcher + 차원핸들러 — **Layer A 슬라이스**(D47): `DimensionHandler` 포트+레지스트리·`QueryDispatcher`(Reference 정본 1회조회→차원 라우팅→부분성공 `unmet`)·`Summary`/`Diff` 핸들러(AnalysisEngine 위임)·`LawSource` 포트 | ✅ 단위 11(Dispatcher 7·Handler 2·Registry 2). ImpactHandler·ActionHandler·LookupHandler·캐시·독립 검증게이트는 의존 착지 후 |
 | Analysis API — **최소 수직 슬라이스**(#13): `application/AnalyzeUseCase`(plan→dispatch 유스케이스·4상태/부분성공·애노테이션 없는 @Bean)·`web`(컨트롤러 HTTP만·`AnalysisResponseMapper` 표현 매핑·`POST /api/v1/analyses`·400). 계층 web→application→pipeline. Reference·Layer A만(profilePresent=false) | ✅ 단위 8(UseCase in-JVM 관통 3[explicitRef 포함]·Controller 3·Mapper 2). 웹 UI·Discovery·Layer B는 후속 |
 | 배포 — **컨테이너화 + compose 자립 실행**(D59): `core/Dockerfile`(멀티스테이지)·compose 정합(db healthcheck·depends_on·in-network env·mcp 제외)·GitHub Actions CI(단위+Testcontainers)·`db/init.sql` 정리·배포 문서 | ✅ 산출물. 실 `docker build`·`compose up` 검증은 수동(Docker) |
-| 인증·UserProfile — **spec-first 문서**(D60): 소셜 OAuth2+세션(`Auth`)·`UserProfile`+Store·`ProfileApi`. 슬라이스 ①인증→②store/API→③Layer B(프로필→프롬프트) | 🟡 컴포넌트 문서 ①② 완료. 구현·③은 후속 |
+| 인증 — **슬라이스 ①**(D60): 소셜 OAuth2+세션-쿠키·`SecurityConfig`(API 401·`/error`·`csrf.spa()`·로그아웃 204)·`AccountStore`(경합 안전 findOrCreate)·`OAuth2LoginSuccessHandler`(fail-closed·프론트 리다이렉트) | ✅ PR #30. 실제 소셜 로그인 왕복은 provider 콘솔 등록 후 수동 확인 |
+| UserProfile — **슬라이스 ②**(D61): 프로필 도메인(enum 6종·age 14~120)·`UserProfileStore`(동의가 행을 만듦)·동의 모델(`/consents` 분리·현재 버전 동의 없으면 409·버전 기반 재동의)·알림 이메일은 동의 시에만 저장·계정 삭제 | ✅ 단위·통합·웹 슬라이스. ③ Layer B(프로필→프롬프트)는 후속. 실제 개인정보처리방침 문서는 법무 산출물로 별도 |
 | 웹 프론트엔드 (#14) | ⬜ |
 
-단위 테스트 **136개**(+AnalysisEngine 10 · +QueryDispatcher 11 · +Analysis API 8) + 통합 **8건**(실 Postgres/pgvector, Testcontainers: Law Store 3 + 적재 조립 2 + ChunkStore 3) 통과. (실 임베딩·번역·해석 스모크/평가 5종은 옵트인·수동)
+`./gradlew test --rerun-tasks` 기준 `tests=233 skipped=6 failures=0 errors=0`(2026-09-28) — 통합 **24건**(실 Postgres/pgvector, Testcontainers: Law Store 3 + 적재 조립 2 + ChunkStore 3 + UserProfileStore 8 + AccountStore 8) 포함 전부 통과. skip 6건은 실 임베딩·번역·해석 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
 
 > ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 
 ### 구현 순서 (큐)
 
-… Query Planner ✅ · Analysis Engine Layer A ✅ · QueryDispatcher 차원핸들러 ✅ · 최소 수직 슬라이스(REST) ✅(#13) · **배포 자립 스택(compose+CI) ✅**(D59) → **인증·UserProfile(#12, D60)** 진행 중(spec-first 문서 → ①인증 → ②store/API → ③Layer B) · **LawDiscovery(#19)→LookupHandler** · **웹 UI**(#14) · 클라우드 매니지드 배포 후속.
+… Query Planner ✅ · Analysis Engine Layer A ✅ · QueryDispatcher 차원핸들러 ✅ · 최소 수직 슬라이스(REST) ✅(#13) · **배포 자립 스택(compose+CI) ✅**(D59) → **인증·UserProfile(#12)** ①인증 ✅(D60) · ②프로필·동의 ✅(D61) → **③Layer B(프로필→프롬프트)** 다음 · **LawDiscovery(#19)→LookupHandler** · **웹 UI**(#14) · 클라우드 매니지드 배포 후속.
 
 ---
 
