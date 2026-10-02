@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import com.lia.core.auth.CurrentUser;
+import com.lia.core.testsupport.InMemoryAccountStore;
 import com.lia.core.testsupport.InMemoryUserProfileStore;
 
 /** Profile API 웹 슬라이스 — 동의 전 409·수정·조회(userId 없음)·파기·검증 400·인증 401. */
@@ -35,13 +36,15 @@ class ProfileApiTest {
             """;
 
     @Autowired InMemoryUserProfileStore profiles;
+    @Autowired InMemoryAccountStore accounts;
     MockMvc mvc;
     UUID userId;
 
     @BeforeEach
     void setup(WebApplicationContext context) {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
-        userId = UUID.randomUUID();
+        // 세션은 실제 계정을 가리켜야 한다 — 없는 계정이면 StaleSessionFilter 가 낡은 세션으로 파기한다
+        userId = accounts.findOrCreate("kakao", UUID.randomUUID().toString()).userId();
     }
 
     /** 로그인 + 세션 userId. */
@@ -126,6 +129,19 @@ class ProfileApiTest {
                 .andExpect(jsonPath("$.error").value("bad_request"));
         mvc.perform(putProfile("{\"regionSido\":\"서울\"}")).andExpect(status().isBadRequest());
         mvc.perform(putProfile("{\"age\":13}")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("다른 기기에서 계정이 삭제된 세션 → PUT·GET 모두 401(409·404 로 보이지 않음)")
+    void 계정삭제된세션_401() throws Exception {
+        profiles.recordConsent(userId, ApiSliceTestConfig.POLICY);
+        accounts.delete(userId);
+        profiles.delete(userId);   // 실 DB 의 FK cascade 흉내
+
+        mvc.perform(putProfile(FULL))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("unauthenticated"));
+        mvc.perform(signedIn(get("/api/v1/profile"))).andExpect(status().isUnauthorized());
     }
 
     @Test

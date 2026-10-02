@@ -52,7 +52,7 @@ class ConsentApiTest {
     @Test
     @DisplayName("프로필 동의 → 200 현재 버전·upToDate, 상태에 반영(알림은 null)")
     void 프로필동의() throws Exception {
-        UUID userId = UUID.randomUUID();
+        UUID userId = accounts.findOrCreate("kakao", UUID.randomUUID().toString()).userId();
 
         mvc.perform(put("/api/v1/consents/profile").with(user("u")).sessionAttr(CurrentUser.SESSION_KEY, userId)
                         .with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"over14\":true}"))
@@ -69,7 +69,7 @@ class ConsentApiTest {
     @Test
     @DisplayName("over14 false·누락 → 400")
     void 프로필동의_14세미확인_400() throws Exception {
-        UUID userId = UUID.randomUUID();
+        UUID userId = accounts.findOrCreate("kakao", UUID.randomUUID().toString()).userId();
         for (String body : List.of("{\"over14\":false}", "{}")) {
             mvc.perform(put("/api/v1/consents/profile").with(user("u")).sessionAttr(CurrentUser.SESSION_KEY, userId)
                             .with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
@@ -80,7 +80,7 @@ class ConsentApiTest {
     @Test
     @DisplayName("옛 버전 동의 → 상태 upToDate=false")
     void 옛버전_upToDateFalse() throws Exception {
-        UUID userId = UUID.randomUUID();
+        UUID userId = accounts.findOrCreate("kakao", UUID.randomUUID().toString()).userId();
         profiles.recordConsent(userId, "old-version");
 
         mvc.perform(get("/api/v1/consents").with(user("u")).sessionAttr(CurrentUser.SESSION_KEY, userId))
@@ -124,6 +124,14 @@ class ConsentApiTest {
     }
 
     @Test
+    @DisplayName("계정이 삭제된 세션 → GET 상태도 401(200 + null 로 보이지 않음)")
+    void 상태_계정없음_401() throws Exception {
+        mvc.perform(get("/api/v1/consents").with(user("u")).sessionAttr(CurrentUser.SESSION_KEY, UUID.randomUUID()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("unauthenticated"));
+    }
+
+    @Test
     @DisplayName("익명 GET → 401")
     void 조회_익명_401() throws Exception {
         mvc.perform(get("/api/v1/consents")).andExpect(status().isUnauthorized());
@@ -132,7 +140,7 @@ class ConsentApiTest {
     @Test
     @DisplayName("인증됐지만 CSRF 없음 → 403")
     void 프로필동의_CSRF없음_403() throws Exception {
-        UUID userId = UUID.randomUUID();
+        UUID userId = accounts.findOrCreate("kakao", UUID.randomUUID().toString()).userId();
 
         mvc.perform(put("/api/v1/consents/profile").with(user("u")).sessionAttr(CurrentUser.SESSION_KEY, userId)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"over14\":true}"))

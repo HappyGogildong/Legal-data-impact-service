@@ -8,11 +8,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 
+import com.lia.core.auth.AccountStore;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
+import com.lia.core.auth.StaleSessionFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -28,6 +31,7 @@ public class SecurityConfig {
   SecurityFilterChain filterChain(
       HttpSecurity http,
       OAuth2LoginSuccessHandler loginSuccessHandler,
+      AccountStore accountStore,
       // oauth 프로파일일 때만 이 빈이 존재 → Optional 로 받아 조건부 처리
       ObjectProvider<ClientRegistrationRepository> clientRegistrations) throws Exception {
 
@@ -62,9 +66,13 @@ public class SecurityConfig {
         .logout(logout -> logout
             .logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT))
             .invalidateHttpSession(true)
-            .deleteCookies("JSESSIONID"));
+            .deleteCookies("JSESSIONID"))
 
-    // 5) 소셜 로그인 — ClientRegistrationRepository 빈이 있을 때(=oauth 프로파일)만 붙인다.
+        // 5) 삭제된 계정을 가리키는 세션(다른 기기에서 계정 삭제) — 세션에서 SecurityContext 를 읽은 직후,
+        //    인가 전에 파기하고 익명으로 진행시킨다. 보호 API 는 2)의 401, 공개 API 는 정상 처리.
+        .addFilterAfter(new StaleSessionFilter(accountStore), SecurityContextHolderFilter.class);
+
+    // 6) 소셜 로그인 — ClientRegistrationRepository 빈이 있을 때(=oauth 프로파일)만 붙인다.
     //    없는데 oauth2Login() 을 부르면 부팅 자체가 깨진다.
     //    성공 시 loginSuccessHandler 가 provider+subject→userId 매핑 후 세션에 심는다.
     clientRegistrations.ifAvailable(repo -> {
