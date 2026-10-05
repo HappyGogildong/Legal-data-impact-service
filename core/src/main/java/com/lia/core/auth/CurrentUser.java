@@ -3,6 +3,9 @@ package com.lia.core.auth;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
@@ -23,5 +26,11 @@ public final class CurrentUser {
         HttpSession session = request.getSession(false);
         if (session == null) return Optional.empty();
         return Optional.ofNullable((UUID) session.getAttribute(SESSION_KEY));
+    }
+
+    /** 인증된 요청의 userId. 세션에 없으면(인증됐지만 매핑 없는 이상 상태) 401. */
+    public static UUID require(HttpServletRequest request) {
+        return userId(request).orElseThrow(
+                () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "세션에 계정이 없습니다."));
     }
 }

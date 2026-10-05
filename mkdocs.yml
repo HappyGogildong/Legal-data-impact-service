@@ -111,6 +111,8 @@ nav:
           - Analysis Engine: components/analyze/AnalysisEngine.md
       - application:
           - AnalyzeUseCase: components/application/AnalyzeUseCase.md
+          - ProfileUseCase (프로필·동의): components/application/ProfileUseCase.md
+          - AccountUseCase (계정·알림 이메일): components/application/AccountUseCase.md
       - auth:
           - Auth (OAuth2·세션): components/auth/Auth.md
           - SecurityConfig (인가·CSRF): components/auth/SecurityConfig.md
@@ -120,6 +122,8 @@ nav:
       - web:
           - Analysis API: components/web/AnalysisApi.md
           - Profile API: components/web/ProfileApi.md
+          - Consent API: components/web/ConsentApi.md
+          - Account API: components/web/AccountApi.md
   - 참조 (Reference):
       - Law 도메인 이해 (초심자용): reference/law-domain-understanding.md
       - 법령 속성 카탈로그: reference/law-attributes.md

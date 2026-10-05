@@ -5,16 +5,23 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.junit.jupiter.web.SpringJUnitWebConfig;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -25,8 +32,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
-import com.lia.core.auth.AccountStore;
+import com.lia.core.auth.CurrentUser;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
+import com.lia.core.testsupport.InMemoryAccountStore;
 
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.Cookie;
@@ -48,8 +56,13 @@ class SecurityConfigTest {
     @Import(SecurityConfig.class)
     static class TestConfig {
         @Bean
-        OAuth2LoginSuccessHandler loginSuccessHandler() {
-            return new OAuth2LoginSuccessHandler(new AccountStore(null), "http://localhost:3000");
+        InMemoryAccountStore accountStore() {
+            return new InMemoryAccountStore();
+        }
+
+        @Bean
+        OAuth2LoginSuccessHandler loginSuccessHandler(InMemoryAccountStore accounts) {
+            return new OAuth2LoginSuccessHandler(accounts, "http://localhost:3000");
         }
 
         @Bean
@@ -80,9 +93,11 @@ class SecurityConfigTest {
     // --- 인증 ------------------------------------------------------------
 
     @Test
-    @DisplayName("익명 → 보호 API 는 401 (403·302 아님)")
+    @DisplayName("익명 → 보호 API 는 401 (403·302 아님), 본문은 {error: unauthenticated}")
     void 익명_보호API_401() throws Exception {
-        mvc.perform(get("/api/v1/profile")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/profile"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("unauthenticated"));
     }
 
     @Test
@@ -95,6 +110,55 @@ class SecurityConfigTest {
     @DisplayName("인증 사용자 → 보호 API 200")
     void 인증_보호API_200() throws Exception {
         mvc.perform(get("/api/v1/profile").with(user("u"))).andExpect(status().isOk());
+    }
+
+    // --- 세션-계정 정합 (StaleSessionFilter) -----------------------------
+
+    @Autowired InMemoryAccountStore accounts;
+
+    /** 다른 기기에서 계정이 삭제돼, accounts 에 없는 userId 를 들고 있는 세션. */
+    private static MockHttpSession staleSession() {
+        var session = new MockHttpSession();
+        session.setAttribute(CurrentUser.SESSION_KEY, UUID.randomUUID());
+        return session;
+    }
+
+    @Test
+    @DisplayName("삭제된 계정을 가리키는 세션 → 보호 API 401 + 세션 파기")
+    void 낡은세션_보호API_401() throws Exception {
+        MockHttpSession session = staleSession();
+
+        mvc.perform(get("/api/v1/profile").with(user("u")).session(session))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("unauthenticated"));
+        assertTrue(session.isInvalid(), "낡은 세션은 파기");
+    }
+
+    @Test
+    @DisplayName("삭제된 계정을 가리키는 세션 → 공개 API 는 익명으로 정상 처리")
+    void 낡은세션_공개API_통과() throws Exception {
+        MockHttpSession session = staleSession();
+
+        mvc.perform(post("/api/v1/analyses").with(user("u")).session(session)).andExpect(status().isOk());
+        assertTrue(session.isInvalid());
+    }
+
+    @Test
+    @DisplayName("살아 있는 계정을 가리키는 세션 → 그대로 통과")
+    void 유효세션_통과() throws Exception {
+        UUID userId = accounts.findOrCreate("kakao", "k-live").userId();
+
+        mvc.perform(get("/api/v1/profile").with(user("u")).sessionAttr(CurrentUser.SESSION_KEY, userId))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("/api/** 밖(로그인 흐름 등)은 검사하지 않는다 — 낡은 세션도 파기하지 않음")
+    void 낡은세션_API밖_검사안함() throws Exception {
+        MockHttpSession session = staleSession();
+
+        mvc.perform(get("/actuator/health").session(session)).andExpect(status().isOk());
+        assertFalse(session.isInvalid(), "API 밖에서는 세션을 건드리지 않는다");
     }
 
     // --- 공개 ------------------------------------------------------------

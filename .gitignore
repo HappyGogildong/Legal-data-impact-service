@@ -36,3 +36,7 @@ Thumbs.db
 
 # --- 셸 마운트 동기화 테스트 잔여물 ---
 __bash_sync_test.txt
+
+# --- superpowers 작업 산출물(계획·설계 초안) — 커밋하지 않는다 ---
+docs/superpowers/
+.superpowers/
