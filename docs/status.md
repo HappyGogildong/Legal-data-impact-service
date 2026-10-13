@@ -89,6 +89,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 배포 — **컨테이너화 + compose 자립 실행**(D59): `core/Dockerfile`(멀티스테이지)·compose 정합(db healthcheck·depends_on·in-network env·mcp 제외)·GitHub Actions CI(단위+Testcontainers)·`db/init.sql` 정리·배포 문서 | ✅ 산출물. 실 `docker build`·`compose up` 검증은 수동(Docker) |
 | 인증 — **슬라이스 ①**(D60): 소셜 OAuth2+세션-쿠키·`SecurityConfig`(API 401·`/error`·`csrf.spa()`·로그아웃 204)·`AccountStore`(경합 안전 findOrCreate)·`OAuth2LoginSuccessHandler`(fail-closed·프론트 리다이렉트) | ✅ PR #30. 실제 소셜 로그인 왕복은 provider 콘솔 등록 후 수동 확인 |
 | UserProfile — **슬라이스 ②**(D61): 프로필 도메인(enum 6종·age 14~120)·`UserProfileStore`(동의가 행을 만듦)·동의 모델(`/consents` 분리·현재 버전 동의 없으면 409·버전 기반 재동의)·알림 이메일은 동의 시에만 저장·계정 삭제 | ✅ 단위·통합·웹 슬라이스. ③ Layer B(프로필→프롬프트)는 후속. 실제 개인정보처리방침 문서는 법무 산출물로 별도 |
+| 적재·RAG 색인 배치 — **spec-first 설계**(D62, #40): 1회성 잡 프로파일(`run`·`run --full`·`sync`·`reindex-all`·`requeue-dead`·`--dry-run`) + DB 작업 큐(`SYNC`·`INDEX`·`TRANSITION`·`PURGE`, `SKIP LOCKED`·법령 단위 직렬화)·2단 증분(MST·revision)·`과거`/`철회` 상태 보존·실행당 1회+3회 격리·`ingest_runs` 관측 | 🟡 컴포넌트 문서([[IngestJob]])·D62 완료. 구현은 후속 |
 | 웹 프론트엔드 (#14) | ⬜ |
 
 `./gradlew test --rerun-tasks` 기준 `tests=239 skipped=6 failures=0 errors=0`(2026-10-05) — 통합 **24건**(실 Postgres/pgvector, Testcontainers: Law Store 3 + 적재 조립 2 + ChunkStore 3 + UserProfileStore 8 + AccountStore 8) 포함 전부 통과. skip 6건은 실 임베딩·번역·해석 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.

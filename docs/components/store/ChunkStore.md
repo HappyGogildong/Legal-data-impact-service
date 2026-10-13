@@ -24,6 +24,7 @@ related: ["components/component-specs.md", "components/index/RAGIndexer.md", "co
 ## Persistence Contract
 - `replaceVersion(lawId, efYd, chunks)` — 한 정본 `(lawId, efYd)`의 청크를 **현재 세트로 완전 교체**(그 정본 기존 청크 전부 삭제 → 삽입). **재색인 시 저장 상태 == 현재 법령 상태**를 보장 — 분할 개수 감소·조문 삭제/이동으로 사라진 `source_id`가 **stale로 남지 않는다**. `chunks`가 비면 그 정본 청크를 전부 삭제(삭제 반영). add 시 `content` 자동 임베딩.
   - **왜 source_id 단위 upsert가 아닌가:** 한 정본의 청크 집합은 함께 바뀌므로(과대 조문 분할 수 변동 등) 개별 id 덮어쓰기로는 사라진 청크를 정리하지 못한다 — 정본 단위 replace라야 "재실행 = 현재 상태" 불변식이 선다.
+  - **삭제와 삽입은 한 트랜잭션**(D62) — 그 사이에도 검색은 커밋 전까지 이전 청크를 보므로 법령이 검색에서 잠깐 빠지지 않고, 임베딩 등 삽입이 실패하면 롤백돼 이전 청크가 남는다. 시행 전환·철회 시 색인 제거는 `replaceVersion(lawId, efYd, [])`로 한다([[IngestJob]]).
 - `search(String query, int k, filter?) → List<Chunk>` — 유사도 top-k. filter=`namespace=pending`(+lawId 등). `PgVectorStore`가 **질의를 내부 임베딩**해 검색. **이번 증분에서는 라운드트립 검증용**이 주 용도(본격 검색은 [[SourceAnalyzer]] landing 시).
 
 ## Schema · Index
