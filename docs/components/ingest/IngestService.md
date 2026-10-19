@@ -62,4 +62,4 @@ related: ["components/batch/IngestJob.md", "components/component-specs.md", "com
 - 실 Postgres 조립 통합테스트 2건(Testcontainers, `IngestServiceIntegrationTest`):
   - **기준선 있음** — 주택법 pending↔baseline → 제18조 `개정`·`diffVsCurrent` 저장, `findBaseline` 존재.
   - **제정(baseline=null)** — 변경 조문 전부 `신설`, `findBaseline` empty.
-- 추가 예정: 같은 입력 재호출 시 `pendingChanged=false`·쓰기 없음 · 기준선만 바뀌면 `pendingChanged=true` · 철회된 행에 같은 입력 → `시행예정` 복원.
+- 재호출 시 `pendingChanged=false`·쓰기 없음 · 기준선만 바뀌어도 `pendingChanged=true` · 철회된 행에 같은 입력 → `시행예정` 복원(신규 테스트 3건).
