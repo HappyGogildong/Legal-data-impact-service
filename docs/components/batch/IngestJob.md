@@ -52,8 +52,13 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 | `run --full` | 목록의 **모든** 법령에 `SYNC` 등록(MST가 같아도) — 기준선 재검증(§탐색 마지막) |
 | `run --dry-run` | 탐색 결과(무엇을 할지)만 `ingest_runs`에 기록. 큐·`law_versions`에 쓰지 않음 |
 | `sync <lawId> <efYd> [mst]` | 단건 `SYNC` 등록 후 소진. `mst`를 생략하면 저장된 시행예정본의 값, 그것도 없으면 거부 |
+| `index` | 탐색·수집 없이 **쌓여 있는 `READY` `INDEX`만** 소진 — 색인을 꺼 둔 동안 밀린 작업 처리 |
 | `reindex-all` | 시행예정 전체에 `INDEX` 등록 후 소진(임베딩 모델 교체 시) |
 | `requeue-dead` | `DEAD` 작업의 **기존 행**을 `READY`로(`task_id`·시도 이력 유지, 시도 횟수 0) 되돌린 뒤 소진 |
+
+**설정 `lia.batch.index.enabled`**(기본 `true`, env `LIA_BATCH_INDEX_ENABLED`) — `false`면 **`run`(자동 경로)의 워커가 `INDEX`를 가져가지 않는다**. 수집(`SYNC`)·시행 전환·철회는 그대로 돌고, `INDEX`는 `READY`로 남는다(법령 버전당 하나라 무한히 쌓이지 않음). 실행 기록에 `deferred.INDEX`(남은 `READY` `INDEX` 수)를 남기고, 의도된 미룸이라 결과는 `SUCCESS`. 사람이 직접 친 명령(`index`·`reindex-all`·`sync`)은 이 설정과 무관하게 `INDEX`까지 처리한다 — 명령했다면 그게 의도다.
+- 꺼 둔 동안: `TRANSITION`·`PURGE`의 색인 제거는 계속된다(삭제만 — 임베딩 비용 없음) → "시행예정 색인에는 시행예정 버전만" 불변식 유지. 대신 새·바뀐 법령은 검색 색인에 반영되지 않는다(정확 조회는 정본이라 영향 없음). "색인 지연" 신호로 보인다.
+- 플래그(`run --no-index`) 대신 설정인 이유: 정기 실행(cron) 줄을 고치지 않고 켜고 끈다.
 
 | 종료 코드 | 실행 결과 | 판정 기준 |
 |---|---|---|
@@ -62,6 +67,7 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 | 2 | `PARTIAL` | 이번 실행에서 실패·격리된 작업이 1건 이상 · 목록 미완주(`run`, `--dry-run` 포함) · 종료 신호로 멈춰 `READY`가 남음 |
 
 - 이전 실행에서 이미 격리돼 있던 `DEAD`는 이번 실행 결과에 넣지 않는다 — 그건 별도 신호(`DEAD ≥ 1`)다.
+- 설정으로 미룬 `INDEX`(`deferred.INDEX`)도 결과에 넣지 않는다.
 
 ## 데이터 모델 (Flyway `V5__ingest_batch.sql`)
 ```sql
@@ -71,12 +77,12 @@ ALTER TABLE law_versions ADD COLUMN missing_since date;   -- 완주 목록에서
 
 CREATE TABLE ingest_runs (                          -- 실행 단위
   run_id        bigserial PRIMARY KEY,
-  command       text        NOT NULL,             -- run · run --full · run --dry-run · sync … · reindex-all · requeue-dead
+  command       text        NOT NULL,             -- run · run --full · run --dry-run · sync … · index · reindex-all · requeue-dead
   started_at    timestamptz NOT NULL,
   finished_at   timestamptz,
   outcome       text        CHECK (outcome IN ('SUCCESS', 'PARTIAL', 'FAILED')),
   list_complete boolean,                          -- 목록을 totalCnt 까지 받았는가(사라짐 판정 전제). 탐색 없는 명령은 NULL
-  counts        jsonb       NOT NULL DEFAULT '{}', -- listed · planned.<종류>(계획) · enqueued.<종류>(실제 신규 등록) · done · failed · dead …
+  counts        jsonb       NOT NULL DEFAULT '{}', -- listed · planned.<종류>(계획) · enqueued.<종류>(실제 신규 등록) · done · failed · dead · deferred.INDEX …
   CHECK ((finished_at IS NULL) = (outcome IS NULL)) -- 종료 기록은 둘 다 있거나 둘 다 없다
 );
 
@@ -124,7 +130,7 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
    - 끝나지 않은 시도 행 → `ABANDONED`. `RUNNING` 작업 → `READY`(시도 횟수가 한도면 `DEAD` — 프로세스를 죽이는 작업이 무한 반복되지 않게).
    - 30일 지난 `DONE` 삭제.
 3. **시작** — `ingest_runs` 행 생성.
-4. **등록** — `Discoverer`(명령에 따라 생략·대체: `sync`·`reindex-all`·`requeue-dead`는 해당 작업만 등록). `--dry-run`은 여기서 기록 후 종료.
+4. **등록** — `Discoverer`(명령에 따라 생략·대체: `sync`·`reindex-all`·`requeue-dead`는 해당 작업만 등록, `index`는 등록 없음). `--dry-run`은 여기서 기록 후 종료.
 5. **소진** — 워커 풀이 작업을 처리한다. 실행 중에 생긴 작업(SYNC → INDEX, TRANSITION → SYNC)도 같은 실행에서 처리한다. 워커는 가져갈 작업이 없어도 **진행 중인 작업이 남아 있으면** 잠시 기다렸다 다시 가져가고(그 작업이 새 작업을 만들 수 있으므로), **가져갈 작업도 진행 중인 작업도 없을 때** 종료한다.
 6. **기록** — 건수·결과·`list_complete`·종료 시각을 `ingest_runs`에. 예외로 끝나도 `FAILED`로 기록한 뒤 전파한다. 잠금 해제.
 
@@ -207,6 +213,7 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
     WHERE task_id = (SELECT task_id FROM ingest_tasks
                      WHERE status = 'READY' AND last_attempt_run IS DISTINCT FROM :runId
                        AND law_id <> ALL(:busyLawIds)          -- 지금 처리 중인 법령 제외
+                       AND kind = ANY(:kinds)                  -- 이번 실행이 처리하는 종류(run + 색인 꺼짐 → INDEX 제외, index → INDEX 만)
                      ORDER BY CASE kind WHEN 'TRANSITION' THEN 0 WHEN 'PURGE' THEN 0
                                         WHEN 'SYNC' THEN 1 ELSE 2 END, task_id
                      LIMIT 1 FOR UPDATE SKIP LOCKED)
@@ -256,7 +263,7 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
 | 트레이스(OTLP push → Tempo) | 실행 span 아래 작업 span(`kind` 태그), 그 아래 기존 `lia.ingest`·`lia.normalize`·`lia.diff` |
 | 구조화 로그 | 작업마다 한 줄: 종류·법령·결과·소요 시간·오류 |
 
-Pushgateway는 두지 않는다. **신호:** `DEAD ≥ 1` · 마지막 성공 실행이 26시간 넘게 없음 · 목록 미완주 연속 · `abandoned` 실행 · `duplicateKeys > 0` · 가장 오래된 `READY`의 나이 · 색인 지연(최신 `INDEX`가 완료 안 된 시행예정 법령 수).
+Pushgateway는 두지 않는다. **신호:** `DEAD ≥ 1` · 마지막 성공 실행이 26시간 넘게 없음 · 목록 미완주 연속 · `abandoned` 실행 · `duplicateKeys > 0` · 가장 오래된 `READY`의 나이 · 색인 지연(`READY` `INDEX` 수 = `deferred.INDEX`, 색인을 꺼 두면 늘어남).
 
 ## Invariants
 - 한 시점에 배치는 **하나만** 돈다(advisory lock).
@@ -284,7 +291,7 @@ Pushgateway는 두지 않는다. **신호:** `DEAD ≥ 1` · 마지막 성공 �
 | 대상 | 방법 | 확인할 것 |
 |---|---|---|
 | `Discoverer` | 표 기반, 가짜 원천 + Testcontainers | 신규·MST 변경·동일·시행 도래·첫 미확인·같은 날 재실행(PURGE 안 함)·다른 날 두 번째 미확인·조회 범위 밖·목록 미완주·미완주 목록에 보이면 해제·`--full`·`--dry-run`·철회본 재등장·중복 키 |
-| `TaskQueue` | Testcontainers | 중복 등록 무시, `DEAD`가 재등록 차단, `SKIP LOCKED` 동시 가져가기, 가져가기 시 시도 행, 소유권 잃은 완료 무시, 중단 복구(`ABANDONED`·한도면 `DEAD`), 이번 실행 시도 작업 제외, 우선순위, `requeue-dead` 이력 보존, `mst` CHECK |
+| `TaskQueue` | Testcontainers | 중복 등록 무시, `DEAD`가 재등록 차단, `SKIP LOCKED` 동시 가져가기, 가져가기 시 시도 행, 소유권 잃은 완료 무시, 중단 복구(`ABANDONED`·한도면 `DEAD`), 이번 실행 시도 작업 제외, 우선순위, 종류 필터, `requeue-dead` 이력 보존, `mst` CHECK |
 | `IngestRunStore` | Testcontainers | 종료 기록, 열린 실행 정리, `finished_at`/`outcome` CHECK |
 | 핸들러 | 가짜 원천(샘플 fixture) + Testcontainers | SYNC: revision 같으면 저장·INDEX 없음, 저장 후 등록 실패 시 함께 롤백. TRANSITION: 형제 SYNC·`과거` 전환·색인 제거. INDEX: 실패 시 이전 청크 유지. PURGE: `철회`·색인 제거 |
 | 잡 전체 | Testcontainers + 가짜 원천 + 가짜 임베딩 | 두 번 실행 = 같은 결과. 실패 주입: 한 법령만 일시 오류 → 나머지 성공, 3회 후 `DEAD`, 영구 오류 즉시 `DEAD`. 잠금 경합 시 두 번째 실행 즉시 종료. 결과 판정(SUCCESS·PARTIAL·FAILED, dry-run 미완주 = PARTIAL) |
