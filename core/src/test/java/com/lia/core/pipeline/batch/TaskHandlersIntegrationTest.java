@@ -28,6 +28,7 @@ import com.lia.core.pipeline.diff.DiffBuilder;
 import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.ingest.IngestService;
 import com.lia.core.pipeline.normalize.Normalizer;
+import com.lia.core.store.Chunk;
 import com.lia.core.store.ChunkStore;
 import com.lia.core.store.LawStore;
 import com.lia.core.testsupport.FakeEmbeddingModel;
@@ -78,8 +79,8 @@ class TaskHandlersIntegrationTest {
         feed = new FakeLawFeed().withHousingAct();
         sync = new SyncHandler(feed, ingest, lawStore, queue, tx);
         index = new IndexHandler(lawStore, new RAGIndexer(chunkStore), new MinIntervalLimiter(Duration.ZERO));
-        transition = new TransitionHandler(lawStore, chunkStore, queue);
-        purge = new PurgeHandler(lawStore, chunkStore);
+        transition = new TransitionHandler(lawStore, chunkStore, queue, tx);
+        purge = new PurgeHandler(lawStore, chunkStore, tx);
     }
 
     private static Task task(TaskKind kind, String lawId, LocalDate effectiveDate, String mst) {
@@ -207,6 +208,68 @@ class TaskHandlersIntegrationTest {
 
         assertEquals(Law.Status.철회, lawStore.find(LAW, EF).orElseThrow().status(), "행은 보존");
         assertEquals(0, chunks(LAW, EF));
+    }
+
+    /** 색인 제거가 항상 실패하는 ChunkStore — 상태 변경과 색인 제거가 한 트랜잭션인지 확인용. */
+    private static ChunkStore failingChunkStore() {
+        return new ChunkStore() {
+            @Override
+            public void replaceVersion(String lawId, String efYd, List<Chunk> chunks) {
+                throw new IllegalStateException("색인 제거 실패(테스트)");
+            }
+
+            @Override
+            public List<Chunk> search(String query, int topK) {
+                return List.of();
+            }
+        };
+    }
+
+    @Test
+    @DisplayName("TRANSITION 원자성 — 색인 제거가 실패하면 상태·기준선·SYNC 등록 모두 롤백")
+    void transition_원자성() {
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        lawStore.upsert(TestLaws.law(LAW, "SIBLING", Law.Status.시행예정, LocalDate.of(2027, 2, 1)));
+        completeAll();
+        TransitionHandler failing = new TransitionHandler(lawStore, failingChunkStore(), queue, tx);
+
+        assertThrows(IllegalStateException.class,
+                () -> failing.handle(task(TaskKind.TRANSITION, LAW, EF, null)));
+
+        assertEquals(Law.Status.시행예정, lawStore.find(LAW, EF).orElseThrow().status());
+        assertEquals(Law.Status.시행중,
+                lawStore.find(LAW, LawFixtures.HOUSING_BASELINE_EFFECTIVE).orElseThrow().status(),
+                "옛 시행중본이 과거로 바뀌면 안 된다");
+        assertTrue(readyTasks().isEmpty(), "형제 SYNC 가 등록되면 안 된다");
+    }
+
+    @Test
+    @DisplayName("PURGE 원자성 — 색인 제거가 실패하면 철회 처리도 롤백")
+    void purge_원자성() {
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        PurgeHandler failing = new PurgeHandler(lawStore, failingChunkStore(), tx);
+
+        assertThrows(IllegalStateException.class,
+                () -> failing.handle(task(TaskKind.PURGE, LAW, EF, null)));
+
+        assertEquals(Law.Status.시행예정, lawStore.find(LAW, EF).orElseThrow().status());
+    }
+
+    @Test
+    @DisplayName("오래된 작업 무시 — 시행예정이 아닌 버전에는 TRANSITION·PURGE 가 아무것도 안 한다")
+    void 오래된작업_무시() {
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        purge.handle(task(TaskKind.PURGE, LAW, EF, null));
+
+        transition.handle(task(TaskKind.TRANSITION, LAW, EF, null));
+
+        assertEquals(Law.Status.철회, lawStore.find(LAW, EF).orElseThrow().status(), "철회 행이 되살아나면 안 된다");
+
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));   // 철회본 복원 → 시행예정
+        transition.handle(task(TaskKind.TRANSITION, LAW, EF, null));
+        purge.handle(task(TaskKind.PURGE, LAW, EF, null));
+
+        assertEquals(Law.Status.시행중, lawStore.find(LAW, EF).orElseThrow().status(), "시행중본이 철회되면 안 된다");
     }
 
     @Test
