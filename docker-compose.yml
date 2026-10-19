@@ -55,6 +55,7 @@ services:
     healthcheck:
       disable: true            # 웹 서버가 없어 이미지의 actuator 헬스체크가 의미 없다
     restart: "no"
+    stop_grace_period: 60s     # 종료 신호 후 진행 중 작업(HTTP 20초·재시도)을 마치고 실행 기록을 남길 시간 — 기본 10초는 짧다
 
   # mcp: PoC 스텁(Node/TS) — Dockerfile 미존재라 이번 배포 범위에서 제외.
   #      복구 시 mcp/Dockerfile 추가 후 아래 주석 해제.

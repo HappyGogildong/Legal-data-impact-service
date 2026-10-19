@@ -16,6 +16,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
@@ -40,6 +42,9 @@ import com.lia.core.store.PendingVersion;
 public class IngestJob {
 
     private static final Logger log = LoggerFactory.getLogger(IngestJob.class);
+
+    /** 소진을 끝낼 때(워커 실패 포함) 남은 워커를 기다리는 최대 시간 — 실행 기록·잠금 해제 뒤에 워커가 남지 않게. */
+    private static final Duration WORKER_TERMINATION_TIMEOUT = Duration.ofSeconds(30);
 
     private final TaskQueue queue;
     private final IngestRunStore runs;
@@ -82,7 +87,10 @@ public class IngestJob {
         this.observations = observations == null ? ObservationRegistry.NOOP : observations;
     }
 
-    /** 종료 신호 — 새 작업을 가져가지 않고, 진행 중 작업만 마치고 소진을 끝낸다. */
+    /**
+     * 종료 신호 — 새 작업을 가져가지 않고, 진행 중 작업만 마치고 소진을 끝낸다(실행 기록은 그대로 남긴다).
+     * 실행이 끝날 때까지 기다리는 것은 호출자({@code IngestJobRunner#destroy})의 몫.
+     */
     public void requestStop() {
         stopping = true;
     }
@@ -115,7 +123,7 @@ public class IngestJob {
                     discovery.planned().forEach((kind, n) -> counts.put("planned." + kind, n));
                     discovery.enqueued().forEach((kind, n) -> counts.put("enqueued." + kind, n));
                     if (command.dryRun()) {
-                        return finish(runId, outcome(0, 0, listComplete), listComplete, counts);
+                        return finish(runId, outcome(0, 0, listComplete, Set.of()), listComplete, counts);
                     }
                 }
                 case SYNC -> queue.enqueue(TaskKind.SYNC, command.lawId(), command.effectiveDate(), mstFor(command));
@@ -130,25 +138,31 @@ public class IngestJob {
                 case INDEX -> { }   // 등록 없음 — 쌓여 있는 INDEX 만 소진
             }
 
-            int[] drained = drain(runId, kindsFor(command));
+            Set<TaskKind> kinds = kindsFor(command);
+            int[] drained = drain(runId, kinds);
             counts.put("done", drained[0]);
             counts.put("failed", drained[1]);
             counts.put("dead", drained[2]);
             counts.put("deferred.INDEX", queue.countReady(TaskKind.INDEX));   // 색인 지연 — 미룬 것은 결과에 넣지 않는다
-            return finish(runId, outcome(drained[1], drained[2], listComplete), listComplete, counts);
+            return finish(runId, outcome(drained[1], drained[2], listComplete, kinds), listComplete, counts);
         } catch (RuntimeException | Error e) {
             log.error("[batch] 실행 {} 실패", runId, e);
-            runs.finish(runId, RunOutcome.FAILED, null, counts);   // SIGKILL 등으로 여기도 못 오면 다음 실행이 닫는다
+            try {
+                runs.finish(runId, RunOutcome.FAILED, null, counts);   // SIGKILL 등으로 여기도 못 오면 다음 실행이 닫는다
+            } catch (RuntimeException | Error finishFailure) {
+                e.addSuppressed(finishFailure);                        // 원래 실패를 덮지 않는다
+            }
             throw e;
         }
     }
 
     /**
      * 실행 결과 판정(IngestJob.md §실행 모델) — 이번 실행의 실패·격리 ≥1, 목록 미완주, 종료 신호로 멈춰
-     * READY 가 남음 → PARTIAL. 이전 실행부터 있던 DEAD 는 따지지 않는다(별도 신호).
+     * READY 가 남음 → PARTIAL. 이전 실행부터 있던 DEAD 는 따지지 않는다(별도 신호). 남은 READY 는 이번
+     * 실행이 처리하는 종류({@code kinds})만 센다 — 색인을 꺼 둬 미룬 INDEX 는 종료 신호와 무관하다.
      */
-    private RunOutcome outcome(int failed, int dead, Boolean listComplete) {
-        boolean stoppedEarly = stopping && queue.countByStatus().containsKey(TaskStatus.READY);
+    private RunOutcome outcome(int failed, int dead, Boolean listComplete, Set<TaskKind> kinds) {
+        boolean stoppedEarly = stopping && kinds.stream().anyMatch(kind -> queue.countReady(kind) > 0);
         boolean partial = failed > 0 || dead > 0 || Boolean.FALSE.equals(listComplete) || stoppedEarly;
         return partial ? RunOutcome.PARTIAL : RunOutcome.SUCCESS;
     }
@@ -179,20 +193,26 @@ public class IngestJob {
         return new RunReport(runId, outcome, Map.copyOf(counts));
     }
 
-    /** 큐 소진({@code kinds} 종류만). 반환: {완료, 실패(다음 실행 재시도), 격리}. */
+    /**
+     * 큐 소진({@code kinds} 종류만). 반환: {완료, 실패(다음 실행 재시도), 격리}.
+     * 워커 하나가 예외로 죽으면 나머지에 중단을 알리고, 어느 경우든 워커가 모두 끝날 때까지(제한 시간) 기다린 뒤
+     * 돌아간다 — 실행 기록·잠금 해제 뒤에 워커가 살아 남아 단일 실행 불변식을 깨지 않게.
+     */
     private int[] drain(long runId, Set<TaskKind> kinds) {
         AtomicInteger done = new AtomicInteger();
         AtomicInteger failed = new AtomicInteger();
         AtomicInteger dead = new AtomicInteger();
         Set<String> busy = ConcurrentHashMap.newKeySet();
         AtomicInteger inFlight = new AtomicInteger();
+        AtomicBoolean aborted = new AtomicBoolean();
         Object claimLock = new Object();
 
         ExecutorService pool = Executors.newFixedThreadPool(workers);
         try {
             List<Future<?>> futures = new ArrayList<>();
             for (int i = 0; i < workers; i++) {
-                futures.add(pool.submit(() -> workLoop(runId, kinds, busy, inFlight, claimLock, done, failed, dead)));
+                futures.add(pool.submit(
+                        () -> workLoop(runId, kinds, busy, inFlight, claimLock, aborted, done, failed, dead)));
             }
             for (Future<?> future : futures) {
                 future.get();
@@ -203,14 +223,27 @@ public class IngestJob {
         } catch (ExecutionException e) {
             throw new IllegalStateException("워커 실패", e.getCause());
         } finally {
+            aborted.set(true);       // 남은 워커는 새 작업을 가져가지 않는다(정상 종료면 이미 모두 끝났다)
             pool.shutdownNow();
+            awaitTermination(pool);
         }
         return new int[] {done.get(), failed.get(), dead.get()};
     }
 
+    private static void awaitTermination(ExecutorService pool) {
+        try {
+            if (!pool.awaitTermination(WORKER_TERMINATION_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
+                log.warn("[batch] 워커가 {} 안에 끝나지 않음 — 남은 워커를 두고 실행을 마친다", WORKER_TERMINATION_TIMEOUT);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("[batch] 워커 종료 대기 중 중단됨");
+        }
+    }
+
     private void workLoop(long runId, Set<TaskKind> kinds, Set<String> busy, AtomicInteger inFlight, Object claimLock,
-                          AtomicInteger done, AtomicInteger failed, AtomicInteger dead) {
-        while (!stopping) {
+                          AtomicBoolean aborted, AtomicInteger done, AtomicInteger failed, AtomicInteger dead) {
+        while (!stopping && !aborted.get()) {
             Optional<Task> claimed;
             synchronized (claimLock) {
                 claimed = queue.claim(runId, Set.copyOf(busy), kinds);

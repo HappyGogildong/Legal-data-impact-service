@@ -8,6 +8,12 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.sql.DataSource;
 
@@ -15,6 +21,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -28,6 +35,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.connector.LawApiException;
+import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.diff.DiffBuilder;
 import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.ingest.IngestService;
@@ -51,6 +59,7 @@ class IngestJobIntegrationTest {
     static final String LAW = LawFixtures.HOUSING_LAW_ID;
     static final LocalDate EF = LawFixtures.HOUSING_EFFECTIVE;
 
+    static DataSource dataSource;
     static JdbcClient jdbc;
     static LawStore lawStore;
     static TaskQueue queue;
@@ -63,6 +72,7 @@ class IngestJobIntegrationTest {
     @BeforeAll
     static void setup() {
         DataSource ds = TestDatabases.migrate(PG);
+        dataSource = ds;
         jdbc = JdbcClient.create(ds);
         lawStore = new LawStore(jdbc, new ObjectMapper());
         queue = new TaskQueue(jdbc);
@@ -87,15 +97,41 @@ class IngestJobIntegrationTest {
     }
 
     private IngestJob job(LocalDate today, boolean indexEnabled) {
+        return job(today, indexEnabled, 2, null);
+    }
+
+    /** @param sync null 이면 실제 SyncHandler — 워커 동작을 조종하는 테스트가 바꿔 끼운다 */
+    private IngestJob job(LocalDate today, boolean indexEnabled, int workers, TaskHandler sync) {
         Clock clock = Clock.fixed(today.atStartOfDay(SEOUL).toInstant(), SEOUL);
         Discoverer discoverer = new Discoverer(feed, lawStore, queue, clock, 10);
         List<TaskHandler> handlers = List.of(
-                new SyncHandler(feed, ingest, lawStore, queue, tx),
+                sync != null ? sync : new SyncHandler(feed, ingest, lawStore, queue, tx),
                 new IndexHandler(lawStore, new RAGIndexer(chunkStore), new MinIntervalLimiter(Duration.ZERO)),
                 new TransitionHandler(lawStore, chunkStore, queue, tx),
                 new PurgeHandler(lawStore, chunkStore, tx));
-        return new IngestJob(queue, runs, discoverer, lawStore, handlers, 2, indexEnabled, Duration.ofMillis(20),
+        return new IngestJob(queue, runs, discoverer, lawStore, handlers, workers, indexEnabled, Duration.ofMillis(20),
                 Duration.ofDays(30), clock, null);
+    }
+
+    /** 본문 fetch 에서 멈추는 주택법 원천 — 진입하면 {@code entered}, {@code release} 가 열릴 때까지 대기. */
+    private static FakeLawFeed blockingFeed(CountDownLatch entered, CountDownLatch release) {
+        return new FakeLawFeed() {
+            @Override
+            public RawLaw fetchPending(String mst, LocalDate effectiveDate) {
+                entered.countDown();
+                await(release);
+                return super.fetchPending(mst, effectiveDate);
+            }
+        }.withHousingAct();
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(30, TimeUnit.SECONDS)) throw new IllegalStateException("대기 시간 초과(테스트)");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 
     private static JobCommand run() {
@@ -250,5 +286,129 @@ class IngestJobIntegrationTest {
 
         assertEquals(1, report.counts().get("requeued"));
         assertNull(queue.countByStatus().get(TaskStatus.DEAD));
+    }
+
+    @Test
+    @DisplayName("종료 신호 — 진행 중 작업은 끝내고 실행을 기록, 남은 READY 가 있으면 PARTIAL")
+    void 종료신호_진행중작업_마침() throws Exception {
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        feed = blockingFeed(entered, release);
+        IngestJob job = job(LocalDate.of(2026, 7, 1), true, 1, null);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<RunReport> running = executor.submit(() -> job.run(run()));
+            await(entered);                 // SYNC 가 진행 중
+
+            job.requestStop();
+            release.countDown();
+            RunReport report = running.get(30, TimeUnit.SECONDS);
+
+            assertEquals(RunOutcome.PARTIAL, report.outcome(), "SYNC 가 만든 INDEX 가 READY 로 남음");
+            assertEquals(1, report.counts().get("done"), "진행 중이던 SYNC 는 완료 기록");
+            assertEquals(Law.Status.시행예정, lawStore.find(LAW, EF).orElseThrow().status());
+            assertEquals(1, queue.countReady(TaskKind.INDEX));
+            assertEquals("PARTIAL", jdbc.sql("SELECT outcome FROM ingest_runs WHERE run_id = :id AND finished_at IS NOT NULL")
+                    .param("id", report.runId()).query(String.class).single());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("종료 신호 + 색인 꺼짐 — 미룬 INDEX 는 이번 실행이 처리할 종류가 아니라 PARTIAL 이 아니다")
+    void 종료신호_색인꺼짐() throws Exception {
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        feed = blockingFeed(entered, release);
+        IngestJob job = job(LocalDate.of(2026, 7, 1), false, 1, null);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<RunReport> running = executor.submit(() -> job.run(run()));
+            await(entered);
+
+            job.requestStop();
+            release.countDown();
+            RunReport report = running.get(30, TimeUnit.SECONDS);
+
+            assertEquals(RunOutcome.SUCCESS, report.outcome());
+            assertEquals(1, report.counts().get("deferred.INDEX"));
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("워커 하나가 죽으면 나머지 워커가 끝날 때까지 기다린 뒤 실행을 FAILED 로 기록")
+    void 워커실패_나머지대기() {
+        feed.clearHeads().head("A", "MA", LocalDate.of(2027, 1, 1)).head("B", "MB", LocalDate.of(2027, 1, 1));
+        CountDownLatch bEntered = new CountDownLatch(1);
+        AtomicBoolean bFinished = new AtomicBoolean();
+        TaskHandler sync = new TaskHandler() {
+            @Override
+            public TaskKind kind() {
+                return TaskKind.SYNC;
+            }
+
+            @Override
+            public void handle(Task task) {
+                if (task.lawId().equals("B")) {
+                    bEntered.countDown();
+                    try {
+                        new CountDownLatch(1).await();        // 중단(interrupt)될 때까지
+                    } catch (InterruptedException e) {
+                        pause(Duration.ofMillis(300));        // 중단 후 정리 중 — 기다리지 않으면 이 사이에 실행이 끝난다
+                        bFinished.set(true);
+                    }
+                } else {
+                    await(bEntered);
+                    throw new AssertionError("워커 사망(테스트)");
+                }
+            }
+        };
+
+        assertThrows(IllegalStateException.class,
+                () -> job(LocalDate.of(2026, 7, 1), true, 2, sync).run(run()));
+
+        assertTrue(bFinished.get(), "실행 기록·잠금 해제 전에 남은 워커가 끝나야 한다");
+        assertEquals("FAILED", jdbc.sql("SELECT outcome FROM ingest_runs WHERE finished_at IS NOT NULL")
+                .query(String.class).single());
+    }
+
+    @Test
+    @DisplayName("러너 종료 훅 — 종료 신호 후 실행이 끝나 기록될 때까지 기다린다")
+    void 러너_종료대기() throws Exception {
+        CountDownLatch entered = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        feed = blockingFeed(entered, release);
+        IngestJobRunner runner = new IngestJobRunner(job(LocalDate.of(2026, 7, 1), true, 1, null), dataSource);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            executor.submit(() -> runner.run(new DefaultApplicationArguments("run")));
+            await(entered);
+
+            Thread hook = new Thread(runner::destroy);   // SIGTERM 종료 훅 흉내
+            hook.start();
+            while (hook.getState() != Thread.State.TIMED_WAITING && hook.getState() != Thread.State.WAITING
+                    && hook.getState() != Thread.State.TERMINATED) {
+                Thread.onSpinWait();                     // 종료 훅이 실행 종료를 기다리기 시작할 때까지
+            }
+            release.countDown();
+            hook.join(30_000);
+
+            assertEquals(2, runner.getExitCode(), "종료 훅이 끝났을 때 실행은 이미 PARTIAL 로 끝나 있다");
+            assertEquals(0, jdbc.sql("SELECT count(*) FROM ingest_runs WHERE finished_at IS NULL")
+                    .query(Integer.class).single());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private static void pause(Duration duration) {
+        try {
+            Thread.sleep(duration);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
