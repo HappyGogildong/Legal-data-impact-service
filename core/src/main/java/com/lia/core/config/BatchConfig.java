@@ -91,7 +91,7 @@ public class BatchConfig {
         // 같은 PlatformTransactionManager — LawStore·TaskQueue·ChunkStore 가 한 트랜잭션에 참여한다
         TransactionTemplate transactions = new TransactionTemplate(transactionManager);
         List<TaskHandler> handlers = List.of(
-                new SyncHandler(feed, ingest, lawStore, queue, transactions),
+                new SyncHandler(feed, ingest, lawStore, queue, transactions, batchClock),
                 new IndexHandler(lawStore, indexer, new MinIntervalLimiter(embeddingInterval)),
                 new TransitionHandler(lawStore, chunkStore, queue, transactions),
                 new PurgeHandler(lawStore, chunkStore, transactions));

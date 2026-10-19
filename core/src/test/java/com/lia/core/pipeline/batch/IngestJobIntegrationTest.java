@@ -105,7 +105,7 @@ class IngestJobIntegrationTest {
         Clock clock = Clock.fixed(today.atStartOfDay(SEOUL).toInstant(), SEOUL);
         Discoverer discoverer = new Discoverer(feed, lawStore, queue, clock, 10);
         List<TaskHandler> handlers = List.of(
-                sync != null ? sync : new SyncHandler(feed, ingest, lawStore, queue, tx),
+                sync != null ? sync : new SyncHandler(feed, ingest, lawStore, queue, tx, clock),
                 new IndexHandler(lawStore, new RAGIndexer(chunkStore), new MinIntervalLimiter(Duration.ZERO)),
                 new TransitionHandler(lawStore, chunkStore, queue, tx),
                 new PurgeHandler(lawStore, chunkStore, tx));

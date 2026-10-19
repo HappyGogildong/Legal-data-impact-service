@@ -17,9 +17,10 @@ import com.lia.core.store.PendingVersion;
  * 함께 롤백된다(색인 제거가 실패하면 상태도 되돌아가 재시도 때 다시 시도). 색인 제거의 자체 트랜잭션은
  * 같은 DataSource 라 이 트랜잭션에 합류한다.
  *
- * <p>가드: 대상 버전이 시행예정이 아니면(행이 없거나, 이미 시행중이거나 철회된 경우) 아무것도 하지 않고
- * 끝낸다 — 오래된 작업이 철회 행을 되살리지 못하게. 본문이 원자적이라 실패 후 재시도에서도 항상
- * 시행예정으로 보이므로 가드가 절반만 끝난 전환을 건너뛰는 일은 없다.
+ * <p>가드: 대상 버전이 시행예정이 아니면(이미 시행중이거나 철회된 경우) 상태는 건드리지 않고 그 버전의
+ * 시행예정 색인만 제거한다 — 오래된 작업이 철회 행을 되살리지 못하게, 그리고 다른 경로(형제 SYNC 의 기준선
+ * 저장)로 상태만 먼저 바뀐 버전의 청크가 검색에 남지 않게. 행이 없으면 아무것도 안 한다. 본문이 원자적이라
+ * 실패 후 재시도에서도 항상 시행예정으로 보이므로 가드가 절반만 끝난 전환을 건너뛰는 일은 없다.
  */
 public class TransitionHandler implements TaskHandler {
 
@@ -45,7 +46,11 @@ public class TransitionHandler implements TaskHandler {
     public void handle(Task task) {
         transactions.executeWithoutResult(status -> {
             var law = lawStore.find(task.lawId(), task.effectiveDate());
-            if (law.isEmpty() || !law.get().pending()) {
+            if (law.isEmpty()) {
+                return;
+            }
+            if (!law.get().pending()) {
+                chunkStore.replaceVersion(task.lawId(), task.effectiveDate().toString(), List.of());
                 return;
             }
             lawStore.updateStatus(task.lawId(), task.effectiveDate(), Law.Status.시행중);

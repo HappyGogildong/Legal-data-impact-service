@@ -2,8 +2,10 @@ package com.lia.core.pipeline.batch;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Set;
 
@@ -47,6 +49,9 @@ class TaskHandlersIntegrationTest {
 
     static final String LAW = LawFixtures.HOUSING_LAW_ID;
     static final LocalDate EF = LawFixtures.HOUSING_EFFECTIVE;
+    static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+    /** 오늘 = 2026-07-01 — 주택법 시행예정본(2026-08-04) 시행 전 */
+    static final LocalDate TODAY = LocalDate.of(2026, 7, 1);
 
     static JdbcClient jdbc;
     static LawStore lawStore;
@@ -77,10 +82,19 @@ class TaskHandlersIntegrationTest {
         jdbc.sql("DELETE FROM law_versions").update();
         jdbc.sql("TRUNCATE TABLE vector_store").update();
         feed = new FakeLawFeed().withHousingAct();
-        sync = new SyncHandler(feed, ingest, lawStore, queue, tx);
+        sync = syncOn(TODAY);
         index = new IndexHandler(lawStore, new RAGIndexer(chunkStore), new MinIntervalLimiter(Duration.ZERO));
         transition = new TransitionHandler(lawStore, chunkStore, queue, tx);
         purge = new PurgeHandler(lawStore, chunkStore, tx);
+    }
+
+    /** 그날을 오늘로 보는 SYNC 핸들러. */
+    private SyncHandler syncOn(LocalDate day) {
+        return new SyncHandler(feed, ingest, lawStore, queue, tx, clockOn(day));
+    }
+
+    private static Clock clockOn(LocalDate day) {
+        return Clock.fixed(day.atStartOfDay(SEOUL).toInstant(), SEOUL);
     }
 
     private static Task task(TaskKind kind, String lawId, LocalDate effectiveDate, String mst) {
@@ -133,7 +147,7 @@ class TaskHandlersIntegrationTest {
                 throw new IllegalStateException("등록 실패(테스트)");
             }
         };
-        SyncHandler failing = new SyncHandler(feed, ingest, lawStore, failingQueue, tx);
+        SyncHandler failing = new SyncHandler(feed, ingest, lawStore, failingQueue, tx, clockOn(TODAY));
 
         assertThrows(IllegalStateException.class,
                 () -> failing.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST)));
@@ -147,6 +161,7 @@ class TaskHandlersIntegrationTest {
     @DisplayName("SYNC — 철회된 버전이 같은 내용으로 다시 오면 시행예정 복원 + INDEX")
     void sync_철회본복원() {
         sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        lawStore.markMissing(LAW, EF, TODAY.minusDays(1));   // 목록에서 사라짐(PURGE 전제)
         purge.handle(task(TaskKind.PURGE, LAW, EF, null));
         completeAll();
 
@@ -203,6 +218,7 @@ class TaskHandlersIntegrationTest {
     void purge() {
         sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
         index.handle(task(TaskKind.INDEX, LAW, EF, null));
+        lawStore.markMissing(LAW, EF, TODAY.minusDays(1));   // 목록에서 사라짐(PURGE 전제)
 
         purge.handle(task(TaskKind.PURGE, LAW, EF, null));
 
@@ -247,6 +263,7 @@ class TaskHandlersIntegrationTest {
     @DisplayName("PURGE 원자성 — 색인 제거가 실패하면 철회 처리도 롤백")
     void purge_원자성() {
         sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        lawStore.markMissing(LAW, EF, TODAY.minusDays(1));   // 목록에서 사라짐(PURGE 전제)
         PurgeHandler failing = new PurgeHandler(lawStore, failingChunkStore(), tx);
 
         assertThrows(IllegalStateException.class,
@@ -259,6 +276,7 @@ class TaskHandlersIntegrationTest {
     @DisplayName("오래된 작업 무시 — 시행예정이 아닌 버전에는 TRANSITION·PURGE 가 아무것도 안 한다")
     void 오래된작업_무시() {
         sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        lawStore.markMissing(LAW, EF, TODAY.minusDays(1));   // 목록에서 사라짐(PURGE 전제)
         purge.handle(task(TaskKind.PURGE, LAW, EF, null));
 
         transition.handle(task(TaskKind.TRANSITION, LAW, EF, null));
@@ -270,6 +288,73 @@ class TaskHandlersIntegrationTest {
         purge.handle(task(TaskKind.PURGE, LAW, EF, null));
 
         assertEquals(Law.Status.시행중, lawStore.find(LAW, EF).orElseThrow().status(), "시행중본이 철회되면 안 된다");
+    }
+
+    @Test
+    @DisplayName("SYNC 가드 — 이미 시행중으로 전환된 버전에 오래된 SYNC 가 와도 시행예정으로 되돌리거나 다시 색인하지 않는다")
+    void sync_전환된버전_무시() {
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        transition.handle(task(TaskKind.TRANSITION, LAW, EF, null));
+        completeAll();
+        int fetches = feed.fetchCount();
+
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));   // 실패로 남은 SYNC·requeue-dead·수동 sync
+
+        assertEquals(Law.Status.시행중, lawStore.find(LAW, EF).orElseThrow().status());
+        assertTrue(readyTasks().isEmpty(), "INDEX 를 등록하지 않는다");
+        assertEquals(fetches, feed.fetchCount(), "본문도 받지 않는다");
+    }
+
+    @Test
+    @DisplayName("SYNC 가드 — 시행일이 오늘이거나 지났으면 아무것도 안 한다(그 버전은 TRANSITION 몫)")
+    void sync_시행일지남_무시() {
+        syncOn(EF).handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+
+        assertTrue(lawStore.find(LAW, EF).isEmpty());
+        assertEquals(0, feed.fetchCount());
+        assertTrue(readyTasks().isEmpty());
+    }
+
+    @Test
+    @DisplayName("TRANSITION 가드 — 다른 경로로 이미 시행중이 된 버전이라도 남은 시행예정 색인은 제거")
+    void transition_이미시행중_색인제거() {
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        index.handle(task(TaskKind.INDEX, LAW, EF, null));
+        assertTrue(chunks(LAW, EF) > 0);
+        lawStore.updateStatus(LAW, EF, Law.Status.시행중);   // 형제 SYNC 의 기준선 저장으로 상태만 먼저 바뀐 경우
+        completeAll();
+
+        transition.handle(task(TaskKind.TRANSITION, LAW, EF, null));
+
+        assertEquals(0, chunks(LAW, EF), "시행예정이 아닌 버전의 시행예정 청크는 검색에 남지 않는다");
+        assertTrue(readyTasks().isEmpty(), "상태 전환 부수효과(형제 SYNC)는 없다");
+    }
+
+    @Test
+    @DisplayName("PURGE 가드 — 시행예정이 아닌 버전은 상태는 두고 색인만 제거")
+    void purge_시행예정아님_색인제거() {
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        index.handle(task(TaskKind.INDEX, LAW, EF, null));
+        lawStore.updateStatus(LAW, EF, Law.Status.시행중);
+
+        purge.handle(task(TaskKind.PURGE, LAW, EF, null));
+
+        assertEquals(Law.Status.시행중, lawStore.find(LAW, EF).orElseThrow().status());
+        assertEquals(0, chunks(LAW, EF));
+    }
+
+    @Test
+    @DisplayName("PURGE 가드 — 그 사이 목록에 다시 보여 missing_since 가 지워졌으면 철회하지 않는다")
+    void purge_다시보임_무시() {
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        index.handle(task(TaskKind.INDEX, LAW, EF, null));
+        lawStore.markMissing(LAW, EF, TODAY.minusDays(1));
+        lawStore.clearMissing(LAW, EF);                    // 다음 탐색에서 다시 보임
+
+        purge.handle(task(TaskKind.PURGE, LAW, EF, null));
+
+        assertEquals(Law.Status.시행예정, lawStore.find(LAW, EF).orElseThrow().status());
+        assertTrue(chunks(LAW, EF) > 0, "색인 유지");
     }
 
     @Test
