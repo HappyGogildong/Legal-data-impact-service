@@ -245,8 +245,8 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
 
 | 분류 | 해당 | 처리 |
 |---|---|---|
-| 일시적 | 네트워크·타임아웃, 요청 재시도 후 남은 5xx, 429, DB 연결 오류 | `READY`로 돌려 다음 실행에서 재시도. `attempts ≥ 3`이면 `DEAD` |
-| 영구 | API 논리 오류(`LawApiException`), 429 외 4xx, 정규화·파싱 실패, 제약 위반(코드 버그) | 즉시 `DEAD` |
+| 일시적 | 네트워크·타임아웃, 요청 재시도 후 남은 5xx, 408·429, DB 연결 오류 | `READY`로 돌려 다음 실행에서 재시도. `attempts ≥ 3`이면 `DEAD` |
+| 영구 | API 논리 오류(`LawApiException`), 408·429 외 4xx, 정규화·파싱 실패, 제약 위반(코드 버그) | 즉시 `DEAD` |
 | 모름 | 그 밖의 예외 | 일시적으로 취급(3회면 격리) |
 
 - **`attempts` 정의** — 작업을 `RUNNING`으로 가져간 횟수. 끝까지 못 간(중단된) 시도도 센다 — JVM을 죽이는 작업도 3회면 격리된다.
