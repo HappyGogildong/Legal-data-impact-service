@@ -55,7 +55,7 @@ curl -X POST localhost:8080/api/v1/analyses -H "Content-Type: application/json" 
 법령 수집·RAG 색인은 같은 이미지를 **`batch` 프로파일로 띄워 한 번 돌고 종료**하는 잡이다([[IngestJob]]). 웹 서버 없이 실행되고, 온라인 `core`와 자원이 분리된다. compose에는 `ingest` 서비스(`profiles: [batch]` — 평소 `up`에는 안 뜸)로 둔다.
 
 ```bash
-# 수동 실행 — 명령은 run · run --full · run --dry-run · sync <lawId> <efYd> · reindex-all · requeue-dead
+# 수동 실행 — 명령은 run · run --full · run --dry-run · sync <lawId> <efYd> [mst] · reindex-all · requeue-dead
 docker compose run --rm ingest run
 ```
 
@@ -67,7 +67,8 @@ docker compose run --rm ingest run
 0 5 * * 0  cd /opt/lia && docker compose run --rm ingest run --full
 ```
 
-- 종료 코드 0=성공, 1=실행 실패, 2=부분 실패(작업 실패·격리 또는 목록 미완주) — 스케줄러 알림에 쓴다.
+- 종료 코드 0=성공, 1=실행 실패, 2=부분 실패(작업 실패·격리, 목록 미완주, 종료 신호로 중단) — 스케줄러 알림에 쓴다. 판정 기준은 [[IngestJob]] §실행 모델.
+- 강제 종료(SIGKILL·OOM)된 실행은 다음 실행이 시작할 때 `FAILED`로 닫는다.
 - 이미 다른 실행이 돌고 있으면 잠금을 못 잡고 바로 종료한다(코드 0).
 - 실행 결과는 `ingest_runs` 테이블이 기준 출처다(1회성 잡이라 Prometheus가 긁지 못함 — Grafana는 Postgres를 직접 조회). 트레이스는 OTLP push라 Tempo에 그대로 남는다.
 - 비밀값은 `core`와 같은 `.env`(D39) — `LAW_OC`·`OPENAI_API_KEY` 필요.

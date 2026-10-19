@@ -11,7 +11,7 @@ related: ["components/batch/IngestJob.md", "components/component-specs.md", "com
 > 법령 한 건의 **정본 조립**: `Normalizer → DiffBuilder → LawStore upsert`. 스스로 변환·저장 로직을 갖지 않고 **순서·경계·계측**만 책임진다. 배치 실행·fetch·재시도는 [[IngestJob]](D62)이 맡고, 이 클래스는 그 `SYNC` 작업이 호출하는 조립 단위다. 스키마 SSOT: [[component-specs]] §1.
 
 ## Responsibility
-- **담당:** 조립 단계의 **순서 강제**(정규화→대조→저장) · 시행예정본과 (있으면)시행중 기준선본을 **함께** 저장 · **revision이 같으면 저장 생략**(증분, D16) · `lia.ingest` 계측(span/timer).
+- **담당:** 조립 단계의 **순서 강제**(정규화→대조→저장) · 시행예정본과 (있으면)시행중 기준선본을 **함께** 저장 · **revision·상태가 같으면 저장 생략**(증분, D16) · `lia.ingest` 계측(span/timer).
 - **담당 안 함:** 외부 API 호출·목록 순회·재시도·실패 격리([[IngestJob]]) · 조문 병합·부칙 필터([[Normalizer]]) · 신설/삭제/이동 판정([[DiffBuilder]]) · 영속([[LawStore]]) · 임베딩·색인([[RAGIndexer]], [[IngestJob]] `INDEX`). **오케스트레이터는 로직을 위임만 한다.**
 
 ## Collaborators
@@ -24,14 +24,14 @@ related: ["components/batch/IngestJob.md", "components/component-specs.md", "com
 **`store(pendingRaw, baselineRaw) → IngestResult`** — 조립 단위(API 불필요).
 1. `pending = normalize(pendingRaw)`, `baseline = baselineRaw==null ? null : normalize(baselineRaw)`.
 2. `diffed = diffBuilder.build(pending, baseline)` — 기준선 null(제정)이면 변경 조문 전부 `신설`.
-3. 저장된 시행예정 행의 `revision`과 비교 → **다르거나 없으면** `lawStore.upsert(diffed)`, 같으면 생략.
-4. `baseline != null`이면 같은 방식으로 기준선(시행중 정본)도 revision 비교 후 upsert → 이후 `findBaseline`으로 조회 가능.
-5. `IngestResult(lawId, effectiveDate, changedCount, hasBaseline, pendingChanged)` 반환 — `pendingChanged`가 true면 호출자([[IngestJob]])가 `INDEX`를 등록한다.
+3. 저장된 행의 `revision`·`status`와 비교 → **하나라도 다르거나 행이 없으면** `lawStore.upsert(diffed)`, 둘 다 같으면 생략. 시행예정본의 저장 revision은 **`<본문 revision>+<기준선 revision 또는 none>`** — diff가 기준선에도 의존하므로 기준선만 바뀌어도(시행 전환 등) 다시 저장된다. 상태까지 비교하는 이유: `철회`된 버전이 같은 내용으로 다시 나타나면 `시행예정`으로 복원돼야 한다.
+4. `baseline != null`이면 같은 방식으로 기준선(시행중 정본)도 비교 후 upsert → 이후 `findBaseline`으로 조회 가능.
+5. `IngestResult(lawId, effectiveDate, changedCount, hasBaseline, baselineEffectiveDate, pendingChanged)` 반환 — `pendingChanged`가 true면 호출자([[IngestJob]])가 `INDEX`를 등록하고, `baselineEffectiveDate`로 더 오래된 시행중본을 `과거`로 전환한다.
 
 배치 진입점이던 `ingestPending()`은 [[IngestJob]]이 대체해 **제거**됐다(D62).
 
 ## Transaction Boundary
-- **정본 저장은 upsert 멱등**([[LawStore]] `ON CONFLICT`)이라 명시적 트랜잭션을 두지 않는다 — 재실행 안전.
+- **정본 저장은 upsert 멱등**([[LawStore]] `ON CONFLICT`)이라 스스로 트랜잭션을 열지 않는다 — 재실행 안전. 호출자 트랜잭션이 있으면 참여한다: [[IngestJob]] `SyncHandler`가 `store`와 `INDEX` 등록을 **한 트랜잭션**으로 묶어, 저장만 되고 색인 등록이 빠지는 상태(재시도 시 revision이 같아 영영 색인 안 됨)를 막는다.
 - 경계 단위 = **법령 1건**(pending + 그 기준선). 실패 격리·재시도는 [[IngestJob]] 작업 큐가 한다.
 - `store()` 안의 두 upsert(시행예정·시행중)는 원자적 묶음이 **아니다** — 멱등이라 재실행으로 수렴하므로 분산 트랜잭션 불필요(D54 SSOT 모델).
 
@@ -62,4 +62,4 @@ related: ["components/batch/IngestJob.md", "components/component-specs.md", "com
 - 실 Postgres 조립 통합테스트 2건(Testcontainers, `IngestServiceIntegrationTest`):
   - **기준선 있음** — 주택법 pending↔baseline → 제18조 `개정`·`diffVsCurrent` 저장, `findBaseline` 존재.
   - **제정(baseline=null)** — 변경 조문 전부 `신설`, `findBaseline` empty.
-- 추가 예정: 같은 입력 재호출 시 `pendingChanged=false`·쓰기 없음.
+- 추가 예정: 같은 입력 재호출 시 `pendingChanged=false`·쓰기 없음 · 기준선만 바뀌면 `pendingChanged=true` · 철회된 행에 같은 입력 → `시행예정` 복원.

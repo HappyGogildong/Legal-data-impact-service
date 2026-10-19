@@ -48,7 +48,8 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
   - `findBaseline(lawId) → Law?` — 같은 lawId의 **시행중본**. 없으면 null(제정, [[law-domain-basics]] §3).
   - `findPending(criteria) → Law[]` — 해소·목록용(status=시행예정, 시도·도메인 필터).
 - **상태 값**(D62): `시행중` · `시행예정` · **`과거`**(같은 법령의 더 새 시행중본에 대체됨) · **`철회`**(목록에서 사라진 시행예정본). 지나간 버전도 **행을 지우지 않는다** — 과거 답변이 인용한 `source_id`를 계속 되짚을 수 있게. `findBaseline`은 `시행중`만 본다.
-- **배치용 계약**([[IngestJob]]): 탐색용 시행예정 버전 목록(`lawId`·`efYd`·`mst`·`missing_since`) · 상태 변경 · 더 오래된 `시행중` → `과거` 일괄 전환 · `missing_since` 설정/해제 · 같은 법령의 남은 시행예정본 조회. 컬럼 `missing_since date`는 `V5__ingest_batch.sql`.
+- **배치용 계약**([[IngestJob]]): 탐색용 시행예정 버전 목록(`lawId`·`efYd`·`mst`·`missing_since`) · 상태 변경(**컬럼과 payload의 `status`를 함께** — `find`는 payload를 역직렬화) · 더 오래된 `시행중` → `과거` 일괄 전환 · `missing_since` 설정/해제 · 같은 법령의 남은 시행예정본 조회 · 증분 비교용 저장 revision 조회(**상태가 같을 때만** 일치로 본다 — 철회본이 같은 내용으로 다시 나타나도 `시행예정`으로 복원되게). 컬럼 `missing_since date`(완주 목록에서 처음 안 보인 날, KST)는 `V5__ingest_batch.sql`.
+- 배치 쓰기는 호출자 트랜잭션에 참여한다(`JdbcClient` → 같은 `DataSource`) — `SyncHandler`가 저장과 `INDEX` 등록을 한 트랜잭션으로 묶는다.
 - **벡터 (chunks)** — [[ChunkStore]] 소유. 여기서 다루지 않는다.
 - **캐시 (후속)**
   - `LawFacts` — 키 `lawId@efYd + revision`(프로필 무관).
