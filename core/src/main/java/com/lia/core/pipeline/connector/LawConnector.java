@@ -11,6 +11,7 @@ import java.util.Map;
 import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
 import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.http.client.ClientHttpRequestFactory;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -35,7 +36,7 @@ import com.lia.core.observability.Obs;
  *
  * <p>설계: docs/components/SourceConnector.md §MVP 본문 경로 · 아키텍처 v0.8 §4.1
  */
-public class LawConnector {
+public class LawConnector implements PendingLawFeed {
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final DateTimeFormatter YMD = DateTimeFormatter.ofPattern("uuuuMMdd");
@@ -82,12 +83,21 @@ public class LawConnector {
      * @param limit 최대 건수. 0 이하면 전량(totalCnt 까지)
      */
     public List<RawLaw> listPending(LocalDate from, LocalDate to, int limit) {
+        return scanPending(from, to, limit).heads();
+    }
+
+    /** 배치용 — 목록 전량 + 완주 여부(D62). 완주하지 못한 목록으로는 사라짐 판정을 하지 않는다. */
+    @Override
+    public PendingList listAllPending(LocalDate from, LocalDate to) {
+        return scanPending(from, to, 0);
+    }
+
+    private PendingList scanPending(LocalDate from, LocalDate to, int limit) {
         requireOc();
         List<RawLaw> collected = new ArrayList<>();
         String range = from.format(YMD) + "~" + to.format(YMD);
         int page = 1;
         int total = Integer.MAX_VALUE;
-
         while (collected.size() < total && (limit <= 0 || collected.size() < limit)) {
             int want = limit <= 0 ? MAX_PAGE_SIZE : Math.min(MAX_PAGE_SIZE, limit - collected.size());
             Map<String, Object> payload = request(UriComponentsBuilder.fromPath("/DRF/lawSearch.do")
@@ -96,7 +106,6 @@ public class LawConnector {
                     .queryParam("sort", "efasc")
                     .queryParam("page", page)
                     .queryParam("display", want));
-
             if (total == Integer.MAX_VALUE) {
                 int t = LawEnvelope.totalCount(payload);
                 total = t < 0 ? Integer.MAX_VALUE : t;
@@ -107,7 +116,8 @@ public class LawConnector {
             if (rows.size() < want) break;   // 마지막 페이지
             page++;
         }
-        return limit > 0 && collected.size() > limit ? collected.subList(0, limit) : collected;
+        List<RawLaw> heads = limit > 0 && collected.size() > limit ? collected.subList(0, limit) : collected;
+        return PendingList.of(heads, total == Integer.MAX_VALUE ? -1 : total);
     }
 
     /**
@@ -134,6 +144,7 @@ public class LawConnector {
     }
 
     /** 시행예정 법령 본문. {@code efYd} 는 목록의 시행일자를 그대로 넘긴다. */
+    @Override
     public RawLaw fetchPending(String mst, LocalDate effectiveDate) {
         return Observation.createNotStarted(Obs.CONNECTOR_FETCH, observations)
                 .lowCardinalityKeyValue(Obs.TAG_TARGET, "eflaw")
@@ -156,6 +167,7 @@ public class LawConnector {
      * @return 현행본. <b>{@code null} 이면 현행본 없음</b>(제정 법령 등) — diff 기준선이
      *         없다는 도메인 상태이며, DiffBuilder 가 전부 신설로 처리한다. 설계: docs/reference/law-domain-basics.md §3
      */
+    @Override
     public RawLaw fetchCurrent(String lawId) {
         return Observation.createNotStarted(Obs.CONNECTOR_FETCH, observations)
                 .lowCardinalityKeyValue(Obs.TAG_TARGET, "law")
@@ -230,7 +242,7 @@ public class LawConnector {
                 last = e;
                 if (attempt < props.maxRetries() - 1) {   // 마지막 회차엔 자지 않는다(목적 없는 지연 제거)
                     try {
-                        Thread.sleep((long) (500 * Math.pow(2, attempt)));
+                        Thread.sleep(retryDelayMillis(e, (long) (500 * Math.pow(2, attempt))));
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         throw e;
@@ -239,6 +251,30 @@ public class LawConnector {
             }
         }
         throw last;
+    }
+
+    /** 429 면 응답의 Retry-After 를 따르고, 그 외에는 지수 백오프 값. */
+    private static long retryDelayMillis(RuntimeException error, long backoffMillis) {
+        if (error instanceof HttpClientErrorException.TooManyRequests tooMany && tooMany.getResponseHeaders() != null) {
+            return retryAfterMillis(tooMany.getResponseHeaders().getFirst("Retry-After"), backoffMillis);
+        }
+        return backoffMillis;
+    }
+
+    static final long MAX_RETRY_AFTER_MILLIS = 30_000;
+
+    /**
+     * Retry-After(초) → 대기 ms. 기본 백오프보다 짧게는 기다리지 않고 30초 상한.
+     * ponytail: HTTP-date 형식은 지원하지 않는다(기본 백오프로 대체) — 실제로 날짜를 주는 서버를 만나면 파싱 추가.
+     */
+    static long retryAfterMillis(String header, long fallbackMillis) {
+        if (header == null) return fallbackMillis;
+        try {
+            long seconds = Long.parseLong(header.trim());
+            return Math.min(Math.max(seconds * 1000, fallbackMillis), MAX_RETRY_AFTER_MILLIS);
+        } catch (NumberFormatException e) {
+            return fallbackMillis;
+        }
     }
 
     @SuppressWarnings("unchecked")
