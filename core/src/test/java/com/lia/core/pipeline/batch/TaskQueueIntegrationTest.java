@@ -316,6 +316,20 @@ class TaskQueueIntegrationTest {
     }
 
     @Test
+    @DisplayName("종료 기록은 열린 실행에만 — 잠금을 잃은 사이 다음 실행이 닫은 실행을 덮지 않는다")
+    void 종료기록_닫힌실행_무시() {
+        long run = runs.start("run");
+        runs.closeAbandoned();                      // 다음 실행이 정리 단계에서 FAILED 로 닫음
+
+        runs.finish(run, RunOutcome.SUCCESS, true, Map.of("done", 1));   // 늦게 복귀한 옛 실행
+
+        assertEquals("FAILED", jdbc.sql("SELECT outcome FROM ingest_runs WHERE run_id = :id").param("id", run)
+                .query(String.class).single());
+        assertEquals("1", jdbc.sql("SELECT counts->>'abandoned' FROM ingest_runs WHERE run_id = :id").param("id", run)
+                .query(String.class).single());
+    }
+
+    @Test
     @DisplayName("종료 기록은 finished_at·outcome 이 둘 다 있거나 둘 다 없다(CHECK)")
     void 종료기록_제약() {
         long run = runs.start("run");

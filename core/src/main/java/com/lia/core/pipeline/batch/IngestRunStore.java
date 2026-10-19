@@ -2,6 +2,8 @@ package com.lia.core.pipeline.batch;
 
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import tools.jackson.databind.ObjectMapper;
@@ -11,6 +13,8 @@ import tools.jackson.databind.ObjectMapper;
  * 기준 출처다(Grafana 가 Postgres 를 직접 조회).
  */
 public class IngestRunStore {
+
+    private static final Logger log = LoggerFactory.getLogger(IngestRunStore.class);
 
     private final JdbcClient jdbc;
     private final ObjectMapper json;
@@ -41,18 +45,24 @@ public class IngestRunStore {
                 .single();
     }
 
-    /** 실행 종료 — 결과·목록 완주 여부(탐색 없는 명령은 null)·건수. */
+    /**
+     * 실행 종료 — 결과·목록 완주 여부(탐색 없는 명령은 null)·건수. <b>아직 열린 실행만</b> 닫는다 — 잠금을 잃은
+     * 사이 다음 실행이 이미 닫은 기록(FAILED·abandoned)을 늦게 복귀한 옛 실행이 덮지 않게(0행이면 경고만).
+     */
     public void finish(long runId, RunOutcome outcome, Boolean listComplete, Map<String, Integer> counts) {
-        jdbc.sql("""
+        int updated = jdbc.sql("""
                 UPDATE ingest_runs
                 SET finished_at = now(), outcome = :outcome, list_complete = :listComplete,
                     counts = CAST(:counts AS jsonb)
-                WHERE run_id = :runId
+                WHERE run_id = :runId AND finished_at IS NULL
                 """)
                 .param("outcome", outcome.name())
                 .param("listComplete", listComplete)
                 .param("counts", json.writeValueAsString(counts))
                 .param("runId", runId)
                 .update();
+        if (updated == 0) {
+            log.warn("[batch] 실행 {} 은 이미 닫혀 있음(다음 실행이 정리) — 결과 {} 를 기록하지 않음", runId, outcome);
+        }
     }
 }
