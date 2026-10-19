@@ -52,9 +52,9 @@ public class FakeLawFeed implements PendingLawFeed {
         return this;
     }
 
-    /** 이 MST 의 본문 fetch 가 항상 이 예외로 실패한다. */
+    /** 이 MST 의 본문 fetch 가 항상 이 예외로 실패한다. null 이면 해제. */
     public FakeLawFeed failFetch(String mst, RuntimeException failure) {
-        fetchFailures.put(mst, failure);
+        if (failure == null) fetchFailures.remove(mst); else fetchFailures.put(mst, failure);
         return this;
     }
 

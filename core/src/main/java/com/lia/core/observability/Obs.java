@@ -26,6 +26,8 @@ public final class Obs {
     public static final String RESOLVE = "lia.resolve";
     /** 적재 1건 end-to-end(데모 러너/배치). */
     public static final String INGEST = "lia.ingest";
+    public static final String BATCH_RUN = "lia.batch.run";       // 배치 실행 한 번(D62)
+    public static final String BATCH_TASK = "lia.batch.task";     // 작업 하나 — kind 태그
     // 임베딩 계측은 Spring AI 내장(gen_ai.client.operation, GenAI 컨벤션)에 위임 — lia.embed 두지 않음.
 
     // --- hook: 온라인 경로 landing 시 발화 (LiaMetrics) ---
@@ -36,6 +38,7 @@ public final class Obs {
 
     // --- 태그 키 (저카디널리티만) ---
     public static final String TAG_TARGET = "target";       // eflaw | law
+    public static final String TAG_KIND = "kind";           // SYNC | INDEX | TRANSITION | PURGE
     public static final String TAG_STATE = "state";         // 해소 4상태
     public static final String TAG_MODEL = "model";         // opus | haiku
     public static final String TAG_DIMENSION = "dimension"; // LOOKUP|SUMMARY|DIFF|IMPACT|ACTION
