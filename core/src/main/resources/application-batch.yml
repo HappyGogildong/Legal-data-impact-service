@@ -1,5 +1,5 @@
 # 적재·RAG 색인 배치(D62) — `--spring.profiles.active=batch` + 명령(run · run --full · run --dry-run ·
-# sync <lawId> <efYd> [mst] · reindex-all · requeue-dead). 웹 서버 없이 한 번 돌고 종료한다.
+# sync <lawId> <efYd> [mst] · index · reindex-all · requeue-dead). 웹 서버 없이 한 번 돌고 종료한다.
 spring:
   main:
     web-application-type: none

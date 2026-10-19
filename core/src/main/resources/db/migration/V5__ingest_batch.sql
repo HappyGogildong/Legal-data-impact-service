@@ -5,7 +5,7 @@ ALTER TABLE law_versions ADD COLUMN missing_since date;   -- 목록에서 처음
 
 CREATE TABLE ingest_runs (                          -- 실행 단위
     run_id        bigserial   PRIMARY KEY,
-    command       text        NOT NULL,             -- run · run --full · run --dry-run · sync … · reindex-all · requeue-dead
+    command       text        NOT NULL,             -- run · run --full · run --dry-run · sync … · index · reindex-all · requeue-dead
     started_at    timestamptz NOT NULL,
     finished_at   timestamptz,
     outcome       text        CHECK (outcome IN ('SUCCESS', 'PARTIAL', 'FAILED')),

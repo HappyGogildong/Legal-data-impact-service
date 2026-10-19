@@ -38,7 +38,7 @@ services:
       retries: 5
 
   # 적재·RAG 색인 배치(D62) — 평소 `up` 에는 안 뜬다(profiles). 한 번 돌고 종료:
-  #   docker compose run --rm ingest run        (명령: run · run --full · run --dry-run · sync … · reindex-all · requeue-dead)
+  #   docker compose run --rm ingest run        (명령: run · run --full · run --dry-run · sync … · index · reindex-all · requeue-dead)
   # 정기 실행은 호스트 cron 등 외부 스케줄러가 띄운다(docs/backend/deployment.md).
   ingest:
     build: ./core
