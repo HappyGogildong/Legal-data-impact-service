@@ -18,7 +18,7 @@ import com.lia.core.pipeline.connector.LawApiException;
 class ErrorClassifierTest {
 
     @Test
-    @DisplayName("영구 — API 논리 오류·입력/파싱 오류·제약 위반·429 외 4xx")
+    @DisplayName("영구 — API 논리 오류·입력/파싱 오류·제약 위반·408·429 외 4xx")
     void 영구() {
         assertTrue(ErrorClassifier.isPermanent(new LawApiException("잘못된 MST")));
         assertTrue(ErrorClassifier.isPermanent(new IllegalArgumentException("법령ID는 필수")));
@@ -30,11 +30,13 @@ class ErrorClassifierTest {
     }
 
     @Test
-    @DisplayName("일시적 — 네트워크·타임아웃·429·그 밖의 예외")
+    @DisplayName("일시적 — 네트워크·타임아웃(408 포함)·429·그 밖의 예외")
     void 일시적() {
         assertFalse(ErrorClassifier.isPermanent(new ResourceAccessException("timeout", new IOException("read timed out"))));
         assertFalse(ErrorClassifier.isPermanent(
                 HttpClientErrorException.create(HttpStatus.TOO_MANY_REQUESTS, "slow down", HttpHeaders.EMPTY, null, null)));
+        assertFalse(ErrorClassifier.isPermanent(
+                HttpClientErrorException.create(HttpStatus.REQUEST_TIMEOUT, "timeout", HttpHeaders.EMPTY, null, null)));
         assertFalse(ErrorClassifier.isPermanent(new IllegalStateException("모르는 오류")));
     }
 }
