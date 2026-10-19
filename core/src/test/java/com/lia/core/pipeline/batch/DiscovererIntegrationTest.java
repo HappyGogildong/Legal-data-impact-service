@@ -180,6 +180,22 @@ class DiscovererIntegrationTest {
     }
 
     @Test
+    @DisplayName("잘못된 목록 행(lawId·시행일·MST 누락) — 건너뛰고 나머지·시행 전환은 진행, 목록은 미완주로 취급")
+    void 잘못된행() {
+        lawStore.upsert(TestLaws.law("DUE", "M0", Law.Status.시행예정, TODAY));     // 시행 도래
+        lawStore.upsert(TestLaws.law("GONE", "M9", Law.Status.시행예정, FUTURE));   // 목록에 없음
+        feed.head("A", "M1", FUTURE).head(null, "MX", FUTURE).head("C", null, FUTURE).head("D", "MD", null);
+
+        DiscoveryResult r = discoverer.discover(false, false);
+
+        assertEquals(List.of("SYNC:A@2027-01-01", "TRANSITION:DUE@2026-07-01"), tasks());
+        assertFalse(r.listComplete(), "그 행이 어느 법령인지 몰라 사라짐 판정을 할 수 없다");
+        assertEquals(3, r.malformedRows());
+        assertEquals(0, r.markedMissing());
+        assertNull(lawStore.findPendingVersions("GONE").get(0).missingSince());
+    }
+
+    @Test
     @DisplayName("철회된 버전이 목록에 다시 보이면 신규로 분류 → SYNC")
     void 철회본_재등장() {
         lawStore.upsert(TestLaws.law("A", "M1", Law.Status.철회, FUTURE));

@@ -74,7 +74,8 @@ public class FakeLawFeed implements PendingLawFeed {
     public PendingList listAllPending(LocalDate from, LocalDate to) {
         if (listFailure != null) throw listFailure;
         List<RawLaw> inRange = heads.stream()
-                .filter(h -> !h.effectiveDate().isBefore(from) && !h.effectiveDate().isAfter(to))
+                .filter(h -> h.effectiveDate() == null       // 잘못된 행(시행일 없음)은 그대로 흘려 탐색이 거르게
+                        || (!h.effectiveDate().isBefore(from) && !h.effectiveDate().isAfter(to)))
                 .toList();
         return new PendingList(inRange, listComplete);
     }

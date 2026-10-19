@@ -28,6 +28,8 @@ import com.lia.core.store.PendingVersion;
  *   <li>저장된 시행예정본의 시행일 ≤ 오늘 → TRANSITION(날짜 기준 — 목록 실패여도)</li>
  *   <li>목록 완주 실행에서 안 보임 → 첫 번째는 missing_since 기록, <b>다른 날</b>의 두 번째는 PURGE
  *       (같은 날 재실행은 같은 API 상태라 새 증거가 아니다). 조회 범위 밖 버전은 판정하지 않는다</li>
+ *   <li>lawId·시행일·MST 중 하나라도 없는 행은 건너뛰고 세며, 그런 행이 있으면 목록을 미완주로 본다
+ *       (그 행이 어느 법령인지 몰라 "안 보임"을 판정할 수 없다). 행 하나로 탐색 전체가 실패하지 않게</li>
  * </ul>
  */
 public class Discoverer {
@@ -64,8 +66,13 @@ public class Discoverer {
         List<PlannedTask> plan = new ArrayList<>();
         Set<String> listed = new HashSet<>();
         int duplicateKeys = 0;
+        int malformedRows = 0;
         if (list != null) {
             for (RawLaw head : list.heads()) {
+                if (malformed(head)) {
+                    malformedRows++;                         // 등록하면 NOT NULL·mst CHECK 위반 — 탐색 전체가 실패한다
+                    continue;
+                }
                 String key = key(head.lawId(), head.effectiveDate());
                 if (!listed.add(key)) {
                     duplicateKeys++;                         // 식별 키 가정(D43) 위반 — 첫 행만 쓴다
@@ -81,9 +88,13 @@ public class Discoverer {
             if (duplicateKeys > 0) {
                 log.warn("[batch] 같은 (lawId, 시행일)이 목록에 중복 {}건 — 식별 키 가정 확인 필요", duplicateKeys);
             }
+            if (malformedRows > 0) {
+                log.warn("[batch] lawId·시행일·MST 가 빠진 목록 행 {}건 건너뜀 — 목록 미완주로 취급(사라짐 판정 안 함)",
+                        malformedRows);
+            }
         }
 
-        boolean complete = list != null && list.complete();
+        boolean complete = list != null && list.complete() && malformedRows == 0;
         int markedMissing = 0;
         for (PendingVersion saved : stored.values()) {
             LocalDate effectiveDate = saved.effectiveDate();
@@ -113,7 +124,12 @@ public class Discoverer {
             }
         }
         return new DiscoveryResult(list == null ? 0 : list.heads().size(), complete, planned, enqueued, markedMissing,
-                duplicateKeys);
+                duplicateKeys, malformedRows);
+    }
+
+    private static boolean malformed(RawLaw head) {
+        return head.lawId() == null || head.lawId().isBlank() || head.effectiveDate() == null
+                || head.mst() == null || head.mst().isBlank();
     }
 
     /** 목록 전량. 실패하면 null — 날짜 기준 TRANSITION 만 진행한다. */
