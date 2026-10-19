@@ -69,7 +69,7 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 
 ## Transaction / Lock
 - **upsert 멱등** — `INSERT … ON CONFLICT (law_id, effective_date) DO UPDATE`(revision·payload·last_seen). 재적재 안전.
-- 격리 **Read Committed**(적재-조회 병행). 벡터 재색인은 삭제-후-삽입(source_id 기준) 멱등.
+- 격리 **Read Committed**(적재-조회 병행). 벡터 재색인은 정본 `(lawId, efYd)` 단위 삭제+삽입을 한 트랜잭션으로([[ChunkStore]]) — 멱등.
 
 ## Invariants
 - 정본 단위 = **`(lawId, effectiveDate)`**(lawId 단독 아님 — 복수 시행예정본, D43).
