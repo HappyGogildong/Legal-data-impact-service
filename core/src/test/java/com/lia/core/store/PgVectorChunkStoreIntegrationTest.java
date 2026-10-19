@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import javax.sql.DataSource;
 
@@ -12,18 +11,19 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.document.Document;
-import org.springframework.ai.embedding.EmbeddingRequest;
-import org.springframework.ai.embedding.EmbeddingResponse;
-import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
+
+import com.lia.core.testsupport.FailingEmbeddingModel;
+import com.lia.core.testsupport.FakeEmbeddingModel;
 
 /**
  * PgVectorChunkStore 통합 — 실 pgvector(Testcontainers)에 upsert→search 라운드트립·멱등 검증.
@@ -38,21 +38,29 @@ class PgVectorChunkStoreIntegrationTest {
             DockerImageName.parse("pgvector/pgvector:pg16").asCompatibleSubstituteFor("postgres"));
 
     static final int DIM = 8;
+    static DataSource ds;
     static JdbcTemplate jdbc;
+    static TransactionTemplate tx;
     static ChunkStore store;
 
     @BeforeAll
     static void setup() {
-        DataSource ds = new DriverManagerDataSource(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
+        ds = new DriverManagerDataSource(PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
         jdbc = new JdbcTemplate(ds);
-        PgVectorStore vectorStore = PgVectorStore.builder(jdbc, new FakeEmbeddingModel(DIM))
+        tx = new TransactionTemplate(new DataSourceTransactionManager(ds));
+        store = new PgVectorChunkStore(vectorStore(new FakeEmbeddingModel(DIM)), tx);
+    }
+
+    /** 같은 DataSource 위의 PgVectorStore — 트랜잭션 매니저와 커넥션을 공유해야 교체가 한 트랜잭션이 된다. */
+    private static PgVectorStore vectorStore(EmbeddingModel embeddingModel) {
+        PgVectorStore vectorStore = PgVectorStore.builder(jdbc, embeddingModel)
                 .dimensions(DIM)
                 .distanceType(PgVectorStore.PgDistanceType.COSINE_DISTANCE)
                 .indexType(PgVectorStore.PgIndexType.HNSW)
                 .initializeSchema(true)
                 .build();
-        vectorStore.afterPropertiesSet();       // 스키마·확장·인덱스 생성
-        store = new PgVectorChunkStore(vectorStore);
+        vectorStore.afterPropertiesSet();       // 스키마·확장·인덱스 생성(이미 있으면 그대로)
+        return vectorStore;
     }
 
     @BeforeEach
@@ -109,6 +117,28 @@ class PgVectorChunkStoreIntegrationTest {
         assertEquals(1, rowsByLaw(LAW, EF), "재색인된 정본은 1개");
     }
 
+    @Test
+    @DisplayName("교체 중 임베딩이 실패하면 롤백 — 이전 청크가 그대로 남는다")
+    void 교체실패_롤백() {
+        store.replaceVersion(LAW, EF, List.of(chunk(LAW, EF, "LAW:001809@2026-08-04:art:18", "old")));
+        ChunkStore failing = new PgVectorChunkStore(vectorStore(new FailingEmbeddingModel(DIM)), tx);
+
+        assertThrows(RuntimeException.class, () -> failing.replaceVersion(LAW, EF,
+                List.of(chunk(LAW, EF, "LAW:001809@2026-08-04:art:18", "new"))));
+
+        assertEquals(1, rowsByLaw(LAW, EF), "삭제가 롤백돼 이전 청크가 남아야 한다");
+    }
+
+    @Test
+    @DisplayName("빈 목록으로 교체하면 그 정본의 색인이 제거된다(시행 전환·철회)")
+    void 빈목록_색인제거() {
+        store.replaceVersion(LAW, EF, List.of(chunk(LAW, EF, "LAW:001809@2026-08-04:art:18", "A")));
+
+        store.replaceVersion(LAW, EF, List.of());
+
+        assertEquals(0, rowsByLaw(LAW, EF));
+    }
+
     private Integer rowsBySource(String sourceId) {
         return jdbc.queryForObject("SELECT count(*) FROM vector_store WHERE metadata->>'source_id' = ?",
                 Integer.class, sourceId);
@@ -125,30 +155,4 @@ class PgVectorChunkStoreIntegrationTest {
                 Map.of("kind", "article", "namespace", "pending", "lawId", lawId, "efYd", efYd));
     }
 
-    /** 텍스트 해시로 시드한 결정론 벡터 — 같은 텍스트는 같은 벡터. 실 API·비용 없음. */
-    static class FakeEmbeddingModel implements EmbeddingModel {
-        private final int dim;
-        FakeEmbeddingModel(int dim) { this.dim = dim; }
-
-        @Override public float[] embed(Document document) { return vec(document.getText()); }
-
-        @Override public EmbeddingResponse call(EmbeddingRequest request) {
-            List<String> texts = request.getInstructions();
-            List<Embedding> out = new java.util.ArrayList<>();
-            for (int i = 0; i < texts.size(); i++) out.add(new Embedding(vec(texts.get(i)), i));
-            return new EmbeddingResponse(out);
-        }
-
-        @Override public int dimensions() { return dim; }
-
-        private float[] vec(String s) {
-            Random rnd = new Random(s.hashCode());
-            float[] v = new float[dim];
-            double sum = 0;
-            for (int i = 0; i < dim; i++) { v[i] = (float) (rnd.nextDouble() * 2 - 1); sum += v[i] * (double) v[i]; }
-            double norm = Math.sqrt(sum);
-            for (int i = 0; i < dim; i++) v[i] = (float) (v[i] / norm);
-            return v;
-        }
-    }
 }
