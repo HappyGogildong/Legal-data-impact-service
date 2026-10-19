@@ -96,7 +96,7 @@ flowchart TB
 
 | 컴포넌트 | 역할 | 담당 파일 (역할) | 상태 |
 |---|---|---|---|
-| **IngestService** | 적재 단계 조립·순서·경계. `store`(정규화→diff→정본, 임베딩 프리) + `ingestPending`(목록→fetch→store→**index**) | `pipeline/ingest/IngestService.java` 오케스트레이터. `store()`는 API 불필요(테스트 가능), 배치만 색인 배선 | ✅ (index 배선 🟡) |
+| **IngestService** | 적재 단계 조립·순서·경계. `store`(정규화→diff→정본, 임베딩 프리). 색인은 배치 잡의 `INDEX` 작업이 맡는다(`IngestJob`, D62) | `pipeline/ingest/IngestService.java` 오케스트레이터. `store()`는 API 불필요(테스트 가능) | ✅ |
 | **Observability** | 계측 지표·태그 이름 고정. 파이프라인 단계 span/timer | `observability/Obs.java` `lia.*` 상수 · `SampleIngestRunner.java` 데모 계측 러너(demo 프로필). 임베딩·벡터 계측은 Spring AI `gen_ai.*`·`db.vector.*` 내장 위임 | ✅ |
 
 ### 온라인 — 검색·추론 (참고)

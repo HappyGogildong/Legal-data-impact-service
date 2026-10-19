@@ -57,7 +57,7 @@ related: ["components/component-specs.md", "components/embed/Embedder.md", "comp
 - **적재 ≠ 검색** — 오프라인 배치·무상태(D29/D40). 검색은 런타임([[SourceAnalyzer]]).
 - **법령 전문 임베딩 안 함** — 해소된 법은 context에 통째로 들어가고, 변경 조문만 다루면 되므로(137→6) 전문 벡터 실익이 작다.
 - **모델 변경 = 전 코퍼스 재색인**([[Embedder]] 확정 후 고정).
-- **`store()`는 임베딩 프리** — 적재 정본 조립(IngestService.store)에 임베딩을 섞지 않는다(무키 통합테스트 보호). 색인은 `ingestPending` 배치 단계에서만.
+- **`store()`는 임베딩 프리** — 적재 정본 조립(IngestService.store)에 임베딩을 섞지 않는다(무키 통합테스트 보호). 색인은 배치 잡의 `INDEX` 작업([[IngestJob]])에서만.
 
 ## 검증
 - **단위:** Fake `ChunkStore`(replaceVersion된 Chunk 캡처) → 청크 개수·`source_id` 형식·**항 경계 분할(중간 안 자름)**·문자 폴백·요약 청크·미변경 조문 제외·정본 스코프·메타 검증. **순수 로직, 임베딩·DB 무관**.

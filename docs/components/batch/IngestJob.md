@@ -297,5 +297,7 @@ Pushgateway는 두지 않는다. **신호:** `DEAD ≥ 1` · 마지막 성공 �
 | 잡 전체 | Testcontainers + 가짜 원천 + 가짜 임베딩 | 두 번 실행 = 같은 결과. 실패 주입: 한 법령만 일시 오류 → 나머지 성공, 3회 후 `DEAD`, 영구 오류 즉시 `DEAD`. 잠금 경합 시 두 번째 실행 즉시 종료. 결과 판정(SUCCESS·PARTIAL·FAILED, dry-run 미완주 = PARTIAL) |
 | 실제 API | 옵트인 스모크(키·플래그 있을 때만) | `run --dry-run`으로 실제 목록 분류만 확인 |
 
+구현 테스트: `TaskQueueIntegrationTest`(큐·시도 이력·소유권·중단 복구·실행 기록)·`DiscovererIntegrationTest`·`TaskHandlersIntegrationTest`·`IngestJobIntegrationTest`·`JobLockIntegrationTest`·`BatchContextTest`·`ErrorClassifierTest`·`MinIntervalLimiterTest`·`JobCommandTest`·`LawConnectorBatchSupportTest`·`IngestServiceIntegrationTest`(증분·철회본 복원).
+
 ## 의존 / 관련
 [[IngestService]] · [[RAGIndexer]] · [[LawStore]] · [[ChunkStore]] · [[LawConnector]] · [[concurrency-and-reliability]] §2 · [[deployment]] · D16·D40·D43·D54·D55·D62 · #38·#40
