@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -338,12 +339,19 @@ class IngestJobIntegrationTest {
         }
     }
 
+    /**
+     * 남는 워커 = 먼저 제출된 워커(풀의 첫 스레드 {@code -thread-1}), 죽는 워커 = 나중에 제출된 워커 —
+     * 제출 순서대로 future 를 기다리면 죽은 워커를 늦게 알아채는 경우를 결정적으로 만든다.
+     * 어느 워커가 어느 작업을 가져가든 동작은 스레드로 정한다.
+     */
     @Test
-    @DisplayName("워커 하나가 죽으면 나머지 워커가 끝날 때까지 기다린 뒤 실행을 FAILED 로 기록")
+    @Timeout(30)
+    @DisplayName("워커 하나가 죽으면 즉시 나머지 워커를 중단시키고, 끝날 때까지 기다린 뒤 실행을 FAILED 로 기록")
     void 워커실패_나머지대기() {
         feed.clearHeads().head("A", "MA", LocalDate.of(2027, 1, 1)).head("B", "MB", LocalDate.of(2027, 1, 1));
-        CountDownLatch bEntered = new CountDownLatch(1);
-        AtomicBoolean bFinished = new AtomicBoolean();
+        CountDownLatch survivorEntered = new CountDownLatch(1);
+        AtomicBoolean survivorInterrupted = new AtomicBoolean();
+        AtomicBoolean survivorFinished = new AtomicBoolean();
         TaskHandler sync = new TaskHandler() {
             @Override
             public TaskKind kind() {
@@ -352,16 +360,17 @@ class IngestJobIntegrationTest {
 
             @Override
             public void handle(Task task) {
-                if (task.lawId().equals("B")) {
-                    bEntered.countDown();
+                if (Thread.currentThread().getName().endsWith("-thread-1")) {   // 먼저 제출된 워커
+                    survivorEntered.countDown();
                     try {
-                        new CountDownLatch(1).await();        // 중단(interrupt)될 때까지
+                        new CountDownLatch(1).await(5, TimeUnit.SECONDS);       // 중단(interrupt)될 때까지 — 회귀 시 멈추지 않게 상한
                     } catch (InterruptedException e) {
-                        pause(Duration.ofMillis(300));        // 중단 후 정리 중 — 기다리지 않으면 이 사이에 실행이 끝난다
-                        bFinished.set(true);
+                        survivorInterrupted.set(true);
+                        pause(Duration.ofMillis(300));   // 중단 후 정리 중 — 기다리지 않으면 이 사이에 실행이 끝난다
                     }
+                    survivorFinished.set(true);
                 } else {
-                    await(bEntered);
+                    await(survivorEntered);
                     throw new AssertionError("워커 사망(테스트)");
                 }
             }
@@ -370,7 +379,8 @@ class IngestJobIntegrationTest {
         assertThrows(IllegalStateException.class,
                 () -> job(LocalDate.of(2026, 7, 1), true, 2, sync).run(run()));
 
-        assertTrue(bFinished.get(), "실행 기록·잠금 해제 전에 남은 워커가 끝나야 한다");
+        assertTrue(survivorInterrupted.get(), "죽은 워커를 알아채는 즉시 남은 워커를 중단시킨다(제출 순서와 무관)");
+        assertTrue(survivorFinished.get(), "실행 기록·잠금 해제 전에 남은 워커가 끝나야 한다");
         assertEquals("FAILED", jdbc.sql("SELECT outcome FROM ingest_runs WHERE finished_at IS NOT NULL")
                 .query(String.class).single());
     }

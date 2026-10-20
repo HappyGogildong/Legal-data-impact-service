@@ -3,7 +3,6 @@ package com.lia.core.pipeline.batch;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -13,9 +12,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -196,7 +196,8 @@ public class IngestJob {
 
     /**
      * 큐 소진({@code kinds} 종류만). 반환: {완료, 실패(다음 실행 재시도), 격리}.
-     * 워커 하나가 예외로 죽으면 나머지에 중단을 알리고, 어느 경우든 워커가 모두 끝날 때까지(제한 시간) 기다린 뒤
+     * 워커는 <b>끝난 순서대로</b> 기다린다 — 워커 하나가 예외로 죽으면 제출 순서와 무관하게 그 즉시 나머지에
+     * 중단을 알린다(새 작업을 가져가지 않음 + interrupt). 어느 경우든 워커가 모두 끝날 때까지(제한 시간) 기다린 뒤
      * 돌아간다 — 실행 기록·잠금 해제 뒤에 워커가 살아 남아 단일 실행 불변식을 깨지 않게.
      */
     private int[] drain(long runId, Set<TaskKind> kinds) {
@@ -209,14 +210,14 @@ public class IngestJob {
         Object claimLock = new Object();
 
         ExecutorService pool = Executors.newFixedThreadPool(workers);
+        CompletionService<Void> completed = new ExecutorCompletionService<>(pool);
         try {
-            List<Future<?>> futures = new ArrayList<>();
             for (int i = 0; i < workers; i++) {
-                futures.add(pool.submit(
-                        () -> workLoop(runId, kinds, busy, inFlight, claimLock, aborted, done, failed, dead)));
+                completed.submit(
+                        () -> workLoop(runId, kinds, busy, inFlight, claimLock, aborted, done, failed, dead), null);
             }
-            for (Future<?> future : futures) {
-                future.get();
+            for (int i = 0; i < workers; i++) {
+                completed.take().get();   // 먼저 끝난(또는 죽은) 워커부터 — 실패는 바로 finally 의 중단으로
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
