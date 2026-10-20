@@ -190,8 +190,11 @@ public class Normalizer {
             spans.add(new int[]{m.start(), m.end()});
             heads.add(new String[]{m.group(1), m.group(2)});
         }
-        if (spans.isEmpty()) {   // 조 구분이 없는 단문 부칙 — 통째로 시행일 조항 취급
-            out.add(new Addendum("제1조", "시행일", Addendum.kindOf(text), text.strip(), promulgateNo, date));
+        // 조 구분이 없는 단문 부칙 — 통째로 시행일 조항 취급.
+        // 부칙엔 시행일이 반드시 있으므로 조항이 하나뿐이면 그게 시행일 조항이다.
+        // 본문("이 영은 …부터 시행한다.")엔 '시행일' 낱말이 없어 kindOf(text)로 분류하면 기타가 된다(실측).
+        if (spans.isEmpty()) {
+            out.add(new Addendum("제1조", "시행일", Addendum.Kind.시행일, text.strip(), promulgateNo, date));
             return out;
         }
         for (int i = 0; i < spans.size(); i++) {
