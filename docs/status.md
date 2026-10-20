@@ -92,7 +92,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 적재·RAG 색인 배치(D62, #40): 1회성 잡 프로파일(`run`·`run --full`·`run --dry-run`·`sync`·`index`·`reindex-all`·`requeue-dead`, 색인 끄기 설정, compose `ingest` 서비스) + DB 작업 큐(`SYNC`·`INDEX`·`TRANSITION`·`PURGE`, `SKIP LOCKED`·법령 단위 직렬화·API별 호출 간격·실행 토큰 소유권)·2단 증분(MST·본문+기준선 revision, 상태 포함)·`과거`/`철회` 상태 보존(다른 날 두 번 미확인)·실행당 1회+3회 격리·시도 이력 `ingest_task_attempts`·`ingest_runs` 관측(열린 실행 정리)·SYNC 저장+등록 한 트랜잭션·색인 교체 한 트랜잭션 | ✅ 단위·통합(큐·탐색·핸들러·잡 전체·잠금). 실제 API 백필·정기 실행(cron) 등록은 운영 단계 |
 | 웹 프론트엔드 (#14) | ⬜ |
 
-`./gradlew test --rerun-tasks` 기준 `tests=315 skipped=6 failures=1(NormalizerLiveSmokeTest — 라이브 데이터 변화, 후속) errors=0`(2026-10-19) — 통합(실 Postgres/pgvector, Testcontainers) 포함, 실패 1건은 기존 라이브 스모크 `NormalizerLiveSmokeTest`(Normalizer·테스트 무변경, 라이브 API 데이터 변화)뿐이고 나머지 전부 통과. skip 6건은 실 임베딩·번역·해석 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
+`./gradlew test --rerun-tasks` 기준 `tests=326 skipped=6 failures=1(NormalizerLiveSmokeTest — 라이브 데이터 변화, PR #41 로 수정) errors=0`(2026-10-20) — 통합(실 Postgres/pgvector, Testcontainers) 포함, 실패 1건은 기존 라이브 스모크 `NormalizerLiveSmokeTest`(Normalizer·테스트 무변경, 라이브 API 데이터 변화)뿐이고 나머지 전부 통과. skip 6건은 실 임베딩·번역·해석 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
 
 > ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 
