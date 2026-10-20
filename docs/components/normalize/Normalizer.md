@@ -30,6 +30,7 @@ related: ["components/component-specs.md", "reference/law-attributes.md", "compo
 3. **변경/이동 매핑** — `조문변경여부`→`changed`, `조문이동이전/이후`→`movedFrom/To`, `조문시행일자`→`articleEffectiveDate`.
 4. **`changeType`** — 개정/이동/없음까지만(신설·삭제는 [[DiffBuilder]]가 기준선 대조로 확정).
 5. **부칙 필터·분류** — `부칙공포번호==promulgateNo`만 취함. 종류(시행일/경과조치/적용례/특례) 분류.
+   - 조 구분(`제N조(제목)`)이 없는 **단문 부칙**은 통째로 `제1조(시행일)` 한 조항 — 종류는 본문과 무관하게 **시행일**(부칙엔 시행일이 반드시 있다). ⚠️ 함정: 본문("이 영은 …부터 시행한다.")엔 '시행일' 낱말이 없어 본문으로 분류하면 `기타`가 되고 `effectiveRule`이 비었다(실측 MST=291359).
 6. **시행규칙** — 부칙 제1조에서 `effectiveRule`, 단서("다만…")로 `enforcementType`(즉시/유예/단계적).
 7. **위임조항 감지** — "~는 대통령령으로 정한다" → `delegationClauses`.
 8. **`revision`** — `sha256(canonical(분석영향 필드))[:16]`. `lastSeen`은 제외.
@@ -54,6 +55,10 @@ related: ["components/component-specs.md", "reference/law-attributes.md", "compo
 - 조문 137개(실조문 125, 변경 6) · 부칙 3 · 위임 237 · `revision` 결정적.
 - 실조문 125개 **전부 본문이 채워짐**(빈 조문 0) — 항/호/목 병합이 실 응답에서 동작.
 - 부칙 이력 전체에서 이번 개정분 3개 조항만 남음. `enforcementType=단계적`(단서조항).
+
+## 실측 검증 — 단문 부칙 (통상환경변화 대응 및 지원 등에 관한 법률 시행령 `LAW:010400@2026-10-22`)
+- 부칙 1개 `부칙 <제36775호,2026.10.20> 이 영은 2026년 10월 22일부터 시행한다.` — 조 머리 없음.
+- 종류 `시행일` → `effectiveRule="이 영은 2026년 10월 22일부터 시행한다."` · `enforcementType=유예`.
 
 ## 의존 / 후속
 - 입력: [[SourceConnector|LawConnector]] · 출력 적재: Law Store(RDB) · 후속: [[DiffBuilder]] · [[RAGIndexer]] · [[AnalysisEngine]]
