@@ -182,6 +182,24 @@ class NormalizerTest {
         }
 
         @Test
+        void 조_구분이_없는_단문_부칙도_시행일_조항이다() {
+            // 실측: 통상환경변화 대응 및 지원 등에 관한 법률 시행령 MST=291359, 시행 2026-10-22.
+            // 조항이 하나뿐인 부칙은 "제1조(시행일)" 머리 없이 시행 문장만 온다.
+            Map<String, Object> root = Map.of("부칙", Map.of("부칙단위", List.of(
+                    Map.of("부칙공포번호", "36775", "부칙공포일자", "20261020",
+                            "부칙내용", "부칙 <제36775호,2026.10.20>\n이 영은 2026년 10월 22일부터 시행한다."))));
+
+            List<Addendum> addenda = normalizer.parseAddenda(root, "36775");
+
+            assertEquals(1, addenda.size());
+            assertEquals(Addendum.Kind.시행일, addenda.get(0).kind(),
+                    "본문엔 '시행일'이란 낱말이 없다 — 본문으로 분류하면 기타가 된다");
+            var rule = normalizer.parseEffectiveRule(addenda);
+            assertEquals("이 영은 2026년 10월 22일부터 시행한다.", rule.text());
+            assertEquals(Law.EnforcementType.유예, rule.type());
+        }
+
+        @Test
         void 시행일_조항에서_시행규칙을_뽑는다() {
             Law law = normalizer.normalize(rawPending());
 
