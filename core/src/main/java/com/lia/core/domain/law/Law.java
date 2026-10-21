@@ -39,7 +39,8 @@ public record Law(
         String revision,
         Instant lastSeen
 ) {
-    public enum Status { 시행중, 시행예정 }
+    /** 시행중 · 시행예정 · 과거(같은 법령의 더 새 시행중본에 대체됨) · 철회(목록에서 사라진 시행예정본). D62 */
+    public enum Status { 시행중, 시행예정, 과거, 철회 }
 
     public enum AmendKind { 제정, 일부개정, 전부개정, 타법개정, 폐지, 기타 }
 

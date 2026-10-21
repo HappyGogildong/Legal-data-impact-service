@@ -94,6 +94,8 @@ nav:
           - DiffBuilder: components/diff/DiffBuilder.md
       - ingest:
           - IngestService: components/ingest/IngestService.md
+      - batch:
+          - IngestJob (적재·색인 배치): components/batch/IngestJob.md
       - embed:
           - Embedder: components/embed/Embedder.md
       - index:

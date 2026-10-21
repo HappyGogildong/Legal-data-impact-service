@@ -3,6 +3,7 @@ package com.lia.core.store;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -80,6 +81,91 @@ public class LawStore implements LawSource {
                 .query(String.class)
                 .optional()
                 .map(this::deserialize);
+    }
+
+    // --- 배치 계약(IngestJob, D62) -------------------------------------------
+
+    private static final String PENDING_VERSIONS = """
+            SELECT law_id, effective_date, payload->>'mst' AS mst, missing_since
+            FROM law_versions WHERE status = '시행예정'
+            """;
+
+    /**
+     * 증분 비교용 저장 revision — payload 역직렬화 없이. 행이 없거나 <b>상태가 다르면</b> empty
+     * (철회된 행에 같은 내용이 다시 오면 "다름"으로 보여 시행예정으로 복원되게, D62).
+     */
+    public Optional<String> revisionOf(String lawId, LocalDate effectiveDate, Law.Status status) {
+        return jdbc.sql("""
+                SELECT revision FROM law_versions
+                WHERE law_id = :lawId AND effective_date = :efYd AND status = :status
+                """)
+                .param("lawId", lawId)
+                .param("efYd", effectiveDate)
+                .param("status", status.name())
+                .query(String.class)
+                .optional();
+    }
+
+    /** 시행예정 전체(탐색이 목록과 비교). */
+    public List<PendingVersion> listPendingVersions() {
+        return jdbc.sql(PENDING_VERSIONS + " ORDER BY law_id, effective_date")
+                .query((rs, rowNum) -> toPendingVersion(rs))
+                .list();
+    }
+
+    /** 한 법령의 시행예정본들(시행 전환 시 형제 재수집). */
+    public List<PendingVersion> findPendingVersions(String lawId) {
+        return jdbc.sql(PENDING_VERSIONS + " AND law_id = :lawId ORDER BY effective_date")
+                .param("lawId", lawId)
+                .query((rs, rowNum) -> toPendingVersion(rs))
+                .list();
+    }
+
+    /** 상태 변경 — 컬럼과 payload 를 함께 바꾼다({@link #find}는 payload 를 역직렬화하므로). */
+    public void updateStatus(String lawId, LocalDate effectiveDate, Law.Status status) {
+        jdbc.sql("""
+                UPDATE law_versions
+                SET status = :status, payload = jsonb_set(payload, '{status}', to_jsonb(CAST(:status AS text)))
+                WHERE law_id = :lawId AND effective_date = :efYd
+                """)
+                .param("status", status.name())
+                .param("lawId", lawId)
+                .param("efYd", effectiveDate)
+                .update();
+    }
+
+    /** 같은 법령에서 기준일보다 오래된 {@code 시행중} 행을 {@code 과거}로. 바뀐 행 수. */
+    public int supersedeOlderInForce(String lawId, LocalDate effectiveDate) {
+        return jdbc.sql("""
+                UPDATE law_versions
+                SET status = '과거', payload = jsonb_set(payload, '{status}', to_jsonb('과거'::text))
+                WHERE law_id = :lawId AND status = '시행중' AND effective_date < :efYd
+                """)
+                .param("lawId", lawId)
+                .param("efYd", effectiveDate)
+                .update();
+    }
+
+    /** 목록에서 처음 안 보인 날 기록(첫 번째 미확인). */
+    public void markMissing(String lawId, LocalDate effectiveDate, LocalDate since) {
+        jdbc.sql("UPDATE law_versions SET missing_since = :since WHERE law_id = :lawId AND effective_date = :efYd")
+                .param("since", since)
+                .param("lawId", lawId)
+                .param("efYd", effectiveDate)
+                .update();
+    }
+
+    /** 다시 보였거나 다시 수집됨 — 사라짐 판정 해제. */
+    public void clearMissing(String lawId, LocalDate effectiveDate) {
+        jdbc.sql("UPDATE law_versions SET missing_since = NULL WHERE law_id = :lawId AND effective_date = :efYd")
+                .param("lawId", lawId)
+                .param("efYd", effectiveDate)
+                .update();
+    }
+
+    private static PendingVersion toPendingVersion(java.sql.ResultSet rs) throws java.sql.SQLException {
+        return new PendingVersion(rs.getString("law_id"), rs.getObject("effective_date", LocalDate.class),
+                rs.getString("mst"), rs.getObject("missing_since", LocalDate.class));
     }
 
     private Law deserialize(String payload) {

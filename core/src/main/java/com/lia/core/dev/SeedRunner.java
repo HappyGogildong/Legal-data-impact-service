@@ -31,7 +31,7 @@ import com.lia.core.store.LawStore;
  * {@code POST /api/v1/analyses} 가 실제 그라운딩 answer 를 내도록 만든다(온라인 관통 데모).
  *
  * <p>적재는 <b>임베딩 프리</b>(store 경로) — OpenAI 호출 없음. DIFF 데모를 위해 시행중 기준선도 함께.
- * 실 배치 적재 트리거(IngestService.ingestPending)는 별개(오프라인 스케줄러, 후속).
+ * 실제 API 로 하는 적재는 배치 잡(IngestJob, D62 — `batch` 프로파일)이 맡는다.
  */
 @Component
 @Profile("seed")

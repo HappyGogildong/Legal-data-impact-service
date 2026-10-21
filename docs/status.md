@@ -75,11 +75,11 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | RAG 평가·회귀 프레임워크 — 결정론 게이트 스캐폴딩(`com.lia.core.eval`), 거부 게이트 가동 | ✅ |
 | 컴포넌트 클래스 스펙 규약 + 핵심 4종(DiffBuilder·Normalizer·SourceAnalyzer·LawConnector) | ✅ |
 | Law Store — **near-term 구현**(`law_versions` upsert·find·findBaseline, Flyway V1, JdbcClient+JSONB) | ✅ 실 Postgres 통합테스트 통과(Testcontainers 3/3) |
-| `IngestService` — **적재 파이프라인 조립**(Normalizer→DiffBuilder→LawStore, `store`/`ingestPending`) | ✅ 실 Postgres 조립 통합테스트 통과(기준선·제정 2/2) |
+| `IngestService` — **적재 파이프라인 조립**(Normalizer→DiffBuilder→LawStore, `store`) | ✅ 실 Postgres 조립 통합테스트 통과(기준선·제정 2/2) |
 | Embedder — **포트 + OpenAI 구현체**(Spring AI 위임·정규화·dim 가드·mode 흡수, D32) | ✅ 단위 7 통과(Fake 4·OpenAi 3)·라이브 스모크 옵트인. 벤더 최종확정은 D33 벤치 |
 | RAG Indexer — **구현**(변경조문 청킹·`amendReason` 요약·문자수 오버랩 분할·source_id, D55) | ✅ 단위 2(Fake ChunkStore) |
 | ChunkStore — **구현**(포트 + `PgVectorChunkStore`, PgVectorStore 래핑·**정본 단위 replace**(재색인=현재 상태)·내부 임베딩) | ✅ 실 pgvector 통합 3(라운드트립·stale제거·스코프격리) |
-| IngestService 색인 배선 — `ingestPending`이 `store` 뒤 `index` 호출(store는 임베딩 프리) | ✅ 배선·카나리아 |
+| IngestService 색인 배선 — `store`는 임베딩 프리, 색인은 배치 잡의 `INDEX` 작업이 호출(`IngestJob`, D62) | ✅ 배선·카나리아 |
 | RAG 검색 경로 — `ChunkStoreRetriever`(실물 Retriever) + `SourceAnalyzer.semanticSearch` 배선(ChunkStore) + chunk 메타 title | ✅ 단위 2·실 왕복 스모크 옵트인 |
 | RAG 성능 평가(자기검색 기준선) — `SelfRetrievalGold` + `RagEvalLiveTest`(실 적재→Recall@k). 벤더 OpenAI 임시확정 | ✅ 단위 2·실 평가 옵트인(수동). 시나리오 B는 리서치 후 |
 | Query Planner — **계획까지**(`QueryTranslator` 포트+Haiku·`QueryPlanner`: NL→PlanResult, 해소·프로필 게이팅·비법령 거부, D46) | ✅ 단위 4(Fake 번역기)·라이브 스모크 옵트인. Dispatcher/핸들러 실행은 후속 |
@@ -89,9 +89,10 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 배포 — **컨테이너화 + compose 자립 실행**(D59): `core/Dockerfile`(멀티스테이지)·compose 정합(db healthcheck·depends_on·in-network env·mcp 제외)·GitHub Actions CI(단위+Testcontainers)·`db/init.sql` 정리·배포 문서 | ✅ 산출물. 실 `docker build`·`compose up` 검증은 수동(Docker) |
 | 인증 — **슬라이스 ①**(D60): 소셜 OAuth2+세션-쿠키·`SecurityConfig`(API 401·`/error`·`csrf.spa()`·로그아웃 204)·`AccountStore`(경합 안전 findOrCreate)·`OAuth2LoginSuccessHandler`(fail-closed·프론트 리다이렉트) | ✅ PR #30. 실제 소셜 로그인 왕복은 provider 콘솔 등록 후 수동 확인 |
 | UserProfile — **슬라이스 ②**(D61): 프로필 도메인(enum 6종·age 14~120)·`UserProfileStore`(동의가 행을 만듦)·동의 모델(`/consents` 분리·현재 버전 동의 없으면 409·버전 기반 재동의)·알림 이메일은 동의 시에만 저장·계정 삭제 | ✅ 단위·통합·웹 슬라이스. ③ Layer B(프로필→프롬프트)는 후속. 실제 개인정보처리방침 문서는 법무 산출물로 별도 |
+| 적재·RAG 색인 배치(D62, #40): 1회성 잡 프로파일(`run`·`run --full`·`run --dry-run`·`sync`·`index`·`reindex-all`·`requeue-dead`, 색인 끄기 설정, compose `ingest` 서비스) + DB 작업 큐(`SYNC`·`INDEX`·`TRANSITION`·`PURGE`, `SKIP LOCKED`·법령 단위 직렬화·API별 호출 간격·실행 토큰 소유권)·2단 증분(MST·본문+기준선 revision, 상태 포함)·`과거`/`철회` 상태 보존(다른 날 두 번 미확인)·실행당 1회+3회 격리·시도 이력 `ingest_task_attempts`·`ingest_runs` 관측(열린 실행 정리)·SYNC 저장+등록 한 트랜잭션·색인 교체 한 트랜잭션 | ✅ 단위·통합(큐·탐색·핸들러·잡 전체·잠금). 실제 API 백필·정기 실행(cron) 등록은 운영 단계 |
 | 웹 프론트엔드 (#14) | ⬜ |
 
-`./gradlew test --rerun-tasks` 기준 `tests=239 skipped=6 failures=0 errors=0`(2026-10-05) — 통합 **24건**(실 Postgres/pgvector, Testcontainers: Law Store 3 + 적재 조립 2 + ChunkStore 3 + UserProfileStore 8 + AccountStore 8) 포함 전부 통과. skip 6건은 실 임베딩·번역·해석 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
+`./gradlew test --rerun-tasks` 기준 `tests=326 skipped=6 failures=1(NormalizerLiveSmokeTest — 라이브 데이터 변화, PR #41 로 수정) errors=0`(2026-10-20) — 통합(실 Postgres/pgvector, Testcontainers) 포함, 실패 1건은 기존 라이브 스모크 `NormalizerLiveSmokeTest`(Normalizer·테스트 무변경, 라이브 API 데이터 변화)뿐이고 나머지 전부 통과. skip 6건은 실 임베딩·번역·해석 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
 
 > ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 

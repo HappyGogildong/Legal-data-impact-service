@@ -47,6 +47,9 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
   - `find(lawId, effectiveDate) → Law?` — 특정 버전 정본.
   - `findBaseline(lawId) → Law?` — 같은 lawId의 **시행중본**. 없으면 null(제정, [[law-domain-basics]] §3).
   - `findPending(criteria) → Law[]` — 해소·목록용(status=시행예정, 시도·도메인 필터).
+- **상태 값**(D62): `시행중` · `시행예정` · **`과거`**(같은 법령의 더 새 시행중본에 대체됨) · **`철회`**(목록에서 사라진 시행예정본). 지나간 버전도 **행을 지우지 않는다** — 과거 답변이 인용한 `source_id`를 계속 되짚을 수 있게. `findBaseline`은 `시행중`만 본다.
+- **배치용 계약**([[IngestJob]]): 탐색용 시행예정 버전 목록(`lawId`·`efYd`·`mst`·`missing_since`) · 상태 변경(**컬럼과 payload의 `status`를 함께** — `find`는 payload를 역직렬화) · 더 오래된 `시행중` → `과거` 일괄 전환 · `missing_since` 설정/해제 · 같은 법령의 남은 시행예정본 조회 · 증분 비교용 저장 revision 조회(**상태가 같을 때만** 일치로 본다 — 철회본이 같은 내용으로 다시 나타나도 `시행예정`으로 복원되게). 컬럼 `missing_since date`(완주 목록에서 처음 안 보인 날, KST)는 `V5__ingest_batch.sql`.
+- 배치 쓰기는 호출자 트랜잭션에 참여한다(`JdbcClient` → 같은 `DataSource`) — `SyncHandler`가 저장과 `INDEX` 등록을 한 트랜잭션으로 묶는다.
 - **벡터 (chunks)** — [[ChunkStore]] 소유. 여기서 다루지 않는다.
 - **캐시 (후속)**
   - `LawFacts` — 키 `lawId@efYd + revision`(프로필 무관).
@@ -66,14 +69,14 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 
 ## Transaction / Lock
 - **upsert 멱등** — `INSERT … ON CONFLICT (law_id, effective_date) DO UPDATE`(revision·payload·last_seen). 재적재 안전.
-- 격리 **Read Committed**(적재-조회 병행). 벡터 재색인은 삭제-후-삽입(source_id 기준) 멱등.
+- 격리 **Read Committed**(적재-조회 병행). 벡터 재색인은 정본 `(lawId, efYd)` 단위 삭제+삽입을 한 트랜잭션으로([[ChunkStore]]) — 멱등.
 
 ## Invariants
 - 정본 단위 = **`(lawId, effectiveDate)`**(lawId 단독 아님 — 복수 시행예정본, D43).
 - **`law_versions`가 SSOT, chunks는 파생**(언제든 재생성 가능; 인용의 진실은 정본). chunk↔정본 정합은 [[ChunkStore]]가 `source_id`로 보장.
 
 ## Error Handling
-- 제약 위반 → upsert 충돌 해소(예외 아님). DB 장애 → 상위로 전파(적재 배치가 재시도).
+- 제약 위반 → upsert 충돌 해소(예외 아님). DB 장애 → 상위로 전파([[IngestJob]]이 작업 단위로 재시도).
 
 ## Side Effects
 - **DB 쓰기**(law_versions upsert). 읽기 조회. 외부 API 없음(임베딩 생성은 Embedder, 벡터 저장은 ChunkStore).

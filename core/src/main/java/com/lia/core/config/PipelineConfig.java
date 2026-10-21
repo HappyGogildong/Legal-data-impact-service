@@ -11,6 +11,8 @@ import io.micrometer.observation.ObservationRegistry;
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.lia.core.pipeline.connector.LawConnector;
 import com.lia.core.pipeline.diff.DiffBuilder;
@@ -84,10 +86,10 @@ public class PipelineConfig {
         return new OpenAiEmbedder(embeddingModel, props);
     }
 
-    /** 벡터 chunks 저장(D54) — 자동설정된 PgVectorStore를 래핑. add/search 시 내부 임베딩. */
+    /** 벡터 chunks 저장(D54) — 자동설정된 PgVectorStore를 래핑. add/search 시 내부 임베딩. 교체는 한 트랜잭션(D62). */
     @Bean
-    public ChunkStore chunkStore(VectorStore vectorStore) {
-        return new PgVectorChunkStore(vectorStore);
+    public ChunkStore chunkStore(VectorStore vectorStore, PlatformTransactionManager transactionManager) {
+        return new PgVectorChunkStore(vectorStore, new TransactionTemplate(transactionManager));
     }
 
     /** 시행예정 코퍼스 색인(D55) — 변경조문·요약 청킹 → ChunkStore. 오프라인 배치. */

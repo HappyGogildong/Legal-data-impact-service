@@ -48,7 +48,35 @@ docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
 curl -X POST localhost:8080/api/v1/analyses -H "Content-Type: application/json" \
   -d "{\"query\":\"주택법 뭐가 바뀌어?\",\"lawRef\":{\"lawId\":\"001809\",\"effectiveDate\":\"2026-08-04\"}}"
 ```
-실 배치 적재(`IngestService.ingestPending`, 실 API)의 트리거(오프라인 스케줄러)는 후속.
+실제 API로 하는 적재는 아래 **적재 배치**를 쓴다.
+
+## 적재 배치 (D62)
+
+법령 수집·RAG 색인은 같은 이미지를 **`batch` 프로파일로 띄워 한 번 돌고 종료**하는 잡이다([[IngestJob]]). 웹 서버 없이 실행되고, 온라인 `core`와 자원이 분리된다. compose에는 `ingest` 서비스(`profiles: [batch]` — 평소 `up`에는 안 뜸)로 둔다.
+
+```bash
+# 수동 실행 — 명령은 run · run --full · run --dry-run · sync <lawId> <efYd> [mst] · index · reindex-all · requeue-dead
+docker compose run --rm ingest run
+
+# 정기 실행에서 임베딩(색인)만 끄기 — 수집·시행 전환·철회는 계속, INDEX 는 큐에 쌓임
+#   compose ingest 서비스 environment 에 LIA_BATCH_INDEX_ENABLED: "false" (cron 줄은 그대로)
+# 밀린 색인을 원하는 때 처리 — 설정과 무관하게 동작
+docker compose run --rm ingest index
+```
+
+정기 실행은 **외부 스케줄러**가 띄운다(로컬은 호스트 cron, 클라우드는 ECS 예약 작업 등):
+
+```cron
+# 매일 04:00 KST — 증분 적재  /  매주 일요일 05:00 — 전체 재검증(기준선 갱신)
+0 4 * * *  cd /opt/lia && docker compose run --rm ingest run
+0 5 * * 0  cd /opt/lia && docker compose run --rm ingest run --full
+```
+
+- 종료 코드 0=성공, 1=실행 실패, 2=부분 실패(작업 실패·격리, 목록 미완주, 종료 신호로 중단) — 스케줄러 알림에 쓴다. 판정 기준은 [[IngestJob]] §실행 모델.
+- 강제 종료(SIGKILL·OOM)된 실행은 다음 실행이 시작할 때 `FAILED`로 닫는다.
+- 이미 다른 실행이 돌고 있으면 잠금을 못 잡고 바로 종료한다(코드 0).
+- 실행 결과는 `ingest_runs` 테이블이 기준 출처다(1회성 잡이라 Prometheus가 긁지 못함 — Grafana는 Postgres를 직접 조회). 트레이스는 OTLP push라 Tempo에 그대로 남는다.
+- 비밀값은 `core`와 같은 `.env`(D39) — `LAW_OC`·`OPENAI_API_KEY` 필요.
 
 ## 설정 — env-var 오버라이드 (프로파일 최소화)
 

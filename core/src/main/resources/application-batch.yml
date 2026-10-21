@@ -1,0 +1,23 @@
+# 적재·RAG 색인 배치(D62) — `--spring.profiles.active=batch` + 명령(run · run --full · run --dry-run ·
+# sync <lawId> <efYd> [mst] · index · reindex-all · requeue-dead). 웹 서버 없이 한 번 돌고 종료한다.
+spring:
+  main:
+    web-application-type: none
+  ai:
+    retry:                     # 임베딩 요청 단위 재시도 — 기본값(10회·2초×5배)은 워커를 수 분 묶는다.
+      max-attempts: 3          # 남은 실패는 작업 단위 재시도(다음 실행)에 맡긴다(D62)
+      backoff:
+        initial-interval: 1s
+        multiplier: 2
+        max-interval: 10s
+
+lia:
+  batch:
+    workers: 2                 # 공용 워커 풀 크기(백필 때 올린다)
+    law-api-interval: 500ms    # 국가법령정보 최소 호출 간격 — 공식 한도 확인 전 보수적으로
+    embedding-interval: 200ms  # 임베딩(법령 1건 색인) 최소 간격
+    lookahead-years: 10        # 목록 조회 범위 — 저장된 시행예정본을 모두 덮을 만큼 넉넉히(좁으면 사라짐 오판)
+    idle-poll: 500ms           # 진행 중 작업이 새 작업을 만들 때까지 워커가 기다리는 간격
+    index:
+      enabled: true            # false: 정기 run 은 수집만, INDEX 는 큐에 남김(env LIA_BATCH_INDEX_ENABLED). index 명령으로 처리
+    done-retention: 30d        # 완료 작업 보존 기간

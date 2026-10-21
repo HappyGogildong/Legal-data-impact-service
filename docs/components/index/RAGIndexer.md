@@ -20,8 +20,8 @@ related: ["components/component-specs.md", "components/embed/Embedder.md", "comp
 
 ## Collaborators
 - [[ChunkStore]](Chunk replaceVersion — 내부에서 PgVectorStore가 content 임베딩).
-- 입력: [[Normalizer]] 산출 `Law`(변경 조문 텍스트·`amendReason`). (후속) Layer A 파생 요약·LawFacts.
-- 호출: [[IngestService]] `ingestPending` 배치가 `store` 뒤에 `index` 호출. 외부 시스템: 없음(저장·임베딩은 ChunkStore/PgVectorStore).
+- 입력: **[[LawStore]]에 저장된 시행예정 정본** `Law`(변경 조문 텍스트·`amendReason`). diff 필드(`diffVsCurrent`)는 청킹에 쓰지 않으므로 diff를 거친 정본을 그대로 넣어도 된다 — 재수집·재정규화 없이 정본만으로 색인을 다시 만들 수 있다. (후속) Layer A 파생 요약·LawFacts.
+- 호출: [[IngestJob]] `INDEX` 작업(`IndexHandler`) — `SYNC`가 revision 변경 시 등록하거나 `reindex-all`이 일괄 등록. 외부 시스템: 없음(저장·임베딩은 ChunkStore/PgVectorStore).
 
 ## Contract
 - `index(Law pending) → void` — 시행예정 `Law`를 청킹해 [[ChunkStore]]에 적재(임베딩은 저장 시 내부 수행).
@@ -45,7 +45,7 @@ related: ["components/component-specs.md", "components/embed/Embedder.md", "comp
 - **변경 조문만**(비용 레버 137→6) — 전문 임베딩 안 함.
 
 ## Error Handling
-- Embedder/ChunkStore 실패 → 적재 배치가 재시도. 부분 실패 시 `source_id` 멱등이라 재실행 안전. 예외는 감싸지 않고 전파(fail-fast).
+- Embedder/ChunkStore 실패 → 예외를 감싸지 않고 전파(fail-fast). [[IngestJob]]이 `INDEX` 작업을 다음 실행에서 재시도·격리한다. `replaceVersion`이 한 트랜잭션이라 실패하면 이전 청크가 그대로 남는다.
 
 ## Observability
 - 별도 `lia.*` 스팬 없음 — 임베딩은 Spring AI `gen_ai.*`([[Embedder]]), 벡터 저장은 Spring AI `db.vector.client.operation`(ChunkStore/PgVectorStore) 내장 계측에 위임.
@@ -57,7 +57,7 @@ related: ["components/component-specs.md", "components/embed/Embedder.md", "comp
 - **적재 ≠ 검색** — 오프라인 배치·무상태(D29/D40). 검색은 런타임([[SourceAnalyzer]]).
 - **법령 전문 임베딩 안 함** — 해소된 법은 context에 통째로 들어가고, 변경 조문만 다루면 되므로(137→6) 전문 벡터 실익이 작다.
 - **모델 변경 = 전 코퍼스 재색인**([[Embedder]] 확정 후 고정).
-- **`store()`는 임베딩 프리** — 적재 정본 조립(IngestService.store)에 임베딩을 섞지 않는다(무키 통합테스트 보호). 색인은 `ingestPending` 배치 단계에서만.
+- **`store()`는 임베딩 프리** — 적재 정본 조립(IngestService.store)에 임베딩을 섞지 않는다(무키 통합테스트 보호). 색인은 배치 잡의 `INDEX` 작업([[IngestJob]])에서만.
 
 ## 검증
 - **단위:** Fake `ChunkStore`(replaceVersion된 Chunk 캡처) → 청크 개수·`source_id` 형식·**항 경계 분할(중간 안 자름)**·문자 폴백·요약 청크·미변경 조문 제외·정본 스코프·메타 검증. **순수 로직, 임베딩·DB 무관**.

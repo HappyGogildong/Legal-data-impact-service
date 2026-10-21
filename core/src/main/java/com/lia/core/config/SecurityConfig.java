@@ -1,5 +1,6 @@
 package com.lia.core.config;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.ObjectProvider;
@@ -18,6 +19,7 @@ import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.auth.StaleSessionFilter;
 
 @Configuration
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)   // 배치(웹 없음)에선 HttpSecurity 가 없다
 public class SecurityConfig {
 
   /** /api/** 미인증 401 — 본문을 ApiExceptionHandler 의 {error, message} 와 같은 모양으로(SPA 는 401 한 가지만 처리). */

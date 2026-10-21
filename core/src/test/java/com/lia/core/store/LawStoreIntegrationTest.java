@@ -108,4 +108,70 @@ class LawStoreIntegrationTest {
         assertEquals(1L, count, "중복 행이 아니라 갱신");
         assertEquals("rev2", store.find("001809", ef).get().revision());
     }
+
+    @Test
+    @DisplayName("revisionOf — 상태가 같을 때만 revision, 행이 없거나 상태가 다르면 empty")
+    void revisionOf() {
+        LocalDate ef = LocalDate.of(2027, 1, 1);
+        store.upsert(law("900001", Law.Status.시행예정, ef, "rev-a"));
+
+        assertEquals(Optional.of("rev-a"), store.revisionOf("900001", ef, Law.Status.시행예정));
+        assertTrue(store.revisionOf("900001", LocalDate.of(2027, 2, 2), Law.Status.시행예정).isEmpty());
+        assertTrue(store.revisionOf("900001", ef, Law.Status.철회).isEmpty(), "상태가 다르면 '다름'으로 본다");
+    }
+
+    @Test
+    @DisplayName("listPendingVersions·findPendingVersions — 시행예정만, mst·missing_since 포함")
+    void pendingVersions() {
+        store.upsert(law("900002", Law.Status.시행예정, LocalDate.of(2027, 3, 1), "p1"));
+        store.upsert(law("900002", Law.Status.시행예정, LocalDate.of(2027, 6, 1), "p2"));
+        store.upsert(law("900002", Law.Status.시행중, LocalDate.of(2020, 1, 1), "cur"));
+
+        List<PendingVersion> mine = store.listPendingVersions().stream()
+                .filter(v -> v.lawId().equals("900002")).toList();
+        assertEquals(2, mine.size(), "시행중본은 제외");
+        assertEquals("MST-p1", mine.get(0).mst());
+        assertNull(mine.get(0).missingSince());
+
+        assertEquals(List.of(LocalDate.of(2027, 3, 1), LocalDate.of(2027, 6, 1)),
+                store.findPendingVersions("900002").stream().map(PendingVersion::effectiveDate).toList());
+    }
+
+    @Test
+    @DisplayName("updateStatus — 컬럼과 payload 상태가 함께 바뀌어 find 결과에도 반영된다")
+    void updateStatus() {
+        LocalDate ef = LocalDate.of(2027, 4, 1);
+        store.upsert(law("900003", Law.Status.시행예정, ef, "r"));
+
+        store.updateStatus("900003", ef, Law.Status.철회);
+
+        assertEquals(Law.Status.철회, store.find("900003", ef).orElseThrow().status(), "payload 상태");
+        assertTrue(store.findPendingVersions("900003").isEmpty(), "컬럼 상태 — 시행예정 목록에서 빠짐");
+    }
+
+    @Test
+    @DisplayName("supersedeOlderInForce — 기준일보다 오래된 시행중만 과거로, findBaseline 은 최신 시행중")
+    void supersedeOlderInForce() {
+        store.upsert(law("900004", Law.Status.시행중, LocalDate.of(2019, 1, 1), "old"));
+        store.upsert(law("900004", Law.Status.시행중, LocalDate.of(2021, 1, 1), "new"));
+
+        int changed = store.supersedeOlderInForce("900004", LocalDate.of(2021, 1, 1));
+
+        assertEquals(1, changed);
+        assertEquals(Law.Status.과거, store.find("900004", LocalDate.of(2019, 1, 1)).orElseThrow().status());
+        assertEquals(LocalDate.of(2021, 1, 1), store.findBaseline("900004").orElseThrow().effectiveDate());
+    }
+
+    @Test
+    @DisplayName("markMissing·clearMissing — 사라짐 판정 날짜 기록·해제")
+    void missingSince() {
+        LocalDate ef = LocalDate.of(2027, 5, 1);
+        store.upsert(law("900005", Law.Status.시행예정, ef, "r"));
+
+        store.markMissing("900005", ef, LocalDate.of(2026, 7, 1));
+        assertEquals(LocalDate.of(2026, 7, 1), store.findPendingVersions("900005").get(0).missingSince());
+
+        store.clearMissing("900005", ef);
+        assertNull(store.findPendingVersions("900005").get(0).missingSince());
+    }
 }
