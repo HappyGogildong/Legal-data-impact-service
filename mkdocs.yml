@@ -52,6 +52,7 @@ nav:
   - 홈(색인): ARCHITECTURE.md
   - 제품 (Product):
       - 기능 스펙: product/feature-spec.md
+      - 화면 계획 (웹): product/screen-plan.md
   - 아키텍처 버전:
       - v0.9 — 현행 (자연어 질의·Query Planner): architecture/v0.9-nl-query-planner.md
       - v0.8 — 시행 대기 법령 코퍼스: architecture/v0.8-pending-law-corpus.md

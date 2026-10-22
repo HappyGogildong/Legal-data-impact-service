@@ -79,4 +79,6 @@ related: ["mvp/service-api-spec.md", "components/component-specs.md", "PHILOSOPH
 
 **MVP 이후(🔭):** 알림(3) · 이력·북마크(4). 온라인에 새 작업을 넣기 전 "오프라인으로 미리 할 수 없나"를 먼저 묻는다(D40) — 알림은 오프라인 배치가 자연스럽다.
 
+> 화면 구성은 [[screen-plan|화면 계획]](S01~S16)에서 이 카탈로그를 화면으로 옮긴다.
+
 > 이 문서는 **무엇을 제공하는가**의 카탈로그다. **어떻게 구현하는가**는 [[component-specs]], **API 표면**은 [[service-api-spec]], **왜 이렇게 설계했는가**는 [`PHILOSOPHY.md`](../PHILOSOPHY.md)·[[decision-log]].
