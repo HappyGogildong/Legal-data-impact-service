@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S03 해소 안내 — LIA 시안</title><link rel="stylesheet" href="lia-mock.css"></head>
+<body><div class="page">
+<div class="page-head"><a class="back" href="index.html">← 시안 목록</a><h1>S03 해소 안내</h1>
+<p>법령을 특정하지 못하면 분석하지 않고 안내한다(fail-closed). 모호함은 후보·시행일 선택, 미등록·확인 불가는 다음 행동 안내. 허위 법령 의심이어도 단정하지 않는다. (예시 데이터)</p></div>
+
+<div class="frames">
+  <div>
+    <p class="frame-label">모호함 — 법령 후보 선택</p>
+    <div class="phone">
+      <div class="topbar"><span class="logo">LIA</span></div>
+      <div class="body">
+        <div class="note">자본시장 바뀌는 거 알려줘 ✎</div>
+        <div class="h" style="font-size:16px;margin-top:10px">어떤 법령인지 골라 주세요</div>
+        <div class="stack">
+          <div class="card"><div class="acc"><span>자본시장과 금융투자업에 관한 법률</span><span>›</span></div><p class="note" style="margin:4px 0 0">금융위원회 · 시행예정본 3건</p></div>
+          <div class="card"><div class="acc"><span>자본시장법 시행령</span><span>›</span></div><p class="note" style="margin:4px 0 0">금융위원회 · 2026-12-01</p></div>
+        </div>
+        <div class="h" style="margin-top:16px">같은 법령의 시행일이 여러 개예요</div>
+        <div class="card stack" style="gap:0">
+          <div class="row"><span>2026-11-13 시행</span><span class="badge date">D-21</span></div>
+          <div class="row"><span>2027-02-04 시행</span><span class="badge date">D-104</span></div>
+          <div class="row"><span>2027-07-01 시행</span><span class="badge date">D-251</span></div>
+        </div>
+        <p class="note">고르면 그 시행본으로 분석해요.</p>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="frame-label">미등록 — 시행예정 법령으로 확인 안 됨</p>
+    <div class="phone">
+      <div class="topbar"><span class="logo">LIA</span></div>
+      <div class="body">
+        <div class="note">도로교통법 바뀐 거 뭐야? ✎</div>
+        <div class="empty"><div class="big">🔎</div><b style="color:var(--ink)">시행예정 법령으로 확인되지 않았어요</b>
+          <p>이미 시행 중이거나 아직 공포 전일 수 있어요. LIA는 곧 시행될 법령만 다뤄요.</p></div>
+        <div class="stack"><span class="btn ghost">질문 고치기</span><a class="btn primary" href="S04-discovery.html">법 이름 없이 찾기</a></div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="frame-label">확인 불가 — 법령명을 특정할 수 없음</p>
+    <div class="phone">
+      <div class="topbar"><span class="logo">LIA</span></div>
+      <div class="body">
+        <div class="note">청년기본소득특별법 시행되면? ✎</div>
+        <div class="empty"><div class="big">📄</div><b style="color:var(--ink)">법령을 확인할 수 없어요</b>
+          <p>정확한 법령명을 알려 주시면 다시 찾아볼게요.</p></div>
+        <div class="card tint"><b>이렇게 물어보세요</b><p class="note">· "주택임대차보호법 바뀌면 전세 계약 어떻게 돼?"<br>· "곧 시행되는 청년 관련 법 있어?"</p></div>
+        <span class="btn ghost" style="margin-top:10px">질문 고치기</span>
+      </div>
+    </div>
+  </div>
+</div>
+</div></body></html>
