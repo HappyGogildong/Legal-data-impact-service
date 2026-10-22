@@ -132,7 +132,7 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 ```
 - 래퍼가 Parameter Store를 읽고 `docker compose run --rm ingest …` 실행. 로그 파일은 logrotate 주 단위 정리 — 실행 결과의 기준은 `ingest_runs`.
 
-**소셜 로그인 준비 (#36)** — provider 콘솔에 `https://<도메인>/login/oauth2/code/{kakao|naver|google}` 등록. 웹 UI(#14) 전까지 `FRONTEND_URL`은 임시값.
+**소셜 로그인 준비 (#36)** — 웹은 Vercel(`app.<도메인>`)이 API·로그인 경로를 rewrites로 이 EC2(`api.<도메인>`)에 전달한다(D64, [[frontend-stack]] §2). provider 콘솔과 앱의 OAuth `redirect-uri`는 `https://app.<도메인>/login/oauth2/code/{kakao|naver|google}`, `FRONTEND_URL` = `https://app.<도메인>`.
 
 ## 4. 관측·배치 패널·경보
 
@@ -192,7 +192,7 @@ AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운
 5. **RDS** — PostgreSQL 16, `db.t4g.micro`, gp3 20GB, 퍼블릭 접근 끔, `lia-rds`, 초기 DB `lia`, 자동 백업 7일, 관리자 비밀번호는 직접 지정.
 6. **Parameter Store** — `/lia/prod/` 아래 §2의 값들을 SecureString으로 등록.
 7. **EC2** — Amazon Linux 2023 arm64, `t4g.medium`, gp3 30GB, `lia-ec2`, `lia-ec2-role`, 키 페어 없음. 접속(SSM) 후 `ops/deploy/bootstrap.sh`.
-8. **Elastic IP + 도메인** — Elastic IP 연결, 도메인 A 레코드를 그 IP로. `prod.env`의 `LIA_DOMAIN`·`FRONTEND_URL` 설정.
+8. **Elastic IP + 도메인** — Elastic IP 연결, `api.<도메인>` A 레코드를 그 IP로(`app.<도메인>`은 Vercel, D64). `prod.env`의 `LIA_DOMAIN`(= `api.<도메인>`)·`FRONTEND_URL`(= `https://app.<도메인>`) 설정.
 9. **최초 SQL** — SSM 원격 포트 포워딩으로 RDS 접속, §2의 확장·계정 SQL 실행(관리자 계정).
 10. **첫 배포** — `ops/deploy/lia up <커밋 SHA>` → Flyway·PgVectorStore가 스키마 생성.
 11. **읽기 권한** — `GRANT SELECT ON ingest_runs, ingest_tasks, ingest_task_attempts TO grafana_reader;`
@@ -210,4 +210,4 @@ AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운
 - **CI** — 병합 후 GHCR에 arm64·amd64 매니페스트 확인.
 
 ### 범위 밖 (필요해지면 다음 단계)
-- **SSM 방식 CD**(다음 단계로 명시) · Terraform/IaC · ALB · ECS · EventBridge · 오토스케일링·멀티 AZ · 웹 UI 호스팅(#14 — 같은 도메인에 Caddy 경로 추가) · 로그 수집(Loki) · WAF.
+- **SSM 방식 CD**(다음 단계로 명시) · Terraform/IaC · ALB · ECS · EventBridge · 오토스케일링·멀티 AZ · 웹 UI 호스팅(→ Vercel, D64 [[frontend-stack]]) · 로그 수집(Loki) · WAF.

@@ -243,4 +243,4 @@ related: ["product/feature-spec.md", "mvp/service-api-spec.md", "components/web/
 | 3 | S02 상황 확인 · S04 | 상황 확인 설계 · #19 |
 | 4 | S11~S14 | 구독·알림·이력·북마크 API |
 
-다음: 기술 스택(프레임워크·스타일)과 시각 디자인은 별도로 정한다.
+기술 스택은 [[frontend-stack]](D64 — Next.js on Vercel). 시각 디자인은 별도로 정한다.
