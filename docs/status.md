@@ -90,6 +90,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 인증 — **슬라이스 ①**(D60): 소셜 OAuth2+세션-쿠키·`SecurityConfig`(API 401·`/error`·`csrf.spa()`·로그아웃 204)·`AccountStore`(경합 안전 findOrCreate)·`OAuth2LoginSuccessHandler`(fail-closed·프론트 리다이렉트) | ✅ PR #30. 실제 소셜 로그인 왕복은 provider 콘솔 등록 후 수동 확인 |
 | UserProfile — **슬라이스 ②**(D61): 프로필 도메인(enum 6종·age 14~120)·`UserProfileStore`(동의가 행을 만듦)·동의 모델(`/consents` 분리·현재 버전 동의 없으면 409·버전 기반 재동의)·알림 이메일은 동의 시에만 저장·계정 삭제 | ✅ 단위·통합·웹 슬라이스. ③ Layer B(프로필→프롬프트)는 후속. 실제 개인정보처리방침 문서는 법무 산출물로 별도 |
 | 적재·RAG 색인 배치(D62, #40): 1회성 잡 프로파일(`run`·`run --full`·`run --dry-run`·`sync`·`index`·`reindex-all`·`requeue-dead`, 색인 끄기 설정, compose `ingest` 서비스) + DB 작업 큐(`SYNC`·`INDEX`·`TRANSITION`·`PURGE`, `SKIP LOCKED`·법령 단위 직렬화·API별 호출 간격·실행 토큰 소유권)·2단 증분(MST·본문+기준선 revision, 상태 포함)·`과거`/`철회` 상태 보존(다른 날 두 번 미확인)·실행당 1회+3회 격리·시도 이력 `ingest_task_attempts`·`ingest_runs` 관측(열린 실행 정리)·SYNC 저장+등록 한 트랜잭션·색인 교체 한 트랜잭션 | ✅ 단위·통합(큐·탐색·핸들러·잡 전체·잠금). 실제 API 백필·정기 실행(cron) 등록은 운영 단계 |
+| 클라우드 인프라(D63): 개인 AWS 계정 단일 EC2(t4g.medium·compose: Caddy·core·ingest·관측) + RDS PostgreSQL 16 pgvector · SSM 접속·Parameter Store · GHCR 이미지 수동 배포 · 호스트 cron · Grafana 배치 대시보드·경보 3개(Discord) — [[cloud-infra]] | 🟡 spec-first 설계. 구현(ops/deploy·CI push·대시보드) → AWS 구축(런북, #44) |
 | 웹 프론트엔드 (#14) | ⬜ |
 
 `./gradlew test --rerun-tasks` 기준 `tests=326 skipped=6 failures=1(NormalizerLiveSmokeTest — 라이브 데이터 변화, PR #41 로 수정) errors=0`(2026-10-20) — 통합(실 Postgres/pgvector, Testcontainers) 포함, 실패 1건은 기존 라이브 스모크 `NormalizerLiveSmokeTest`(Normalizer·테스트 무변경, 라이브 API 데이터 변화)뿐이고 나머지 전부 통과. skip 6건은 실 임베딩·번역·해석 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
@@ -98,7 +99,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 
 ### 구현 순서 (큐)
 
-… Query Planner ✅ · Analysis Engine Layer A ✅ · QueryDispatcher 차원핸들러 ✅ · 최소 수직 슬라이스(REST) ✅(#13) · **배포 자립 스택(compose+CI) ✅**(D59) → **인증·UserProfile(#12)** ①인증 ✅(D60) · ②프로필·동의 ✅(D61) → **③Layer B(프로필→프롬프트)** 다음 · **LawDiscovery(#19)→LookupHandler** · **웹 UI**(#14) · 클라우드 매니지드 배포 후속.
+… Query Planner ✅ · Analysis Engine Layer A ✅ · QueryDispatcher 차원핸들러 ✅ · 최소 수직 슬라이스(REST) ✅(#13) · **배포 자립 스택(compose+CI) ✅**(D59) → **인증·UserProfile(#12)** ①인증 ✅(D60) · ②프로필·동의 ✅(D61) → **③Layer B(프로필→프롬프트)** 다음 · **LawDiscovery(#19)→LookupHandler** · **웹 UI**(#14) · 클라우드 인프라(D63) 설계 ✅ → 구현·구축.
 
 ---
 

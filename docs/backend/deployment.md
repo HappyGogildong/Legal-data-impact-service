@@ -9,7 +9,7 @@ related: ["backend/observability.md", "adr/decision-log.md", "components/web/Ana
 
 # 배포 (self-host / staging)
 
-> `docker compose up` 한 번으로 **db + core(+관측)** 가 뜨는 자립 실행 스택. 클라우드 매니지드(ECS/RDS/시크릿매니저)·웹 UI 배포는 후속(D59·D34). 근거: [[decision-log]] D59.
+> `docker compose up` 한 번으로 **db + core(+관측)** 가 뜨는 자립 실행 스택. 클라우드 운영은 [[cloud-infra]](단일 EC2 + RDS, D63), 웹 UI 배포는 후속. 근거: [[decision-log]] D59.
 
 ## 구성 요소
 
@@ -99,5 +99,5 @@ docker compose run --rm ingest index
 - `.github/workflows/ci.yml` — `ubuntu-latest`(Docker 내장) → 단위 + **Testcontainers 통합** 테스트. **라이브 스모크는 OC/`LIA_*_LIVE` 미설정으로 skip**(결정론 오프라인). 이어 `docker build ./core`로 이미지 검증. 레지스트리 push/CD는 후속.
 
 ## 후속 (out of scope)
-- 클라우드 매니지드(ECS/Fargate · RDS pgvector · 시크릿 매니저 · IaC · CD) — D34 RDS eventual.
+- 클라우드 운영 — [[cloud-infra]](D63): 단일 EC2 + RDS pgvector + Caddy + SSM Parameter Store, GHCR 이미지 수동 배포. 그 너머(SSM 방식 CD·IaC·ALB·ECS)는 그 문서의 범위 밖 절.
 - mcp 컨테이너화 · 웹 UI(#14) 배포 · Loki 로그 적재([[observability]] 계획) · 이미지 레지스트리 push.
