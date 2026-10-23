@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S09 프로필 입력·수정 — LIA 시안</title><link rel="stylesheet" href="lia-mock.css"></head>
+<body><div class="page">
+<div class="page-head"><a class="back" href="index.html">← 시안 목록</a><h1>S09 프로필 입력·수정</h1>
+<p>모든 항목 선택·건너뛰기 가능, 모두 선택지(자유 입력 없음, D41). 항목마다 "왜 묻나요". 저장은 전체 교체, 409면 재동의(S08) 후 재시도. 선택지는 백엔드 enum과 같은 프런트 상수.</p></div>
+
+<div class="frames">
+  <div>
+    <p class="frame-label">모바일 — 입력</p>
+    <div class="phone">
+      <div class="topbar"><span>←</span><span class="logo">내 프로필</span><span style="font-size:12px">건너뛰기</span></div>
+      <div class="body" style="padding:16px 18px">
+        <p class="note" style="margin-top:0">입력할수록 내 영향이 정확해져요. 모두 선택 입력이에요.</p>
+        <div class="field"><label>이용 목적 <small class="note">(여러 개)</small></label>
+          <div class="chips" style="margin-top:0"><span class="chip on">생활·주거</span><span class="chip outline">일·사업</span><span class="chip on">관심사 모니터링</span><span class="chip outline">학업·연구</span></div></div>
+        <div class="field"><label>나이</label><div class="input" style="width:120px;color:var(--ink)"><span>29</span><span class="note">세</span></div></div>
+        <div class="field"><label>직업</label><div class="input" style="color:var(--ink)"><span>사무</span><span>▾</span></div><div class="why">직업군에 따라 근로·세제 법령 영향 판단에 써요.</div></div>
+        <div class="field"><label>고용 형태</label><div class="chips" style="margin-top:0"><span class="chip on">임금근로</span><span class="chip outline">자영업</span><span class="chip outline">프리랜서</span><span class="chip outline">무직·기타</span></div></div>
+        <div class="field"><label>가구 형태</label><div class="chips" style="margin-top:0"><span class="chip on">1인</span><span class="chip outline">부부</span><span class="chip outline">자녀 있음</span><span class="chip outline">기타</span></div></div>
+        <div class="field"><label>주거 형태</label><div class="chips" style="margin-top:0"><span class="chip outline">자가</span><span class="chip on">전세</span><span class="chip outline">월세</span><span class="chip outline">기타</span></div><div class="why">임대차·주택 법령 영향 판단에 써요.</div></div>
+        <div class="field"><label>거주 시도</label><div class="input" style="color:var(--ink)"><span>서울특별시</span><span>▾</span></div><div class="why">지역에 따라 다른 조례·지원 기준을 가릴 때 써요.</div></div>
+        <span class="btn primary" style="margin-top:6px">저장하고 돌아가기</span>
+        <p class="note">이름·생년월일·연락처·상세 주소·소득은 받지 않아요. 소득에 따라 달라지는 법령은 대응 방안에서 구간으로만 물어봐요.</p>
+      </div>
+    </div>
+  </div>
+  <div>
+    <p class="frame-label">모바일 — 수정(현재 값) · 저장 완료</p>
+    <div class="phone">
+      <div class="topbar"><span>←</span><span class="logo">내 프로필</span><span></span></div>
+      <div class="body">
+        <div class="card tint" style="margin-bottom:10px"><b>저장했어요</b><p class="note">보던 분석으로 돌아가 내 영향을 채워 드릴게요.</p></div>
+        <div class="row"><span class="note">이용 목적</span><span>생활·주거, 관심사 모니터링</span></div>
+        <div class="row"><span class="note">나이</span><span>29</span></div>
+        <div class="row"><span class="note">주거 형태</span><span>전세</span></div>
+        <div class="row"><span class="note">거주 시도</span><span>서울특별시</span></div>
+        <p class="note">마지막 수정 2026-10-23 14:02</p>
+        <span class="btn ghost">수정하기</span>
+      </div>
+    </div>
+  </div>
+</div>
+</div></body></html>

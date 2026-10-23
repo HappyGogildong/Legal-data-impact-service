@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S02b 대응 방안 상황 확인 — LIA 시안</title><link rel="stylesheet" href="lia-mock.css"></head>
+<body><div class="page">
+<div class="page-head"><a class="back" href="index.html">← 시안 목록</a><h1>S02b 대응 방안 — 상황 확인으로 고도화</h1>
+<p>로그인·프로필이 있는 사용자. 법령 적용 조건에서 나온 질문(구조화)과 자유 입력(사실만 뽑아 확인)을 같은 칸에 채우고, 확인하면 대응 방안만 다시 생성해 달라진 단계를 강조한다. 모델에는 확인된 상황 사실과 근거 조문만 넘어간다. (예시 데이터)</p></div>
+
+<div class="frames">
+  <div>
+    <p class="frame-label">참고 — 소득에 따라 갈리는 법령(예: 소득세법)의 상황 확인</p>
+    <div class="phone"><div class="body"><div class="card tint">
+      <b>상황을 알려주시면 더 정확해져요</b>
+      <div class="field"><label>연 소득이 어느 구간인가요? <span class="cite">제55조</span></label><span class="seg"><span>5천만 원 이하</span><span>초과</span><span>모름</span></span><div class="why">이 법령 판단에만 쓰고 저장하지 않아요. 프로필에는 남지 않아요.</div></div>
+      <span class="btn primary">대응 방안 확인하기</span>
+    </div></div></div>
+  </div>
+  <div>
+    <p class="frame-label">① 대응 방안 + 상황 확인 질문</p>
+    <div class="phone">
+      <div class="body stack">
+        <div class="card soft"><div class="acc"><span>내 영향</span><span>▾</span></div><p class="note" style="margin:4px 0 0">전세 거주자 — 갱신 요구 마감이 1개월 앞당겨져요.</p></div>
+        <div class="card">
+          <div class="acc"><span>대응 방안</span><span>▴</span></div>
+          <div class="steps" style="margin-top:10px">
+            <div class="step"><span class="n">1</span><div><b>계약 만료일 확인</b><div class="when">지금</div><span class="cite">제6조의3</span></div></div>
+            <div class="step"><span class="n">2</span><div><b>갱신 요구 의사 전달</b><div class="when">만료 6개월~1개월 전</div><p class="note" style="margin:2px 0">계약 시점에 따라 이전 기준(2개월 전)이 적용될 수 있어요.</p><span class="cite">제6조의3</span><span class="cite">부칙 제2조</span></div></div>
+          </div>
+        </div>
+        <div class="card tint">
+          <b>상황을 알려주시면 더 정확해져요</b>
+          <div class="field"><label>계약을 2026-11-01 이전에 맺었나요? <span class="cite">부칙 제2조</span></label><span class="seg"><span>예</span><span>아니오</span><span>모름</span></span></div>
+          <div class="field"><label>계약 만료일</label><div class="input"><span>YYYY-MM-DD</span><span>📅</span></div></div>
+          <div class="field"><label>내 상황 설명하기 <small class="note">(선택)</small></label><div class="input" style="height:54px"><span>예) 작년 3월에 2년 전세로 들어왔어요</span></div></div>
+          <span class="btn primary">대응 방안 확인하기</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="frame-label">② 자유 입력 → "이렇게 이해했어요" 확인</p>
+    <div class="phone">
+      <div class="body stack">
+        <div class="card tint">
+          <b>상황을 알려주시면 더 정확해져요</b>
+          <div class="field"><label>내 상황 설명하기</label><div class="input" style="height:54px;color:var(--ink)"><span>작년 3월에 2년 전세로 들어왔고 보증금은 2억이에요</span></div></div>
+        </div>
+        <div class="card">
+          <b>이렇게 이해했어요</b>
+          <p class="note">맞는지 확인해 주세요. 입력하신 문장은 저장하지 않아요.</p>
+          <div class="row"><span>계약 시작 <b>2025-03</b></span><span class="link">수정 · 삭제</span></div>
+          <div class="row"><span>계약 기간 <b>2년</b> → 만료 2027-03</span><span class="link">수정 · 삭제</span></div>
+          <div class="row"><span>계약 시점 <b>시행일 이전</b></span><span class="link">수정 · 삭제</span></div>
+          <div class="row"><span class="note">보증금 2억 — 이 법령 판단에 쓰이지 않아요</span><span class="note">제외</span></div>
+          <div class="btns" style="margin-top:8px"><span class="btn ghost">다시 입력</span><span class="btn primary">맞아요</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <p class="frame-label">③ 갱신된 대응 방안 — 달라진 단계 강조</p>
+    <div class="phone">
+      <div class="body stack">
+        <div class="card">
+          <div class="acc"><span>대응 방안 <small>· 내 상황 반영</small></span><span>▴</span></div>
+          <div class="chips" style="margin-top:8px"><span class="chip outline">계약 2025-03 ✎</span><span class="chip outline">만료 2027-03 ✎</span><span class="chip outline">시행일 이전 계약 ✎</span></div>
+          <div class="steps" style="margin-top:12px">
+            <div class="step"><span class="n">1</span><div><b>계약 만료일 확인</b> <span class="badge green" style="background:var(--green-bg);color:var(--green)">완료</span><div class="when" style="color:var(--muted)">2027-03 만료</div></div></div>
+            <div class="step changed"><span class="n">2</span><div><b>갱신 요구 의사 전달</b> <span class="badge amend">달라짐</span><div class="when">2026-09 ~ 2027-01 (만료 6개월~2개월 전)</div><p class="note" style="margin:2px 0">시행일 이전에 맺은 계약이라 <b>이전 기준(2개월 전)</b>이 적용돼요.</p><span class="cite">부칙 제2조</span></div></div>
+            <div class="step"><span class="n">3</span><div><b>보증금 반환 절차 숙지</b><div class="when">만료 시</div><span class="cite">제3조의2</span></div></div>
+          </div>
+        </div>
+        <div class="btns"><span class="btn ghost">이력에 저장</span><span class="btn ghost">🔔 알림 받기</span></div>
+        <p class="note">확인된 상황은 이 화면을 닫을 때까지만 유지돼요. 이력에 저장하면 함께 남아요.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</div></body></html>

@@ -67,5 +67,5 @@ related: ["product/screen-plan.md", "backend/cloud-infra.md", "mvp/service-api-s
 무료 서브도메인을 쓰면 웹은 Vercel 기본 도메인(`*.vercel.app`)도 가능하다 — 그때 OAuth 리다이렉트·`FRONTEND_URL`을 그 도메인으로.
 
 ## 5. 다음
-- 시각 디자인 방향(톤·색·레이아웃).
+- 시각 디자인·화면 시안 — [[visual-design]](방향 A 신뢰·공공형, 토큰, 레이아웃 규칙).
 - 구현 계획 — [[screen-plan]] §6의 4단계를 따른다.
