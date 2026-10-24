@@ -43,5 +43,14 @@ describe("LoginScreen", () => {
       screen.getByRole("button", { name: "로그인 없이 계속 보기" }),
     );
     expect(router.push).toHaveBeenCalledWith("/ask");
+    expect(sessionStorage.getItem("lia.returnTo")).toBeNull();
+  });
+
+  it("알 수 없는 오류 값이 객체 상속 속성 이름이어도 취소·실패 안내를 보인다", () => {
+    search = "error=constructor";
+    render(<LoginScreen />);
+    expect(
+      screen.getByText("취소했거나 잠시 문제가 있었어요."),
+    ).toBeInTheDocument();
   });
 });

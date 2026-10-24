@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { readReturnTo } from "@/lib/return-to";
+import { clearReturnTo, readReturnTo } from "@/lib/return-to";
 
 /** 소셜 로그인 — 시작은 전체 페이지 이동(<a>). <Link> 미리 불러오기가 OAuth 를 건드리지 않게. */
 const PROVIDERS = [
@@ -33,12 +33,22 @@ export function LoginScreen() {
   const router = useRouter();
   const error = useSearchParams().get("error");
 
+  /** 로그인 우회는 여정의 마지막 이동 — 돌아올 경로를 쓰고 지운 뒤 이동한다(이벤트 처리기라 지우기 가능). */
+  function continueWithoutLogin() {
+    const target = readReturnTo() ?? "/";
+    clearReturnTo();
+    router.push(target);
+  }
+
   if (error) {
     return (
       <div className="mx-auto max-w-[420px] px-4 py-12 text-center">
         <h1 className="text-lg font-bold">로그인이 완료되지 않았어요</h1>
-        <p className="text-sm text-muted-foreground">
-          {ERROR_TEXT[error] ?? ERROR_TEXT.oauth}
+        <p className="mt-1 text-sm text-muted-foreground">
+          {/* 쿼리 값이 객체 상속 속성(constructor 등)이어도 안내 문구가 나오게 */}
+          {Object.hasOwn(ERROR_TEXT, error)
+            ? ERROR_TEXT[error]
+            : ERROR_TEXT.oauth}
         </p>
         <div className="mt-4 flex flex-col gap-2">
           <button
@@ -50,7 +60,7 @@ export function LoginScreen() {
           </button>
           <button
             type="button"
-            onClick={() => router.push(readReturnTo() ?? "/")}
+            onClick={continueWithoutLogin}
             className="rounded-md border border-border bg-white py-2.5 text-[13px] font-bold"
           >
             로그인 없이 계속 보기
@@ -63,7 +73,7 @@ export function LoginScreen() {
   return (
     <div className="mx-auto max-w-[420px] px-4 py-10">
       <h1 className="text-lg font-bold">내 상황에 맞춘 분석을 받아 보세요</h1>
-      <p className="text-sm text-muted-foreground">
+      <p className="mt-1 text-sm text-muted-foreground">
         로그인은 내 영향·대응 방안·알림·이력 기능에만 필요해요. 요약·변경점은
         로그인 없이도 볼 수 있어요.
       </p>

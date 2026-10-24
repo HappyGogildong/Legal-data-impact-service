@@ -82,4 +82,14 @@ describe("LoginDoneScreen", () => {
       expect(router.replace).toHaveBeenCalledWith("/login?error=session"),
     );
   });
+
+  it("세션 확인이 실패하면(5xx) 확인 중에 멈추지 않고 로그인 오류 안내로", async () => {
+    mockApi({
+      "GET /api/v1/account": () => json({ error: "internal" }, 500),
+    });
+    renderDone();
+    await waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith("/login?error=session"),
+    );
+  });
 });

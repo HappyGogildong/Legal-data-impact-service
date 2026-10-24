@@ -22,7 +22,8 @@ export function LoginDoneScreen() {
   });
 
   useEffect(() => {
-    if (session.isSuccess && session.data === null) {
+    // 익명, 또는 세션 확인 자체가 실패(5xx·네트워크)면 확인 중에 멈추지 않고 로그인 오류 안내로
+    if (session.isError || (session.isSuccess && session.data === null)) {
       router.replace("/login?error=session");
       return;
     }
@@ -37,6 +38,7 @@ export function LoginDoneScreen() {
       router.replace(readReturnTo() ?? "/");
     }
   }, [
+    session.isError,
     session.isSuccess,
     session.data,
     consents.isSuccess,
