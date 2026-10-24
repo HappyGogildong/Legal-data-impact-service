@@ -46,6 +46,8 @@ public class SecurityConfig {
             .requestMatchers("/error").permitAll()
             .requestMatchers("/api/v1/laws/**").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/v1/analyses").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/v1/data-status").permitAll()
+            .requestMatchers("/v3/api-docs/**").permitAll()   // OpenAPI — 운영은 springdoc 설정으로 끈다
             // 문서용(Auth.md 표 미러) — 실제 보호는 아래 anyRequest 가 한다
             .requestMatchers("/api/v1/profile/**").authenticated()
             .anyRequest().authenticated())
@@ -79,7 +81,9 @@ public class SecurityConfig {
     //    성공 시 loginSuccessHandler 가 provider+subject→userId 매핑 후 세션에 심는다.
     clientRegistrations.ifAvailable(repo -> {
       try {
-        http.oauth2Login(oauth -> oauth.successHandler(loginSuccessHandler));
+        http.oauth2Login(oauth -> oauth
+            .successHandler(loginSuccessHandler)
+            .failureHandler(loginSuccessHandler.failureHandler()));
       } catch (Exception e) {
         throw new IllegalStateException("oauth2Login 구성 실패", e);
       }

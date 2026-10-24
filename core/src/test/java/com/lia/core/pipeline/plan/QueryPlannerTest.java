@@ -28,6 +28,13 @@ class QueryPlannerTest {
                 return List.of(new RawLaw("001809", "283191", "주택법", "시행예정",
                         LocalDate.of(2026, 8, 4), LocalDate.of(2026, 2, 3), "21323", null));
             }
+            if (query != null && query.contains("자본시장")) {   // 같은 법령의 시행예정본 2개(D43)
+                return List.of(
+                        new RawLaw("010513", "283193", "자본시장과 금융투자업에 관한 법률", "시행예정",
+                                LocalDate.of(2026, 10, 1), LocalDate.of(2026, 4, 1), "21000", null),
+                        new RawLaw("010513", "285001", "자본시장과 금융투자업에 관한 법률", "시행예정",
+                                LocalDate.of(2026, 11, 13), LocalDate.of(2026, 5, 13), "21100", null));
+            }
             return List.of();
         }
     }
@@ -95,5 +102,32 @@ class QueryPlannerTest {
         assertFalse(q.types().contains(QueryType.ACTION), "ACTION 제거");
         assertTrue(q.types().contains(QueryType.DIFF), "Layer A는 유지");
         assertFalse(q.primaryType().isLayerB(), "primary가 Layer B면 교체되어야");
+    }
+
+    @Test
+    void 같은_법령의_다른_시행예정본은_alternatives로_전달된다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.SUMMARY, Set.of(QueryType.SUMMARY), true, TargetKind.REFERENCE,
+                "자본시장과 금융투자업에 관한 법률", null, List.of(), List.of(), List.of(), "요약");
+
+        PlanResult.Planned planned = assertInstanceOf(PlanResult.Planned.class,
+                plannerFor(draft).plan("자본시장법 뭐가 바뀌어?", null, false));
+
+        Target.Reference ref = assertInstanceOf(Target.Reference.class, planned.query().target());
+        assertEquals(LocalDate.of(2026, 10, 1), ref.lawRef().effectiveDate(), "가장 이른 시행일로 해소(D43)");
+        assertEquals(List.of(LocalDate.of(2026, 11, 13)),
+                planned.alternatives().stream().map(RawLaw::effectiveDate).toList());
+    }
+
+    @Test
+    void 명시적_참조면_alternatives는_비어_있다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.SUMMARY, Set.of(QueryType.SUMMARY), true, TargetKind.REFERENCE,
+                "주택법", null, List.of(), List.of(), List.of(), "요약");
+
+        PlanResult.Planned planned = assertInstanceOf(PlanResult.Planned.class, plannerFor(draft)
+                .plan("요약", new LawRef("001809", LocalDate.of(2026, 8, 4), null), false));
+
+        assertTrue(planned.alternatives().isEmpty());
     }
 }

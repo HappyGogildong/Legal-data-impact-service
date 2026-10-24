@@ -127,7 +127,7 @@ class QueryDispatcherTest {
         DispatchResult r = d.dispatch(refQuery(Set.of(QueryType.SUMMARY, QueryType.IMPACT), QueryType.SUMMARY, false));
 
         assertEquals(1, r.filled().size());
-        assertTrue(r.unmet().containsKey(QueryType.IMPACT));
+        assertEquals(Unmet.Reason.NOT_IMPLEMENTED, r.unmet().get(QueryType.IMPACT).reason());
         assertFalse(r.fullySatisfied());
     }
 
@@ -137,7 +137,7 @@ class QueryDispatcherTest {
 
         DispatchResult r = d.dispatch(refQuery(Set.of(QueryType.IMPACT), QueryType.IMPACT, false));
 
-        assertTrue(r.unmet().get(QueryType.IMPACT).contains("프로필"));
+        assertEquals(Unmet.Reason.PROFILE_REQUIRED, r.unmet().get(QueryType.IMPACT).reason());
     }
 
     @Test
@@ -156,7 +156,8 @@ class QueryDispatcherTest {
         DispatchResult r = d.dispatch(refQuery(Set.of(QueryType.SUMMARY), QueryType.SUMMARY, false));
 
         assertTrue(r.filled().isEmpty());
-        assertTrue(r.unmet().get(QueryType.SUMMARY).contains("정본 미적재"));
+        assertEquals(Unmet.Reason.LAW_NOT_LOADED, r.unmet().get(QueryType.SUMMARY).reason());
+        assertTrue(r.unmet().get(QueryType.SUMMARY).message().contains("정본 미적재"), "설명은 사람이 읽는 문장 그대로");
     }
 
     @Test
@@ -168,7 +169,7 @@ class QueryDispatcherTest {
         DispatchResult r = d.dispatch(refQuery(Set.of(QueryType.DIFF), QueryType.DIFF, false));
 
         assertTrue(r.filled().isEmpty(), "개정본 baseline 이상은 조용히 제정으로 오인하지 말 것");
-        assertTrue(r.unmet().get(QueryType.DIFF).contains("기준선"));
+        assertEquals(Unmet.Reason.BASELINE_NOT_LOADED, r.unmet().get(QueryType.DIFF).reason());
     }
 
     @Test
@@ -192,6 +193,6 @@ class QueryDispatcherTest {
         DispatchResult r = d.dispatch(q);
 
         assertTrue(r.filled().isEmpty());
-        assertTrue(r.unmet().containsKey(QueryType.LOOKUP));
+        assertEquals(Unmet.Reason.NOT_IMPLEMENTED, r.unmet().get(QueryType.LOOKUP).reason());
     }
 }

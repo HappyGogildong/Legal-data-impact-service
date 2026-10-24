@@ -1,0 +1,637 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "description" : "입법 영향 분석기 공개 API — 계약 SSOT: docs/mvp/service-api-spec.md",
+    "title" : "LIA API",
+    "version" : "v1"
+  },
+  "servers" : [ {
+    "url" : "/"
+  } ],
+  "paths" : {
+    "/api/v1/account" : {
+      "delete" : {
+        "operationId" : "delete_1",
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "account-controller" ]
+      },
+      "get" : {
+        "operationId" : "get_2",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "account-controller" ]
+      }
+    },
+    "/api/v1/analyses" : {
+      "post" : {
+        "operationId" : "analyze",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AnalyzeApiRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AnalysisApiResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "analysis-controller" ]
+      }
+    },
+    "/api/v1/consents" : {
+      "get" : {
+        "operationId" : "status",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ConsentsResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "consent-controller" ]
+      }
+    },
+    "/api/v1/consents/notification-email" : {
+      "delete" : {
+        "operationId" : "withdrawNotificationEmail",
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "consent-controller" ]
+      },
+      "put" : {
+        "operationId" : "agreeNotificationEmail",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotificationEmailConsent"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "consent-controller" ]
+      }
+    },
+    "/api/v1/consents/profile" : {
+      "put" : {
+        "operationId" : "agreeProfile",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProfileConsentRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileConsent"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "consent-controller" ]
+      }
+    },
+    "/api/v1/data-status" : {
+      "get" : {
+        "operationId" : "get_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DataStatus"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "data-status-controller" ]
+      }
+    },
+    "/api/v1/profile" : {
+      "delete" : {
+        "operationId" : "delete",
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "profile-controller" ]
+      },
+      "get" : {
+        "operationId" : "get",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "profile-controller" ]
+      },
+      "put" : {
+        "operationId" : "update",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProfileApiRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "profile-controller" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "AccountResponse" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "provider" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Action" : {
+        "type" : "object",
+        "properties" : {
+          "basis" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "deadline" : {
+            "type" : "string"
+          },
+          "what" : {
+            "type" : "string"
+          }
+        }
+      },
+      "AnalysisApiResponse" : {
+        "type" : "object",
+        "properties" : {
+          "alternatives" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LawBrief"
+            }
+          },
+          "answer" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/ImpactResult"
+            }
+          },
+          "candidates" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LawBrief"
+            }
+          },
+          "disclaimer" : {
+            "type" : "string"
+          },
+          "law" : {
+            "$ref" : "#/components/schemas/LawHeader"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "resolution" : {
+            "type" : "string",
+            "enum" : [ "RESOLVED", "NOT_FOUND_YET", "AMBIGUOUS", "UNVERIFIED" ]
+          },
+          "sources" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CitedSource"
+            }
+          },
+          "unmet" : {
+            "type" : "object",
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/Unmet"
+            }
+          }
+        }
+      },
+      "AnalyzeApiRequest" : {
+        "type" : "object",
+        "properties" : {
+          "lawRef" : {
+            "$ref" : "#/components/schemas/LawRefDto"
+          },
+          "query" : {
+            "type" : "string"
+          },
+          "scope" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "CitedSource" : {
+        "type" : "object",
+        "properties" : {
+          "changeType" : {
+            "type" : "string"
+          },
+          "effectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "previousText" : {
+            "type" : "string"
+          },
+          "sourceId" : {
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Claim" : {
+        "type" : "object",
+        "properties" : {
+          "citations" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "confidence" : {
+            "type" : "number",
+            "format" : "double"
+          },
+          "statement" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ConsentsResponse" : {
+        "type" : "object",
+        "properties" : {
+          "notificationEmail" : {
+            "$ref" : "#/components/schemas/NotificationEmailConsent"
+          },
+          "profile" : {
+            "$ref" : "#/components/schemas/ProfileConsent"
+          }
+        }
+      },
+      "DataStatus" : {
+        "type" : "object",
+        "properties" : {
+          "lawsUpdatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "pendingLawCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "EffectiveInfo" : {
+        "type" : "object",
+        "properties" : {
+          "effectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "enforcement" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Impact" : {
+        "type" : "object",
+        "properties" : {
+          "aspect" : {
+            "type" : "string"
+          },
+          "citations" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "direction" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ImpactResult" : {
+        "type" : "object",
+        "properties" : {
+          "actions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Action"
+            }
+          },
+          "claims" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Claim"
+            }
+          },
+          "command" : {
+            "type" : "string"
+          },
+          "disclaimer" : {
+            "type" : "string"
+          },
+          "effectiveInfo" : {
+            "$ref" : "#/components/schemas/EffectiveInfo"
+          },
+          "impacts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Impact"
+            }
+          },
+          "lawRef" : {
+            "type" : "string"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/Meta"
+          },
+          "summary" : {
+            "type" : "string"
+          },
+          "uncertainties" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      },
+      "LawBrief" : {
+        "type" : "object",
+        "properties" : {
+          "effectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "lawId" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "LawHeader" : {
+        "type" : "object",
+        "properties" : {
+          "effectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "lawId" : {
+            "type" : "string"
+          },
+          "lawType" : {
+            "type" : "string"
+          },
+          "ministry" : {
+            "type" : "string"
+          },
+          "ref" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "LawRefDto" : {
+        "type" : "object",
+        "properties" : {
+          "articleNo" : {
+            "type" : "string"
+          },
+          "effectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "lawId" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Meta" : {
+        "type" : "object",
+        "properties" : {
+          "layer" : {
+            "type" : "string"
+          },
+          "model" : {
+            "type" : "string"
+          },
+          "promptVersion" : {
+            "type" : "string"
+          }
+        }
+      },
+      "NotificationEmailConsent" : {
+        "type" : "object",
+        "properties" : {
+          "consentedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "email" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ProfileApiRequest" : {
+        "type" : "object",
+        "properties" : {
+          "age" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "employmentType" : {
+            "type" : "string"
+          },
+          "householdType" : {
+            "type" : "string"
+          },
+          "housingType" : {
+            "type" : "string"
+          },
+          "occupation" : {
+            "type" : "string"
+          },
+          "purposes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "regionSido" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ProfileConsent" : {
+        "type" : "object",
+        "properties" : {
+          "consentedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "policyVersion" : {
+            "type" : "string"
+          },
+          "upToDate" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ProfileConsentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "over14" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ProfileResponse" : {
+        "type" : "object",
+        "properties" : {
+          "age" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "employmentType" : {
+            "type" : "string"
+          },
+          "householdType" : {
+            "type" : "string"
+          },
+          "housingType" : {
+            "type" : "string"
+          },
+          "occupation" : {
+            "type" : "string"
+          },
+          "purposes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "regionSido" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "Unmet" : {
+        "type" : "object",
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string",
+            "enum" : [ "LAW_NOT_LOADED", "BASELINE_NOT_LOADED", "PROFILE_REQUIRED", "NOT_IMPLEMENTED" ]
+          }
+        }
+      }
+    }
+  }
+}

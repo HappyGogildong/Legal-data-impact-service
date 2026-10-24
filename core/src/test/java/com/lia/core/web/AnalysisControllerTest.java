@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -16,23 +17,32 @@ import org.springframework.http.ResponseEntity;
 import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.application.analysis.AnalyzeUseCase;
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.dispatch.DispatchResult;
+import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.AnalysisQuery;
 import com.lia.core.pipeline.plan.ArticleScope;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.plan.Target;
 import com.lia.core.pipeline.resolve.ResolutionResult;
+import com.lia.core.store.LawSource;
 
 /**
- * AnalysisController 단위 — 위임·상태·검증(빈 query)만 본다. AnalyzeUseCase는 목, 매핑은 실 매퍼.
- * HTTP 라우팅/상태코드/직렬화는 수동 curl(검증 2단계)로 확인(Boot 4.0 test-slice 미사용).
+ * AnalysisController 단위 — 위임·상태·검증(빈 query)만 본다. AnalyzeUseCase는 목, 매핑은 실 매퍼(빈 정본).
+ * HTTP 라우팅은 수동 curl, 응답 스키마는 OpenApiSnapshotTest, JSON 모양은 AnalysisResponseMapperTest.직렬화.
  */
 class AnalysisControllerTest {
 
+    static final LawSource EMPTY = new LawSource() {
+        public Optional<Law> find(String lawId, LocalDate efYd) { return Optional.empty(); }
+        public Optional<Law> findBaseline(String lawId) { return Optional.empty(); }
+    };
+
     private final AnalyzeUseCase useCase = mock(AnalyzeUseCase.class);
-    private final AnalysisController controller = new AnalysisController(useCase, new AnalysisResponseMapper());
+    private final AnalysisController controller =
+            new AnalysisController(useCase, new AnalysisResponseMapper(EMPTY, new CitedSourceResolver(EMPTY)));
 
     private static AnalysisOutcome analyzed() {
         LawRef ref = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
@@ -43,32 +53,30 @@ class AnalysisControllerTest {
                 List.of(), List.of(), null, List.of("일부 대통령령 위임"), "참고용", null);
         DispatchResult dr = new DispatchResult(QueryType.SUMMARY,
                 Map.of(QueryType.SUMMARY, new AnalyzeResponse(ir, Set.of("LAW:001809@2026-08-04:art:18"))),
-                Map.of(QueryType.IMPACT, "프로필 필요 (Layer B)"));
+                Map.of(QueryType.IMPACT, new Unmet(Unmet.Reason.PROFILE_REQUIRED, "프로필 필요 (Layer B)")));
         return new AnalysisOutcome.Analyzed(q, dr);
     }
 
-    @SuppressWarnings("unchecked")
     @Test
-    void 분석되면_RESOLVED_law_ref_answer_unmet을_매핑한다() {
+    void 분석되면_RESOLVED_law_answer_unmet을_매핑한다() {
         when(useCase.analyze(any(), any())).thenReturn(analyzed());
 
-        ResponseEntity<Map<String, Object>> resp =
+        ResponseEntity<AnalysisApiResponse> resp =
                 controller.analyze(new AnalyzeApiRequest("주택법 뭐가 바뀌어?", null, null));
 
         assertEquals(200, resp.getStatusCode().value());
-        Map<String, Object> body = resp.getBody();
-        assertEquals("RESOLVED", body.get("resolution"));
-        assertEquals("LAW:001809@2026-08-04", body.get("law_ref"));
-        assertTrue(((Map<String, Object>) body.get("answer")).containsKey("summary"), "채워진 차원 소문자 키");
-        assertTrue(((Map<String, String>) body.get("unmet")).containsKey("impact"), "못 채운 차원+사유");
-        assertEquals("참고용", body.get("disclaimer"));
+        AnalysisApiResponse body = resp.getBody();
+        assertEquals("RESOLVED", body.resolution());
+        assertEquals("LAW:001809@2026-08-04", body.law().ref());
+        assertTrue(body.answer().containsKey("summary"), "채워진 차원 소문자 키");
+        assertTrue(body.unmet().containsKey("impact"), "못 채운 차원+사유");
+        assertEquals("참고용", body.disclaimer());
     }
 
     @Test
     void 빈_query는_IllegalArgumentException_400매핑() {
         assertThrows(IllegalArgumentException.class,
                 () -> controller.analyze(new AnalyzeApiRequest("   ", null, null)));
-        // ApiExceptionHandler가 IllegalArgumentException → 400으로 매핑(§4.1).
     }
 
     @Test
@@ -76,11 +84,11 @@ class AnalysisControllerTest {
         when(useCase.analyze(any(), any()))
                 .thenReturn(new AnalysisOutcome.Unresolved(ResolutionResult.notFoundYet("그 법을 아직 못 찾았어요.")));
 
-        ResponseEntity<Map<String, Object>> resp =
+        ResponseEntity<AnalysisApiResponse> resp =
                 controller.analyze(new AnalyzeApiRequest("어떤 이상한 법", null, null));
 
         assertEquals(200, resp.getStatusCode().value());
-        assertEquals("NOT_FOUND_YET", resp.getBody().get("resolution"));
-        assertEquals("그 법을 아직 못 찾았어요.", resp.getBody().get("message"));
+        assertEquals("NOT_FOUND_YET", resp.getBody().resolution());
+        assertEquals("그 법을 아직 못 찾았어요.", resp.getBody().message());
     }
 }

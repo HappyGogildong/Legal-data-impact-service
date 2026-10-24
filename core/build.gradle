@@ -56,6 +56,7 @@ dependencies {
     // --- 인증 (Auth, D60: 소셜 OAuth2 + 세션-쿠키) ---
     implementation 'org.springframework.boot:spring-boot-starter-security'       // 필터체인·세션·인가 (오토컨피그 포함)
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'  // 소셜 OAuth2 로그인(Kakao/Naver/Google)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api:3.0.3'     // OpenAPI(/v3/api-docs) — 웹 TS 타입 생성 원천(D64). UI 없음
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'       // 인가 규칙 테스트(oauth2Login()·인증 없음→401)

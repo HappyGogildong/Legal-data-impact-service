@@ -53,9 +53,10 @@ related: ["product/screen-plan.md", "backend/cloud-infra.md", "mvp/service-api-s
 
 | 변경 | 이유 |
 |---|---|
-| 분석 응답 `Map` → **typed DTO** | 응답 계약을 타입으로 고정([[AnalysisApi]]의 "웹이 소비할 때 도입") |
-| **springdoc** 의존성 추가 · OpenAPI 문서 노출 | TS 타입 생성의 원천 |
-| OAuth `redirect-uri` 명시 · `FRONTEND_URL` = 프런트 도메인 | §2 |
+| 분석 응답 `Map` → **typed DTO**(`AnalysisApiResponse`) + 법령 헤더·다른 시행일·근거 원문(`sources`, 현행 원문 포함) · 미충족 사유 코드(`unmet.<차원>.reason`) | 응답 계약을 타입으로 고정, 결과 화면(S02)의 법령명·시행일 선택·근거 패널·조문 대비·사유별 안내 카드([[AnalysisApi]]) |
+| **springdoc** `/v3/api-docs` + 레포 `api/openapi.json` 스냅샷 테스트 | TS 타입 생성의 원천, 계약이 바뀌면 테스트가 드러냄. 운영은 `SPRINGDOC_API_DOCS_ENABLED=false` |
+| **데이터 현황 API** `GET /api/v1/data-status` | S15·S05의 갱신 시각·수록 법령 수([[DataStatusApi]]) |
+| OAuth `redirect-uri` = `${OAUTH2_REDIRECT_BASE_URL:{baseUrl}}/…` · `FRONTEND_URL` = 프런트 도메인 · 로그인 착지 `/login/done`·실패 `/login?error=oauth` | §2 — 운영은 `OAUTH2_REDIRECT_BASE_URL=https://app.<도메인>` |
 
 ## 4. 도메인
 

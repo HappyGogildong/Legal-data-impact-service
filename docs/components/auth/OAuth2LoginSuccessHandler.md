@@ -17,7 +17,7 @@ related: ["components/auth/Auth.md", "components/auth/SecurityConfig.md", "compo
 ## Collaborators
 - `AccountStore`(생성자 주입) — `findOrCreate(provider, subject)`(경합 안전, [[Auth]] Persistence Contract).
 - `OAuth2Identity`(같은 패키지) — provider별 `(subject, email?)` 정규화. **알림 동의([[ConsentApi]])도 같은 클래스로 이메일을 꺼낸다** — provider 분기는 이 한 곳에만 있다.
-- `SimpleUrlAuthenticationSuccessHandler`(상속) — 항상 `lia.auth.frontend-url`(env `FRONTEND_URL`)로 리다이렉트.
+- `SimpleUrlAuthenticationSuccessHandler`(상속) — 성공 시 항상 프론트 착지 화면 `{frontend-url}/login/done`(`lia.auth.frontend-url`, env `FRONTEND_URL`)으로 리다이렉트. 실패·취소는 이 클래스가 아니라 `failureHandler()` 가 만드는 `SimpleUrlAuthenticationFailureHandler`(아래 §결정 3).
 - **CurrentUser**(같은 패키지) — 세션 키 `USER_ID` 의 **읽기 짝**. 이 핸들러가 쓰고 CurrentUser가 읽는다(키 단일 소스).
 
 ## Business Flow
@@ -26,7 +26,7 @@ related: ["components/auth/Auth.md", "components/auth/SecurityConfig.md", "compo
 3. subject가 비면 → **fail-closed**(아래). 끝.
 4. `accountStore.findOrCreate(provider, subject)` → `userId`. **email은 넘기지 않는다** — 로그인 중에는 principal 속성에만 머문다.
 5. 세션 속성 `USER_ID` 에 `userId` 저장.
-6. 프론트 URL로 리다이렉트.
+6. 프론트 착지 화면 `{frontend-url}/login/done` 으로 리다이렉트 — 착지 화면이 동의 상태를 보고 동의(S08) 또는 원래 화면으로 보낸다.
 
 ## provider 속성 분기 (핵심 함정) — `OAuth2Identity`
 세 IdP의 사용자정보 구조가 **다 다르다** — subject/email 위치가 제각각이라 provider별 추출이 필수. 이 분기는 `OAuth2Identity` 한 곳에 있고 로그인 핸들러와 알림 동의가 공유한다:
@@ -50,6 +50,9 @@ Spring principal(OAuth2User/OidcUser)은 **인증용으로 그대로** 두고(`.
 - 대안(커스텀 `OAuth2User` 로 userId 래핑)은 더 정석이지만 provider별 래퍼가 필요 → 과함. 세션 속성이 최소이고 충분.
 
 ## 결정 3 — 리다이렉트: 항상 프론트 (SavedRequest 안 씀)
+- **성공:** `{frontend-url}/login/done` 고정(`setAlwaysUseDefaultTargetUrl`). 착지 화면이 동의 상태를 보고 S08 또는 원래 화면으로 보낸다.
+- **실패·취소:** `failureHandler()` → `{frontend-url}/login?error=oauth`. 기본 실패 주소 `/login?error` 는 상대 경로라 rewrites 프록시 뒤에서 API 호스트로 풀릴 수 있어 **절대 주소**로 고정하고, 실패 로그인 때문에 세션을 새로 만들지 않는다(`setAllowSessionCreation(false)` — 세션이 없으면 새로 만들지 않는다. 기본 `HttpSessionOAuth2AuthorizationRequestRepository` 때문에 콜백 시점엔 세션이 이미 있는 게 보통이고, 이미 있으면 Spring 이 예외(`SPRING_SECURITY_LAST_EXCEPTION`)를 그 세션에 남긴다).
+- **식별 실패(subject 없음):** 기존 `{frontend-url}/login?error=identity`(아래 §fail-closed).
 - SavedRequest를 따르지 않는다. 저장된 요청은 대개 401을 받은 **API URL**이라, 따르면 브라우저가 JSON 화면으로 간다.
 - `/` 로도 보내지 않는다 — API 서버 루트는 인증 필요 경로이고 핸들러도 없다. SPA는 프론트(#14)에 있다.
 
@@ -66,12 +69,12 @@ Spring principal(OAuth2User/OidcUser)은 **인증용으로 그대로** 두고(`.
 ## Error Handling
 - subject 누락 → fail-closed 리다이렉트(예외 아님).
 - 미지원 provider → `IllegalStateException`.
-- 인증 실패(콜백 오류)는 이 핸들러 이전 단계 — Spring이 로그인 실패로 처리([[Auth]] §Error Handling).
+- 인증 실패(콜백 오류·사용자 취소)는 이 핸들러 이전 단계 — `failureHandler()` 가 `{frontend-url}/login?error=oauth` 로 보낸다(세션 미생성, [[Auth]] §Error Handling).
 
 ## Side Effects
 - **DB 쓰기**(최초 로그인 시 accounts insert — email 없이) · 세션 속성 쓰기/세션 파기 · HTTP 리다이렉트.
 
 ## 검증
-- 단위(Docker 불필요, `OAuth2LoginSuccessHandlerTest`): 인메모리 `InMemoryAccountStore` + 실제 principal/토큰 + Mock 요청·응답 — subject 로 계정 회수/생성 · 멱등 회수 · **이메일을 준 IdP여도 계정에 email 미저장** · 프론트 리다이렉트 · subject 누락 시 계정 미생성·세션 파기·오류 리다이렉트.
+- 단위(Docker 불필요, `OAuth2LoginSuccessHandlerTest`): 인메모리 `InMemoryAccountStore` + 실제 principal/토큰 + Mock 요청·응답 — subject 로 계정 회수/생성 · 멱등 회수 · **이메일을 준 IdP여도 계정에 email 미저장** · 프론트 착지 화면(`/login/done`) 리다이렉트 · subject 누락 시 계정 미생성·세션 파기·오류 리다이렉트 · **실패·취소 시 `{frontend}/login?error=oauth` 절대 주소 리다이렉트 + 세션 미생성**.
 - 단위(`OAuth2IdentityTest`): provider 3종 `(subject, email)` 추출 · 중첩 속성 누락 시 null · 미지원 provider 예외.
-- 라이브(수동): 실제 소셜 로그인 왕복(`--spring.profiles.active=oauth` + provider 콘솔 redirect URI `{baseUrl}/login/oauth2/code/{provider}`).
+- 라이브(수동): 실제 소셜 로그인 왕복(`--spring.profiles.active=oauth` + provider 콘솔 redirect URI = `${OAUTH2_REDIRECT_BASE_URL:{baseUrl}}/login/oauth2/code/{provider}` 로 풀린 주소 — 로컬은 `{baseUrl}`, 운영은 프런트 도메인 `https://app.<도메인>`(끝 `/` 없이; 변수를 빈 값으로 두지 말 것)).

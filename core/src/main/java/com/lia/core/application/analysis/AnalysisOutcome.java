@@ -1,5 +1,8 @@
 package com.lia.core.application.analysis;
 
+import java.util.List;
+
+import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.dispatch.DispatchResult;
 import com.lia.core.pipeline.plan.AnalysisQuery;
 import com.lia.core.pipeline.resolve.ResolutionResult;
@@ -10,7 +13,16 @@ import com.lia.core.pipeline.resolve.ResolutionResult;
  */
 public sealed interface AnalysisOutcome permits AnalysisOutcome.Analyzed, AnalysisOutcome.Unresolved {
 
-    record Analyzed(AnalysisQuery query, DispatchResult result) implements AnalysisOutcome {}
+    /** @param alternatives 같은 법령의 다른 시행예정본(D43) — 응답의 "다른 시행일 보기" */
+    record Analyzed(AnalysisQuery query, DispatchResult result, List<RawLaw> alternatives) implements AnalysisOutcome {
+        public Analyzed {
+            alternatives = List.copyOf(alternatives);
+        }
+
+        public Analyzed(AnalysisQuery query, DispatchResult result) {
+            this(query, result, List.of());
+        }
+    }
 
     record Unresolved(ResolutionResult resolution) implements AnalysisOutcome {}
 }

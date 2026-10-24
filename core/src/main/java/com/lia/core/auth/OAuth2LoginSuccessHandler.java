@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +21,7 @@ import jakarta.servlet.http.HttpSession;
  * 소셜 로그인 성공 → provider 신원을 내부 {@code userId} 로 매핑해 세션에 심는다(Auth, D60).
  *
  * <p>{@code (provider, subject)} 로 {@link AccountStore#findOrCreate} → {@code userId} 를 세션 속성
- * ({@link CurrentUser#SESSION_KEY})에 저장 → 프론트({@code lia.auth.frontend-url})로 리다이렉트.
+ * ({@link CurrentUser#SESSION_KEY})에 저장 → 프론트 착지 화면({@code {frontend-url}/login/done})으로 리다이렉트.
  * SavedRequest 를 쓰지 않는다 — 저장된 요청은 API URL(401 을 받은)이라 브라우저를 JSON 으로 보내게 된다.
  * 이메일은 저장하지 않는다(로그인 중엔 principal 에만 있고 알림 동의 시 저장, D61).
  *
@@ -36,7 +38,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
             @Value("${lia.auth.frontend-url}") String frontendUrl) {
         this.accountStore = accountStore;
         this.frontendUrl = frontendUrl;
-        setDefaultTargetUrl(frontendUrl);
+        setDefaultTargetUrl(frontendUrl + "/login/done");   // 착지 화면이 동의 상태를 보고 S08 또는 원래 화면으로
         setAlwaysUseDefaultTargetUrl(true);
     }
 
@@ -60,5 +62,15 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         request.getSession().setAttribute(CurrentUser.SESSION_KEY, userId);
 
         super.onAuthenticationSuccess(request, response, authentication);
+    }
+
+    /**
+     * 소셜 로그인 실패·취소 → 프론트 로그인 화면. 기본 실패 주소 {@code /login?error}는 상대 경로라
+     * rewrites 프록시 뒤에서 API 호스트로 풀릴 수 있어 같은 frontendUrl 기준 절대 주소로 고정한다.
+     */
+    public AuthenticationFailureHandler failureHandler() {
+        var handler = new SimpleUrlAuthenticationFailureHandler(frontendUrl + "/login?error=oauth");
+        handler.setAllowSessionCreation(false); // 실패 로그인에 세션·예외 저장 불필요
+        return handler;
     }
 }

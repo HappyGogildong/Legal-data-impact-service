@@ -129,6 +129,7 @@ ImpactResult {               // 프롬프트 정의서 §4와 동일 스키마
   disclaimer: string
   meta: { model: string, prompt_version: string, layer: enum("A"|"B") }
 }
+// 공개 API JSON 키는 camelCase(`lawRef`·`effectiveInfo`·`promptVersion` …) — 기계 판독 원본은 `api/openapi.json`(service-api-spec §3.0)
 Claim  { statement: string, citations: string[], confidence: float }  // citations 비면 무효
 Impact { aspect: string, direction: string, detail: string, citations: string[] }
 Action { what: string, deadline: string, basis: string[] }

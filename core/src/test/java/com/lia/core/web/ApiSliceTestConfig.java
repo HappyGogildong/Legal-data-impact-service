@@ -1,5 +1,7 @@
 package com.lia.core.web;
 
+import java.time.OffsetDateTime;
+
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -10,6 +12,7 @@ import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.application.profile.ProfileUseCase;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.config.SecurityConfig;
+import com.lia.core.store.DataStatusStore;
 import com.lia.core.testsupport.InMemoryAccountStore;
 import com.lia.core.testsupport.InMemoryUserProfileStore;
 
@@ -25,10 +28,12 @@ import com.lia.core.testsupport.InMemoryUserProfileStore;
 @EnableWebMvc
 @EnableWebSecurity
 @Import({SecurityConfig.class, ApiExceptionHandler.class,
-        ProfileController.class, ConsentController.class, AccountController.class})
+        ProfileController.class, ConsentController.class, AccountController.class,
+        DataStatusController.class})
 class ApiSliceTestConfig {
 
     static final String POLICY = "v-test";
+    static final OffsetDateTime STATUS_UPDATED_AT = OffsetDateTime.parse("2026-10-23T04:12:00+09:00");
 
     @Bean
     InMemoryUserProfileStore userProfileStore() {
@@ -53,5 +58,16 @@ class ApiSliceTestConfig {
     @Bean
     OAuth2LoginSuccessHandler loginSuccessHandler(InMemoryAccountStore accounts) {
         return new OAuth2LoginSuccessHandler(accounts, "http://localhost:3000");
+    }
+
+    /** DB 없이 고정 값을 돌려주는 데이터 현황(웹 슬라이스는 HTTP·인가만 본다). */
+    @Bean
+    DataStatusStore dataStatusStore() {
+        return new DataStatusStore(null) {
+            @Override
+            public DataStatus read() {
+                return new DataStatus(STATUS_UPDATED_AT, 912);
+            }
+        };
     }
 }

@@ -3,6 +3,7 @@ package com.lia.core.pipeline.plan;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.plan.AnalysisQueryDraft.TargetKind;
 import com.lia.core.pipeline.resolve.ResolutionResult;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
@@ -35,23 +36,26 @@ public class QueryPlanner {
         boolean reference = explicitRef != null || draft.targetKind() == TargetKind.REFERENCE;
         if (reference) {
             LawRef ref;
+            List<RawLaw> alternatives = List.of();
             if (explicitRef != null) {
                 ref = explicitRef;                         // 이미 특정됨 — 해소 생략
             } else {
                 ResolutionResult rr = sourceAnalyzer.resolve(draft.lawName());
                 if (!rr.analyzable()) return new PlanResult.Unresolved(rr);
                 ref = new LawRef(rr.resolved().lawId(), rr.resolved().effectiveDate(), draft.articleNo());
+                alternatives = rr.alternatives();          // 같은 법령의 다른 시행예정본(D43)
             }
-            return planned(draft, new Target.Reference(ref), profilePresent);
+            return planned(draft, new Target.Reference(ref), profilePresent, alternatives);
         }
 
         // Discovery — criteria 구성만(검색 실행은 dispatch, 이번 범위 밖)
         DiscoveryCriteria criteria = new DiscoveryCriteria(
                 draft.keywords(), draft.conditions(), draft.domains(), profilePresent);
-        return planned(draft, new Target.Discovery(criteria), profilePresent);
+        return planned(draft, new Target.Discovery(criteria), profilePresent, List.of());
     }
 
-    private static PlanResult planned(AnalysisQueryDraft draft, Target target, boolean profilePresent) {
+    private static PlanResult planned(AnalysisQueryDraft draft, Target target, boolean profilePresent,
+                                      List<RawLaw> alternatives) {
         // 프로필 게이팅 — 프로필 없으면 Layer B(IMPACT·ACTION) 제거(best-effort, 거부 아님).
         EnumSet<QueryType> types = draft.types().isEmpty()
                 ? EnumSet.noneOf(QueryType.class) : EnumSet.copyOf(draft.types());
@@ -67,6 +71,6 @@ public class QueryPlanner {
 
         AnalysisQuery q = new AnalysisQuery(primary, types, target,
                 draft.intentSummary(), ArticleScope.CHANGED_ONLY, profileBound, AnalysisQuery.Options.defaults());
-        return new PlanResult.Planned(q);
+        return new PlanResult.Planned(q, alternatives);
     }
 }
