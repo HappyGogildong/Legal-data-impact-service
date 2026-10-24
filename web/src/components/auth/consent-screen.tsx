@@ -63,8 +63,11 @@ export function ConsentScreen() {
     },
   });
 
-  if (session.isError) return <LoadError onRetry={() => session.refetch()} />;
-  if (consents.isError) return <LoadError onRetry={() => consents.refetch()} />;
+  // 백그라운드 재조회만 실패한 경우(데이터는 캐시에 있음)는 폼을 유지한다 — isError 만 보면 폼이 오류 화면으로 바뀐다.
+  if (session.isError && !session.data)
+    return <LoadError onRetry={() => session.refetch()} />;
+  if (consents.isError && !consents.data)
+    return <LoadError onRetry={() => consents.refetch()} />;
   if (!session.data || consents.isPending) {
     return (
       <p
@@ -105,7 +108,8 @@ export function ConsentScreen() {
     );
   }
 
-  if (existing?.upToDate) {
+  // 첫 동의 직후 캐시가 최신으로 바뀌어도 "이미 동의" 화면이 잠깐 뜨지 않게 — 이동 중에는 폼을 유지한다.
+  if (existing?.upToDate && !agree.isSuccess) {
     return (
       <div className="mx-auto max-w-[420px] px-4 py-12 text-center">
         <h1 className="font-bold">이미 최신 처리방침에 동의하셨어요</h1>
@@ -169,7 +173,7 @@ export function ConsentScreen() {
       <div className="mt-3 flex flex-col gap-2">
         <button
           type="button"
-          disabled={!over14 || !agreed || agree.isPending}
+          disabled={!over14 || !agreed || agree.isPending || agree.isSuccess}
           onClick={() => agree.mutate()}
           className="rounded-md bg-navy py-2.5 text-[13px] font-bold text-white disabled:opacity-40"
         >

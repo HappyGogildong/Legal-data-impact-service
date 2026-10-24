@@ -56,7 +56,9 @@ describe("ConsentScreen", () => {
     );
     await userEvent.click(submit);
 
-    expect(router.replace).toHaveBeenCalledWith("/profile");
+    await vi.waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith("/profile"),
+    );
     const put = requests.find((request) => request.method === "PUT")!;
     expect(await put.json()).toEqual({ over14: true });
   });
@@ -86,7 +88,7 @@ describe("ConsentScreen", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "동의하기" }));
 
-    expect(router.replace).toHaveBeenCalledWith("/ask");
+    await vi.waitFor(() => expect(router.replace).toHaveBeenCalledWith("/ask"));
     expect(sessionStorage.getItem("lia.returnTo")).toBeNull();
   });
 
@@ -120,7 +122,29 @@ describe("ConsentScreen", () => {
     await userEvent.click(
       await screen.findByRole("button", { name: "동의하지 않고 계속 보기" }),
     );
-    expect(router.push).toHaveBeenCalledWith("/ask");
+    await vi.waitFor(() => expect(router.push).toHaveBeenCalledWith("/ask"));
+  });
+
+  it("동의 상태 조회가 5xx로 실패하면 멈추지 않고 오류와 다시 시도를 보인다", async () => {
+    const requests = mockApi({
+      "GET /api/v1/account": () => json(ACCOUNT),
+      "GET /api/v1/consents": () => json({}, 500),
+    });
+    renderConsent();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "정보를 불러오지 못했어요.",
+    );
+    const before = requests.filter((request) =>
+      request.url.endsWith("/api/v1/consents"),
+    ).length;
+    await userEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+    await vi.waitFor(() =>
+      expect(
+        requests.filter((request) => request.url.endsWith("/api/v1/consents"))
+          .length,
+      ).toBeGreaterThan(before),
+    );
   });
 
   it("세션 조회가 5xx로 실패하면 멈추지 않고 오류와 다시 시도를 보인다", async () => {
