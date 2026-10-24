@@ -3,7 +3,7 @@ import { DataStatusCard } from "@/components/info/data-status-card";
 
 export const metadata: Metadata = { title: "안내" };
 
-/** S15 — 이용 안내·면책, 데이터 현황, 개인정보처리방침 요약(전문은 법무 산출물 #35). */
+/** S15 — 이용 안내·면책, 데이터 현황, 문의처, 개인정보처리방침 요약(전문은 법무 산출물 #35). */
 export default function InfoPage() {
   return (
     <div className="mx-auto flex max-w-[760px] flex-col gap-2.5 px-4 py-5">
