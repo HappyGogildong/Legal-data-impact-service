@@ -56,7 +56,9 @@ describe("analysis-view", () => {
   });
 
   it("미충족 안내 문구 — 사유 코드별, 모르는 코드는 일반 문구", () => {
-    expect(unmetCopy({ reason: "PROFILE_REQUIRED" }).title).toContain("로그인");
+    expect(unmetCopy({ reason: "PROFILE_REQUIRED" }).title).toContain(
+      "내 상황",
+    );
     expect(unmetCopy({ reason: "LAW_NOT_LOADED" }).title).toContain("준비 중");
     expect(unmetCopy(undefined).title).toBe("이 부분은 지금 답할 수 없어요");
   });

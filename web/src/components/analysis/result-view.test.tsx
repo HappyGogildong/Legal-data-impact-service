@@ -48,7 +48,7 @@ describe("ResultView — 모바일", () => {
     renderResult();
     await userEvent.click(screen.getByRole("button", { name: /내 영향/ }));
     expect(
-      screen.getByText("내 상황에 맞춘 분석은 로그인 후에 볼 수 있어요"),
+      screen.getByText("내 상황에 맞춘 분석이 필요한 부분이에요"),
     ).toBeInTheDocument();
   });
 

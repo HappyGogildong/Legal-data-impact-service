@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { setAsk } from "@/lib/ask-store";
+import { json as apiJson, mockApi } from "@/test/api-mock";
 import {
   ambiguousResponse,
   notFoundResponse,
@@ -167,5 +168,22 @@ describe("AskScreen", () => {
 
     expect(sessionStorage.getItem("lia.draft")).toBe("전세 계약 어떻게 돼?");
     expect(router.push).toHaveBeenCalledWith("/");
+  });
+
+  it("결과 화면 '내 영향' 카드를 열면 익명에게 로그인하기가 붙는다(renderUnmetAction 연결)", async () => {
+    setAsk({ query: "주택법 바뀌면?" });
+    mockApi({
+      "POST /api/v1/analyses": () => apiJson(resolvedResponse),
+      "GET /api/v1/account": () => apiJson({ error: "unauthenticated" }, 401),
+    });
+    renderScreen();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /내 영향/ }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "로그인하기" }),
+    ).toBeInTheDocument();
   });
 });

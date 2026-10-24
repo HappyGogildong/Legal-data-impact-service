@@ -8,6 +8,7 @@ import { analyze } from "@/lib/api/analysis";
 import { askKey, setAsk, useAsk, type AskRequest } from "@/lib/ask-store";
 import { AnalysisProgress } from "./analysis-progress";
 import { ErrorCard } from "./error-card";
+import { PersonalizeAction } from "./personalize-action";
 import { ResolutionView } from "./resolution-view";
 import { ResultView } from "./result-view";
 
@@ -57,5 +58,13 @@ export function AskScreen() {
       />
     );
   }
-  return <ResultView key={key} response={response} ask={ask} onAsk={reask} />;
+  return (
+    <ResultView
+      key={key}
+      response={response}
+      ask={ask}
+      onAsk={reask}
+      renderUnmetAction={(unmet) => <PersonalizeAction unmet={unmet} />}
+    />
+  );
 }

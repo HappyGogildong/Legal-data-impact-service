@@ -79,14 +79,11 @@ export function articleTitle(label: string): string {
 
 export type UnmetCopy = { title: string; body: string };
 
-/** 미충족 차원의 안내 — 사유 코드별(계약: service-api-spec §3.0). 로그인 유도 버튼은 로그인 흐름에서 붙인다. */
+/** 미충족 차원의 안내 — 사유 코드별(계약: service-api-spec §3.0). 프로필 필요(PROFILE_REQUIRED)의 상태별 설명·버튼은 PersonalizeAction. */
 export function unmetCopy(unmet: Pick<Unmet, "reason"> | undefined): UnmetCopy {
   switch (unmet?.reason) {
     case "PROFILE_REQUIRED":
-      return {
-        title: "내 상황에 맞춘 분석은 로그인 후에 볼 수 있어요",
-        body: "로그인하고 프로필을 입력하면 내 영향과 대응 방안을 알려드려요.",
-      };
+      return { title: "내 상황에 맞춘 분석이 필요한 부분이에요", body: "" };
     case "LAW_NOT_LOADED":
       return {
         title: "아직 분석 준비 중인 법령이에요",
