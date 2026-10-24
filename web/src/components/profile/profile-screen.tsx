@@ -62,9 +62,10 @@ export function ProfileScreen() {
   });
   // 조회 실패 때 빈 폼을 보이면 저장(전체 교체)이 저장된 프로필을 지운다 — 오류 화면으로 막는다.
   // 백그라운드 재조회만 실패한 경우(데이터는 캐시에 있음)는 폼을 유지한다.
+  // 프로필이 없는 것(404)은 null 이므로, 데이터가 아직 없는(undefined) 경우만 오류로 본다.
   if (session.isError && !session.data)
     return <LoadError onRetry={() => session.refetch()} />;
-  if (profile.isError && !profile.data)
+  if (profile.isError && profile.data === undefined)
     return <LoadError onRetry={() => profile.refetch()} />;
   if (!session.data || profile.isPending) {
     return (
@@ -85,6 +86,7 @@ function ProfileForm({ initial }: { initial: Profile | null }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const ageId = useId();
+  const ageErrorId = useId();
   const [values, setValues] = useState<Values>(() => toValues(initial));
   const [ageError, setAgeError] = useState(false);
   const [reconsentOpen, setReconsentOpen] = useState(false);
@@ -103,9 +105,13 @@ function ProfileForm({ initial }: { initial: Profile | null }) {
       else setSaved(true);
     },
     onError: (error) => {
-      if (error instanceof ApiError && error.status === 409)
+      if (error instanceof ApiError && error.status === 409) {
         setReconsentOpen(true);
-      else if (isUnauthorized(error)) setExpired(true);
+        return;
+      }
+      // 재동의 뒤 재저장이 다른 이유로 실패하면 대화상자를 먼저 닫아야 "저장하지 못했어요" 문구가 보인다.
+      setReconsentOpen(false);
+      if (isUnauthorized(error)) setExpired(true);
     },
   });
 
@@ -209,6 +215,8 @@ function ProfileForm({ initial }: { initial: Profile | null }) {
           min={MIN_AGE}
           max={MAX_AGE}
           value={values.age}
+          aria-invalid={ageError}
+          aria-describedby={ageError ? ageErrorId : undefined}
           onChange={(event) =>
             setValues((current) => ({ ...current, age: event.target.value }))
           }
@@ -218,7 +226,7 @@ function ProfileForm({ initial }: { initial: Profile | null }) {
           )}
         />
         {ageError && (
-          <p className="text-xs text-removed">
+          <p id={ageErrorId} role="alert" className="text-xs text-removed">
             나이는 14~120 사이로 입력해 주세요.
           </p>
         )}
@@ -273,7 +281,6 @@ function SingleField({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const id = useId();
   const choices = OPTIONS[field.key];
   return (
     <fieldset className="mt-4">
@@ -281,7 +288,6 @@ function SingleField({
       {field.control === "select" ? (
         <select
           aria-label={field.label}
-          id={id}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           className="mt-1.5 rounded-md border border-border bg-white px-2.5 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy"
