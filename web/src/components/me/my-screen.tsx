@@ -2,7 +2,6 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { CheckRow } from "@/components/auth/check-row";
 import { LoadError } from "@/components/auth/load-error";
@@ -19,6 +18,7 @@ import {
 import { ApiError, isUnauthorized } from "@/lib/api/errors";
 import type { Consents, Profile } from "@/lib/api/types";
 import { formatSeoulDateTime } from "@/lib/dates";
+import { reloadTo } from "@/lib/navigation";
 import { CONSENTS_KEY, PROFILE_KEY, useRequireSession } from "@/lib/session";
 import { ConfirmDialog } from "./confirm-dialog";
 
@@ -54,9 +54,19 @@ const failedWithoutExpiry = (mutation: { isError: boolean; error: unknown }) =>
 
 type Pending = "profile" | "account" | "email" | null;
 
+function Loading() {
+  return (
+    <p
+      role="status"
+      className="px-4 py-12 text-center text-sm text-muted-foreground"
+    >
+      불러오는 중…
+    </p>
+  );
+}
+
 /** S10 — 계정·프로필·동의 상태·설정·바로가기·계정 삭제(위험 영역). 프로필 삭제 = 동의 철회. */
 export function MyScreen() {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const session = useRequireSession();
   const emailSwitchLabelId = useId();
@@ -73,7 +83,6 @@ export function MyScreen() {
   });
   const [confirm, setConfirm] = useState<Pending>(null);
   const [emailAgreed, setEmailAgreed] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
 
   const onError = (error: unknown) => {
@@ -82,10 +91,9 @@ export function MyScreen() {
       setExpired(true);
     }
   };
-  const leaveSignedOut = () => {
-    queryClient.clear();
-    router.replace("/");
-  };
+  // 클라이언트 전환이 아닌 전체 이동 — 캐시를 비우는 순간 세션을 다시 조회해
+  // 로그인 화면으로 튕기는 경합이 없고, 프로필·이메일도 메모리에서 사라진다.
+  const leaveSignedOut = () => reloadTo("/");
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSuccess: leaveSignedOut,
@@ -113,18 +121,14 @@ export function MyScreen() {
         ...old,
         notificationEmail,
       }));
-      setConfirm(null);
     },
-    onError: (error) => {
-      onError(error);
-      if (isUnauthorized(error)) return;
-      setEmailError(
-        error instanceof ApiError && error.status === 400
-          ? "로그인한 계정에 이메일이 없어 켤 수 없어요."
-          : RETRY_MESSAGE,
-      );
-    },
+    onError,
   });
+  const closeEmailDialog = () => {
+    setConfirm(null);
+    setEmailAgreed(false);
+    emailOn.reset();
+  };
   const emailOff = useMutation({
     mutationFn: withdrawNotificationEmail,
     onSuccess: () =>
@@ -139,14 +143,7 @@ export function MyScreen() {
     return <LoadError onRetry={() => session.refetch()} />;
   }
   if (!session.data) {
-    return (
-      <p
-        role="status"
-        className="px-4 py-12 text-center text-sm text-muted-foreground"
-      >
-        불러오는 중…
-      </p>
-    );
+    return <Loading />;
   }
   // fetchProfile 은 "프로필 없음"을 null 로 돌려주므로 undefined 와 구분한다.
   if (
@@ -163,16 +160,15 @@ export function MyScreen() {
     );
   }
   if (profile.data === undefined || consents.data === undefined) {
-    return (
-      <p
-        role="status"
-        className="px-4 py-12 text-center text-sm text-muted-foreground"
-      >
-        불러오는 중…
-      </p>
-    );
+    return <Loading />;
   }
   const account = session.data;
+  // 400 = 로그인 계정에 이메일이 없음. 401 은 세션 만료 대화상자가 맡는다.
+  const emailError = failedWithoutExpiry(emailOn)
+    ? emailOn.error instanceof ApiError && emailOn.error.status === 400
+      ? "로그인한 계정에 이메일이 없어 켤 수 없어요."
+      : RETRY_MESSAGE
+    : null;
   const profileConsent = consents.data.profile;
   const emailEnabled = consents.data.notificationEmail != null;
 
@@ -360,11 +356,10 @@ export function MyScreen() {
         description="로그인한 계정의 이메일을 알림 발송에만 써요. 언제든 끌 수 있어요."
         confirmLabel="동의하고 켜기"
         confirmDisabled={!emailAgreed || emailOn.isPending}
-        onConfirm={() => emailOn.mutate()}
-        onClose={() => {
-          setConfirm(null);
-          setEmailError(null);
-        }}
+        onConfirm={() =>
+          emailOn.mutate(undefined, { onSuccess: closeEmailDialog })
+        }
+        onClose={closeEmailDialog}
       >
         <CheckRow checked={emailAgreed} onChange={setEmailAgreed}>
           알림 이메일 수신에 동의합니다
