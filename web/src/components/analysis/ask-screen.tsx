@@ -19,7 +19,8 @@ export function AskScreen() {
   const key = ask ? askKey(ask) : null;
   const analysis = useQuery({
     queryKey: ["analysis", key],
-    queryFn: ({ signal }) => analyze(ask!, signal),
+    // signal 을 넘기지 않는다 — 동기 백엔드·답 캐시 없음이라, 화면을 떠날 때 중단하면 돌아왔을 때 유료 분석이 한 번 더 나간다
+    queryFn: () => analyze(ask!),
     enabled: ask !== null,
     staleTime: Infinity, // 같은 질문·법령은 같은 답(D51) — 뒤로 가기·다시 시행일 전환이 캐시로
   });

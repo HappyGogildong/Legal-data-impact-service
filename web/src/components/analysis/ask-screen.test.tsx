@@ -126,7 +126,7 @@ describe("AskScreen", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
-  it("화면을 떠나면 진행 중인 분석 요청을 중단한다", async () => {
+  it("화면을 떠나도 분석 요청은 중단하지 않는다 — 돌아오면 진행 중 요청에 붙는다", async () => {
     setAsk({ query: "주택법" });
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
@@ -136,7 +136,7 @@ describe("AskScreen", () => {
 
     unmount();
 
-    expect((fetchSpy.mock.calls[0][0] as Request).signal.aborted).toBe(true);
+    expect((fetchSpy.mock.calls[0][0] as Request).signal.aborted).toBe(false);
   });
 
   it("400 → '질문 고치기'는 질문을 초안으로 두고 홈으로", async () => {
