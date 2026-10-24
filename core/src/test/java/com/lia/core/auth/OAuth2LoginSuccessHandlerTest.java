@@ -112,12 +112,14 @@ class OAuth2LoginSuccessHandlerTest {
     @Test
     @DisplayName("소셜 로그인 실패·취소 → 프론트 로그인 화면 절대 주소(/login?error=oauth)")
     void 실패_프론트리다이렉트() throws Exception {
+        var request = new MockHttpServletRequest();
         var response = new MockHttpServletResponse();
 
         new OAuth2LoginSuccessHandler(new InMemoryAccountStore(), FRONTEND).failureHandler()
-                .onAuthenticationFailure(new MockHttpServletRequest(), response,
+                .onAuthenticationFailure(request, response,
                         new OAuth2AuthenticationException(new OAuth2Error("access_denied")));
 
         assertEquals(FRONTEND + "/login?error=oauth", response.getRedirectedUrl());
+        assertNull(request.getSession(false), "실패 로그인에 세션·예외를 저장하지 않는다");
     }
 }

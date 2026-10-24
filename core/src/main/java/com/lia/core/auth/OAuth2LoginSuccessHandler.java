@@ -69,6 +69,8 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
      * rewrites 프록시 뒤에서 API 호스트로 풀릴 수 있어 같은 frontendUrl 기준 절대 주소로 고정한다.
      */
     public AuthenticationFailureHandler failureHandler() {
-        return new SimpleUrlAuthenticationFailureHandler(frontendUrl + "/login?error=oauth");
+        var handler = new SimpleUrlAuthenticationFailureHandler(frontendUrl + "/login?error=oauth");
+        handler.setAllowSessionCreation(false); // 실패 로그인에 세션·예외 저장 불필요
+        return handler;
     }
 }
