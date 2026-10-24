@@ -21,7 +21,7 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 
 ## Collaborators
 - **Spring Security** (`spring-boot-starter-security` · `spring-boot-starter-oauth2-client` — 신규 의존).
-- **IdP**: Kakao/Naver/Google OAuth2 (client-id/secret는 `.env`, D39). **리다이렉트 주소**는 `${OAUTH2_REDIRECT_BASE_URL:{baseUrl}}/login/oauth2/code/{id}` — 비우면 요청 기준(로컬), 운영은 프런트 도메인(`https://app.<도메인>`, Vercel rewrites로 콜백이 백엔드에 온다 — D64).
+- **IdP**: Kakao/Naver/Google OAuth2 (client-id/secret는 `.env`, D39). **리다이렉트 주소**는 `${OAUTH2_REDIRECT_BASE_URL:{baseUrl}}/login/oauth2/code/{id}` — 설정하지 않으면 요청 기준 `{baseUrl}`(로컬; 빈 값으로 두지 말 것 — `${VAR:기본값}` 은 변수가 없을 때만 기본값을 쓰므로 빈 문자열이면 상대 주소가 되어 provider가 거부한다), 운영은 프런트 도메인(`https://app.<도메인>` 형태, 끝 `/` 없이 — Vercel rewrites로 콜백이 백엔드에 온다 — D64).
 - **DB**: `accounts` 테이블(JdbcClient+Flyway, [[LawStore]] 패턴).
 - 소비자: [[ProfileApi]]·Layer B 경로가 세션 principal의 `userId`를 읽는다.
 
