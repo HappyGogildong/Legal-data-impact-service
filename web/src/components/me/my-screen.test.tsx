@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { reloadTo } from "@/lib/navigation";
+import { setReturnTo } from "@/lib/return-to";
 import { empty, json, mockApi } from "@/test/api-mock";
 import { MyScreen } from "./my-screen";
 
@@ -109,6 +110,7 @@ describe("MyScreen", () => {
   });
 
   it("계정 삭제 — 확인 후 삭제하고 홈으로", async () => {
+    setReturnTo("/ask");
     renderMy({ "DELETE /api/v1/account": () => empty(204) });
     await userEvent.click(
       await screen.findByRole("button", { name: "계정 삭제" }),
@@ -138,6 +140,7 @@ describe("MyScreen", () => {
   });
 
   it("로그아웃", async () => {
+    setReturnTo("/ask");
     document.cookie = "XSRF-TOKEN=t";
     renderMy({ "POST /logout": () => empty(204) });
     await userEvent.click(
