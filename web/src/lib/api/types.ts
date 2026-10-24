@@ -17,3 +17,11 @@ export type Action = NonNullable<ImpactResult["actions"]>[number];
 
 /** 분석 대상을 특정할 때 보내는 법령 참조(요청의 lawRef). */
 export type LawRefInput = { lawId: string; effectiveDate: string };
+
+export type Account = components["schemas"]["AccountResponse"];
+export type Consents = components["schemas"]["ConsentsResponse"];
+export type ProfileConsent = components["schemas"]["ProfileConsent"];
+export type NotificationEmailConsent =
+  components["schemas"]["NotificationEmailConsent"];
+export type Profile = components["schemas"]["ProfileResponse"];
+export type ProfileInput = components["schemas"]["ProfileApiRequest"];
