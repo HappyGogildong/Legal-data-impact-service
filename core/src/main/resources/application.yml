@@ -68,6 +68,14 @@ spring:
 
 # 소셜 OAuth2 로그인(D60) 등록은 application-oauth.yml(profile=oauth)로 분리 — 키 없는 dev/CI 부팅 보호.
 
+# OpenAPI(D64) — 웹(Next.js)이 TS 타입을 생성하는 원천. 레포 api/openapi.json 스냅샷과 OpenApiSnapshotTest 로 동기.
+# 운영은 SPRINGDOC_API_DOCS_ENABLED=false 로 끈다(ops/deploy/prod.env).
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  paths-to-match: /api/**
+  writer-with-order-by-keys: true     # 키 정렬 — 스냅샷이 실행마다 같도록
+
 server:
   port: 8080
   servlet:

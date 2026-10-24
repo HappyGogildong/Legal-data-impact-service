@@ -47,6 +47,7 @@ public class SecurityConfig {
             .requestMatchers("/api/v1/laws/**").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/v1/analyses").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/v1/data-status").permitAll()
+            .requestMatchers("/v3/api-docs/**").permitAll()   // OpenAPI — 운영은 springdoc 설정으로 끈다
             // 문서용(Auth.md 표 미러) — 실제 보호는 아래 anyRequest 가 한다
             .requestMatchers("/api/v1/profile/**").authenticated()
             .anyRequest().authenticated())

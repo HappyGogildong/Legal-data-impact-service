@@ -9,6 +9,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.dispatch.Unmet;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * {@code POST /api/v1/analyses} 응답([[service-api-spec]] §3.0). 해소 성공(RESOLVED)과 미해소(4상태)를
  * 한 레코드로 표현하고, <b>값이 없는 최상위 필드는 생략</b>한다. 키는 camelCase.
@@ -25,7 +27,7 @@ import com.lia.core.pipeline.dispatch.Unmet;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AnalysisApiResponse(
-        String resolution,
+        @Schema(allowableValues = {"RESOLVED", "NOT_FOUND_YET", "AMBIGUOUS", "UNVERIFIED"}) String resolution,
         String message,
         List<LawBrief> candidates,
         LawHeader law,
