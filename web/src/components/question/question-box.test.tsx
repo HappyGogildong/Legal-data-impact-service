@@ -30,6 +30,11 @@ describe("QuestionBox", () => {
     expect(router.push).toHaveBeenCalledWith("/ask");
   });
 
+  it("검색 영역에 접근 가능한 이름 '질문' 이 있다", () => {
+    render(<QuestionBox />);
+    expect(screen.getByRole("search", { name: "질문" })).toBeInTheDocument();
+  });
+
   it("빈 질문은 보내지 않는다", async () => {
     render(<QuestionBox />);
     await userEvent.click(screen.getByRole("button", { name: "질문 보내기" }));

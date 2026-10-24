@@ -17,7 +17,7 @@ export function BottomTabs() {
           key={item.href}
           href={item.href}
           aria-current={isActive(pathname, item.href) ? "page" : undefined}
-          className="flex-1 py-3 text-center text-xs text-faint aria-[current=page]:font-bold aria-[current=page]:text-navy"
+          className="flex-1 py-3 text-center text-xs text-muted-foreground aria-[current=page]:font-bold aria-[current=page]:text-navy"
         >
           {item.label}
         </Link>

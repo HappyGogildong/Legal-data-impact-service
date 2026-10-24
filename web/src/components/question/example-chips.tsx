@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { setAsk } from "@/lib/ask-store";
+import { clearDraft, setAsk } from "@/lib/ask-store";
 
 /** 예시 질문 — 법령 이름이 든 질문(법령 발견 S04 는 3단계). */
 const EXAMPLES = [
@@ -19,6 +19,7 @@ export function ExampleChips() {
           <button
             type="button"
             onClick={() => {
+              clearDraft();
               setAsk({ query: example });
               router.push("/ask");
             }}

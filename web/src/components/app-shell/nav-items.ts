@@ -5,5 +5,7 @@ export const NAV_ITEMS: { href: string; label: string }[] = [
 ];
 
 export function isActive(pathname: string, href: string): boolean {
-  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+  return href === "/"
+    ? pathname === "/"
+    : pathname === href || pathname.startsWith(href + "/");
 }
