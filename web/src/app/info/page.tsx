@@ -27,6 +27,21 @@ export default function InfoPage() {
         </p>
       </section>
       <section
+        id="contact"
+        className="rounded-lg border border-border bg-card p-3.5 text-[13px]"
+      >
+        <h2 className="font-bold">문의</h2>
+        <p>
+          오류나 잘못된 안내를 알려 주세요 —{" "}
+          <a
+            href="mailto:rbgus630@gmail.com"
+            className="font-bold text-navy underline"
+          >
+            rbgus630@gmail.com
+          </a>
+        </p>
+      </section>
+      <section
         id="privacy"
         className="rounded-lg border border-border bg-card p-3.5 text-[13px]"
       >
