@@ -1,7 +1,5 @@
 package com.lia.core.web;
 
-import java.util.Map;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,7 +28,7 @@ public class AnalysisController {
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> analyze(@RequestBody AnalyzeApiRequest req) {
+    public ResponseEntity<AnalysisApiResponse> analyze(@RequestBody AnalyzeApiRequest req) {
         if (req == null || req.query() == null || req.query().isBlank()) {
             throw new IllegalArgumentException("query는 필수입니다.");
         }

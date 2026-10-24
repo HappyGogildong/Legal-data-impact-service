@@ -2,15 +2,23 @@ package com.lia.core.web;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import tools.jackson.databind.json.JsonMapper;
 
 import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.domain.law.Article;
+import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.dispatch.DispatchResult;
@@ -20,52 +28,100 @@ import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.plan.Target;
 import com.lia.core.pipeline.resolve.ResolutionResult;
+import com.lia.core.store.LawSource;
 
-/** AnalysisResponseMapper 단위 — 도메인 결과 → 스펙 응답 Map 매핑(§3.0)을 컨트롤러 없이 직접 검증. */
+/** AnalysisResponseMapper 단위 — 도메인 결과 → typed 응답(§3.0). 정본은 메모리 LawSource. */
 class AnalysisResponseMapperTest {
 
-    private final AnalysisResponseMapper mapper = new AnalysisResponseMapper();
+    static final LocalDate EF = LocalDate.of(2026, 8, 4);
+    static final String CITE = "LAW:001809@2026-08-04:art:18";
+
+    static final class MemoryLawSource implements LawSource {
+        final Map<String, Law> versions = new HashMap<>();
+        public Optional<Law> find(String lawId, LocalDate efYd) { return Optional.ofNullable(versions.get(lawId + "@" + efYd)); }
+        public Optional<Law> findBaseline(String lawId) { return Optional.empty(); }
+    }
+
+    static Law law() {
+        return new Law("001809", "283191", "주택법", Law.Status.시행예정, Law.AmendKind.일부개정, Law.LawType.법률,
+                "국토교통부", LocalDate.of(2026, 2, 3), "21323", EF, "공포 후 6개월", Law.EnforcementType.유예,
+                "이유", "개정문", List.of(),
+                List.of(new Article("18", "통합심의", "① 통합심의한다.", true, Article.ChangeType.개정, null, null, EF, true, null)),
+                List.of(), null, "url", "rev", Instant.now());
+    }
+
+    private static AnalysisResponseMapper mapper(boolean lawLoaded) {
+        MemoryLawSource source = new MemoryLawSource();
+        if (lawLoaded) source.versions.put("001809@" + EF, law());
+        return new AnalysisResponseMapper(source, new CitedSourceResolver(source));
+    }
 
     private static AnalysisOutcome.Analyzed analyzed() {
-        LawRef ref = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
-        AnalysisQuery q = new AnalysisQuery(QueryType.SUMMARY, Set.of(QueryType.SUMMARY),
+        LawRef ref = new LawRef("001809", EF, null);
+        AnalysisQuery query = new AnalysisQuery(QueryType.SUMMARY, Set.of(QueryType.SUMMARY, QueryType.DIFF),
                 new Target.Reference(ref), "요약", ArticleScope.CHANGED_ONLY, false, null);
-        ImpactResult ir = new ImpactResult("LAW:001809@2026-08-04", "SUMMARY", "주택법 개정 요약",
-                List.of(new ImpactResult.Claim("개정된다", List.of("LAW:001809@2026-08-04:art:18"), 0.9)),
+        ImpactResult summary = new ImpactResult("LAW:001809@2026-08-04", "SUMMARY", "주택법 개정 요약",
+                List.of(new ImpactResult.Claim("개정된다", List.of(CITE), 0.9)),
                 List.of(), List.of(), null, List.of("일부 위임"), "참고용", null);
-        DispatchResult dr = new DispatchResult(QueryType.SUMMARY,
-                Map.of(QueryType.SUMMARY, new AnalyzeResponse(ir, Set.of("LAW:001809@2026-08-04:art:18"))),
+        ImpactResult diff = new ImpactResult("LAW:001809@2026-08-04", "DIFF", "바뀐 점",
+                List.of(new ImpactResult.Claim("제18조가 바뀐다", List.of(CITE), 0.9)),
+                List.of(), List.of(), null, List.of(), "참고용", null);
+        DispatchResult result = new DispatchResult(QueryType.SUMMARY,
+                Map.of(QueryType.DIFF, new AnalyzeResponse(diff, Set.of(CITE)),
+                       QueryType.SUMMARY, new AnalyzeResponse(summary, Set.of(CITE))),
                 Map.of(QueryType.IMPACT, "프로필 필요 (Layer B)"));
-        return new AnalysisOutcome.Analyzed(q, dr);
+        RawLaw later = new RawLaw("001809", "290000", "주택법", "시행예정", LocalDate.of(2027, 2, 1), null, null, null);
+        return new AnalysisOutcome.Analyzed(query, result, List.of(later));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void analyzed는_resolution_lawref_answer_unmet_disclaimer를_담는다() {
-        Map<String, Object> body = mapper.toBody(analyzed());
+    @DisplayName("Analyzed — 법령 헤더·다른 시행일·answer(차원 선언 순)·unmet·sources·disclaimer")
+    void 분석결과() {
+        AnalysisApiResponse body = mapper(true).toBody(analyzed());
 
-        assertEquals("RESOLVED", body.get("resolution"));
-        assertEquals("LAW:001809@2026-08-04", body.get("law_ref"));
-        assertTrue(((Map<String, Object>) body.get("answer")).containsKey("summary"), "차원 소문자 키");
-        Map<String, String> unmet = (Map<String, String>) body.get("unmet");
-        assertEquals("프로필 필요 (Layer B)", unmet.get("impact"), "못 채운 차원은 사유와 함께");
-        assertEquals("참고용", body.get("disclaimer"));
+        assertEquals("RESOLVED", body.resolution());
+        assertEquals(new AnalysisApiResponse.LawHeader("LAW:001809@2026-08-04", "001809", "주택법", EF, "법률", "국토교통부"), body.law());
+        assertEquals(List.of(new AnalysisApiResponse.LawBrief("001809", "주택법", LocalDate.of(2027, 2, 1))), body.alternatives());
+        assertEquals(List.of("summary", "diff"), List.copyOf(body.answer().keySet()), "QueryType 선언 순");
+        assertEquals("프로필 필요 (Layer B)", body.unmet().get("impact"));
+        assertEquals(1, body.sources().size(), "같은 인용은 한 번");
+        assertEquals("주택법 제18조(통합심의)", body.sources().get(0).label());
+        assertEquals("참고용", body.disclaimer());
+        assertNull(body.message());
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    void unresolved는_resolution_message_candidates를_담는다() {
-        RawLaw c = new RawLaw("001809", "283191", "주택법", "시행예정",
-                LocalDate.of(2026, 8, 4), LocalDate.of(2026, 2, 3), "21323", null);
-        AnalysisOutcome out = new AnalysisOutcome.Unresolved(
-                ResolutionResult.ambiguous(List.of(c), "여러 후보가 있어요."));
+    @DisplayName("정본 미적재 — 헤더는 참조 값만(법령명 null), 인용은 label=sourceId")
+    void 정본미적재() {
+        AnalysisApiResponse body = mapper(false).toBody(analyzed());
 
-        Map<String, Object> body = mapper.toBody(out);
+        assertEquals("001809", body.law().lawId());
+        assertNull(body.law().title());
+        assertEquals(CITE, body.sources().get(0).label());
+    }
 
-        assertEquals("AMBIGUOUS", body.get("resolution"));
-        assertEquals("여러 후보가 있어요.", body.get("message"));
-        List<Map<String, Object>> cands = (List<Map<String, Object>>) body.get("candidates");
-        assertEquals("001809", cands.get(0).get("lawId"));
-        assertEquals("주택법", cands.get(0).get("title"));
+    @Test
+    @DisplayName("Unresolved — resolution·message·candidates, 분석 필드 없음")
+    void 미해소() {
+        RawLaw candidate = new RawLaw("001809", "283191", "주택법", "시행예정", EF, LocalDate.of(2026, 2, 3), "21323", null);
+
+        AnalysisApiResponse body = mapper(true).toBody(new AnalysisOutcome.Unresolved(
+                ResolutionResult.ambiguous(List.of(candidate), "여러 후보가 있어요.")));
+
+        assertEquals("AMBIGUOUS", body.resolution());
+        assertEquals("여러 후보가 있어요.", body.message());
+        assertEquals(List.of(new AnalysisApiResponse.LawBrief("001809", "주택법", EF)), body.candidates());
+        assertNull(body.answer());
+        assertNull(body.law());
+    }
+
+    @Test
+    @DisplayName("JSON — camelCase, 값 없는 최상위 필드는 생략(law_ref 없음)")
+    void 직렬화() {
+        String json = JsonMapper.builder().build().writeValueAsString(mapper(true).toBody(analyzed()));
+
+        assertTrue(json.contains("\"law\":{\"ref\":\"LAW:001809@2026-08-04\""), json);
+        assertFalse(json.contains("\"message\""), "RESOLVED 엔 message 없음");
+        assertFalse(json.contains("law_ref"));
     }
 }
