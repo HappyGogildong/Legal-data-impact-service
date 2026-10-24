@@ -46,6 +46,7 @@ public class SecurityConfig {
             .requestMatchers("/error").permitAll()
             .requestMatchers("/api/v1/laws/**").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/v1/analyses").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/v1/data-status").permitAll()
             // 문서용(Auth.md 표 미러) — 실제 보호는 아래 anyRequest 가 한다
             .requestMatchers("/api/v1/profile/**").authenticated()
             .anyRequest().authenticated())
