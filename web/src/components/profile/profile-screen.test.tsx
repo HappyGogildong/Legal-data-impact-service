@@ -102,6 +102,51 @@ describe("ProfileScreen", () => {
     expect(requests.some((request) => request.method === "PUT")).toBe(false);
   });
 
+  // jsdom 은 숫자칸의 badInput 을 구현하지 않아("e" 를 입력해도 값·이벤트가 없다) validity 를 흉내 낸다.
+  function fakeBadInput(input: HTMLElement) {
+    Object.defineProperty(input, "validity", {
+      configurable: true,
+      value: { badInput: true },
+    });
+  }
+
+  it("숫자가 아닌 나이 입력(badInput)은 빈 값으로 오인해 보내지 않는다 — 저장된 나이 보호", async () => {
+    const requests = mockApi({
+      "GET /api/v1/account": () => json(ACCOUNT),
+      "GET /api/v1/profile": () => json({ ...SAVED, age: 30 }),
+    });
+    renderProfile();
+
+    const age = await screen.findByRole("spinbutton", { name: "나이" });
+    await userEvent.clear(age);
+    await userEvent.type(age, "e");
+    fakeBadInput(age);
+    await userEvent.click(
+      screen.getByRole("button", { name: "저장하고 돌아가기" }),
+    );
+
+    expect(
+      screen.getByText("나이는 14~120 사이로 입력해 주세요."),
+    ).toBeInTheDocument();
+    expect(requests.some((request) => request.method === "PUT")).toBe(false);
+  });
+
+  it("입력 도중 깨진 나이(badInput)는 저장 전에 바로 알린다", async () => {
+    mockApi({
+      "GET /api/v1/account": () => json(ACCOUNT),
+      "GET /api/v1/profile": () => empty(404),
+    });
+    renderProfile();
+
+    const age = await screen.findByRole("spinbutton", { name: "나이" });
+    fakeBadInput(age);
+    await userEvent.type(age, "3");
+
+    expect(
+      screen.getByText("나이는 14~120 사이로 입력해 주세요."),
+    ).toBeInTheDocument();
+  });
+
   it("409 → 재동의 대화상자 → 동의 후 같은 값으로 다시 저장", async () => {
     let attempts = 0;
     mockApi({

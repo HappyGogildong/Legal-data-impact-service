@@ -1,12 +1,16 @@
 const KEY = "lia.returnTo";
 
-/** 같은 출처 경로만 — "//host"·"/\host" 는 브라우저가 외부 주소로 해석한다(오픈 리다이렉트 방지). */
+/**
+ * 같은 출처 경로만 — "//host"·"/\host" 는 브라우저가 외부 주소로 해석한다(오픈 리다이렉트 방지).
+ * 탭·줄바꿈은 브라우저가 URL 에서 지워 "/\t/host" 가 "//host" 가 되므로 함께 거른다.
+ */
 export function isSafePath(path: string | null | undefined): path is string {
   return (
     !!path &&
     path.startsWith("/") &&
     !path.startsWith("//") &&
-    !path.startsWith("/\\")
+    !path.startsWith("/\\") &&
+    !/[\t\r\n]/.test(path)
   );
 }
 

@@ -20,6 +20,9 @@ describe("return-to", () => {
     expect(isSafePath("//evil.example")).toBe(false);
     expect(isSafePath("/\\evil.example")).toBe(false);
     expect(isSafePath("https://evil.example")).toBe(false);
+    expect(isSafePath("/\t/evil.example")).toBe(false); // 브라우저가 탭을 지우면 "//evil.example"
+    expect(isSafePath("/\r/evil.example")).toBe(false);
+    expect(isSafePath("/\n/evil.example")).toBe(false);
     expect(isSafePath("/me")).toBe(true);
     sessionStorage.setItem("lia.returnTo", "//evil.example");
     expect(readReturnTo()).toBeNull();

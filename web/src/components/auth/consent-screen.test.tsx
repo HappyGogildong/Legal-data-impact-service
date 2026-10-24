@@ -61,6 +61,10 @@ describe("ConsentScreen", () => {
     );
     const put = requests.find((request) => request.method === "PUT")!;
     expect(await put.json()).toEqual({ over14: true });
+    // 이동 중에는 보조 버튼도 막는다 — 누르면 돌아올 경로가 지워진다
+    expect(
+      screen.getByRole("button", { name: "동의하지 않고 계속 보기" }),
+    ).toBeDisabled();
   });
 
   it("재동의 — 옛 버전이면 안내하고, 동의 후 돌아올 경로로", async () => {

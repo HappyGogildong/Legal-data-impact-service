@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { LoadError } from "@/components/auth/load-error";
 import { ReconsentDialog } from "@/components/auth/reconsent-dialog";
 import { SessionExpiredDialog } from "@/components/auth/session-expired-dialog";
@@ -90,6 +90,7 @@ function ProfileForm({ initial }: { initial: Profile | null }) {
   const ageErrorId = useId();
   const [values, setValues] = useState<Values>(() => toValues(initial));
   const [ageError, setAgeError] = useState(false);
+  const ageInputRef = useRef<HTMLInputElement>(null);
   const [reconsentOpen, setReconsentOpen] = useState(false);
   const [expired, setExpired] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -118,9 +119,13 @@ function ProfileForm({ initial }: { initial: Profile | null }) {
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const age = values.age ? Number(values.age) : null;
+    // noValidate 라 "e" 같은 숫자 아닌 입력은 value 가 ""로만 보인다(React 는 ""→"" 라 onChange 도 못 받는다).
+    // 빈 값으로 오인해 전체 교체 PUT 이 저장된 나이를 지우지 않도록 입력칸의 badInput 을 직접 확인한다.
+    const unreadableAge = ageInputRef.current?.validity.badInput ?? false;
     const invalidAge =
-      age !== null &&
-      (!Number.isInteger(age) || age < MIN_AGE || age > MAX_AGE);
+      unreadableAge ||
+      (age !== null &&
+        (!Number.isInteger(age) || age < MIN_AGE || age > MAX_AGE));
     setAgeError(invalidAge);
     if (!invalidAge) save.mutate(toInput(values));
   }
@@ -208,6 +213,7 @@ function ProfileForm({ initial }: { initial: Profile | null }) {
         </label>
         <input
           id={ageId}
+          ref={ageInputRef}
           type="number"
           inputMode="numeric"
           min={MIN_AGE}
@@ -215,9 +221,10 @@ function ProfileForm({ initial }: { initial: Profile | null }) {
           value={values.age}
           aria-invalid={ageError}
           aria-describedby={ageError ? ageErrorId : undefined}
-          onChange={(event) =>
-            setValues((current) => ({ ...current, age: event.target.value }))
-          }
+          onChange={(event) => {
+            if (event.target.validity.badInput) setAgeError(true); // "3e" 처럼 중간에 깨진 입력은 바로 알린다
+            setValues((current) => ({ ...current, age: event.target.value }));
+          }}
           className={cn(
             "mt-1.5 w-24 rounded-md border px-2.5 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy",
             ageError ? "border-removed" : "border-border",

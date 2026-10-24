@@ -177,8 +177,9 @@ export function ConsentScreen() {
         </button>
         <button
           type="button"
+          disabled={agree.isSuccess}
           onClick={leave}
-          className="rounded-md border border-border bg-white py-2.5 text-[13px] font-bold"
+          className="rounded-md border border-border bg-white py-2.5 text-[13px] font-bold disabled:opacity-40"
         >
           {reconsent ? "나중에" : "동의하지 않고 계속 보기"}
         </button>
