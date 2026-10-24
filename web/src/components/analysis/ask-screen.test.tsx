@@ -138,4 +138,34 @@ describe("AskScreen", () => {
 
     expect((fetchSpy.mock.calls[0][0] as Request).signal.aborted).toBe(true);
   });
+
+  it("400 → '질문 고치기'는 질문을 초안으로 두고 홈으로", async () => {
+    setAsk({ query: "   " });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      json({ error: "bad_request", message: "질문을 입력해 주세요" }, 400),
+    );
+    renderScreen();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "질문 고치기" }),
+    );
+
+    expect(sessionStorage.getItem("lia.draft")).toBe("   ");
+    expect(router.push).toHaveBeenCalledWith("/");
+  });
+
+  it("법령 없는 결과 → '질문 고치기'도 질문을 초안으로 두고 홈으로", async () => {
+    setAsk({ query: "전세 계약 어떻게 돼?" });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      json({ ...resolvedResponse, law: undefined }),
+    );
+    renderScreen();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "질문 고치기" }),
+    );
+
+    expect(sessionStorage.getItem("lia.draft")).toBe("전세 계약 어떻게 돼?");
+    expect(router.push).toHaveBeenCalledWith("/");
+  });
 });

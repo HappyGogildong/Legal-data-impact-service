@@ -39,7 +39,11 @@ export function AskScreen() {
     return <AnalysisProgress key={key} />;
   if (analysis.isError)
     return (
-      <ErrorCard error={analysis.error} onRetry={() => analysis.refetch()} />
+      <ErrorCard
+        error={analysis.error}
+        query={ask.query}
+        onRetry={() => analysis.refetch()}
+      />
     );
 
   const response = analysis.data;

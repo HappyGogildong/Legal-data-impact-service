@@ -33,7 +33,7 @@ export function ResultView({
   const isDesktop = useIsDesktop();
   const [selected, setSelected] = useState<string | null>(null);
   const law = response.law;
-  if (!law) return <DiscoveryNotice />;
+  if (!law) return <DiscoveryNotice query={ask.query} />;
 
   const sources = sourceIndex(response);
   const selectedSource = selected ? (sources.get(selected) ?? null) : null;
