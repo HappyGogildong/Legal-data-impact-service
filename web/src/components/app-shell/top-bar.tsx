@@ -11,7 +11,10 @@ export function TopBar() {
   return (
     <header className="bg-navy text-white">
       <div className="mx-auto flex max-w-[1120px] items-center gap-3 px-4 py-3">
-        <Link href="/" className="font-extrabold tracking-wide">
+        <Link
+          href="/"
+          className="font-extrabold tracking-wide focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
           LIA
         </Link>
         {pathname !== "/" && (
@@ -28,7 +31,7 @@ export function TopBar() {
               key={item.href}
               href={item.href}
               aria-current={isActive(pathname, item.href) ? "page" : undefined}
-              className="opacity-90 hover:opacity-100 aria-[current=page]:font-bold aria-[current=page]:opacity-100"
+              className="opacity-90 hover:opacity-100 aria-[current=page]:font-bold aria-[current=page]:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               {item.label}
             </Link>

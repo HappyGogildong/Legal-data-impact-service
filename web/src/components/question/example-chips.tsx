@@ -23,7 +23,7 @@ export function ExampleChips() {
               setAsk({ query: example });
               router.push("/ask");
             }}
-            className="rounded-full bg-white/15 px-2.5 py-1 text-xs text-white"
+            className="rounded-full bg-white/15 px-2.5 py-1 text-xs text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             {example}
           </button>
