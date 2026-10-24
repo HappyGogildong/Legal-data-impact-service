@@ -99,7 +99,7 @@ AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
 ## 3. 배포·배치 실행
 
 **이미지 — CI가 GHCR에 push (배포는 수동)**
-- main 병합 시 기존 CI(`.github/workflows/ci.yml`)가 테스트 후 `docker buildx`로 `linux/arm64`·`linux/amd64` 이미지를 빌드해 `ghcr.io/happygogildong/lia-core`에 push — 태그 `:<커밋 SHA>`·`:main`.
+- main 병합 시 백엔드 CI(`.github/workflows/ci-core.yml`)가 테스트 후 `docker buildx`로 `linux/arm64`·`linux/amd64` 이미지를 빌드해 `ghcr.io/happygogildong/lia-core`에 push — 태그 `:<커밋 SHA>`·`:main`.
 - Dockerfile: 빌드 단계를 `FROM --platform=$BUILDPLATFORM`으로 — Gradle은 네이티브로, 런타임 단계만 대상 아키텍처.
 - 이미지에 비밀값이 없으므로 GHCR 패키지를 **공개**로 둬 EC2가 인증 없이 pull. 비공개여야 하면 읽기 전용 토큰을 Parameter Store에.
 
@@ -174,7 +174,7 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 
 | 영역 | 파일 |
 |---|---|
-| 이미지·CI | `core/Dockerfile`(`--platform=$BUILDPLATFORM`) · `.github/workflows/ci.yml`(main 병합 시 buildx arm64·amd64 → GHCR push, PR은 빌드만) |
+| 이미지·CI | `core/Dockerfile`(`--platform=$BUILDPLATFORM`) · `.github/workflows/ci-core.yml`(main 병합 시 buildx arm64·amd64 → GHCR push, PR은 빌드만) |
 | 운영 배포 | `ops/deploy/`: `docker-compose.prod.yml` · `Caddyfile` · `prod.env` · `lia`(래퍼 — `up <tag>`·`ingest <args>`) · `bootstrap.sh` · `prometheus.prod.yml` · `crontab` · `logrotate.conf` |
 | 관측 | 데이터 소스 `lia-postgres` · `lia-batch.json` · `alerting/`(Discord 연락처·정책·규칙 3개, 운영에서만 마운트) · 로컬 관측 compose의 Grafana DB 환경변수 |
 | 문서 | 이 문서 · [[deployment]] 후속 절 연결 · [[observability]] 배치 대시보드 · D63 · status · mkdocs 목차 |
