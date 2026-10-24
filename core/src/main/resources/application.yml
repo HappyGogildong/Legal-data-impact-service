@@ -75,6 +75,7 @@ springdoc:
     path: /v3/api-docs
   paths-to-match: /api/**
   writer-with-order-by-keys: true     # 키 정렬 — 스냅샷이 실행마다 같도록
+  default-produces-media-type: application/json   # 응답이 */* 로 나오지 않게(웹 타입 생성)
 
 server:
   port: 8080

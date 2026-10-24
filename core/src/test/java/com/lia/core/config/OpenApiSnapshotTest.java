@@ -22,8 +22,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * OpenAPI 계약 스냅샷 — {@code /v3/api-docs}가 레포 {@code api/openapi.json}과 같아야 한다.
- * 의도한 계약 변경이면 {@code OPENAPI_UPDATE=true ./gradlew test --tests "*OpenApiSnapshotTest"}로 갱신하고
- * 웹 TS 타입을 다시 생성한다. 파일이 없으면 처음 한 번 만든다. DB 불필요(전체 컨텍스트, 지연 연결).
+ * 의도한 계약 변경이면 {@code OPENAPI_UPDATE=true ./gradlew test --tests "*OpenApiSnapshotTest" --rerun-tasks}로 갱신하고
+ * 웹 TS 타입을 다시 생성한다(OPENAPI_UPDATE 는 gradle 입력이 아니라 UP-TO-DATE 면 테스트가 안 돈다 — {@code --rerun-tasks} 필수). 파일이 없으면 처음 한 번 만든다. DB 불필요(전체 컨텍스트, 지연 연결).
  */
 @SpringBootTest
 class OpenApiSnapshotTest {

@@ -31,7 +31,7 @@ import com.lia.core.store.LawSource;
 
 /**
  * AnalysisController 단위 — 위임·상태·검증(빈 query)만 본다. AnalyzeUseCase는 목, 매핑은 실 매퍼(빈 정본).
- * HTTP 라우팅/직렬화는 OpenApiSnapshotTest·수동 curl.
+ * HTTP 라우팅은 수동 curl, 응답 스키마는 OpenApiSnapshotTest, JSON 모양은 AnalysisResponseMapperTest.직렬화.
  */
 class AnalysisControllerTest {
 

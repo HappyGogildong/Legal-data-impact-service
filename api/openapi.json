@@ -6,8 +6,7 @@
     "version" : "v1"
   },
   "servers" : [ {
-    "url" : "http://localhost",
-    "description" : "Generated server url"
+    "url" : "/"
   } ],
   "paths" : {
     "/api/v1/account" : {
@@ -25,7 +24,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/AccountResponse"
                 }
@@ -53,7 +52,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/AnalysisApiResponse"
                 }
@@ -71,7 +70,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ConsentsResponse"
                 }
@@ -98,7 +97,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/NotificationEmailConsent"
                 }
@@ -126,7 +125,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ProfileConsent"
                 }
@@ -144,7 +143,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/DataStatus"
                 }
@@ -171,7 +170,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ProfileResponse"
                 }
@@ -197,7 +196,7 @@
         "responses" : {
           "200" : {
             "content" : {
-              "*/*" : {
+              "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ProfileResponse"
                 }
