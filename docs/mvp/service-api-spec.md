@@ -139,7 +139,7 @@ BASE  /api/v1
   },                                           // 코드: LAW_NOT_LOADED · BASELINE_NOT_LOADED · PROFILE_REQUIRED · NOT_IMPLEMENTED
   "sources": [                                 // answer 안 모든 인용키의 근거(인용 칩·근거 패널용). 찾지 못한 인용은 label=sourceId, text=null
     { "sourceId": "LAW:001809@2026-08-04:art:18", "label": "주택법 제18조(사업계획의 통합심의)",
-      "text": "① …(개정)", "previousText": "① …(현행)",   // previousText: 시행예정본 조문의 현행 원문(개정·삭제·이동만, 신설·무변경은 null)
+      "text": "① …(개정)", "previousText": "① …(현행)",   // changeType·previousText 는 찾은 법령 버전이 시행예정일 때만(시행중·과거·철회 버전은 키에 날짜가 있어도 null). previousText: 현행 원문(개정·삭제·이동만, 신설·무변경은 null)
       "changeType": "개정", "effectiveDate": "2026-08-04" }
   ],
   // uncertainties 는 차원별 내용이라 각 answer.<차원>(ImpactResult) 안에만 둔다(전역 중복 제거)

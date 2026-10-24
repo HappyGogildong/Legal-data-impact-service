@@ -28,7 +28,7 @@ Controller·Mapper·DTO    AnalyzeUseCase             QueryPlanner · QueryDispa
 | `AnalysisController` | `@RestController` — **HTTP 경계만**: `POST /api/v1/analyses` 검증(빈 query→400) → `AnalyzeUseCase` 위임 → `AnalysisResponseMapper`로 응답 매핑 후 200. |
 | `AnalysisResponseMapper` | **표현 매핑** — `AnalysisOutcome` → `AnalysisApiResponse`. 법령 헤더(`law`)는 `LawSource`에서, 다른 시행일(`alternatives`)은 유스케이스 결과에서, 근거(`sources`)는 `CitedSourceResolver`로. `answer`·`unmet` 키는 차원 소문자, 순서는 `QueryType` 선언 순. `unmet` 값은 디스패처의 `Unmet`(사유 코드·설명) 그대로. |
 | `AnalysisApiResponse` | **typed 응답 DTO**(record). 값이 없는 최상위 필드는 생략(`@JsonInclude(NON_NULL)`). 중첩 `LawHeader`·`LawBrief`·`CitedSource`. |
-| `CitedSourceResolver` | 인용키 → 근거 라벨·원문. 형식 `LAW:{lawId}[@{efYd}][:art:{no} \| :addenda:{no} \| :amend][#{n}]` — 시행일이 없으면 시행중 기준선(`findBaseline`). 조문은 "법령명 제N조(제목)"·본문·변경 유형 + 시행예정본의 개정·삭제·이동 조문이면 **현행 원문**(`previousText` — 기준선의 같은 번호, 이동은 옛 번호), 부칙은 "법령명 부칙 {no}", `:amend`는 "개정문", 접미사가 없으면 "개정 이유". 형식이 다르거나 찾지 못하면 `label=sourceId`, `text=null`. 같은 법령 조회는 요청 안에서 한 번만. |
+| `CitedSourceResolver` | 인용키 → 근거 라벨·원문. 형식 `LAW:{lawId}[@{efYd}][:art:{no} \| :addenda:{no} \| :amend][#{n}]` — 시행일이 없으면 시행중 기준선(`findBaseline`). 조문은 "법령명 제N조(제목)"·본문 + **찾은 법령 버전이 시행예정일 때만** 변경 유형(`changeType`)과, 개정·삭제·이동 조문이면 **현행 원문**(`previousText` — 기준선의 같은 번호, 이동은 옛 번호) — 시행중·과거·철회 버전은 인용키에 날짜가 있어도 둘 다 null, 부칙은 "법령명 부칙 {no}", `:amend`는 "개정문", 접미사가 없으면 "개정 이유". 형식이 다르거나 찾지 못하면 `label=sourceId`, `text=null`. 같은 법령 조회는 요청 안에서 한 번만. |
 | `AnalyzeApiRequest` / `LawRefDto` | 요청 `{query, lawRef?, scope?}`. `LawRefDto`→`plan.LawRef` 변환(`explicitRef()`). |
 | `ApiExceptionHandler` | `@RestControllerAdvice` — 검증 실패→400([[service-api-spec]] §4.1: **시스템 오류만 4xx**). |
 

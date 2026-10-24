@@ -51,7 +51,7 @@ Spring principal(OAuth2User/OidcUser)은 **인증용으로 그대로** 두고(`.
 
 ## 결정 3 — 리다이렉트: 항상 프론트 (SavedRequest 안 씀)
 - **성공:** `{frontend-url}/login/done` 고정(`setAlwaysUseDefaultTargetUrl`). 착지 화면이 동의 상태를 보고 S08 또는 원래 화면으로 보낸다.
-- **실패·취소:** `failureHandler()` → `{frontend-url}/login?error=oauth`. 기본 실패 주소 `/login?error` 는 상대 경로라 rewrites 프록시 뒤에서 API 호스트로 풀릴 수 있어 **절대 주소**로 고정하고, 실패 로그인에 세션·예외를 저장하지 않는다(`setAllowSessionCreation(false)` — 세션 미생성).
+- **실패·취소:** `failureHandler()` → `{frontend-url}/login?error=oauth`. 기본 실패 주소 `/login?error` 는 상대 경로라 rewrites 프록시 뒤에서 API 호스트로 풀릴 수 있어 **절대 주소**로 고정하고, 실패 로그인 때문에 세션을 새로 만들지 않는다(`setAllowSessionCreation(false)` — 세션이 없으면 새로 만들지 않는다. 기본 `HttpSessionOAuth2AuthorizationRequestRepository` 때문에 콜백 시점엔 세션이 이미 있는 게 보통이고, 이미 있으면 Spring 이 예외(`SPRING_SECURITY_LAST_EXCEPTION`)를 그 세션에 남긴다).
 - **식별 실패(subject 없음):** 기존 `{frontend-url}/login?error=identity`(아래 §fail-closed).
 - SavedRequest를 따르지 않는다. 저장된 요청은 대개 401을 받은 **API URL**이라, 따르면 브라우저가 JSON 화면으로 간다.
 - `/` 로도 보내지 않는다 — API 서버 루트는 인증 필요 경로이고 핸들러도 없다. SPA는 프론트(#14)에 있다.
