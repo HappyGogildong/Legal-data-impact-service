@@ -82,7 +82,7 @@ export function ResultView({
           {!isDesktop && followUp}
         </div>
         {isDesktop && (
-          <aside className="sticky top-4 flex flex-col gap-2.5">
+          <aside className="sticky top-4 flex max-h-[calc(100dvh-2rem)] flex-col gap-2.5 overflow-y-auto">
             {selectedSource ? (
               <SourcePanel
                 source={selectedSource}

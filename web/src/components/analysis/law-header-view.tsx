@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { useToday } from "@/hooks/use-browser";
 import type { LawBrief, LawHeader } from "@/lib/api/types";
 import { dDayLabel, daysUntil } from "@/lib/dates";
@@ -16,6 +17,10 @@ export function LawHeaderView({
   alternatives,
   onPickAlternative,
 }: LawHeaderViewProps) {
+  const titleId = useId();
+  const pickable = alternatives.filter(
+    (alternative) => alternative.lawId && alternative.effectiveDate,
+  );
   const today = useToday();
   const days =
     today && law.effectiveDate ? daysUntil(law.effectiveDate, today) : null;
@@ -28,12 +33,12 @@ export function LawHeaderView({
     .join(" · ");
   return (
     <section
-      aria-labelledby="law-title"
+      aria-labelledby={titleId}
       className="rounded-lg border border-border bg-card p-3.5"
     >
       <div className="flex flex-wrap items-center gap-2">
-        <h1 id="law-title" className="text-lg font-bold">
-          {law.title ?? `법령 ${law.lawId}`}
+        <h1 id={titleId} className="text-lg font-bold">
+          {law.title ?? (law.lawId ? `법령 ${law.lawId}` : "법령 정보")}
         </h1>
         {days !== null && (
           <span className="rounded-sm bg-chip px-1.5 py-0.5 text-[11px] font-bold text-navy">
@@ -42,10 +47,10 @@ export function LawHeaderView({
         )}
       </div>
       {meta && <p className="mt-0.5 text-xs text-muted-foreground">{meta}</p>}
-      {alternatives.length > 0 && (
+      {pickable.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
           <span className="text-muted-foreground">다른 시행일</span>
-          {alternatives.map((alternative) => (
+          {pickable.map((alternative) => (
             <button
               key={`${alternative.lawId}@${alternative.effectiveDate}`}
               type="button"

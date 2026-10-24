@@ -31,7 +31,7 @@ export function FollowUpBar({
   return (
     <form
       onSubmit={submit}
-      className="rounded-lg border border-border bg-card p-3 max-lg:sticky max-lg:bottom-12 max-lg:z-10"
+      className="rounded-lg border border-border bg-card p-3 max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-md:bottom-12"
     >
       {keepContext && lawRef && (
         <div className="mb-1.5 inline-flex items-center gap-1.5 rounded-full bg-chip px-2 py-0.5 text-[11.5px] text-navy">

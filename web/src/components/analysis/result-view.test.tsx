@@ -112,6 +112,45 @@ describe("ResultView — 모바일", () => {
   });
 });
 
+describe("ResultView — 법령 헤더 방어", () => {
+  it("시행일 없는 다른 시행본은 그리지 않는다", () => {
+    render(
+      <ResultView
+        response={{
+          ...resolvedResponse,
+          alternatives: [
+            { lawId: "001809", title: "주택법" },
+            { lawId: "001809", effectiveDate: "2027-02-01" },
+          ],
+        }}
+        ask={ask}
+        onAsk={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getAllByRole("button", { name: /시행본으로 보기/ }),
+    ).toHaveLength(1);
+    expect(
+      screen.queryByRole("button", { name: /undefined/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("제목·법령 ID 가 없으면 '법령 정보' 제목", () => {
+    render(
+      <ResultView
+        response={{ ...resolvedResponse, law: { ref: "LAW:x" } }}
+        ask={ask}
+        onAsk={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "법령 정보" }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("ResultView — 데스크톱", () => {
   it("요약·변경점 기본 펼침, 인용 누르면 오른쪽 패널이 근거로 바뀌고 뒷받침 문장 강조", async () => {
     mockViewport(true);
