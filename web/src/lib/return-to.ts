@@ -36,3 +36,13 @@ export function clearReturnTo() {
     // 무시
   }
 }
+
+/**
+ * 마지막 이동을 하는 이벤트 처리기가 부른다 — 읽고, 지우고, 돌려준다.
+ * 지금 화면(currentPath)과 같은 경로면 제자리 이동이라 null(저장·건너뛰기가 막히는 것을 방지).
+ */
+export function takeReturnTo(currentPath: string): string | null {
+  const path = readReturnTo();
+  clearReturnTo();
+  return path === currentPath ? null : path;
+}

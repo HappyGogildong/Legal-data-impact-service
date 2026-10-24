@@ -4,6 +4,7 @@ import {
   isSafePath,
   readReturnTo,
   setReturnTo,
+  takeReturnTo,
 } from "./return-to";
 
 describe("return-to", () => {
@@ -22,5 +23,18 @@ describe("return-to", () => {
     expect(isSafePath("/me")).toBe(true);
     sessionStorage.setItem("lia.returnTo", "//evil.example");
     expect(readReturnTo()).toBeNull();
+  });
+
+  it("takeReturnTo — 읽고 지우고 돌려준다", () => {
+    setReturnTo("/ask");
+    expect(takeReturnTo("/consent")).toBe("/ask");
+    expect(sessionStorage.getItem("lia.returnTo")).toBeNull();
+    expect(takeReturnTo("/consent")).toBeNull();
+  });
+
+  it("takeReturnTo — 현재 경로와 같으면 지우되 null(제자리 이동 방지)", () => {
+    setReturnTo("/profile");
+    expect(takeReturnTo("/profile")).toBeNull();
+    expect(sessionStorage.getItem("lia.returnTo")).toBeNull();
   });
 });

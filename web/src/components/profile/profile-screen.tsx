@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { LoadError } from "@/components/auth/load-error";
 import { ReconsentDialog } from "@/components/auth/reconsent-dialog";
@@ -11,7 +11,7 @@ import { fetchProfile, saveProfile } from "@/lib/api/auth";
 import { ApiError, isUnauthorized } from "@/lib/api/errors";
 import type { Profile, ProfileInput } from "@/lib/api/types";
 import { formatSeoulDateTime } from "@/lib/dates";
-import { clearReturnTo, readReturnTo } from "@/lib/return-to";
+import { takeReturnTo } from "@/lib/return-to";
 import { PROFILE_KEY, useRequireSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 import {
@@ -84,6 +84,7 @@ export function ProfileScreen() {
 
 function ProfileForm({ initial }: { initial: Profile | null }) {
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const ageId = useId();
   const ageErrorId = useId();
@@ -99,8 +100,7 @@ function ProfileForm({ initial }: { initial: Profile | null }) {
       queryClient.setQueryData(PROFILE_KEY, profile);
       queryClient.removeQueries({ queryKey: ["analysis"] }); // 프로필이 바뀌면 이전 분석을 다시 받는다
       setReconsentOpen(false);
-      const target = readReturnTo();
-      clearReturnTo();
+      const target = takeReturnTo(pathname);
       if (target) router.push(target);
       else setSaved(true);
     },
@@ -126,9 +126,7 @@ function ProfileForm({ initial }: { initial: Profile | null }) {
   }
 
   function skip() {
-    const target = readReturnTo() ?? "/me";
-    clearReturnTo();
-    router.push(target);
+    router.push(takeReturnTo(pathname) ?? "/me");
   }
 
   const togglePurpose = (purpose: string) =>

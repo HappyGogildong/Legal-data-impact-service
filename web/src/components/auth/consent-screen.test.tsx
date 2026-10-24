@@ -111,6 +111,24 @@ describe("ConsentScreen", () => {
     );
   });
 
+  it("만 14세 미만 — 홈으로를 누르면 돌아올 경로를 지운다", async () => {
+    setReturnTo("/ask");
+    mockApi({
+      "GET /api/v1/account": () => json(ACCOUNT),
+      "GET /api/v1/consents": () => json({}),
+    });
+    renderConsent();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "만 14세 미만이에요" }),
+    );
+    expect(sessionStorage.getItem("lia.returnTo")).toBe("/ask");
+    const home = screen.getByRole("link", { name: "홈으로" });
+    home.addEventListener("click", (event) => event.preventDefault()); // jsdom 은 이동을 구현하지 않는다
+    await userEvent.click(home);
+    expect(sessionStorage.getItem("lia.returnTo")).toBeNull();
+  });
+
   it("동의하지 않고 계속 — 돌아올 경로로", async () => {
     setReturnTo("/ask");
     mockApi({

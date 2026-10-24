@@ -61,6 +61,27 @@ describe("ProfileScreen", () => {
     });
   });
 
+  it("돌아올 경로가 지금 화면(/profile)이면 무시하고 저장했어요를 보인다", async () => {
+    setReturnTo("/profile");
+    mockApi({
+      "GET /api/v1/account": () => json(ACCOUNT),
+      "GET /api/v1/profile": () => empty(404),
+      "PUT /api/v1/profile": () => json(SAVED),
+    });
+    renderProfile();
+
+    await userEvent.click(await screen.findByRole("radio", { name: "전세" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "저장하고 돌아가기" }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "저장했어요" }),
+    ).toBeInTheDocument();
+    expect(router.push).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem("lia.returnTo")).toBeNull();
+  });
+
   it("나이 범위 밖이면 보내지 않는다", async () => {
     const requests = mockApi({
       "GET /api/v1/account": () => json(ACCOUNT),

@@ -2,12 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { agreeProfileConsent, fetchConsents } from "@/lib/api/auth";
 import { isUnauthorized } from "@/lib/api/errors";
 import type { Consents } from "@/lib/api/types";
-import { clearReturnTo, readReturnTo } from "@/lib/return-to";
+import { clearReturnTo, takeReturnTo } from "@/lib/return-to";
 import { CONSENTS_KEY, useRequireSession } from "@/lib/session";
 import { CheckRow } from "./check-row";
 import { LoadError } from "./load-error";
@@ -23,6 +23,7 @@ const SUMMARY = [
 /** S08 — 처음 동의(→ 프로필), 재동의(옛 버전 → 돌아올 경로), 만 14세 미만 안내, 거절. */
 export function ConsentScreen() {
   const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
   const session = useRequireSession();
   const consents = useQuery({
@@ -38,11 +39,7 @@ export function ConsentScreen() {
   const existing = consents.data?.profile;
   const reconsent = existing != null && !existing.upToDate;
 
-  const leave = () => {
-    const target = readReturnTo() ?? "/";
-    clearReturnTo();
-    router.push(target);
-  };
+  const leave = () => router.push(takeReturnTo(pathname) ?? "/");
   const agree = useMutation({
     mutationFn: agreeProfileConsent,
     onSuccess: (profile) => {
@@ -51,9 +48,7 @@ export function ConsentScreen() {
         profile,
       }));
       if (reconsent) {
-        const target = readReturnTo() ?? "/";
-        clearReturnTo();
-        router.replace(target);
+        router.replace(takeReturnTo(pathname) ?? "/");
       } else {
         router.replace("/profile"); // 첫 동의는 프로필 입력을 거친다 — 돌아올 경로는 프로필이 쓴다
       }
@@ -93,6 +88,7 @@ export function ConsentScreen() {
         <div className="mt-4 flex flex-col gap-2">
           <Link
             href="/"
+            onClick={clearReturnTo}
             className="rounded-md bg-navy py-2.5 text-[13px] font-bold text-white"
           >
             홈으로

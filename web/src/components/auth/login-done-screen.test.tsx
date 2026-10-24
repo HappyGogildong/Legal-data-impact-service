@@ -71,6 +71,31 @@ describe("LoginDoneScreen", () => {
     });
     renderDone();
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/ask"));
+    expect(sessionStorage.getItem("lia.returnTo")).toBeNull(); // 마지막 이동이라 지운다
+  });
+
+  it("동의 화면으로 갈 때는 돌아올 경로를 남긴다(동의·프로필이 이어서 쓴다)", async () => {
+    setReturnTo("/ask");
+    mockApi({
+      "GET /api/v1/account": () => json(ACCOUNT),
+      "GET /api/v1/consents": () => json({}),
+    });
+    renderDone();
+    await waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith("/consent"),
+    );
+    expect(sessionStorage.getItem("lia.returnTo")).toBe("/ask");
+  });
+
+  it("동의 조회가 실패하면 돌아올 경로로 가고 지운다", async () => {
+    setReturnTo("/ask");
+    mockApi({
+      "GET /api/v1/account": () => json(ACCOUNT),
+      "GET /api/v1/consents": () => json({ error: "internal" }, 500),
+    });
+    renderDone();
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/ask"));
+    expect(sessionStorage.getItem("lia.returnTo")).toBeNull();
   });
 
   it("세션이 없으면 로그인 오류 안내로", async () => {
