@@ -32,7 +32,8 @@ public class AnalyzeUseCase {
         PlanResult plan = planner.plan(query, explicitRef, false); // 프로필 미도입(#12) → Layer A
         return switch (plan) {
             case PlanResult.Unresolved u -> new AnalysisOutcome.Unresolved(u.resolution());
-            case PlanResult.Planned p -> new AnalysisOutcome.Analyzed(p.query(), dispatcher.dispatch(p.query()));
+            case PlanResult.Planned p ->
+                    new AnalysisOutcome.Analyzed(p.query(), dispatcher.dispatch(p.query()), p.alternatives());
         };
     }
 }
