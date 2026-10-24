@@ -108,4 +108,34 @@ describe("AskScreen", () => {
       await screen.findByRole("heading", { level: 1, name: "주택법" }),
     ).toBeInTheDocument();
   });
+
+  it("다시 시도 중에는 진행 표시만 — 다시 누를 수 없어 요청이 겹치지 않는다", async () => {
+    setAsk({ query: "주택법" });
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(json({ error: "internal", message: "오류" }, 500))
+      .mockReturnValueOnce(new Promise<Response>(() => {}));
+    renderScreen();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "다시 시도" }),
+    );
+
+    expect(await screen.findByRole("status")).toHaveTextContent("법령 확인 중");
+    expect(screen.queryByRole("button", { name: "다시 시도" })).toBeNull();
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("화면을 떠나면 진행 중인 분석 요청을 중단한다", async () => {
+    setAsk({ query: "주택법" });
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockReturnValueOnce(new Promise<Response>(() => {}));
+    const { unmount } = renderScreen();
+    await screen.findByRole("status");
+
+    unmount();
+
+    expect((fetchSpy.mock.calls[0][0] as Request).signal.aborted).toBe(true);
+  });
 });

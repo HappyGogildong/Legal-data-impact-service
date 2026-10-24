@@ -19,7 +19,7 @@ export function AskScreen() {
   const key = ask ? askKey(ask) : null;
   const analysis = useQuery({
     queryKey: ["analysis", key],
-    queryFn: () => analyze(ask!),
+    queryFn: ({ signal }) => analyze(ask!, signal),
     enabled: ask !== null,
     staleTime: Infinity, // 같은 질문·법령은 같은 답(D51) — 뒤로 가기·다시 시행일 전환이 캐시로
   });
@@ -34,7 +34,9 @@ export function AskScreen() {
   };
 
   if (!ask) return null;
-  if (analysis.isPending) return <AnalysisProgress key={key} />;
+  // 오류 뒤 다시 시도하는 동안에도 진행 표시만 — 오류 카드가 남아 다시 눌리면 유료 분석이 겹친다
+  if (analysis.isPending || analysis.isFetching)
+    return <AnalysisProgress key={key} />;
   if (analysis.isError)
     return (
       <ErrorCard error={analysis.error} onRetry={() => analysis.refetch()} />
