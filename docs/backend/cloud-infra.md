@@ -74,7 +74,7 @@ AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
 **비밀값 — SSM Parameter Store (SecureString, 기본 등급 무료)**
 - 경로 `/lia/prod/` — `LAW_OC` · `OPENAI_API_KEY` · `ANTHROPIC_API_KEY` · `SPRING_DATASOURCE_PASSWORD`(앱 계정) · OAuth 클라이언트 비밀값 · `GF_SECURITY_ADMIN_PASSWORD` · `GRAFANA_DB_PASSWORD`(읽기 계정) · `DISCORD_WEBHOOK_URL` · `DB_MASTER_PASSWORD`(최초 설정용). 파라미터 이름의 마지막 부분이 곧 환경변수 이름이다.
 - 배포 래퍼 `ops/deploy/lia`가 실행할 때마다 `get-parameters-by-path --with-decryption`으로 읽어 **환경변수로 export한 뒤** `docker compose`를 실행 — **디스크에 비밀값 파일이 남지 않는다.** 정기 배치(cron)도 같은 래퍼를 거친다.
-- 비밀이 아닌 설정(도메인·`FRONTEND_URL`·샘플링 비율·JVM 힙 등)은 레포의 `ops/deploy/prod.env`.
+- 비밀이 아닌 설정(도메인·`FRONTEND_URL`·`OAUTH2_REDIRECT_BASE_URL`·`SPRINGDOC_API_DOCS_ENABLED=false`·샘플링 비율·JVM 힙 등)은 레포의 `ops/deploy/prod.env`.
 - 로컬 개발은 그대로 레포 루트 `.env` — D39는 "로컬=`.env`, 운영=Parameter Store"로 보완된다.
 
 **DB 계정 — 최소 권한**

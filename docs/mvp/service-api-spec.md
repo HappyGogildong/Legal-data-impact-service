@@ -75,6 +75,7 @@ BASE  /api/v1
 | `GET` | `/laws/{lawId}` | 한 법령의 **시행예정본 목록**(D43) | — |
 | `GET` | `/laws/{lawId}/{efYd}` | 이미 분석된 법령 사실 + 조문 대조(Layer A) | — |
 | `GET` | `/laws/trending` | S5 자주 찾는 법령 랭킹(시간창·도메인) | — |
+| `GET` | `/data-status` | 법령 정보 마지막 갱신 시각·수록 시행예정 법령 수(화면 S15·S05) | — |
 | `POST` | `/subscriptions` | S6 알림 구독 생성 | 필요 |
 | `GET` | `/subscriptions` | 내 구독 목록 | 필요 |
 | `DELETE` | `/subscriptions/{id}` | 구독 해지 | 필요 |
@@ -122,25 +123,25 @@ BASE  /api/v1
 ```jsonc
 {
   "resolution": "RESOLVED",
-  "law_ref": "LAW:001809@2026-08-04",
-  "law": { "lawId": "001809", "title": "주택법", "effectiveDate": "2026-08-04" },
-  "answer": {                                  // 질문에 필요한 차원만 채워진다
-    "impact": {                                // F3 (프로필 있을 때)
-      "impacts": [
-        { "aspect": "주거", "direction": "영향 있음",
-          "detail": "전세로 거주 중이라면 사용검사 전 현장점검을 요청할 권리가 새로 생깁니다.",
-          "citations": ["LAW:001809@2026-08-04:art:49"] }
-      ]
-    },
-    "action": {                                // F4
-      "actions": [
-        { "what": "관리사무소에 현장점검 요청 가능 여부 확인",
-          "deadline": "2026-08-04 시행 이후 사용검사 신청 건부터",
-          "basis": ["LAW:001809@2026-08-04:addenda:3"] }
-      ]
-    }
+  "law": {                                     // 대상 법령 헤더(정본에서 조회). 정본 미적재면 title·lawType·ministry 는 null
+    "ref": "LAW:001809@2026-08-04", "lawId": "001809", "title": "주택법",
+    "effectiveDate": "2026-08-04", "lawType": "법률", "ministry": "국토교통부"
   },
-  "unmet": { "impact": "프로필 필요 (Layer B)" },  // 못 채운 차원→사유 맵. 사유별 대응이 다름(정본 미적재·프로필 필요·핸들러 미구현)
+  "alternatives": [                            // 같은 법령의 다른 시행예정본(D43) — "다른 시행일 보기". 없으면 []
+    { "lawId": "001809", "title": "주택법", "effectiveDate": "2027-02-01" }
+  ],
+  "answer": {                                  // 질문에 필요한 차원만 채워진다(키 순서: summary·diff·impact·action)
+    "summary": { "summary": "…", "claims": [ { "statement": "…", "citations": ["LAW:001809@2026-08-04:art:18"], "confidence": 0.9 } ],
+                 "uncertainties": ["…"], "disclaimer": "…" }
+  },
+  "unmet": {                                   // 못 채운 차원 → 사유 코드·설명. 웹은 코드로 안내를 고른다
+    "impact": { "reason": "PROFILE_REQUIRED", "message": "프로필 필요 (Layer B)" }
+  },                                           // 코드: LAW_NOT_LOADED · BASELINE_NOT_LOADED · PROFILE_REQUIRED · NOT_IMPLEMENTED
+  "sources": [                                 // answer 안 모든 인용키의 근거(인용 칩·근거 패널용). 찾지 못한 인용은 label=sourceId, text=null
+    { "sourceId": "LAW:001809@2026-08-04:art:18", "label": "주택법 제18조(사업계획의 통합심의)",
+      "text": "① …(개정)", "previousText": "① …(현행)",   // previousText: 시행예정본 조문의 현행 원문(개정·삭제·이동만, 신설·무변경은 null)
+      "changeType": "개정", "effectiveDate": "2026-08-04" }
+  ],
   // uncertainties 는 차원별 내용이라 각 answer.<차원>(ImpactResult) 안에만 둔다(전역 중복 제거)
   "disclaimer": "법률 자문이 아닌 참고용 정보입니다."
 }
@@ -148,11 +149,18 @@ BASE  /api/v1
 
 **미해소 응답** — 해소가 `RESOLVED`가 아니면 **분석하지 않고** 4상태를 그대로 답으로 돌려준다(§3.1과 동일 스키마의 `resolution`/`candidates`/`message`). 대화적으로 "그 법을 못 찾았어요"로 노출된다.
 
+```jsonc
+{ "resolution": "AMBIGUOUS", "message": "여러 후보가 있어요.",
+  "candidates": [ { "lawId": "010513", "title": "자본시장과 금융투자업에 관한 법률", "effectiveDate": "2026-10-01" } ] }
+```
+- 응답 키는 **camelCase**. 값이 없는 최상위 필드는 생략한다(RESOLVED 응답엔 `message`·`candidates` 없음, 미해소 응답엔 `law`·`answer` 등 없음).
+- 계약의 기계 판독 원본은 OpenAPI(`/v3/api-docs`, 레포 `api/openapi.json` 스냅샷) — 웹 TS 타입은 여기서 생성한다(D64).
+
 **동작 규칙:**
 - 각 차원 결과는 [[component-specs]] §1 `ImpactResult` 스키마를 따른다.
-- **인용검증 게이트**를 통과한 차원만 나간다. 근거 부족 차원은 `422`가 아니라 `unmet`에 사유(`insufficient_grounding`)로 표기(부분 성공 허용).
-- 익명 요청에 F3·F4가 필요하면 그 차원은 생략하고 `unmet: {"impact":"프로필 필요"}`(차원→사유) — 전체를 막지 않는다.
-- 캐시 키는 `userId`가 아니라 **프로필 속성 해시 + law_ref + 차원**(D41).
+- **인용검증 게이트**를 통과한 차원만 나간다. 근거 부족 차원은 `422`가 아니라 `unmet`에 사유(사유 코드 `INSUFFICIENT_GROUNDING` — 인용검증 게이트를 응답에 붙일 때 추가)로 표기(부분 성공 허용).
+- 익명 요청에 F3·F4가 필요하면 그 차원은 생략하고 `unmet: {"impact": {"reason":"PROFILE_REQUIRED", "message":"…"}}`(차원→사유 코드·설명) — 전체를 막지 않는다.
+- 캐시 키는 `userId`가 아니라 **프로필 속성 해시 + 법령 참조(law.ref) + 차원**(D41).
 - **멀티턴(대화 상태 지속)은 MVP 밖** — 단발 질의만. 멀티턴은 D37 재검토 트리거라 별도 결정 후 도입.
 
 > **멱등성 주의.** `POST`지만 같은 `(query, lawRef, profileHash)`는 캐시로 같은 결과를 준다. 리소스 신규 생성(분석 이력 저장)은 post-MVP — 그때 `GET /analyses/{id}`(이력·공유)로 확장.
@@ -346,6 +354,20 @@ GET /api/v1/laws/trending?window=week&domain=주거&limit=10
 
 > **⚠️ 연락처를 수집하지 않는다(D41·D49).** 이메일·전화 미수집이므로 외부 발송이 불가하다. **MVP 채널은 인앱 알림함** — 로그인 시 표시, PII 불필요. 외부 채널(이메일·푸시)은 **명시적 별도 동의 opt-in**으로만(post-MVP). 이것이 D41 최소수집을 유지하면서 알림을 제공하는 방식이다.
 > **정확히 한 번.** dedup 키 `(subscriptionId, lawRef, eventType)`로 중복 통지를 막는다 — Outbox 패턴([[concurrency-and-reliability]] §3).
+
+---
+
+### 3.7 `GET /data-status` — 데이터 현황
+
+사용자에게 **데이터가 얼마나 최신인지** 보여 준다(화면 S15 안내·S05 하단). 익명·읽기 전용. 컴포넌트: [[DataStatusApi]].
+
+```jsonc
+// GET /api/v1/data-status
+{ "lawsUpdatedAt": "2026-10-23T04:12:31+09:00",   // 목록 전체를 받아 갱신을 마친 마지막 배치 시각. 한 번도 없으면 null
+  "pendingLawCount": 912 }                         // 수록된 시행예정 법령 버전 수
+```
+
+- **시각·개수만** 공개한다 — 격리 작업 수·오류 같은 운영 세부는 Grafana([[cloud-infra]] §4).
 
 ---
 

@@ -21,7 +21,7 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 
 ## Collaborators
 - **Spring Security** (`spring-boot-starter-security` · `spring-boot-starter-oauth2-client` — 신규 의존).
-- **IdP**: Kakao/Naver/Google OAuth2 (client-id/secret는 `.env`, D39).
+- **IdP**: Kakao/Naver/Google OAuth2 (client-id/secret는 `.env`, D39). **리다이렉트 주소**는 `${OAUTH2_REDIRECT_BASE_URL:{baseUrl}}/login/oauth2/code/{id}` — 비우면 요청 기준(로컬), 운영은 프런트 도메인(`https://app.<도메인>`, Vercel rewrites로 콜백이 백엔드에 온다 — D64).
 - **DB**: `accounts` 테이블(JdbcClient+Flyway, [[LawStore]] 패턴).
 - 소비자: [[ProfileApi]]·Layer B 경로가 세션 principal의 `userId`를 읽는다.
 
@@ -43,6 +43,8 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 |---|---|
 | `/oauth2/**`·`/login/**`·`/logout` | 공개(로그인 흐름) |
 | `/api/v1/laws/**` · `POST /api/v1/analyses` | 공개(익명 Layer A 허용 — 프로필 없으면 Layer B는 `unmet`) |
+| `GET /api/v1/data-status` | 공개(데이터 현황 — 시각·개수만) |
+| `/v3/api-docs/**` | 공개(OpenAPI — 운영은 `SPRINGDOC_API_DOCS_ENABLED=false`로 끔) |
 | `/api/v1/profile/**` | **인증 필수** |
 | `/api/v1/consents/**` · `/api/v1/account` | **인증 필수**(별도 규칙 없이 `anyRequest`가 보호) |
 | `/actuator/health`·`/prometheus` | 공개(관측) |
@@ -71,7 +73,7 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 ## Error Handling
 - `/api/**` 미인증 → **401 `{"error": "unauthenticated"}`**(시스템 오류만 4xx, [[service-api-spec]] §4.1과 정합 — 인증은 401/403). 삭제된 계정을 가리키는 세션도 같은 401. CSRF 실패 → 403.
 - OAuth 콜백 실패 → 로그인 실패 처리. IdP 응답에 subject가 없으면 세션 파기 후 프론트 `/login?error=identity`(fail-closed, [[OAuth2LoginSuccessHandler]]).
-- 로그인 성공 → 프론트(`lia.auth.frontend-url`)로 리다이렉트. 로그아웃 → 204.
+- 로그인 성공 → 프론트 **`{FRONTEND_URL}/login/done`**(착지 화면이 동의 상태를 보고 동의(S08) 또는 원래 화면으로 보낸다). 소셜 로그인 실패·취소 → **`{FRONTEND_URL}/login?error=oauth`**(기본 실패 주소 `/login?error`는 상대 경로라 프록시 뒤에서 API 호스트로 떨어질 수 있어 절대 주소로 고정). 로그아웃 → 204.
 
 ## Side Effects
 - **DB 쓰기**(최초 로그인 시 accounts insert — email 없이) · 세션 생성/삭제. IdP 호출(로그인 시).

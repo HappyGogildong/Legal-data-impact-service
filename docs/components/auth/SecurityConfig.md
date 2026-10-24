@@ -29,6 +29,8 @@ Auth.md 인가 표의 **구현이자 근거**. 매처는 위→아래 첫 매칭
 | `/oauth2/**`·`/login/**`·`/logout` | 공개 | 로그인 흐름 자체 — 인증 요구하면 로그인 리다이렉트가 막힌다 |
 | `/error` | 공개 | **오류 포워드(ERROR 디스패치)도 인가 대상**이다. 막으면 익명의 공개 API 호출이 400/500 대신 빈 403을 받는다 |
 | `/api/v1/laws/**` | 공개 | 익명 Layer A 허용(정본 조회) |
+| `GET /api/v1/data-status` | 공개 | 데이터 현황(시각·개수만, [[DataStatusApi]]) |
+| `/v3/api-docs/**` | 공개 | OpenAPI(웹 타입 생성). 운영은 springdoc 설정으로 끔 |
 | `POST /api/v1/analyses` | 공개 | 익명 Layer A 허용 — 프로필 없으면 Layer B는 `unmet`(D60). **메서드 한정**: GET 등 후속 생겨도 자동 개방 방지 |
 | `/api/v1/profile/**` | 인증 | 개인 데이터. **동작상 `anyRequest`와 중복** — Auth.md 표 미러용으로 남긴 문서 규칙 |
 | 그 외(`anyRequest`) | 인증 | **화이트리스트 종결** — 이 줄이 없으면 매칭 안 된 경로가 통과된다(Security 6+는 미매칭=abstain=허용) |
