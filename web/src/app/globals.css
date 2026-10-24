@@ -1,0 +1,82 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* LIA 시각 방향 A(신뢰·공공형) — 토큰 SSOT: docs/frontend/visual-design.md §2 */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-navy: #16325c; /* 주 색 — 상단 바·주 버튼·활성 */
+  --color-ink: #1a2b45; /* 본문 글자 */
+  --color-faint: #9aa6b8; /* 비활성·라벨 */
+  --color-line-soft: #e6ebf2; /* 구분선 */
+  --color-chip: #e8eef8; /* 칩·배지 바탕 */
+  --color-tint: #f1f5fb; /* 안내 영역 */
+  --color-amend: #b45309; /* 개정·주의 */
+  --color-amend-bg: #fef3c7;
+  --color-added: #15803d; /* 신설·완료 */
+  --color-added-bg: #dcfce7;
+  --color-removed: #b91c1c; /* 삭제·위험 */
+  --color-removed-bg: #fee2e2;
+  --color-mark: #fde68a; /* 조문 대비의 바뀐 구간 */
+
+  --font-sans:
+    "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic",
+    sans-serif;
+  --radius-sm: 5px; /* 인용·배지 */
+  --radius-md: 8px; /* 버튼 */
+  --radius-lg: 10px; /* 카드 */
+  --radius-xl: 16px; /* 시트 */
+}
+
+:root {
+  --background: #f5f7fa;
+  --foreground: #1a2b45;
+  --card: #ffffff;
+  --card-foreground: #1a2b45;
+  --popover: #ffffff;
+  --popover-foreground: #1a2b45;
+  --primary: #16325c;
+  --primary-foreground: #ffffff;
+  --secondary: #e8eef8;
+  --secondary-foreground: #16325c;
+  --muted: #f1f5fb;
+  --muted-foreground: #5f6b82;
+  --accent: #e8eef8;
+  --accent-foreground: #16325c;
+  --destructive: #b91c1c;
+  --border: #d6dfec;
+  --input: #d6dfec;
+  --ring: #16325c;
+  --radius: 10px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    line-height: 1.55;
+  }
+  html {
+    @apply font-sans;
+  }
+}

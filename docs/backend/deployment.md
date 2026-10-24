@@ -19,7 +19,7 @@ related: ["backend/observability.md", "adr/decision-log.md", "components/web/Ana
 | `docker-compose.yml` | `db`(pgvector, healthcheck) + `core`(build, `depends_on: db healthy`, env 오버라이드, healthcheck). `mcp`는 스텁이라 주석. |
 | `docker-compose.observability.yml` | 오버레이 — prometheus·tempo·grafana·postgres-exporter. |
 | `db/init.sql` | `CREATE EXTENSION vector`만(보장용). `vector_store`=PgVectorStore, `law_versions`=Flyway 소유. |
-| `.github/workflows/ci.yml` | push/PR에 `./gradlew test`(+이미지 빌드 검증). |
+| `.github/workflows/ci-core.yml` · `ci-web.yml` | 백엔드 — `core/**`·`api/**` 변경 시 `./gradlew test`(+이미지 빌드 검증). 웹 — `web/**`·`api/**` 변경 시 타입 동기·린트·단위·E2E. 경로 필터로 바뀐 쪽만 돈다. |
 
 ## 실행
 
@@ -96,7 +96,8 @@ docker compose run --rm ingest index
 - `db`: `pg_isready`. `core`: actuator `/actuator/health`(compose·Dockerfile 양쪽). `core`는 `db` healthy 후 기동.
 
 ## CI
-- `.github/workflows/ci.yml` — `ubuntu-latest`(Docker 내장) → 단위 + **Testcontainers 통합** 테스트. **라이브 스모크는 OC/`LIA_*_LIVE` 미설정으로 skip**(결정론 오프라인). 이어 `docker build ./core`로 이미지 검증. 레지스트리 push/CD는 후속.
+- 경로 필터로 나눈 두 워크플로 — 바뀐 쪽만 돈다. 계약 파일 `api/**`가 바뀌면 둘 다 돈다(백엔드 스냅샷 테스트 + 웹 타입 동기). 문서만 바뀐 PR은 CI 없음.
+- `.github/workflows/ci-core.yml` — `ubuntu-latest`(Docker 내장) → 단위 + **Testcontainers 통합** 테스트. **라이브 스모크는 OC/`LIA_*_LIVE` 미설정으로 skip**(결정론 오프라인). 이어 `docker build ./core`로 이미지 검증. 레지스트리 push/CD는 후속.
 
 ## 후속 (out of scope)
 - 클라우드 운영 — [[cloud-infra]](D63): 단일 EC2 + RDS pgvector + Caddy + SSM Parameter Store, GHCR 이미지 수동 배포. 그 너머(SSM 방식 CD·IaC·ALB·ECS)는 그 문서의 범위 밖 절.

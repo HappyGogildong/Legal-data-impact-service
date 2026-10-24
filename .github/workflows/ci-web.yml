@@ -1,0 +1,37 @@
+name: CI web
+
+# 웹 — web 또는 계약(api/openapi.json)이 바뀔 때만. 계약이 바뀌면 웹 타입 동기 검사가 같이 돈다(D64).
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", "api/**", ".github/workflows/ci-web.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["web/**", "api/**", ".github/workflows/ci-web.yml"]
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json   # packageManager 의 pnpm 버전
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # 백엔드 계약(api/openapi.json)과 웹 타입이 어긋나면 실패(D64)
+      - name: API 타입 동기 확인
+        run: pnpm gen:api && git diff --exit-code -- src/lib/api/schema.d.ts
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: E2E(빌드 포함, 모의 API)
+        run: pnpm e2e
