@@ -81,7 +81,9 @@ public class SecurityConfig {
     //    성공 시 loginSuccessHandler 가 provider+subject→userId 매핑 후 세션에 심는다.
     clientRegistrations.ifAvailable(repo -> {
       try {
-        http.oauth2Login(oauth -> oauth.successHandler(loginSuccessHandler));
+        http.oauth2Login(oauth -> oauth
+            .successHandler(loginSuccessHandler)
+            .failureHandler(loginSuccessHandler.failureHandler()));
       } catch (Exception e) {
         throw new IllegalStateException("oauth2Login 구성 실패", e);
       }

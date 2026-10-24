@@ -13,6 +13,8 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 
 import com.lia.core.testsupport.InMemoryAccountStore;
@@ -80,13 +82,13 @@ class OAuth2LoginSuccessHandlerTest {
     }
 
     @Test
-    @DisplayName("성공 후 리다이렉트는 항상 프론트 URL")
+    @DisplayName("성공 후 리다이렉트는 항상 프론트 착지 화면(/login/done)")
     void 성공_프론트리다이렉트() throws Exception {
         var response = new MockHttpServletResponse();
 
         login(new InMemoryAccountStore(), token("google", Map.of("sub", "g"), "sub"), response);
 
-        assertEquals(FRONTEND, response.getRedirectedUrl());
+        assertEquals(FRONTEND + "/login/done", response.getRedirectedUrl());
     }
 
     @Test
@@ -105,5 +107,17 @@ class OAuth2LoginSuccessHandlerTest {
         assertEquals(0, store.creates());
         assertTrue(session.isInvalid());
         assertEquals(FRONTEND + "/login?error=identity", response.getRedirectedUrl());
+    }
+
+    @Test
+    @DisplayName("소셜 로그인 실패·취소 → 프론트 로그인 화면 절대 주소(/login?error=oauth)")
+    void 실패_프론트리다이렉트() throws Exception {
+        var response = new MockHttpServletResponse();
+
+        new OAuth2LoginSuccessHandler(new InMemoryAccountStore(), FRONTEND).failureHandler()
+                .onAuthenticationFailure(new MockHttpServletRequest(), response,
+                        new OAuth2AuthenticationException(new OAuth2Error("access_denied")));
+
+        assertEquals(FRONTEND + "/login?error=oauth", response.getRedirectedUrl());
     }
 }
