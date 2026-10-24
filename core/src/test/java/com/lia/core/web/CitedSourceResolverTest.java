@@ -36,6 +36,10 @@ class CitedSourceResolverTest {
         List<Article> articles = List.of(
                 new Article("18", "사업계획의 통합심의", article18Text, true, Article.ChangeType.개정, null, null, ef, true, null),
                 new Article("19", "제19조", "① 그대로다.", false, Article.ChangeType.없음, null, null, ef, true, null));
+        return law(status, ef, articles);
+    }
+
+    static Law law(Law.Status status, LocalDate ef, List<Article> articles) {
         List<Addendum> addenda = List.of(new Addendum("제1조", "시행일", Addendum.kindOf("시행일"), "이 법은 공포 후 6개월이 경과한 날부터 시행한다.", "21323", ef));
         return new Law("001809", "283191", "주택법", status, Law.AmendKind.일부개정, Law.LawType.법률, "국토교통부",
                 LocalDate.of(2026, 2, 3), "21323", ef, "공포 후 6개월", Law.EnforcementType.유예,
@@ -82,6 +86,7 @@ class CitedSourceResolverTest {
 
         assertEquals(LocalDate.of(2020, 1, 1), sources.get(0).effectiveDate(), "기준선");
         assertNull(sources.get(0).previousText(), "현행본 자체엔 현행 원문이 없다");
+        assertNull(sources.get(0).changeType(), "시행예정본이 아니면 변경 유형 배지도 없다");
         assertEquals("주택법 제18조(사업계획의 통합심의)", sources.get(1).label());
     }
 
@@ -108,5 +113,71 @@ class CitedSourceResolverTest {
 
         assertEquals(2, sources.size());
         assertEquals(2, source.lookups, "시행예정본 1 + 기준선 1(개정 조문의 현행 원문)");
+    }
+
+    @Test
+    @DisplayName("시행중 버전을 날짜로 인용해도 현행 원문·변경 유형은 없다 — 시행예정본만 조문 대비")
+    void 시행중_버전_날짜_인용() {
+        CountingLawSource source = new CountingLawSource();
+        LocalDate inForce = LocalDate.of(2020, 1, 1);
+        source.pending.put("001809@" + inForce, law(Law.Status.시행중, inForce, "① 심의한다."));
+        CitedSourceResolver resolver = resolverWith(source);
+
+        CitedSource cited = resolver.resolve(List.of("LAW:001809@2020-01-01:art:18")).get(0);
+
+        assertEquals("① 심의한다.", cited.text());
+        assertNull(cited.previousText());
+        assertNull(cited.changeType());
+        assertEquals(1, source.lookups, "현행 원문 조회 자체를 하지 않는다");
+    }
+
+    @Test
+    @DisplayName("과거·철회 버전도 조문 대비 없음")
+    void 과거_철회_버전() {
+        CountingLawSource source = new CountingLawSource();
+        LocalDate past = LocalDate.of(2019, 1, 1);
+        LocalDate withdrawn = LocalDate.of(2018, 1, 1);
+        source.pending.put("001809@" + past, law(Law.Status.과거, past, "① 옛날."));
+        source.pending.put("001809@" + withdrawn, law(Law.Status.철회, withdrawn, "① 철회."));
+        CitedSourceResolver resolver = resolverWith(source);
+
+        for (CitedSource cited : resolver.resolve(List.of(
+                "LAW:001809@2019-01-01:art:18", "LAW:001809@2018-01-01:art:18"))) {
+            assertNull(cited.previousText());
+            assertNull(cited.changeType());
+        }
+    }
+
+    @Test
+    @DisplayName("날짜 형식은 맞지만 달력에 없는 키(2026-13-45) → 예외 없이 label=sourceId, text=null")
+    void 잘못된_날짜_키() {
+        CitedSource cited = resolverWith(new CountingLawSource())
+                .resolve(List.of("LAW:001809@2026-13-45:art:18")).get(0);
+
+        assertEquals("LAW:001809@2026-13-45:art:18", cited.label());
+        assertNull(cited.text());
+        assertNull(cited.changeType());
+    }
+
+    @Test
+    @DisplayName("시행예정본의 이동·삭제·신설 조문 — 이동은 옛 번호의 현행 원문, 삭제는 현행 원문, 신설은 없음")
+    void 시행예정본_이동_삭제_신설() {
+        CountingLawSource source = new CountingLawSource();
+        LocalDate ef = LocalDate.of(2027, 1, 1);
+        source.pending.put("001809@" + ef, law(Law.Status.시행예정, ef, List.of(
+                new Article("20", "제20조", "① 옮겨 왔다.", true, Article.ChangeType.이동, "19", null, ef, true, null),
+                new Article("18", "제18조", "", true, Article.ChangeType.삭제, null, null, ef, true, null),
+                new Article("25", "제25조", "① 새로 생겼다.", true, Article.ChangeType.신설, null, null, ef, true, null))));
+        CitedSourceResolver resolver = resolverWith(source);
+
+        List<CitedSource> sources = resolver.resolve(List.of(
+                "LAW:001809@2027-01-01:art:20", "LAW:001809@2027-01-01:art:18", "LAW:001809@2027-01-01:art:25"));
+
+        assertEquals("① 그대로다.", sources.get(0).previousText(), "이동 — movedFrom(19)의 현행 원문");
+        assertEquals("이동", sources.get(0).changeType());
+        assertEquals("① 심의한다.", sources.get(1).previousText(), "삭제 — 현행 원문");
+        assertEquals("삭제", sources.get(1).changeType());
+        assertNull(sources.get(2).previousText(), "신설 — 현행 원문 없음");
+        assertEquals("신설", sources.get(2).changeType());
     }
 }
