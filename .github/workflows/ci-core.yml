@@ -1,13 +1,13 @@
 name: CI core
 
-# 백엔드 — core 또는 계약(api/openapi.json 스냅샷)이 바뀔 때만. 문서만 바뀐 PR 은 돌지 않는다.
+# 백엔드 — core, 계약(api/openapi.json 스냅샷), 웹 프로필 선택지(web/src/lib/profile-options.json: ProfileOptionsSyncTest 가 읽음)가 바뀔 때만. 문서만 바뀐 PR 은 돌지 않는다.
 on:
   push:
     branches: [main]
-    paths: ["core/**", "api/**", ".github/workflows/ci-core.yml"]
+    paths: ["core/**", "api/**", "web/src/lib/profile-options.json", ".github/workflows/ci-core.yml"]
   pull_request:
     branches: [main]
-    paths: ["core/**", "api/**", ".github/workflows/ci-core.yml"]
+    paths: ["core/**", "api/**", "web/src/lib/profile-options.json", ".github/workflows/ci-core.yml"]
 
 jobs:
   test:
