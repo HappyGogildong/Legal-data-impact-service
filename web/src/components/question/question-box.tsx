@@ -39,10 +39,8 @@ function QuestionForm({
       aria-label="질문"
       onSubmit={submit}
       className={cn(
-        "flex items-center gap-2 rounded-lg bg-white",
-        compact
-          ? "px-3 py-1.5 focus-within:ring-2 focus-within:ring-white/70"
-          : "border border-border px-3 py-2.5 focus-within:ring-1 focus-within:ring-navy",
+        "flex items-center gap-2 rounded-lg bg-white focus-within:ring-2 focus-within:ring-inset focus-within:ring-navy",
+        compact ? "px-3 py-1.5" : "border border-border px-3 py-2.5",
       )}
     >
       <label htmlFor={inputId} className="sr-only">
