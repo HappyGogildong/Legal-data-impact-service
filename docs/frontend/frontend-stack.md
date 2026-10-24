@@ -79,7 +79,7 @@ related: ["product/screen-plan.md", "backend/cloud-infra.md", "mvp/service-api-s
 | 인용 칩 | 근거 패널(데스크톱)·아래 시트(모바일)에서 원문·현행 대비를 보인다. 법령 상세(S05) 링크는 2단계 | S05(#39) 전 |
 | 글꼴 | Pretendard(jsDelivr 동적 서브셋 CSS), 실패 시 시스템 글꼴 | [[visual-design]] §2 |
 | 프록시 제한 시간 | `experimental.proxyTimeout` 120초 — 로컬 Next rewrites 기본 30초가 분석 요청보다 짧다 | Vercel 상한(120초)과 같게 |
-| 환경변수 | `LIA_API_ORIGIN` — rewrites 목적지(로컬 기본 `http://localhost:8080`, 운영 `https://api.<도메인>`) | §2 |
+| 환경변수 | `LIA_API_ORIGIN` — rewrites 목적지(로컬 기본 `http://localhost:8080`, 운영 `https://api.<도메인>`). **빌드 시점에 읽힌다**(rewrites 가 빌드 결과에 고정) — Vercel 은 Build 환경에도 설정해야 하고, 운영 빌드에서 비어 있으면 빌드를 실패시킨다 | §2 |
 
 ## 6. 다음
 - 시각 디자인·화면 시안 — [[visual-design]](방향 A 신뢰·공공형, 토큰, 레이아웃 규칙).

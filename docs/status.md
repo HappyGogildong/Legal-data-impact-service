@@ -93,7 +93,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 클라우드 인프라(D63): 개인 AWS 계정 단일 EC2(t4g.medium·compose: Caddy·core·ingest·관측) + RDS PostgreSQL 16 pgvector · SSM 접속·Parameter Store · GHCR 이미지 수동 배포 · 호스트 cron · Grafana 배치 대시보드·경보 3개(Discord) — [[cloud-infra]] | 🟡 spec-first 설계. 구현(ops/deploy·CI push·대시보드) → AWS 구축(런북, #44) |
 | 웹 1단계 백엔드 전제(#14): 분석 응답 typed DTO(`AnalysisApiResponse` — 법령 헤더·다른 시행일·근거 원문 `sources`(현행 원문 포함), camelCase) · 미충족 사유 코드(`Unmet`) · 데이터 현황 API `GET /api/v1/data-status` · springdoc OpenAPI + `api/openapi.json` 스냅샷 · OAuth 리다이렉트 `OAUTH2_REDIRECT_BASE_URL`·로그인 착지 `/login/done` | ✅ 단위·통합·스냅샷. 웹 화면은 계획 2·3 |
 | 웹 1단계 — 웹 기반·익명 흐름(#14): `web/` Next.js 16(Vercel 대상)·시각 방향 A 토큰·shadcn · S01 홈 질문창 · S02 결과(접이식 카드·조문 대비·근거 패널/시트·후속 질문) · S03 해소 안내 · S15 데이터 현황 · S16 오류 · CI `web`(타입 동기·린트·단위·E2E) | ✅ 단위·E2E(모의 API). 로그인 흐름은 계획 3 |
-| 웹 프론트엔드 (#14) — 화면 계획 [[screen-plan]](S01~S16: 질문 중심 + 법령 상세 허브, 모바일 우선, 법령 맥락 후속 질문, 대응 방안 상황 확인, 4단계 구현) · 기술 스택 [[frontend-stack]](D64: Next.js on Vercel + rewrites, Tailwind·shadcn/ui, OpenAPI 타입 생성) · 시각 디자인 [[visual-design]](방향 A 신뢰·공공형, 화면 시안 S01~S16) | 🟡 화면 계획·스택·시안 확정. 구현은 다음 |
+| 웹 프론트엔드 (#14) — 화면 계획 [[screen-plan]](S01~S16: 질문 중심 + 법령 상세 허브, 모바일 우선, 법령 맥락 후속 질문, 대응 방안 상황 확인, 4단계 구현) · 기술 스택 [[frontend-stack]](D64: Next.js on Vercel + rewrites, Tailwind·shadcn/ui, OpenAPI 타입 생성) · 시각 디자인 [[visual-design]](방향 A 신뢰·공공형, 화면 시안 S01~S16) | 🟡 화면 계획·스택·시안 확정. 1단계 익명 흐름은 구현됨(위 행, 계획 2) — 로그인 흐름(2단계 이후)은 계획 3 |
 
 `./gradlew test --rerun-tasks` 기준 `tests=348 skipped=6 failures=0 errors=0`(2026-10-24) — 통합(실 Postgres/pgvector, Testcontainers) 포함, 전부 통과. skip 6건은 실 임베딩·번역·해석 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
 
