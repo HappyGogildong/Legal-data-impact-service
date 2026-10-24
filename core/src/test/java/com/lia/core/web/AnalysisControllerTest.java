@@ -20,6 +20,7 @@ import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.dispatch.DispatchResult;
+import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.AnalysisQuery;
 import com.lia.core.pipeline.plan.ArticleScope;
 import com.lia.core.pipeline.plan.LawRef;
@@ -52,7 +53,7 @@ class AnalysisControllerTest {
                 List.of(), List.of(), null, List.of("일부 대통령령 위임"), "참고용", null);
         DispatchResult dr = new DispatchResult(QueryType.SUMMARY,
                 Map.of(QueryType.SUMMARY, new AnalyzeResponse(ir, Set.of("LAW:001809@2026-08-04:art:18"))),
-                Map.of(QueryType.IMPACT, "프로필 필요 (Layer B)"));
+                Map.of(QueryType.IMPACT, new Unmet(Unmet.Reason.PROFILE_REQUIRED, "프로필 필요 (Layer B)")));
         return new AnalysisOutcome.Analyzed(q, dr);
     }
 

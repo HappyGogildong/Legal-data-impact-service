@@ -13,6 +13,7 @@ import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.connector.RawLaw;
+import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.plan.Target;
@@ -49,11 +50,11 @@ public class AnalysisResponseMapper {
 
         // 차원 키는 QueryType 선언 순(summary·diff·impact·action) — 화면의 카드 순서와 같게
         Map<String, ImpactResult> answer = new LinkedHashMap<>();
-        Map<String, String> unmet = new LinkedHashMap<>();
+        Map<String, Unmet> unmet = new LinkedHashMap<>();
         for (QueryType dim : QueryType.values()) {
             AnalyzeResponse filled = a.result().filled().get(dim);
             if (filled != null) answer.put(key(dim), filled.result());
-            String reason = a.result().unmet().get(dim);
+            Unmet reason = a.result().unmet().get(dim);
             if (reason != null) unmet.put(key(dim), reason);
         }
 

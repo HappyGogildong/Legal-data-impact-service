@@ -35,12 +35,12 @@ public class QueryDispatcher {
 
     public DispatchResult dispatch(AnalysisQuery query) {
         Map<QueryType, AnalyzeResponse> filled = new EnumMap<>(QueryType.class);
-        Map<QueryType, String> unmet = new EnumMap<>(QueryType.class);
+        Map<QueryType, Unmet> unmet = new EnumMap<>(QueryType.class);
 
         // Discovery(LOOKUP)는 코퍼스 검색 경로 — 현재 미구현(#19). 전 타입 unmet.
         if (query.target() instanceof Target.Discovery) {
             for (QueryType t : query.types()) {
-                unmet.put(t, "Discovery(LOOKUP) 미구현: LawDiscovery(#19) 필요");
+                unmet.put(t, new Unmet(Unmet.Reason.NOT_IMPLEMENTED, "Discovery(LOOKUP) 미구현: LawDiscovery(#19) 필요"));
             }
             return new DispatchResult(query.primaryType(), filled, unmet);
         }
@@ -49,7 +49,7 @@ public class QueryDispatcher {
         LawRef ref = ((Target.Reference) query.target()).lawRef();
         Optional<Law> lawOpt = laws.find(ref.lawId(), ref.effectiveDate());
         if (lawOpt.isEmpty()) {
-            String reason = "정본 미적재: " + ref.lawId() + "@" + ref.effectiveDate();
+            Unmet reason = new Unmet(Unmet.Reason.LAW_NOT_LOADED, "정본 미적재: " + ref.lawId() + "@" + ref.effectiveDate());
             for (QueryType t : query.types()) unmet.put(t, reason);
             return new DispatchResult(query.primaryType(), filled, unmet);
         }
@@ -61,17 +61,18 @@ public class QueryDispatcher {
         for (QueryType t : query.types()) {
             Optional<DimensionHandler> handler = registry.get(t);
             if (handler.isEmpty()) {
-                unmet.put(t, "핸들러 미구현: " + t);
+                unmet.put(t, new Unmet(Unmet.Reason.NOT_IMPLEMENTED, "핸들러 미구현: " + t));
                 continue;
             }
             DimensionHandler h = handler.get();
             if (h.needsProfile() && !query.profileBound()) {
-                unmet.put(t, "프로필 필요 (Layer B)");
+                unmet.put(t, new Unmet(Unmet.Reason.PROFILE_REQUIRED, "프로필 필요 (Layer B)"));
                 continue;
             }
             // 개정본인데 baseline이 없으면 데이터 이상 — 조용히 '제정'으로 오인하지 않는다(fail-closed).
             if (h.needsBaseline() && baseline == null && !enactment) {
-                unmet.put(t, "기준선 미적재 — 개정본(" + law.amendKind() + ")인데 시행중본 없음");
+                unmet.put(t, new Unmet(Unmet.Reason.BASELINE_NOT_LOADED,
+                        "기준선 미적재 — 개정본(" + law.amendKind() + ")인데 시행중본 없음"));
                 continue;
             }
             filled.put(t, h.handle(ctx));

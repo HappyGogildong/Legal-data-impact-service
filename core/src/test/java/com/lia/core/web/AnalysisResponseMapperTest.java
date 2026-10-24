@@ -22,6 +22,7 @@ import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.dispatch.DispatchResult;
+import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.AnalysisQuery;
 import com.lia.core.pipeline.plan.ArticleScope;
 import com.lia.core.pipeline.plan.LawRef;
@@ -69,7 +70,7 @@ class AnalysisResponseMapperTest {
         DispatchResult result = new DispatchResult(QueryType.SUMMARY,
                 Map.of(QueryType.DIFF, new AnalyzeResponse(diff, Set.of(CITE)),
                        QueryType.SUMMARY, new AnalyzeResponse(summary, Set.of(CITE))),
-                Map.of(QueryType.IMPACT, "프로필 필요 (Layer B)"));
+                Map.of(QueryType.IMPACT, new Unmet(Unmet.Reason.PROFILE_REQUIRED, "프로필 필요 (Layer B)")));
         RawLaw later = new RawLaw("001809", "290000", "주택법", "시행예정", LocalDate.of(2027, 2, 1), null, null, null);
         return new AnalysisOutcome.Analyzed(query, result, List.of(later));
     }
@@ -83,7 +84,7 @@ class AnalysisResponseMapperTest {
         assertEquals(new AnalysisApiResponse.LawHeader("LAW:001809@2026-08-04", "001809", "주택법", EF, "법률", "국토교통부"), body.law());
         assertEquals(List.of(new AnalysisApiResponse.LawBrief("001809", "주택법", LocalDate.of(2027, 2, 1))), body.alternatives());
         assertEquals(List.of("summary", "diff"), List.copyOf(body.answer().keySet()), "QueryType 선언 순");
-        assertEquals("프로필 필요 (Layer B)", body.unmet().get("impact"));
+        assertEquals(new Unmet(Unmet.Reason.PROFILE_REQUIRED, "프로필 필요 (Layer B)"), body.unmet().get("impact"));
         assertEquals(1, body.sources().size(), "같은 인용은 한 번");
         assertEquals("주택법 제18조(통합심의)", body.sources().get(0).label());
         assertEquals("참고용", body.disclaimer());
@@ -121,7 +122,8 @@ class AnalysisResponseMapperTest {
         String json = JsonMapper.builder().build().writeValueAsString(mapper(true).toBody(analyzed()));
 
         assertTrue(json.contains("\"law\":{\"ref\":\"LAW:001809@2026-08-04\""), json);
-        assertFalse(json.contains("\"message\""), "RESOLVED 엔 message 없음");
+        assertFalse(JsonMapper.builder().build().readTree(json).has("message"), "RESOLVED 엔 최상위 message 없음(unmet 값 안의 message는 별개)");
         assertFalse(json.contains("law_ref"));
+        assertTrue(json.contains("\"unmet\":{\"impact\":{\"reason\":\"PROFILE_REQUIRED\""), json);
     }
 }

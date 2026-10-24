@@ -7,6 +7,7 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.pipeline.dispatch.Unmet;
 
 /**
  * {@code POST /api/v1/analyses} 응답([[service-api-spec]] §3.0). 해소 성공(RESOLVED)과 미해소(4상태)를
@@ -18,7 +19,7 @@ import com.lia.core.domain.analysis.ImpactResult;
  * @param law          RESOLVED 대상 법령 헤더
  * @param alternatives 같은 법령의 다른 시행예정본(D43)
  * @param answer       채운 차원 → 결과(키: 차원 소문자, QueryType 선언 순)
- * @param unmet        못 채운 차원 → 사유
+ * @param unmet        못 채운 차원 → 사유 코드·설명
  * @param sources      answer 안 인용키의 근거(인용 칩·근거 패널)
  * @param disclaimer   면책(응답 전역)
  */
@@ -30,12 +31,12 @@ public record AnalysisApiResponse(
         LawHeader law,
         List<LawBrief> alternatives,
         Map<String, ImpactResult> answer,
-        Map<String, String> unmet,
+        Map<String, Unmet> unmet,
         List<CitedSource> sources,
         String disclaimer) {
 
     public static AnalysisApiResponse analyzed(LawHeader law, List<LawBrief> alternatives,
-                                               Map<String, ImpactResult> answer, Map<String, String> unmet,
+                                               Map<String, ImpactResult> answer, Map<String, Unmet> unmet,
                                                List<CitedSource> sources, String disclaimer) {
         return new AnalysisApiResponse("RESOLVED", null, null, law, alternatives, answer, unmet, sources, disclaimer);
     }
