@@ -21,7 +21,7 @@ related: ["product/screen-plan.md", "frontend/frontend-stack.md", "adr/decision-
 |---|---|---|
 | `navy` | `#16325c` | 주 색 — 상단 바·주 버튼·활성 상태 |
 | `ink` | `#1a2b45` | 본문 글자 |
-| `muted` / `faint` | `#7a869a` / `#9aa6b8` | 보조 글자 / 비활성·라벨 |
+| `muted` / `faint` | `#66728a` / `#9aa6b8` | 보조 글자(읽어야 하는 글자) / 장식·비활성 전용 — 읽어야 하는 글자엔 쓰지 않는다 |
 | `line` / `line-soft` | `#d6dfec` / `#e6ebf2` | 테두리 / 구분선 |
 | `bg` | `#f5f7fa` | 데스크톱 바탕 |
 | `chip` / `tint` | `#e8eef8` / `#f1f5fb` | 칩·배지 바탕 / 안내 영역 |
@@ -32,6 +32,7 @@ related: ["product/screen-plan.md", "frontend/frontend-stack.md", "adr/decision-
 
 - 글꼴 **Pretendard**(대체 Apple SD Gothic Neo·맑은 고딕). 제목 굵게, 본문 줄 간격 1.55.
 - 모서리 — 카드 10px, 인용·배지 5px, 칩 999px, 모바일 프레임 시트 16px.
+- 보조 글자도 명도 대비 4.5:1 이상(WCAG AA) — faint 는 읽어야 하는 글자에 쓰지 않는다.
 - 변경 배지의 의미 색(개정 주황·신설 초록·삭제 빨강)은 **글자와 함께** 쓴다 — 색만으로 의미를 전하지 않는다(접근성).
 
 ## 3. 레이아웃 규칙
@@ -45,6 +46,7 @@ related: ["product/screen-plan.md", "frontend/frontend-stack.md", "adr/decision-
 | **조문 대비** | 데스크톱은 현행·개정 좌우, 모바일은 위아래. 현행은 취소선, 바뀐 구간은 `mark` |
 | **반응형 경계** | 모바일 < 768px(한 열·하단 탭) · 768~1023px(한 열 넓게, 상단 바) · ≥ 1024px(2단, 본문 최대 폭 1120px) |
 | **내비게이션** | 모바일 하단 탭 홈·알림·내 정보, 데스크톱 상단 바(작은 질문창 + 알림·내 정보) |
+| 포커스 | 입력·버튼은 키보드 포커스가 보이게(입력은 감싼 틀에 focus-within 1px navy 링). outline 만 지우고 대체 표시 없이 두지 않는다 |
 
 ## 4. 시안 목록
 
