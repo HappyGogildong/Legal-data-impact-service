@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
-/** 백엔드(core) 주소 — 로컬 기본 8080, 운영은 Vercel 환경변수 https://api.<도메인>(D64). */
-const apiOrigin = process.env.LIA_API_ORIGIN ?? "http://localhost:8080";
+/**
+ * 백엔드(core) 주소 — 로컬 기본 8080, 운영은 Vercel 환경변수 https://api.<도메인>(D64).
+ * rewrites 가 빌드 결과에 고정되므로 빌드 시점에 읽힌다 — 운영 빌드에서 비어 있으면 로컬 주소로 조용히 배포되지 않게 실패시킨다.
+ */
+const apiOrigin =
+  process.env.LIA_API_ORIGIN?.replace(/\/$/, "") || "http://localhost:8080";
+if (process.env.VERCEL_ENV === "production" && !process.env.LIA_API_ORIGIN) {
+  throw new Error("LIA_API_ORIGIN 이 필요합니다(운영 빌드) — rewrites 목적지");
+}
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
