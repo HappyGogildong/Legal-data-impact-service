@@ -111,6 +111,38 @@ createServer((request, response) => {
       pendingLawCount: 3,
     });
   }
+  if (url.pathname === "/api/v1/laws/trending") {
+    const day = url.searchParams.get("window") === "day";
+    const all = [
+      {
+        rank: 1,
+        lawId: "001809",
+        title: "주택법",
+        effectiveDate: housing,
+        views: 12,
+        previousRank: 3,
+      },
+      {
+        rank: 2,
+        lawId: "001234",
+        title: "근로기준법 시행령",
+        effectiveDate: seoulDay(23),
+        views: 5,
+        previousRank: null,
+      },
+    ];
+    return send(response, 200, {
+      window: url.searchParams.get("window") ?? "week",
+      items: day ? all.slice(0, 1) : all,
+    });
+  }
+  if (
+    request.method === "POST" &&
+    /^\/api\/v1\/laws\/[^/]+\/[^/]+\/views$/.test(url.pathname)
+  ) {
+    response.writeHead(204);
+    return response.end();
+  }
   if (url.pathname === "/api/v1/laws")
     return send(response, 200, list(url.searchParams));
   const versions = url.pathname.match(/^\/api\/v1\/laws\/([^/]+)$/);
