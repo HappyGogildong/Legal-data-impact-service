@@ -23,7 +23,8 @@ import com.lia.core.observability.Obs;
  * 조문 전문을 주므로, 삭제는 시행예정본에 <b>"삭제" 마커 조문</b>으로 이미 들어온다 —
  * 별도의 팬텀 스캔 없이 in-place 로 감지한다("플래그가 정답" 규율, §1.2).
  *
- * <p><b>대상은 {@code changed=true} 조문뿐이다</b>(비용 레버 — 실측 137→6). 나머지는 손대지 않는다.
+ * <p><b>대상은 {@code changed=true} 실조문뿐이다</b>(비용 레버 — 실측 137→6). 나머지는 손대지 않는다.
+ * 장·절 제목 행({@code isArticle=false})은 변경 표시가 있어도 대조하지 않는다 — 장의 첫 조문과 번호가 같다.
  *
  * <p>기준선이 없으면(제정 — 현행본 부재) 변경 조문은 모두 <b>신설</b>이다.
  *
@@ -54,7 +55,7 @@ public class DiffBuilder {
         return Observation.createNotStarted(Obs.DIFF, observations).observe(() -> {
             List<Article> out = new ArrayList<>(pending.articles().size());
             for (Article a : pending.articles()) {
-                out.add(a.changed() ? diffed(a, baseline) : a);
+                out.add(a.changed() && a.isArticle() ? diffed(a, baseline) : a);   // 제목 행은 대조하지 않는다
             }
             return pending.withArticles(out);
         });

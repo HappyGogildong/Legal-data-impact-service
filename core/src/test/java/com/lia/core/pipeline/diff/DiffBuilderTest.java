@@ -153,6 +153,24 @@ class DiffBuilderTest {
         }
 
         @Test
+        @DisplayName("제목 행은 본문 조문과 번호가 같아도 대조하지 않고, 기준선 조회도 실조문만 본다")
+        void 제목_행과_번호가_겹쳐도_실조문으로_대조한다() {
+            Article heading = new Article("18", "총칙", "제3장 사업계획", true, ChangeType.개정,
+                    null, null, null, false, null);
+            Law p = pending(List.of(heading, art("18", "제18조 개정.", true, ChangeType.개정)));
+            Law b = baseline(List.of(
+                    new Article("18", "총칙", "제3장 사업계획", false, ChangeType.없음, null, null, null, false, null),
+                    art("18", "제18조 현행.", false, ChangeType.없음)));
+
+            Law r = diffBuilder.build(p, b);
+
+            assertNull(r.articles().get(0).diffVsCurrent(), "제목 행은 대조하지 않는다");
+            Article real = r.article("18");
+            assertEquals(ChangeType.개정, real.changeType());
+            assertTrue(real.diffVsCurrent().contains("현행: 제18조 현행."), "기준선도 실조문으로 찾아야 한다");
+        }
+
+        @Test
         @DisplayName("시행예정본은 필수 — null 이면 거부")
         void 시행예정본_없으면_거부한다() {
             assertThrows(IllegalArgumentException.class, () -> diffBuilder.build(null, baseline(List.of())));

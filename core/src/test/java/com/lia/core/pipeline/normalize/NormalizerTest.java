@@ -139,7 +139,8 @@ class NormalizerTest {
 
             assertEquals(5, law.articles().size(), "전개 항목까지 모두 보존해야 한다");
             assertEquals(4, law.realArticles().size(), "조문여부='조문' 만 실조문이다");
-            assertFalse(law.article("1").isArticle());
+            assertEquals(1, law.articles().stream().filter(a -> !a.isArticle()).count());
+            assertNull(law.article("1"), "제목 행은 조문 조회 대상이 아니다");
         }
 
         @Test
