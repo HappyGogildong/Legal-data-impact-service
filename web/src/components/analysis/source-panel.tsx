@@ -1,9 +1,12 @@
+import Link from "next/link";
 import type { CitedSource } from "@/lib/api/types";
+import { sourceDetailHref } from "@/lib/law-view";
 import { ArticleCompare } from "./article-compare";
 import { ChangeBadge } from "./change-badge";
 
 /** 근거 조문 내용 — 패널(데스크톱)·시트(모바일) 공용. 현행 원문이 있으면 대비로. */
 export function SourceBody({ source }: { source: CitedSource }) {
+  const detailHref = source.sourceId ? sourceDetailHref(source.sourceId) : null;
   return (
     <div className="flex flex-col gap-2 text-sm">
       <div className="flex items-center gap-2">
@@ -21,6 +24,11 @@ export function SourceBody({ source }: { source: CitedSource }) {
         <ArticleCompare before={source.previousText} after={source.text} />
       ) : (
         <p className="whitespace-pre-line">{source.text}</p>
+      )}
+      {detailHref && (
+        <Link href={detailHref} className="text-xs font-bold text-navy">
+          법령 상세에서 보기 →
+        </Link>
       )}
     </div>
   );

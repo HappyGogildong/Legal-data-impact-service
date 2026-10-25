@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useId } from "react";
 import { useToday } from "@/hooks/use-browser";
 import type { LawBrief, LawHeader } from "@/lib/api/types";
 import { dDayLabel, daysUntil } from "@/lib/dates";
+import { lawHref } from "@/lib/law-view";
 
 type LawHeaderViewProps = {
   law: LawHeader;
@@ -47,6 +49,14 @@ export function LawHeaderView({
         )}
       </div>
       {meta && <p className="mt-0.5 text-xs text-muted-foreground">{meta}</p>}
+      {law.lawId && law.effectiveDate && (
+        <Link
+          href={lawHref(law.lawId, law.effectiveDate)}
+          className="mt-1 inline-block text-xs font-bold text-navy"
+        >
+          법령 상세 보기 →
+        </Link>
+      )}
       {pickable.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
           <span className="text-muted-foreground">다른 시행일</span>
