@@ -2,7 +2,7 @@
 // Playwright 가 이 서버를 띄우고 Next 를 LIA_API_ORIGIN=http://localhost:3199 로 빌드·기동한다. 의존성 없음(node:http).
 import { createServer } from "node:http";
 
-const PORT = Number(process.env.MOCK_API_PORT ?? 3199);
+const PORT = 3199; // playwright.config.ts 의 MOCK_API 와 같은 값
 const DAY_MS = 86_400_000;
 
 /** 서울 오늘 + n일 "YYYY-MM-DD" — D-N 이 실행일과 무관하게 같게 보이도록 날짜를 실행 시점 기준으로 만든다. */

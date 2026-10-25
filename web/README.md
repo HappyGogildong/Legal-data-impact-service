@@ -9,15 +9,15 @@
 
 ## 명령
 
-| 명령             | 하는 일                             |
-| ---------------- | ----------------------------------- |
-| `pnpm dev`       | 개발 서버(http://localhost:3000)    |
-| `pnpm test`      | 단위 테스트(Vitest)                 |
-| `pnpm e2e`       | 익명 흐름 E2E(Playwright, 모의 API) |
-| `pnpm gen:api`   | `api/openapi.json` → API 타입 생성  |
-| `pnpm typecheck` | 라우트 타입 생성 + `tsc --noEmit`   |
-| `pnpm lint`      | ESLint                              |
-| `pnpm format`    | Prettier                            |
+| 명령             | 하는 일                                                                                                        |
+| ---------------- | -------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`       | 개발 서버(http://localhost:3000)                                                                               |
+| `pnpm test`      | 단위 테스트(Vitest)                                                                                            |
+| `pnpm e2e`       | 익명·법령 흐름 E2E(Playwright) — 서버 렌더링 조회용 모의 API(`e2e/mock-api/server.mjs`, 포트 3199)도 함께 띄움 |
+| `pnpm gen:api`   | `api/openapi.json` → API 타입 생성                                                                             |
+| `pnpm typecheck` | 라우트 타입 생성 + `tsc --noEmit`                                                                              |
+| `pnpm lint`      | ESLint                                                                                                         |
+| `pnpm format`    | Prettier                                                                                                       |
 
 ## 로컬 백엔드
 

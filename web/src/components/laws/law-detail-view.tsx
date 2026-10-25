@@ -153,8 +153,8 @@ export function LawDetailView({
           )}
         </div>
         <blockquote className="border-l-2 border-line-soft pl-2.5 text-sm whitespace-pre-line">
-          {detail.effectiveClause?.text ??
-            detail.effectiveRule ??
+          {detail.effectiveClause?.text ||
+            detail.effectiveRule ||
             "시행 규칙이 제공되지 않았어요."}
         </blockquote>
         {detail.effectiveClause?.label && (

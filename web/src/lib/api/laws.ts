@@ -28,7 +28,7 @@ export async function fetchUpcomingLaws(
   return unwrap(await serverApi().GET("/api/v1/laws", { params: { query } }));
 }
 
-/** 없는 법령이면 null. */
+/** 없는 법령이거나 요청이 거부된 경우(404·400)면 null — 화면은 not-found. 상세(fetchLawDetail)와 같은 규칙. */
 export async function fetchLawVersions(
   lawId: string,
 ): Promise<LawVersions | null> {
@@ -37,7 +37,9 @@ export async function fetchLawVersions(
   const result = await serverApi().GET("/api/v1/laws/{lawId}", {
     params: { path: { lawId } },
   });
-  if (result.response.status === 404) return null;
+  if (result.response.status === 404 || result.response.status === 400) {
+    return null;
+  }
   return unwrap(result);
 }
 

@@ -116,6 +116,24 @@ describe("LawDetailView", () => {
     ).toBeInTheDocument();
   });
 
+  it("시행 조항 본문이 비어 있으면 시행 규칙 문장으로 채운다", () => {
+    const emptyClause = { ...DETAIL.effectiveClause!, text: "" };
+    renderDetail({ ...DETAIL, effectiveClause: emptyClause });
+    expect(screen.getByText("공포 후 6개월")).toBeInTheDocument();
+  });
+
+  it("시행 조항과 시행 규칙이 모두 비어 있으면 안내 문구를 보인다", () => {
+    const emptyClause = { ...DETAIL.effectiveClause!, text: "" };
+    renderDetail({
+      ...DETAIL,
+      effectiveClause: emptyClause,
+      effectiveRule: "",
+    });
+    expect(
+      screen.getByText("시행 규칙이 제공되지 않았어요."),
+    ).toBeInTheDocument();
+  });
+
   it("바뀐 조문 — 고유 주소, 펼치면 현행↔개정 대비", async () => {
     renderDetail();
 
