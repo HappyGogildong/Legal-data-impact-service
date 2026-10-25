@@ -50,7 +50,7 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 | `/actuator/health`·`/prometheus` | 공개(관측) |
 | `/error` | 공개(오류 포워드 — 막으면 공개 API 오류가 403으로 바뀜) |
 | 그 외 | **인증 필수**(`anyRequest`) |
-| 상태변경(POST/PUT/DELETE) | **CSRF 토큰** 필요(쿠키 인증, SPA 방식). 공개 무상태 `POST /analyses`만 예외(임시 — 슬라이스 ③ 재검토) |
+| 상태변경(POST/PUT/DELETE) | **CSRF 토큰** 필요(쿠키 인증, SPA 방식). 공개 무상태 `POST /analyses`(임시 — 슬라이스 ③ 재검토)와 조회 신호 `POST /laws/{lawId}/{efYd}/views`(D66)만 예외 |
 
 근거·구현 함정은 [[SecurityConfig]].
 

@@ -89,7 +89,8 @@ related: ["product/screen-plan.md", "backend/cloud-infra.md", "mvp/service-api-s
 | 법령 화면 경로 | `/laws`(S06 곧 시행, `?range=week·month·quarter` = 오늘부터 7·30·90일, 기본 month) · `/laws/[lawId]`(가장 이른 시행예정본으로 이동) · `/laws/[lawId]/[efYd]`(S05). 홈 질문창 아래 곧 시행 5개 | [[screen-plan]] S01·S05·S06 |
 | 없는 법령·이동 | 상세·이동 라우트는 `<Suspense>` 안에서 조회하므로 응답이 이미 흐르기 시작한 뒤 `notFound()`·`redirect()`가 결정된다 — HTTP 상태는 200(운영 빌드도 같음). not-found 화면엔 Next가 `<meta name="robots" content="noindex">`를 자동으로 붙여 검색에 남지 않고, 이동은 meta refresh 로 된다 | Cache Components 스트리밍의 성질. 실제 404 가 필요해지면 조회를 Suspense 밖(정적 매개변수)으로 옮겨야 한다 |
 | 법령 상세 요약 | 상세는 공식 **개정 이유**를 보이고 "쉬운 요약 보기"가 `lia.ask` ← `{query: "{법령명} 쉬운 요약", lawRef}` 후 `/ask`. 시행예정본에서만 | D65 — 누른 사람만 LLM 비용 |
-| 빈 자리 | "자주 찾는"·"내 관련" 탭·북마크·시행 알림 받기·분야 필터는 해당 기능과 함께 붙인다 | 지키지 못할 약속을 하지 않는다 |
+| 빈 자리 | "내 관련" 탭·북마크·시행 알림 받기·분야 필터는 해당 기능과 함께 붙인다. 자주 찾는 목록은 홈에선 집계가 없으면 숨기고, S06 탭은 구조라 남겨 "아직 집계된 조회가 없어요" | 지키지 못할 약속을 하지 않는다 |
+| 자주 찾는 법령 | 홈은 곧 시행 옆(데스크톱 2단) 이번 주 상위 5개, S06은 `?tab=trending&window=day·week·month` 상위 20개. 변화 표시는 `previousRank`로 ▲n·▼n·–·NEW(글자 병기). S05는 시행예정본일 때 조회 신호를 탭당 법령별 1회(sessionStorage `lia.viewed`) | D66 |
 | E2E 모의 API | 서버 컴포넌트 조회는 브라우저 밖이라 `page.route`로 못 가로챈다 — Playwright가 `e2e/mock-api/server.mjs`를 함께 띄우고 Next를 `LIA_API_ORIGIN=모의 서버`로 빌드·기동 | 브라우저 조회는 기존처럼 `page.route` |
 
 ## 6. 다음

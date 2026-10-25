@@ -74,7 +74,8 @@ BASE  /api/v1
 | `GET` | `/laws` | 곧 시행되는 법령 목록(시행일 범위·커서) — 홈·S06 | — |
 | `GET` | `/laws/{lawId}` | 한 법령의 **시행예정본 목록**(D43) | — |
 | `GET` | `/laws/{lawId}/{efYd}` | 법령 상세 — 개정 이유·시행 규칙·바뀐 조문(현행 대비)·부칙·위임 조항(S05) | — |
-| `GET` | `/laws/trending` | S5 자주 찾는 법령 랭킹(시간창·도메인) | — |
+| `GET` | `/laws/trending` | S5 자주 찾는 법령 순위(일·주·월) | — |
+| `POST` | `/laws/{lawId}/{efYd}/views` | S05 상세 조회 신호(횟수 집계, CSRF 예외) | — |
 | `GET` | `/data-status` | 법령 정보 마지막 갱신 시각·수록 시행예정 법령 수(화면 S15·S05) | — |
 | `POST` | `/subscriptions` | S6 알림 구독 생성 | 필요 |
 | `GET` | `/subscriptions` | 내 구독 목록 | 필요 |
@@ -274,34 +275,36 @@ GET /api/v1/laws?from=2026-10-25&to=2026-11-24&limit=20&cursor=MjAyNi0xMS0wMXwwM
 
 ---
 
-### 3.5 `GET /laws/trending` — 자주 찾는 법령 (S5)
+### 3.5 자주 찾는 법령 — `GET /laws/trending` · `POST /laws/{lawId}/{efYd}/views` (S5)
 
-조회량 기준 랭킹. **읽기 전용·익명·캐시**된다(랭킹은 초 단위로 안 변함).
+조회 횟수 기준 순위. **읽기 전용·익명**이고 화면은 몇 분 캐시한다(순위는 초 단위로 안 변함).
 
 ```
-GET /api/v1/laws/trending?window=week&domain=주거&limit=10
+GET /api/v1/laws/trending?window=week&limit=10
 ```
 ```jsonc
 {
-  "window": "week",                       // day | week | month
-  "generatedAt": "2026-08-02T09:00:00+09:00",   // 랭킹 스냅샷 시각(캐시 키)
+  "window": "week",                       // day(오늘) | week(오늘 포함 7일) | month(30일)
   "items": [
     { "rank": 1, "lawId": "001809", "title": "주택법",
-      "effectiveDate": "2026-08-04", "views": 1240, "delta": "up" },
+      "effectiveDate": "2026-11-01", "views": 1240, "previousRank": 3 },   // 직전 같은 길이 구간 순위
     { "rank": 2, "lawId": "010513", "title": "자본시장과 금융투자업에 관한 법률",
-      "effectiveDate": "2026-10-01", "views": 980, "delta": "same" }
+      "effectiveDate": "2026-11-13", "views": 980, "previousRank": null }  // null = 직전 구간 순위에 없음(신규)
   ]
 }
 ```
 
-- `window` — 집계 구간(일/주/월). `domain` — 선택 필터(주거·세제·근로…). `limit` — 기본 10.
-- 랭킹 단위는 **`(lawId, effectiveDate)`** 다(D43 — 같은 법령의 다른 시행예정본은 별개 항목).
+- 기본 `window=week`·`limit=10`, `limit` 1~50. 그 밖의 값은 `400` `{ "error": "bad_request" }`.
+- 순위 단위는 **`(lawId, effectiveDate)`**(D43). **시행예정·오늘(서울) 이후** 버전만 오른다. 동점은 `lawId`·`effectiveDate` 오름차순.
+- 분야(`domain`) 필터는 분류 데이터가 생길 때까지 없다(D65).
 
-> **구현 노트 — 집계 동시성.** 이 기능의 무게는 화면이 아니라 *카운팅*에 있다.
-> - **개인정보(D41):** 집계는 **카운트만** 남긴다. *누가* 무엇을 봤는지는 저장하지 않는다 — 조회 이벤트에 `userId`를 붙이지 않는다.
-> - **hot-key 쓰기 집중:** 인기 법령 한 건에 조회 증가가 몰린다. 원자적 증가(DB `UPDATE … SET views=views+1` 행 잠금 경합 / 인메모리·Redis 집계 후 주기 flush) 중 택. 정확도 vs 처리량 트레이드오프.
-> - **시간창:** MVP는 배치 tumbling(일/주 경계 집계) + TTL 캐시. 실시간 sliding window는 post-MVP.
-> - 조회 카운트는 **분석·상세 조회 경로(`POST /analyses` RESOLVED, `GET /laws/{lawId}/{efYd}`)에서 비동기 기록** — 응답 지연에 영향 주지 않게.
+**조회 1회**(D66) = ① S05 상세 방문 — 브라우저가 `POST /api/v1/laws/{lawId}/{efYd}/views`(본문 없음 → `204`, 없는 버전 `404`, 날짜 형식 오류 `400`)를 **탭당 법령별 1회** 보낸다(서버 렌더링 캐시와 무관하게 실제 방문을 센다) ② 분석 — `POST /analyses`가 그 법령으로 해소되고 정본이 있어 답을 냈을 때 서버가 센다.
+
+> **구현 노트 — 집계.**
+> - **개인정보(D41):** 서울 날짜별 **횟수만** 남긴다(`law_views_daily`). *누가* 봤는지(userId·IP·세션)는 저장하지 않는다.
+> - **증가:** `INSERT … ON CONFLICT DO UPDATE SET views = views + 1` 한 문장. 인기 법령 한 행에 잠금이 몰릴 수 있으나 측정 전엔 기법을 더하지 않는다(D48).
+> - **CSRF 예외:** 조회 신호는 세션을 읽지 않고 개인 데이터가 없어 CSRF 공격 대상이 아니다(익명은 XSRF 쿠키도 없다). 같은 사람의 반복 호출은 탭 단위 중복 제거만 — 요청 빈도 제한은 운영 과제.
+> - 분석 경로의 기록 실패는 분석 응답을 막지 않는다(로그만).
 
 ---
 

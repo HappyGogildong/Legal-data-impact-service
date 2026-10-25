@@ -226,7 +226,7 @@ related: ["product/feature-spec.md", "mvp/service-api-spec.md", "components/web/
 | 필요한 것 | 쓰는 화면 | 연결 |
 |---|---|---|
 | 법령 조회 `/laws`(시행일 범위 목록)·`/laws/{lawId}`·`/laws/{lawId}/{efYd}`(결정론 상세 — 요약은 버튼 → S02, D65) | S01·S05·S06 | #39 |
-| 자주 찾는 법령 `/laws/trending` + 조회수 집계 | S01·S06 | [[service-api-spec]] S5 |
+| 자주 찾는 법령 `/laws/trending` + 조회수 집계(상세 방문 + 분석, D66) | S01·S06 | [[service-api-spec]] §3.5 |
 | 법령 발견(LOOKUP) | S04·S01 | #19 |
 | 내 영향·대응 방안(Layer B) | S02 | D60 슬라이스 ③ |
 | **대응 방안 상황 확인** — 적용 조건 추출·상황 사실 필드·사실 추출 | S02 | **새 설계·결정 필요**, #38 확장 |
