@@ -19,10 +19,10 @@ related: ["components/component-specs.md", "components/domain/law/Article.md", "
 - 생성: [[Normalizer]]가 `RawLaw`→`Law`. 소비: [[DiffBuilder]]·[[ContextBuilder]]·[[RAGIndexer]]·[[LawStore]].
 
 ## Contract
-- `changedArticles()` — `changed=true` 조문만(=이번 개정 대상, 비용 레버 137→6). **`changeType`(신설/삭제)이 아니라 `changed` 플래그 기준** — 판정은 DiffBuilder 몫.
+- `changedArticles()` — `changed=true` **실조문**만(=이번 개정 대상, 비용 레버 137→6). 장·절 제목 행은 `changed`가 켜져도 제외(장 첫 조문과 번호가 같아 인용키가 겹침). **`changeType`(신설/삭제)이 아니라 `changed` 플래그 기준** — 판정은 DiffBuilder 몫.
 - **`source_id` 생성 권위**(리뷰 P1, §1.3) — `sourceId(Article)`·`amendSourceId()`·`addendumSourceId(Addendum)`·요약 `ref()`. **포맷을 아는 유일한 곳** — 소비자는 문자열 조합 금지.
 - `ref()` — 인용·캐시 키. **status로 `@efYd` 유무 결정**: 시행예정=`LAW:{lawId}@{efYd}`, 시행중=`LAW:{lawId}`(D43).
-- `article(no)` — 조문번호 조회(현재 O(N) 선형 — 배치 성능 필요 시 인덱스화 검토).
+- `article(no)` — 조문번호로 **실조문**만 조회(제목 행은 장 첫 조문과 번호가 같아 제외. 현재 O(N) 선형 — 배치 성능 필요 시 인덱스화 검토).
 - `withX(...)` — 불변이라 변경은 **사본 반환**(DiffBuilder가 조문 교체 등).
 
 ## Invariants
