@@ -71,9 +71,9 @@ BASE  /api/v1
 | 메서드 | 경로 | 기능 | 인증 |
 |---|---|---|---|
 | `POST` | `/analyses` | **자연어 질의 → 그라운딩된 분석**(F1~F4) | 조건부* |
-| `GET` | `/laws` | S1·S2 법령 검색·해소 | — |
+| `GET` | `/laws` | 곧 시행되는 법령 목록(시행일 범위·커서) — 홈·S06 | — |
 | `GET` | `/laws/{lawId}` | 한 법령의 **시행예정본 목록**(D43) | — |
-| `GET` | `/laws/{lawId}/{efYd}` | 이미 분석된 법령 사실 + 조문 대조(Layer A) | — |
+| `GET` | `/laws/{lawId}/{efYd}` | 법령 상세 — 개정 이유·시행 규칙·바뀐 조문(현행 대비)·부칙·위임 조항(S05) | — |
 | `GET` | `/laws/trending` | S5 자주 찾는 법령 랭킹(시간창·도메인) | — |
 | `GET` | `/data-status` | 법령 정보 마지막 갱신 시각·수록 시행예정 법령 수(화면 S15·S05) | — |
 | `POST` | `/subscriptions` | S6 알림 구독 생성 | 필요 |
@@ -91,7 +91,7 @@ BASE  /api/v1
 
 \* `/analyses`는 익명도 허용하되 **F3·F4(Layer B)는 인증 세션이 있을 때만** 채워진다(없으면 F1·F2까지).
 
-`/laws` 는 **읽기 전용 참조 데이터**다 — 오프라인에서 선계산·캐시된 Layer A 사실이라 익명·저지연이며, 검색 자동완성·법령 상세 화면에 쓴다. `POST /analyses` 가 이 데이터를 내부에서 끌어와 개인화 답을 만든다.
+`/laws` 는 **읽기 전용 참조 데이터**다 — 적재 배치(D62)가 저장한 정본에서 **결정론으로** 만든다(LLM 없음). 익명·저지연이며 홈 목록·법령 목록(S06)·법령 상세(S05)에 쓴다. 법령명 검색·해소는 `POST /analyses` 안에서 한다(D65). `POST /analyses` 는 같은 정본을 내부에서 끌어와 답을 만든다.
 
 `{efYd}` = 시행일자 `YYYY-MM-DD`. **경로에 시행일을 넣는 이유**: 같은 `lawId`에 시행예정본이 여럿일 수 있어(D43) `lawId` 만으로는 대상이 특정되지 않는다.
 
@@ -165,53 +165,29 @@ BASE  /api/v1
 
 > **멱등성 주의.** `POST`지만 같은 `(query, lawRef, profileHash)`는 캐시로 같은 결과를 준다. 리소스 신규 생성(분석 이력 저장)은 post-MVP — 그때 `GET /analyses/{id}`(이력·공유)로 확장.
 
-### 3.1 `GET /laws` — 검색·해소 (S1·S2)
+### 3.1 `GET /laws` — 곧 시행되는 법령 목록 (홈·S06)
 
-법령명 또는 자연어를 받아 **해소 4상태**로 답한다. 해소 결과는 모두 **HTTP 200**이다(4xx/5xx는 시스템 오류 전용).
+시행예정본을 **시행일이 가까운 순**으로 준다. 해소(4상태)는 이 엔드포인트가 하지 않는다 — 자연어·법령명 해소는 `POST /analyses` 안에서 한다(D65).
 
 ```
-GET /api/v1/laws?q=주택법
-GET /api/v1/laws?q=집 구할 때 뭔가 바뀐다던데
+GET /api/v1/laws?from=2026-10-25&to=2026-11-24&limit=20
+GET /api/v1/laws?from=2026-10-25&to=2026-11-24&limit=20&cursor=MjAyNi0xMS0wMXwwMDE4MDk
 ```
-
-**RESOLVED** — 정확히 하나로 특정:
 ```jsonc
 {
-  "resolution": "RESOLVED",
-  "law": { "lawId": "001809", "title": "주택법",
-           "effectiveDate": "2026-08-04", "status": "시행예정",
-           "amendKind": "일부개정", "ministry": "국토교통부" }
+  "items": [
+    { "lawId": "001809", "title": "주택법", "effectiveDate": "2026-11-01",
+      "lawType": "법률", "ministry": "국토교통부", "amendKind": "일부개정" }
+  ],
+  "nextCursor": "MjAyNi0xMS0wMXwwMDE4MDk"   // 다음 쪽이 없으면 null
 }
 ```
 
-**AMBIGUOUS** — 후보 다수. **같은 `lawId`의 시행예정본이 여럿이면 시행일 선택을 유도**(D43):
-```jsonc
-{
-  "resolution": "AMBIGUOUS",
-  "message": "같은 법령에 시행 예정인 개정이 여러 건입니다. 어느 시행일 기준으로 보시겠습니까?",
-  "candidates": [
-    { "lawId": "010513", "title": "자본시장과 금융투자업에 관한 법률",
-      "effectiveDate": "2026-10-01", "score": 0.99 },
-    { "lawId": "010513", "title": "자본시장과 금융투자업에 관한 법률",
-      "effectiveDate": "2026-11-13", "score": 0.99 }
-  ]
-}
-```
-
-**NOT_FOUND_YET** — 법령스러우나 신뢰 출처에 없음(미공포/수집 지연/이미 시행 중):
-```jsonc
-{ "resolution": "NOT_FOUND_YET", "checkedSource": true,
-  "message": "신뢰 출처에서 확인되지 않습니다(아직 공포되지 않았거나, 이미 시행 중이어서 분석 대상이 아닐 수 있습니다)." }
-```
-
-**UNVERIFIED** — 허위 의심(신뢰할 매칭 없음):
-```jsonc
-{ "resolution": "UNVERIFIED", "similar": [],
-  "message": "확인되지 않은 정보입니다. 실재하는 법령과 매칭되지 않습니다." }
-```
-
-> **두 경로가 이 엔드포인트를 쓴다.** ① *브라우징* — 자동완성·목록에서 법령을 고른 뒤 `GET /laws/{lawId}/{efYd}`로 상세를 보거나, 그 `lawRef`를 `POST /analyses`에 실어 질문. ② *직접 질의* — 사용자가 `POST /analyses`에 자연어만 넣으면 서버가 내부에서 같은 해소를 수행하므로 이 엔드포인트를 거치지 않아도 된다.
-> **클라이언트 규칙:** `RESOLVED` → 진행. `AMBIGUOUS` → 후보(특히 시행일) 선택 UI. `NOT_FOUND_YET`·`UNVERIFIED` → 분석 진입 금지, 안내 문구 그대로 노출. **미등록과 허위는 문구가 다르므로 뭉뚱그리지 말 것**(D23).
+- 조건: 상태 `시행예정` · 시행일 ≥ **오늘(서울)** · `from`(선택) 이후 · `to`(선택) 이전(포함). `from`이 오늘보다 이르면 오늘부터.
+- 정렬 `effectiveDate`, `lawId` 오름차순. **키셋 커서** — 마지막 행의 `(effectiveDate, lawId)`를 불투명 문자열로 준다. 클라이언트는 해석하지 않고 그대로 돌려보낸다.
+- `limit` 기본 20, 1~50.
+- `400`: 날짜 형식 오류(`YYYY-MM-DD` 아님·달력에 없음), `from > to`, 잘못된 커서, `limit` 범위 밖. 본문 `{ "error": "bad_request", "message": "…" }`.
+- 분야 필터는 아직 없다(분류 데이터 없음 — 법령 발견 #19와 함께 정한다).
 
 ### 3.2 `GET /laws/{lawId}` — 시행예정본 목록 (D43)
 
@@ -220,54 +196,48 @@ GET /api/v1/laws?q=집 구할 때 뭔가 바뀐다던데
 ```jsonc
 // GET /api/v1/laws/010513
 { "lawId": "010513", "title": "자본시장과 금융투자업에 관한 법률",
-  "pending": [
-    { "effectiveDate": "2026-10-01", "promulgateNo": "21324", "amendKind": "일부개정" },
+  "pending": [                                   // 시행예정 · 오늘(서울) 이후 · 시행일 오름차순
     { "effectiveDate": "2026-11-13", "promulgateNo": "21500", "amendKind": "일부개정" },
     { "effectiveDate": "2027-02-04", "promulgateNo": "21611", "amendKind": "일부개정" }
   ],
-  "current": { "effectiveDate": "2026-01-02", "promulgateNo": "20900" }  // diff 기준선
+  "current": { "effectiveDate": "2026-01-02", "promulgateNo": "20900" }  // 시행중본(diff 기준선), 없으면 null
 }
 ```
 
-### 3.3 `GET /laws/{lawId}/{efYd}` — 법령 사실 + 조문 대조 (F1·F2, Layer A)
+- `404`: 그 `lawId`의 버전이 하나도 없음. 본문 `{ "error": "not_found", "message": "…" }`.
 
-**프로필과 무관한** 사실층. 오프라인 선계산·캐시되므로 익명·저지연이다.
+### 3.3 `GET /laws/{lawId}/{efYd}` — 법령 상세 (S05)
 
-```
-GET /api/v1/laws/001809/2026-08-04
-```
+정본에서 결정론으로 만든 사실만 준다(LLM 없음). **상태와 무관하게** 연다 — 배치가 시행·철회된 행도 보존하므로(D62) 예전 인용이 계속 열린다.
+
 ```jsonc
+// GET /api/v1/laws/001809/2026-11-01
 {
-  "law": {
-    "lawId": "001809", "title": "주택법", "effectiveDate": "2026-08-04",
-    "amendKind": "일부개정", "ministry": "국토교통부",
-    "effectiveRule": "이 법은 공포 후 6개월이 경과한 날부터 시행한다. 다만, …",
-    "enforcementType": "단계적"
-  },
-  "summary": {                                   // F1 ImpactSummary
-    "text": "주택 사업계획 심의를 통합해 절차를 줄이고, 감리·현장점검 절차를 강화합니다.",
-    "claims": [
-      { "statement": "교육환경·재해영향 평가를 통합심의 대상에 추가한다.",
-        "citations": ["LAW:001809@2026-08-04:art:18"], "confidence": 0.94 }
-    ]
-  },
-  "diff": {                                       // F2 LawDiff — 변경 조문만
-    "changedArticles": [
-      { "no": "18", "title": "사업계획의 통합심의 등", "changeType": "개정",
-        "current": "…도시계획·건축·교통…",
-        "revised": "…도시계획·건축·환경·교통·재해…",
-        "citations": ["LAW:001809:art:18", "LAW:001809@2026-08-04:art:18"] }
-    ],
-    "baseline": { "lawId": "001809", "effectiveDate": "2026-07-01" }
-  },
-  "uncertainties": ["일부 세부기준은 대통령령에 위임되어 있어 확정 전입니다."],
-  "disclaimer": "법률 자문이 아닌 참고용 정보입니다."
+  "lawId": "001809", "title": "주택법", "lawType": "법률", "ministry": "국토교통부",
+  "promulgateDate": "2026-05-01", "promulgateNo": "21323",
+  "effectiveDate": "2026-11-01", "status": "시행예정",      // 시행예정 · 시행중 · 과거 · 철회
+  "amendKind": "일부개정", "sourceUrl": "https://www.law.go.kr/…",
+  "amendReason": "주택 사업계획 심의 절차를 간소화하고 …",   // 제개정이유 원문
+  "enforcementType": "유예",                                 // 즉시 · 유예 · 단계적
+  "effectiveRule": "이 법은 공포 후 6개월이 경과한 날부터 시행한다.",
+  "effectiveClause": { "sourceId": "LAW:001809@2026-11-01:addenda:제1조",
+                       "label": "부칙 제1조(시행일)", "text": "이 법은 공포 후 6개월이 …" },
+  "changedArticles": [                                       // 조문변경여부='Y' 조문만
+    { "sourceId": "LAW:001809@2026-11-01:art:18", "no": "18",
+      "label": "제18조(사업계획의 통합심의)", "changeType": "개정",
+      "text": "① … 도시계획·건축·환경·교통·재해 …",
+      "previousText": "① … 도시계획·건축·교통 …" }        // 현행 원문 — 아래 규칙
+  ],
+  "addenda": [ { "sourceId": "LAW:001809@2026-11-01:addenda:제1조", "label": "부칙 제1조(시행일)", "text": "…" } ],
+  "delegationClauses": [ "대통령령으로 정하는 사항 …" ],
+  "baselineEffectiveDate": "2020-01-01"                      // 대비에 쓴 시행중본, 없으면 생략
 }
 ```
 
-> `diff.changedArticles` 는 **`조문변경여부='Y'` 조문만**(실측 137개 중 6개). 자구 변경 근거는 `개정문`, 대조 기준선은 같은 `lawId`의 시행중본이다.
-
-> `/laws/{lawId}/{efYd}` 는 **읽기 전용**이다 — F1·F2에 해당하는 Layer A 사실을 담지만, 이것은 *브라우징·검색 상세용 조회*이지 분석 요청이 아니다. 개인화 분석은 `POST /analyses` 로만 한다.
+- `changedArticles[].previousText` — **시행예정본**의 개정·삭제·이동 조문일 때만 기준선(시행중본)의 현행 원문(이동은 옛 번호로 찾는다). 신설·무변경·시행된 버전은 없다. 근거 패널(`POST /analyses`의 `sources`)과 같은 규칙이다.
+- `sourceId`는 인용키 형식 그대로라 결과 화면의 인용 칩이 상세의 해당 조문(`#art-18`)으로 이어진다.
+- 쉬운 요약은 이 응답에 없다 — 화면의 "쉬운 요약 보기"가 이 법령 `lawRef`로 `POST /analyses`를 부른다(D65). 개인화 분석도 `POST /analyses`로만 한다.
+- `404`: 그 버전이 없음. `400`: `efYd` 형식 오류.
 
 ### 3.4 프로필·동의·계정 — `/profile` · `/consents` · `/account` (S3)
 

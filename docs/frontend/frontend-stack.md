@@ -73,10 +73,10 @@ related: ["product/screen-plan.md", "backend/cloud-infra.md", "mvp/service-api-s
 |---|---|---|
 | 경로 | `/`(S01) · `/ask`(S02·S03 — 응답의 `resolution`으로 갈림) · `/info`(S15) · `not-found`·`error`(S16). 로그인 쪽(`/login`·`/login/done`·`/consent`·`/profile`·`/me`)은 같은 단계의 로그인 흐름에서 | S03은 별도 요청이 아니라 같은 응답의 상태 |
 | 질문 보관 | 결과 화면으로 질문을 넘길 때 **화면 URL(`/ask?q=…`)에 싣지 않는다** — 탭 sessionStorage(`lia.ask`), 새로고침하면 같은 질문을 다시 보낸다(답변 캐시 D51). 분석 API 호출은 그대로 POST 본문 | 질문에 개인 사정이 섞일 수 있는데, 쿼리스트링은 접근 로그·브라우저 기록·Referer에 남는다(D50 로그 PII 규율, [[observability]] §4 ②). 탭 단위 유지는 [[screen-plan]] §0 |
-| 데이터 조회 | 1단계는 분석·데이터 현황 모두 **브라우저 조회**(TanStack Query) | 빌드가 백엔드에 의존하지 않는다. 서버 렌더링 조회는 2단계(S05·S06)부터 |
+| 데이터 조회 | 분석·데이터 현황·로그인 화면은 **브라우저 조회**(TanStack Query). 법령 화면(홈 목록·S05·S06)은 **서버 렌더링 조회** — Next 서버가 `LIA_API_ORIGIN`으로 직접 부르고(`lib/api/laws.ts`, `"use cache"` + `cacheLife("minutes")`), 조회는 `<Suspense>` 안 `await connection()` 뒤 | 빌드가 백엔드에 의존하지 않는다(요청 시점 조회). 적재는 하루 한 번이라 몇 분 캐시로 충분 |
 | Next 기본값 | Cache Components·Partial Prefetching(16.x 기본) 유지 | 다음 메이저에서 필수 |
 | 내비게이션 | 1단계는 **홈·안내** + 로그인 흐름의 **내 정보**. 알림 탭은 S11(4단계)과 함께 | 없는 화면으로 가는 탭을 두지 않는다 |
-| 인용 칩 | 근거 패널(데스크톱)·아래 시트(모바일)에서 원문·현행 대비를 보인다. 법령 상세(S05) 링크는 2단계 | S05(#39) 전 |
+| 인용 칩 | 근거 패널(데스크톱)·아래 시트(모바일)에서 원문·현행 대비를 보이고, "법령 상세에서 보기"로 S05의 그 조문(`#art-6-3`)으로 간다. 결과 상단에도 "법령 상세 보기" | 조문 고유 주소 = `art-` + 조문번호(`의` → `-`) |
 | 글꼴 | Pretendard(jsDelivr 동적 서브셋 CSS), 실패 시 시스템 글꼴 | [[visual-design]] §2 |
 | 프록시 제한 시간 | `experimental.proxyTimeout` 120초 — 로컬 Next rewrites 기본 30초가 분석 요청보다 짧다 | Vercel 상한(120초)과 같게 |
 | 환경변수 | `LIA_API_ORIGIN` — rewrites 목적지(로컬 기본 `http://localhost:8080`, 운영 `https://api.<도메인>`). **빌드 시점에 읽힌다**(rewrites 가 빌드 결과에 고정) — Vercel 은 Build 환경에도 설정해야 하고, 운영 빌드에서 비어 있으면 빌드를 실패시킨다 | §2 |
@@ -86,6 +86,10 @@ related: ["product/screen-plan.md", "backend/cloud-infra.md", "mvp/service-api-s
 | 프로필 선택지 | `web/src/lib/profile-options.json` 한 곳 — 백엔드 `ProfileOptionsSyncTest`가 enum 라벨과 같은지 확인 | [[screen-plan]] S09 "프런트 상수, enum 변경 시 함께" |
 | 내 영향 안내 | `PROFILE_REQUIRED` 카드는 상태별 행동 — 익명: 로그인 / 프로필 없음: 프로필 입력 / 프로필 있음: "곧 제공"(분석이 아직 프로필을 읽지 않는다, D60 슬라이스 ③) | 지키지 못할 약속을 하지 않는다 |
 | 알림 이메일 | 내 정보의 스위치는 수신 동의 저장만 — 발송은 S11(4단계). 화면에 "알림 기능은 곧 제공돼요" | — |
+| 법령 화면 경로 | `/laws`(S06 곧 시행, `?range=week·month·quarter` = 오늘부터 7·30·90일, 기본 month) · `/laws/[lawId]`(가장 이른 시행예정본으로 이동) · `/laws/[lawId]/[efYd]`(S05). 홈 질문창 아래 곧 시행 5개 | [[screen-plan]] S01·S05·S06 |
+| 법령 상세 요약 | 상세는 공식 **개정 이유**를 보이고 "쉬운 요약 보기"가 `lia.ask` ← `{query: "{법령명} 쉬운 요약", lawRef}` 후 `/ask`. 시행예정본에서만 | D65 — 누른 사람만 LLM 비용 |
+| 빈 자리 | "자주 찾는"·"내 관련" 탭·북마크·시행 알림 받기·분야 필터는 해당 기능과 함께 붙인다 | 지키지 못할 약속을 하지 않는다 |
+| E2E 모의 API | 서버 컴포넌트 조회는 브라우저 밖이라 `page.route`로 못 가로챈다 — Playwright가 `e2e/mock-api/server.mjs`를 함께 띄우고 Next를 `LIA_API_ORIGIN=모의 서버`로 빌드·기동 | 브라우저 조회는 기존처럼 `page.route` |
 
 ## 6. 다음
 - 시각 디자인·화면 시안 — [[visual-design]](방향 A 신뢰·공공형, 토큰, 레이아웃 규칙).
