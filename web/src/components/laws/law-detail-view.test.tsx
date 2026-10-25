@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LawDetail } from "@/lib/api/types";
+import { empty, mockApi } from "@/test/api-mock";
 import { LawDetailView } from "./law-detail-view";
 
 const router = { push: vi.fn(), replace: vi.fn() };
@@ -64,6 +65,7 @@ function renderDetail(
 beforeEach(() => {
   router.push.mockReset();
   sessionStorage.clear();
+  mockApi({ "POST /api/v1/laws/001809/2026-11-03/views": () => empty(204) });
 });
 afterEach(() => {
   window.location.hash = "";
@@ -175,6 +177,7 @@ describe("LawDetailView", () => {
   });
 
   it("철회된 버전 — 상태 배너, 요약 버튼·질문창·현행 대비 없음", async () => {
+    const requests = mockApi({});
     renderDetail({ ...DETAIL, status: "철회" }, []);
 
     expect(screen.getByRole("status")).toHaveTextContent(
@@ -191,6 +194,8 @@ describe("LawDetailView", () => {
     );
     expect(screen.queryByText("현행")).not.toBeInTheDocument();
     expect(screen.getByText("① 통합심의한다.")).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(requests).toHaveLength(0);
   });
 
   it("원문 주소가 http(s)가 아니면 링크를 두지 않는다", () => {
