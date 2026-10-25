@@ -203,6 +203,40 @@
         "tags" : [ "law-controller" ]
       }
     },
+    "/api/v1/laws/trending" : {
+      "get" : {
+        "operationId" : "trending",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "window",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TrendingPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "law-view-controller" ]
+      }
+    },
     "/api/v1/laws/{lawId}" : {
       "get" : {
         "operationId" : "versions",
@@ -260,6 +294,32 @@
           }
         },
         "tags" : [ "law-controller" ]
+      }
+    },
+    "/api/v1/laws/{lawId}/{effectiveDate}/views" : {
+      "post" : {
+        "operationId" : "recordView",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "lawId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "effectiveDate",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "law-view-controller" ]
       }
     },
     "/api/v1/profile" : {
@@ -904,6 +964,47 @@
             "type" : "string"
           },
           "text" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TrendingItem" : {
+        "type" : "object",
+        "properties" : {
+          "effectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "lawId" : {
+            "type" : "string"
+          },
+          "previousRank" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          },
+          "rank" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "views" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }
+      },
+      "TrendingPage" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/TrendingItem"
+            }
+          },
+          "window" : {
             "type" : "string"
           }
         }

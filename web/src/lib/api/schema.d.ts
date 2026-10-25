@@ -116,6 +116,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/laws/trending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["trending"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/laws/{lawId}": {
         parameters: {
             query?: never;
@@ -142,6 +158,22 @@ export interface paths {
         get: operations["detail"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/laws/{lawId}/{effectiveDate}/views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["recordView"];
         delete?: never;
         options?: never;
         head?: never;
@@ -373,6 +405,22 @@ export interface components {
             sourceId?: string;
             text?: string;
         };
+        TrendingItem: {
+            /** Format: date */
+            effectiveDate?: string;
+            lawId?: string;
+            /** Format: int32 */
+            previousRank?: number | null;
+            /** Format: int32 */
+            rank?: number;
+            title?: string;
+            /** Format: int64 */
+            views?: number;
+        };
+        TrendingPage: {
+            items?: components["schemas"]["TrendingItem"][];
+            window?: string;
+        };
         Unmet: {
             message?: string;
             /** @enum {string} */
@@ -582,6 +630,29 @@ export interface operations {
             };
         };
     };
+    trending: {
+        parameters: {
+            query?: {
+                window?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendingPage"];
+                };
+            };
+        };
+    };
     versions: {
         parameters: {
             query?: never;
@@ -624,6 +695,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["LawDetailResponse"];
                 };
+            };
+        };
+    };
+    recordView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lawId: string;
+                effectiveDate: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
