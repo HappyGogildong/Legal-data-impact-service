@@ -132,7 +132,7 @@ public class Normalizer {
             String movedTo = LawEnvelope.str(a.get("조문이동이후"));
 
             out.add(new Article(
-                    LawEnvelope.str(a.get("조문번호")),
+                    articleNo(a),
                     LawEnvelope.str(a.get("조문제목")),
                     mergeArticleText(a),                    // ★ 항/호/목 재귀 병합
                     changed,
@@ -144,6 +144,23 @@ public class Normalizer {
                     null));                                 // diffVsCurrent — Diff Builder 가 채움
         }
         return out;
+    }
+
+    /**
+     * 조문번호 — 가지조는 {@code 조문번호} 가 본조와 같고 가지 번호가 {@code 조문가지번호} 로 따로 온다.
+     * 제105조·제105조의2·제105조의4 가 모두 {@code 조문번호="105"} 라서, 가지번호를 버리면
+     * 번호·인용키·대조가 전부 겹친다. 가지가 없으면 빈 값 또는 "0" 으로 오므로 그때는 본조 번호만 쓴다.
+     */
+    private static String articleNo(Map<String, Object> article) {
+        String no = LawEnvelope.str(article.get("조문번호"));
+        String branch = LawEnvelope.str(article.get("조문가지번호"));
+        if (no == null || isZeroOrBlank(branch)) return no;
+        return no + "의" + branch;
+    }
+
+    /** 비었거나 "0"·"00"·"000000" 처럼 0 으로만 된 값 — API 가 "없음" 을 이렇게 채워 보낸다. */
+    private static boolean isZeroOrBlank(String value) {
+        return value == null || value.chars().allMatch(c -> c == '0');
     }
 
     /**

@@ -27,9 +27,11 @@ public record Article(
      */
     public enum ChangeType { 신설, 개정, 삭제, 이동, 없음 }
 
-    /** 인용 표기용 조문 라벨 — "제18조". */
+    /** 인용 표기용 조문 라벨 — "제18조", 가지조는 "제105조의2" ({@code no} 가 "105의2" 일 때). */
     public String label() {
-        return no == null ? "" : "제" + no + "조";
+        if (no == null) return "";
+        int branchAt = no.indexOf('의');
+        return branchAt < 0 ? "제" + no + "조" : "제" + no.substring(0, branchAt) + "조" + no.substring(branchAt);
     }
 
     /**

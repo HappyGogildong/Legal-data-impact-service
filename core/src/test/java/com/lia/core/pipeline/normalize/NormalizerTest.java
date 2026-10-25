@@ -160,6 +160,49 @@ class NormalizerTest {
             assertEquals("56", law.article("57").movedFrom());
         }
 
+        /** 조문단위 하나만 담은 법령 본문 — 조문번호·가지번호 같은 필드 단위 케이스용. */
+        private List<Article> parseSingle(Map<String, Object> articleUnit) {
+            Map<String, Object> root = lawRoot();
+            root.put("조문", Map.of("조문단위", List.of(articleUnit)));
+            return normalizer.parseArticles(root);
+        }
+
+        @Test
+        void 조문가지번호가_있으면_조문번호에_의를_붙인다() {
+            Article article = parseSingle(Map.of("조문번호", "105", "조문가지번호", "2",
+                    "조문제목", "허가 유효기간 및 재허가", "조문여부", "조문", "조문변경여부", "Y")).get(0);
+
+            assertEquals("105의2", article.no());
+            assertEquals("제105조의2", article.label());
+        }
+
+        @Test
+        void 조문가지번호가_없거나_0이면_조문번호를_그대로_둔다() {
+            Map<String, Object> base = Map.of("조문번호", "105", "조문제목", "저작권위탁관리업의 허가 등",
+                    "조문여부", "조문", "조문변경여부", "Y");
+
+            assertEquals("105", parseSingle(base).get(0).no());
+            for (String noBranch : List.of("0", "00", "", " ")) {
+                Map<String, Object> unit = new LinkedHashMap<>(base);
+                unit.put("조문가지번호", noBranch);
+                assertEquals("105", parseSingle(unit).get(0).no(), "가지번호 '" + noBranch + "' 는 가지 없음이다");
+                assertEquals("제105조", parseSingle(unit).get(0).label());
+            }
+        }
+
+        @Test
+        void 본조와_가지조는_같은_번호로_겹치지_않는다() {
+            Map<String, Object> root = lawRoot();
+            root.put("조문", Map.of("조문단위", List.of(
+                    Map.of("조문번호", "105", "조문제목", "본조", "조문여부", "조문", "조문변경여부", "Y"),
+                    Map.of("조문번호", "105", "조문가지번호", "2", "조문제목", "가지 2", "조문여부", "조문", "조문변경여부", "Y"),
+                    Map.of("조문번호", "105", "조문가지번호", "4", "조문제목", "가지 4", "조문여부", "조문", "조문변경여부", "Y"))));
+
+            List<Article> articles = normalizer.parseArticles(root);
+
+            assertEquals(List.of("105", "105의2", "105의4"), articles.stream().map(Article::no).toList());
+        }
+
         @Test
         void 신설_삭제는_판정하지_않는다() {
             // 기준선 없이는 알 수 없다 — Diff Builder 가 조문번호 대조로 확정한다.
