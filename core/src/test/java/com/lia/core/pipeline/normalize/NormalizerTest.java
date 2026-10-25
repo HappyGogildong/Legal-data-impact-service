@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import com.lia.core.domain.law.Addendum;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
+import com.lia.core.pipeline.connector.LawEnvelope;
 import com.lia.core.pipeline.connector.RawLaw;
 
 /**
@@ -93,6 +94,18 @@ class NormalizerTest {
         @Test
         void 중첩_객체로_오는_소관부처를_평탄화한다() {
             assertEquals("국토교통부", normalizer.normalize(rawPending()).ministry());
+        }
+
+        @Test
+        void 소관부처에_부처_코드가_함께_와도_이름만_남긴다() {
+            Map<String, Object> root = lawRoot();
+            Map<String, Object> info = new LinkedHashMap<>(LawEnvelope.basicInfo(root));
+            info.put("소관부처", Map.of("content", "국토교통부", "소관부처코드", "1613000"));
+            root.put("기본정보", info);
+            RawLaw raw = new RawLaw("001809", "283191", "주택법", "시행예정",
+                    LocalDate.of(2026, 8, 4), LocalDate.of(2026, 2, 3), "21323", root);
+
+            assertEquals("국토교통부", normalizer.normalize(raw).ministry());
         }
 
         @Test

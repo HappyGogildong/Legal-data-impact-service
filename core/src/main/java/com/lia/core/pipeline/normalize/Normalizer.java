@@ -90,7 +90,7 @@ public class Normalizer {
                 status(raw.status()),
                 amendKind(LawEnvelope.flatString(info.get("제개정구분"))),
                 lawType(LawEnvelope.flatString(info.get("법종구분"))),
-                LawEnvelope.flatString(info.get("소관부처")),          // ⚠️ 중첩 객체 → 평탄화
+                ministryName(info.get("소관부처")),                    // ⚠️ 중첩 객체 — 이름만
                 firstNonNull(raw.promulgateDate(), LawEnvelope.date(info.get("공포일자"))),
                 promulgateNo,
                 firstNonNull(raw.effectiveDate(), LawEnvelope.date(info.get("시행일자"))),
@@ -107,6 +107,18 @@ public class Normalizer {
                 Instant.now());
 
         return law.withRevision(computeRevision(law));
+    }
+
+    /**
+     * 소관부처는 API 가 {@code {"content": 부처명, "소관부처코드": 코드}} 로 중첩해 보낸다.
+     * 전부 평탄화하면 부처명과 코드가 줄바꿈으로 이어져("국토교통부" + 줄바꿈 + "1613000") 코드가 섞이므로 {@code content} 만 쓴다.
+     */
+    private static String ministryName(Object node) {
+        if (node instanceof Map<?, ?> map && map.get("content") != null) {
+            String name = String.valueOf(map.get("content")).strip();
+            return name.isEmpty() ? null : name;
+        }
+        return LawEnvelope.flatString(node);
     }
 
     // --- 조문 -----------------------------------------------------------
