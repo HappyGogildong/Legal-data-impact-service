@@ -98,7 +98,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 자주 찾는 법령(하위 프로젝트 2/7, D66): 조회 1회 = S05 상세 방문(브라우저 조회 신호·탭당 1회) + 분석 해소 · `law_views_daily`(V8, 서울 날짜별 횟수만) · `GET /api/v1/laws/trending`(day·week·month, `previousRank`) · `POST …/views`(CSRF 예외) · 웹 홈 이번 주 5개·S06 탭 곧 시행·자주 찾는 | ✅ 단위·통합·웹 슬라이스·E2E(모의 API). 요청 빈도 제한·분야 필터는 후속 |
 | 웹 프론트엔드 (#14) — 화면 계획 [[screen-plan]](S01~S16: 질문 중심 + 법령 상세 허브, 모바일 우선, 법령 맥락 후속 질문, 대응 방안 상황 확인, 4단계 구현) · 기술 스택 [[frontend-stack]](D64: Next.js on Vercel + rewrites, Tailwind·shadcn/ui, OpenAPI 타입 생성) · 시각 디자인 [[visual-design]](방향 A 신뢰·공공형, 화면 시안 S01~S16) | 🟡 화면 계획·스택·시안 확정. 1단계(익명·로그인 흐름) 구현됨. 2단계는 하위 프로젝트로 — ①법령 조회 ✅ → ②자주 찾는 법령 ✅ → ③Layer B → ④법령 발견 → ⑤상황 확인 → ⑥이력·북마크 → ⑦구독·알림함 |
 
-`./gradlew test --rerun-tasks` 기준 `tests=382 skipped=6 failures=0 errors=0`(2026-10-25) — 통합(실 Postgres/pgvector, Testcontainers) 포함, 전부 통과. skip 6건은 실 임베딩·번역·해석 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
+`./gradlew test --rerun-tasks` 기준 `tests=396 skipped=6 failures=0 errors=0`(2026-10-26) — 통합(실 Postgres/pgvector, Testcontainers) 포함, 전부 통과. skip 6건은 실 임베딩·번역·해석 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
 
 > ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 
