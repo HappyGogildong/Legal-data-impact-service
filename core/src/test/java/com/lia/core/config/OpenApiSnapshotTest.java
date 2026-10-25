@@ -50,6 +50,7 @@ class OpenApiSnapshotTest {
         assertEquals(saved, current,
                 "API 계약이 바뀌었다 — 의도한 변경이면 OPENAPI_UPDATE=true 로 스냅샷을 갱신하고 웹 타입을 재생성하라");
         assertTrue(current.contains("/api/v1/analyses") && current.contains("/api/v1/data-status"));
+        assertTrue(current.contains("/api/v1/laws/{lawId}/{effectiveDate}") && current.contains("LawDetailResponse"));
         assertTrue(current.contains("AnalysisApiResponse"));
     }
 }
