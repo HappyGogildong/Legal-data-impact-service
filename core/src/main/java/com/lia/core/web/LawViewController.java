@@ -3,12 +3,14 @@ package com.lia.core.web;
 import java.time.DateTimeException;
 import java.time.LocalDate;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lia.core.store.LawViewStore;
@@ -45,12 +47,13 @@ public class LawViewController {
 
     /** S05 조회 신호 — 횟수 +1(서울 오늘). 누가 봤는지는 남기지 않는다(D41). */
     @PostMapping("/{lawId}/{effectiveDate}/views")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> recordView(@PathVariable String lawId, @PathVariable String effectiveDate) {
         LocalDate date;
         try {
             date = LocalDate.parse(effectiveDate);
         } catch (DateTimeException e) {
-            throw new IllegalArgumentException("effectiveDate 는 YYYY-MM-DD 형식이어야 합니다.");
+            throw new IllegalArgumentException("effectiveDate 는 YYYY-MM-DD 형식이어야 합니다.", e);
         }
         if (!views.record(lawId, date)) {
             throw new LawNotFoundException(lawId + "@" + effectiveDate);

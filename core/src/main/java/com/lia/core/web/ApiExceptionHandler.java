@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.lia.core.application.account.AccountNotFoundException;
 import com.lia.core.application.profile.ConsentRequiredException;
@@ -21,6 +22,13 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> badRequest(IllegalArgumentException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", "bad_request", "message", e.getMessage()));
+    }
+
+    /** 쿼리·경로 파라미터 형식 오류(예: limit=abc) — 원문 값은 싣지 않고 파라미터 이름만 알린다. */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> parameterTypeMismatch(MethodArgumentTypeMismatchException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", "bad_request", "message", e.getName() + " 값이 올바르지 않습니다."));
     }
 
     /** 현재 처리방침 버전의 프로필 동의 없이 수정 — 409(403 은 CSRF 실패와 구분되지 않아 쓰지 않는다, D61). */

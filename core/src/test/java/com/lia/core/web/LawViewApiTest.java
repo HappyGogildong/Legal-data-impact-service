@@ -36,7 +36,8 @@ class LawViewApiTest {
                 .andExpect(jsonPath("$.window").value("week"))
                 .andExpect(jsonPath("$.items[0].rank").value(1))
                 .andExpect(jsonPath("$.items[0].lawId").value("001809"))
-                .andExpect(jsonPath("$.items[0].views").value(12));
+                .andExpect(jsonPath("$.items[0].views").value(12))
+                .andExpect(jsonPath("$.items[0].previousRank").value(org.hamcrest.Matchers.nullValue()));
         mvc.perform(get("/api/v1/laws/trending").param("window", "month").param("limit", "50"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.window").value("month"));
@@ -48,12 +49,22 @@ class LawViewApiTest {
         List<MockHttpServletRequestBuilder> bad = List.of(
                 get("/api/v1/laws/trending").param("window", "year"),
                 get("/api/v1/laws/trending").param("limit", "0"),
-                get("/api/v1/laws/trending").param("limit", "51"));
+                get("/api/v1/laws/trending").param("limit", "51"),
+                get("/api/v1/laws/trending").param("limit", "abc"));
         for (MockHttpServletRequestBuilder request : bad) {
             mvc.perform(request)
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error").value("bad_request"));
         }
+    }
+
+    @Test
+    @DisplayName("순위 — 숫자가 아닌 limit 은 파라미터 이름만 알리고 입력 원문은 싣지 않는다")
+    void 순위_형식오류_메시지() throws Exception {
+        mvc.perform(get("/api/v1/laws/trending").param("limit", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("bad_request"))
+                .andExpect(jsonPath("$.message").value("limit 값이 올바르지 않습니다."));
     }
 
     @Test

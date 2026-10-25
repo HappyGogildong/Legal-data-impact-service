@@ -79,6 +79,8 @@ class SecurityConfigTest {
         @PostMapping("/api/v1/analyses") String analyze() { return "ok"; }
         @PostMapping("/api/v1/laws/001809/2026-11-01/views") String view() { return "ok"; }
         @PutMapping("/api/v1/laws/001809/2026-11-01/views") String viewPut() { return "ok"; }
+        @PostMapping("/api/v1/laws/001809/views") String shortPath() { return "ok"; }
+        @PostMapping("/api/v1/laws/001809/2026-11-01/x/views") String longPath() { return "ok"; }
         @GetMapping("/api/v1/laws/001809") String law() { return "ok"; }
         @GetMapping("/api/v1/unmapped-rule") String unmapped() { return "ok"; }
         @GetMapping("/actuator/health") String health() { return "ok"; }
@@ -183,6 +185,13 @@ class SecurityConfigTest {
     void 익명_조회신호_CSRF예외() throws Exception {
         mvc.perform(post("/api/v1/laws/001809/2026-11-01/views")).andExpect(status().isOk());
         mvc.perform(put("/api/v1/laws/001809/2026-11-01/views")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("CSRF 예외의 * 는 한 구간만 — 구간 수가 다른 /views 경로는 CSRF 토큰이 필요(403)")
+    void 조회신호_예외_경계() throws Exception {
+        mvc.perform(post("/api/v1/laws/001809/views")).andExpect(status().isForbidden());
+        mvc.perform(post("/api/v1/laws/001809/2026-11-01/x/views")).andExpect(status().isForbidden());
     }
 
     @Test
