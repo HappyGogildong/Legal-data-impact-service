@@ -80,6 +80,12 @@ related: ["product/screen-plan.md", "backend/cloud-infra.md", "mvp/service-api-s
 | 글꼴 | Pretendard(jsDelivr 동적 서브셋 CSS), 실패 시 시스템 글꼴 | [[visual-design]] §2 |
 | 프록시 제한 시간 | `experimental.proxyTimeout` 120초 — 로컬 Next rewrites 기본 30초가 분석 요청보다 짧다 | Vercel 상한(120초)과 같게 |
 | 환경변수 | `LIA_API_ORIGIN` — rewrites 목적지(로컬 기본 `http://localhost:8080`, 운영 `https://api.<도메인>`). **빌드 시점에 읽힌다**(rewrites 가 빌드 결과에 고정) — Vercel 은 Build 환경에도 설정해야 하고, 운영 빌드에서 비어 있으면 빌드를 실패시킨다 | §2 |
+| 로그인 복귀 | 로그인을 시작하는 곳이 돌아올 경로를 탭 sessionStorage(`lia.returnTo`, 같은 출처 경로만)에 둔다. 백엔드가 보내는 `/login/done`이 동의 상태를 보고 `/consent`(동의 없음·옛 버전) 또는 그 경로로 보낸다. 첫 동의 뒤엔 `/profile`을 거친다 | [[screen-plan]] S07 "원래 화면으로". OAuth 왕복에도 같은 탭의 sessionStorage는 남는다 |
+| 로그인 상태 | `GET /api/v1/account` — 401이면 익명. 보호 화면(`/consent`·`/profile`·`/me`)은 익명이면 `/login`으로, 작업 중 401은 "다시 로그인" 대화상자(S16) | 계정 API가 상태 확인 겸용([[AccountApi]]) |
+| 재동의 | 프로필 저장이 409면 화면을 떠나지 않고 대화상자에서 동의 후 저장을 다시 시도. 재동의도 만 14세 확인을 함께 받는다(API가 매번 요구) | 입력한 값을 잃지 않게 |
+| 프로필 선택지 | `web/src/lib/profile-options.json` 한 곳 — 백엔드 `ProfileOptionsSyncTest`가 enum 라벨과 같은지 확인 | [[screen-plan]] S09 "프런트 상수, enum 변경 시 함께" |
+| 내 영향 안내 | `PROFILE_REQUIRED` 카드는 상태별 행동 — 익명: 로그인 / 프로필 없음: 프로필 입력 / 프로필 있음: "곧 제공"(분석이 아직 프로필을 읽지 않는다, D60 슬라이스 ③) | 지키지 못할 약속을 하지 않는다 |
+| 알림 이메일 | 내 정보의 스위치는 수신 동의 저장만 — 발송은 S11(4단계). 화면에 "알림 기능은 곧 제공돼요" | — |
 
 ## 6. 다음
 - 시각 디자인·화면 시안 — [[visual-design]](방향 A 신뢰·공공형, 토큰, 레이아웃 규칙).
