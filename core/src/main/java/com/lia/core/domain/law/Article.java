@@ -29,6 +29,14 @@ public record Article(
 
     /** 인용 표기용 조문 라벨 — "제18조", 가지조는 "제105조의2" ({@code no} 가 "105의2" 일 때). */
     public String label() {
+        return labelOf(no);
+    }
+
+    /**
+     * 조문번호({@code no} 형식 — "18", "105의2") → 인용 표기. 이동 전·후 번호({@code movedFrom}·{@code movedTo})도
+     * 같은 형식이라 같은 표기를 쓴다. 번호가 없으면 빈 문자열.
+     */
+    public static String labelOf(String no) {
         if (no == null) return "";
         int branchAt = no.indexOf('의');
         return branchAt < 0 ? "제" + no + "조" : "제" + no.substring(0, branchAt) + "조" + no.substring(branchAt);

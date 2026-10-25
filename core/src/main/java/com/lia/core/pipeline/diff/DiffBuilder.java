@@ -91,7 +91,7 @@ public class DiffBuilder {
     }
 
     private String renderMoved(Article a, Article base) {
-        String head = "[이동] 제" + orQ(a.movedFrom()) + "조 → " + a.label();
+        String head = "[이동] " + Article.labelOf(orQ(a.movedFrom())) + " → " + a.label();
         if (base == null) {
             return head;
         }

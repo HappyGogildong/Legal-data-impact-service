@@ -234,8 +234,49 @@ class NormalizerTest {
                     "조문이동이전", "005600", "조문이동이후", "000000")).get(0);
 
             assertEquals(Article.ChangeType.이동, article.changeType());
-            assertEquals("005600", article.movedFrom());
+            assertEquals("56", article.movedFrom());
             assertNull(article.movedTo());
+        }
+
+        @Test
+        void 이동_값_6자리는_조문번호_형식으로_바꾼다() {
+            // 실측: 4자리 조문번호 + 2자리 가지번호 — 000703 은 제7조의3, 005600 은 제56조.
+            Article article = parseSingle(Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "000703", "조문이동이후", "005600")).get(0);
+
+            assertEquals(Article.ChangeType.이동, article.changeType());
+            assertEquals("7의3", article.movedFrom());
+            assertEquals("56", article.movedTo());
+            assertEquals("제7조의3", Article.labelOf(article.movedFrom()));
+        }
+
+        @Test
+        void 이동_값이_6자리가_아니면_그대로_둔다() {
+            Article article = parseSingle(Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "56", "조문이동이후", "7의3")).get(0);
+
+            assertEquals("56", article.movedFrom());
+            assertEquals("7의3", article.movedTo());
+        }
+
+        @Test
+        void 이동_값이_바뀌면_revision이_바뀐다() {
+            // 이미 저장된 행(원값 000703)이 재적재에서 다시 쓰이려면 revision 에 이동 값이 들어가야 한다.
+            // 이동 여부(changeType)·본문은 같고 이동 값만 다르다.
+            Map<String, Object> fromSeventhThird = Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "000703");
+            Map<String, Object> fromSeventhFourth = Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "000704");
+
+            assertNotEquals(revisionOf(fromSeventhThird), revisionOf(fromSeventhFourth));
+        }
+
+        private String revisionOf(Map<String, Object> articleUnit) {
+            Map<String, Object> root = lawRoot();
+            root.put("조문", Map.of("조문단위", List.of(articleUnit)));
+            RawLaw raw = new RawLaw("001809", "283191", "주택법", "시행예정",
+                    LocalDate.of(2026, 8, 4), LocalDate.of(2026, 2, 3), "21323", root);
+            return normalizer.normalize(raw).revision();
         }
 
         @Test

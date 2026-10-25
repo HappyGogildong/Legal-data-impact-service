@@ -108,6 +108,18 @@ class DiffBuilderTest {
         }
 
         @Test
+        @DisplayName("가지조에서 옮겨 온 조문은 이동 표기에도 가지번호를 붙인다")
+        void 이동_표기에_가지번호를_붙인다() {
+            Law p = pending(List.of(moved("57", "7의3", "제57조 이동된 내용.")));
+            Law b = baseline(List.of(art("7의3", "제7조의3 원래 내용.", false, ChangeType.없음)));
+
+            Article r = diffBuilder.build(p, b).article("57");
+
+            assertTrue(r.diffVsCurrent().contains("제7조의3 → 제57조"), r.diffVsCurrent());
+            assertTrue(r.diffVsCurrent().contains("현행: 제7조의3 원래 내용."), r.diffVsCurrent());
+        }
+
+        @Test
         @DisplayName("플래그는 Y인데 자구가 동일하면 개정으로 두되 표기한다")
         void 자구가_동일하면_표기한다() {
             Law p = pending(List.of(art("28", "제28조  동일  본문.", true, ChangeType.개정)));
