@@ -11,6 +11,11 @@ export function seoulDate(now: Date): string {
   }).format(now);
 }
 
+/** 서울 기준 오늘 — 서버 렌더링용(요청 시점에 부른다: `await connection()` 뒤). 브라우저 컴포넌트는 `useToday`. */
+export function seoulToday(): string {
+  return seoulDate(new Date());
+}
+
 /** 시행일까지 남은 날 — 오늘이 시행일이면 0, 지났으면 음수. 두 값 모두 "YYYY-MM-DD". */
 export function daysUntil(effectiveDate: string, today: string): number {
   return Math.round((Date.parse(effectiveDate) - Date.parse(today)) / DAY_MS);

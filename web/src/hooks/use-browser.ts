@@ -37,3 +37,15 @@ export function useHydrated(): boolean {
     () => false,
   );
 }
+
+/** 주소의 #조각(예: "#art-18") — 서버·하이드레이션 중엔 "". 해시가 바뀌면 다시 그린다. */
+export function useHash(): string {
+  return useSyncExternalStore(
+    (onChange) => {
+      window.addEventListener("hashchange", onChange);
+      return () => window.removeEventListener("hashchange", onChange);
+    },
+    () => window.location.hash,
+    () => "",
+  );
+}
