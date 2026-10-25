@@ -36,7 +36,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-      <div className="mx-auto grid max-w-[1120px] gap-2.5 px-4 pt-5 empty:hidden md:grid-cols-2">
+      <div className="mx-auto grid max-w-[1120px] gap-2.5 px-4 pt-5 empty:hidden md:grid-cols-2 md:[&>section:only-child]:col-span-2">
         <Suspense fallback={null}>
           <UpcomingLaws />
         </Suspense>

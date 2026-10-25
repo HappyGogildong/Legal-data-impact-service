@@ -34,7 +34,7 @@ describe("TrendingLawList", () => {
       "href",
       "/laws/001809/2026-11-03",
     );
-    expect(screen.getByText("▲2")).toBeInTheDocument();
+    expect(screen.getByText("▲2")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByText("2계단 올랐어요")).toHaveClass("sr-only");
     expect(screen.getByText("NEW")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "전체 보기" })).toHaveAttribute(
