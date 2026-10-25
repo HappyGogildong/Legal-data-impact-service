@@ -128,8 +128,8 @@ public class Normalizer {
         for (Map<String, Object> a : LawEnvelope.articles(lawRoot)) {
             boolean isArticle = "조문".equals(LawEnvelope.str(a.get("조문여부")));
             boolean changed = "Y".equalsIgnoreCase(String.valueOf(a.get("조문변경여부")));
-            String movedFrom = LawEnvelope.str(a.get("조문이동이전"));
-            String movedTo = LawEnvelope.str(a.get("조문이동이후"));
+            String movedFrom = movedArticleNo(a.get("조문이동이전"));
+            String movedTo = movedArticleNo(a.get("조문이동이후"));
 
             out.add(new Article(
                     articleNo(a),
@@ -144,6 +144,15 @@ public class Normalizer {
                     null));                                 // diffVsCurrent — Diff Builder 가 채움
         }
         return out;
+    }
+
+    /**
+     * 조문이동이전·이후 — 이동이 없는 조문에도 API 가 "000000" 자리표시를 채워 보낸다.
+     * 그대로 두면 변경 조문이 전부 이동으로 분류되므로, 0 으로만 된 값은 없는 값(null)으로 본다.
+     */
+    private static String movedArticleNo(Object value) {
+        String moved = LawEnvelope.str(value);
+        return isZeroOrBlank(moved) ? null : moved;
     }
 
     /**

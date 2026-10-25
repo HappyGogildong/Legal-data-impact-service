@@ -204,6 +204,40 @@ class NormalizerTest {
         }
 
         @Test
+        void 이동_자리표시_000000은_이동으로_보지_않는다() {
+            // 실측: 변경 조문이면 전부 "000000" 이 채워져 와서 모두 이동으로 오인됐다.
+            Article article = parseSingle(Map.of("조문번호", "18", "조문제목", "사업계획의 통합심의 등",
+                    "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "000000", "조문이동이후", "000000")).get(0);
+
+            assertEquals(Article.ChangeType.개정, article.changeType());
+            assertNull(article.movedFrom());
+            assertNull(article.movedTo());
+        }
+
+        @Test
+        void 이동_값이_공백이거나_0으로만_이뤄져도_없는_값이다() {
+            for (String placeholder : List.of("0", "000000", "", "  ")) {
+                Article article = parseSingle(Map.of("조문번호", "18", "조문여부", "조문", "조문변경여부", "Y",
+                        "조문이동이전", placeholder, "조문이동이후", placeholder)).get(0);
+
+                assertEquals(Article.ChangeType.개정, article.changeType(), "'" + placeholder + "'");
+                assertNull(article.movedFrom());
+                assertNull(article.movedTo());
+            }
+        }
+
+        @Test
+        void 한쪽만_실제_이동값이면_이동이고_자리표시쪽은_null이다() {
+            Article article = parseSingle(Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "005600", "조문이동이후", "000000")).get(0);
+
+            assertEquals(Article.ChangeType.이동, article.changeType());
+            assertEquals("005600", article.movedFrom());
+            assertNull(article.movedTo());
+        }
+
+        @Test
         void 신설_삭제는_판정하지_않는다() {
             // 기준선 없이는 알 수 없다 — Diff Builder 가 조문번호 대조로 확정한다.
             Law law = normalizer.normalize(rawPending());
