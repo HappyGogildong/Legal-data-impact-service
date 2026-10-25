@@ -147,7 +147,7 @@ BASE  /api/v1
 }
 ```
 
-**미해소 응답** — 해소가 `RESOLVED`가 아니면 **분석하지 않고** 4상태를 그대로 답으로 돌려준다(§3.1과 동일 스키마의 `resolution`/`candidates`/`message`). 대화적으로 "그 법을 못 찾았어요"로 노출된다.
+**미해소 응답** — 해소가 `RESOLVED`가 아니면 **분석하지 않고** 4상태를 그대로 답으로 돌려준다(아래 예시의 `resolution`/`candidates`/`message`). 대화적으로 "그 법을 못 찾았어요"로 노출된다.
 
 ```jsonc
 { "resolution": "AMBIGUOUS", "message": "여러 후보가 있어요.",
