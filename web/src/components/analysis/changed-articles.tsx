@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -35,6 +36,19 @@ export function ChangedArticles({
   compare = true,
 }: ChangedArticlesProps) {
   const hash = useHash();
+  const linkedAnchor = anchored
+    ? (articles
+        .map((article) =>
+          article.sourceId ? sourceAnchor(article.sourceId) : null,
+        )
+        .find((anchor) => anchor !== null && hash === `#${anchor}`) ?? null)
+    : null;
+  // 본문이 스트리밍으로 늦게 오면 브라우저의 기본 앵커 이동이 이미 지나가 있다 — 주소의 조문으로 직접 스크롤한다.
+  useEffect(() => {
+    if (linkedAnchor) {
+      document.getElementById(linkedAnchor)?.scrollIntoView({ block: "start" });
+    }
+  }, [linkedAnchor]);
   if (articles.length === 0) return null;
   return (
     <div>

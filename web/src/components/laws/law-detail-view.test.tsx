@@ -147,10 +147,17 @@ describe("LawDetailView", () => {
     expect(screen.getByText("현행")).toBeInTheDocument();
   });
 
-  it("주소가 #art-18 이면 그 조문이 펼쳐져 있다", () => {
+  it("주소가 #art-18 이면 그 조문이 펼쳐져 있고 그 위치로 스크롤한다", () => {
+    // 본문이 스트리밍으로 늦게 오면 브라우저의 기본 앵커 이동이 지나가 버린다 — 직접 스크롤해야 한다
+    const scrolled: Element[] = [];
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this);
+    };
     window.location.hash = "#art-18";
     renderDetail();
     expect(screen.getByText("현행")).toBeInTheDocument();
+    expect(scrolled).toEqual([document.getElementById("art-18")]);
+    delete (Element.prototype as Partial<Element>).scrollIntoView; // jsdom 엔 원래 없다
   });
 
   it("시행예정본이 여럿이면 시행일 선택 링크", () => {
