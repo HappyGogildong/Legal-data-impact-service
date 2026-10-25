@@ -1,6 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
-/** 주요 흐름 E2E — 백엔드 없이 page.route 로 API 를 모의한다(frontend-stack §1). */
+const MOCK_API = "http://localhost:3199";
+
+/**
+ * 주요 흐름 E2E — 백엔드 없이. 브라우저 조회는 page.route 로, 서버 컴포넌트 조회(법령 화면)는
+ * 모의 API 서버(e2e/mock-api/server.mjs)로 모의한다(frontend-stack §5).
+ */
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
@@ -16,10 +21,18 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: "pnpm build && pnpm start -p 3100",
-    url: "http://localhost:3100",
-    reuseExistingServer: !process.env.CI,
-    timeout: 240_000,
-  },
+  webServer: [
+    {
+      command: "node e2e/mock-api/server.mjs",
+      url: `${MOCK_API}/health`,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: "pnpm build && pnpm start -p 3100",
+      url: "http://localhost:3100",
+      env: { LIA_API_ORIGIN: MOCK_API },
+      reuseExistingServer: !process.env.CI,
+      timeout: 240_000,
+    },
+  ],
 });
