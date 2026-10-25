@@ -5,7 +5,10 @@ import {
   isIsoDate,
   lawHref,
   monthDay,
+  parseLawTab,
   parseRange,
+  parseTrendingWindow,
+  rankChange,
   rangeBounds,
   safeExternalUrl,
   sourceAnchor,
@@ -79,5 +82,41 @@ describe("상태 배너", () => {
     expect(statusNotice("철회", "2026-08-04")?.title).toBe(
       "이 시행예정본은 철회되었어요",
     );
+  });
+});
+
+describe("자주 찾는 법령", () => {
+  it("탭·구간 파싱 — 모르는 값은 기본(곧 시행·이번 주)", () => {
+    expect(parseLawTab("trending")).toBe("trending");
+    expect(parseLawTab("x")).toBe("upcoming");
+    expect(parseLawTab(undefined)).toBe("upcoming");
+    expect(parseTrendingWindow("day")).toBe("day");
+    expect(parseTrendingWindow("month")).toBe("month");
+    expect(parseTrendingWindow("toString")).toBe("week");
+    expect(parseTrendingWindow(["day"])).toBe("week");
+  });
+
+  it("변화 표시 — 직전 순위 대비, 없으면 NEW, 글자로도 뜻을 준다", () => {
+    expect(rankChange(1, 3)).toEqual({
+      kind: "up",
+      text: "▲2",
+      label: "2계단 올랐어요",
+    });
+    expect(rankChange(4, 3)).toEqual({
+      kind: "down",
+      text: "▼1",
+      label: "1계단 내려갔어요",
+    });
+    expect(rankChange(2, 2)).toEqual({
+      kind: "same",
+      text: "–",
+      label: "순위 변동 없어요",
+    });
+    expect(rankChange(5, null)).toEqual({
+      kind: "new",
+      text: "NEW",
+      label: "새로 올랐어요",
+    });
+    expect(rankChange(5, undefined).kind).toBe("new");
   });
 });

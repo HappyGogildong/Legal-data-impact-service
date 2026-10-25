@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { TrendingLaws } from "@/components/laws/trending-laws";
 import { UpcomingLaws } from "@/components/laws/upcoming-laws";
 import { ExampleChips } from "@/components/question/example-chips";
 import { QuestionBox } from "@/components/question/question-box";
@@ -35,9 +36,12 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-      <div className="mx-auto max-w-[1120px] px-4 pt-5 empty:hidden">
+      <div className="mx-auto grid max-w-[1120px] gap-2.5 px-4 pt-5 empty:hidden md:grid-cols-2">
         <Suspense fallback={null}>
           <UpcomingLaws />
+        </Suspense>
+        <Suspense fallback={null}>
+          <TrendingLaws />
         </Suspense>
       </div>
       <section className="mx-auto grid max-w-[1120px] gap-2.5 px-4 py-5 md:grid-cols-3">
