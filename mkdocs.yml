@@ -129,6 +129,7 @@ nav:
       - web:
           - Analysis API: components/web/AnalysisApi.md
           - Data Status API (데이터 현황): components/web/DataStatusApi.md
+          - Law Catalog API (법령 목록·상세): components/web/LawCatalogApi.md
           - Profile API: components/web/ProfileApi.md
           - Consent API: components/web/ConsentApi.md
           - Account API: components/web/AccountApi.md

@@ -46,6 +46,9 @@ public class Normalizer {
     private static final Pattern ADDENDUM_CLAUSE =
             Pattern.compile("제(\\d+)조\\s*\\(([^)]*)\\)");
 
+    /** 조문 이동 값의 실제 형태 — 조문번호 4자리 + 가지번호 2자리. */
+    private static final Pattern MOVED_SIX_DIGITS = Pattern.compile("\\d{6}");
+
     /** 하위법령 위임 — 실질 영향이 시행령으로 넘어가는 지점. '정한다'와 '정하는' 은 겹치는 글자가 없어 둘 다 명시해야 한다. */
     private static final Pattern DELEGATION =
             Pattern.compile("[^.。\\n]*(?:대통령령|총리령|부령|[가-힣]+부령)으로\\s*정[하한][^.。\\n]*");
@@ -90,7 +93,7 @@ public class Normalizer {
                 status(raw.status()),
                 amendKind(LawEnvelope.flatString(info.get("제개정구분"))),
                 lawType(LawEnvelope.flatString(info.get("법종구분"))),
-                LawEnvelope.flatString(info.get("소관부처")),          // ⚠️ 중첩 객체 → 평탄화
+                ministryName(info.get("소관부처")),                    // ⚠️ 중첩 객체 — 이름만
                 firstNonNull(raw.promulgateDate(), LawEnvelope.date(info.get("공포일자"))),
                 promulgateNo,
                 firstNonNull(raw.effectiveDate(), LawEnvelope.date(info.get("시행일자"))),
@@ -109,6 +112,18 @@ public class Normalizer {
         return law.withRevision(computeRevision(law));
     }
 
+    /**
+     * 소관부처는 API 가 {@code {"content": 부처명, "소관부처코드": 코드}} 로 중첩해 보낸다.
+     * 전부 평탄화하면 부처명과 코드가 줄바꿈으로 이어져("국토교통부" + 줄바꿈 + "1613000") 코드가 섞이므로 {@code content} 만 쓴다.
+     */
+    private static String ministryName(Object node) {
+        if (node instanceof Map<?, ?> map && map.get("content") != null) {
+            String name = String.valueOf(map.get("content")).strip();
+            return name.isEmpty() ? null : name;
+        }
+        return LawEnvelope.flatString(node);
+    }
+
     // --- 조문 -----------------------------------------------------------
 
     public List<Article> parseArticles(Map<String, Object> lawRoot) {
@@ -116,11 +131,11 @@ public class Normalizer {
         for (Map<String, Object> a : LawEnvelope.articles(lawRoot)) {
             boolean isArticle = "조문".equals(LawEnvelope.str(a.get("조문여부")));
             boolean changed = "Y".equalsIgnoreCase(String.valueOf(a.get("조문변경여부")));
-            String movedFrom = LawEnvelope.str(a.get("조문이동이전"));
-            String movedTo = LawEnvelope.str(a.get("조문이동이후"));
+            String movedFrom = movedArticleNo(a.get("조문이동이전"));
+            String movedTo = movedArticleNo(a.get("조문이동이후"));
 
             out.add(new Article(
-                    LawEnvelope.str(a.get("조문번호")),
+                    articleNo(a),
                     LawEnvelope.str(a.get("조문제목")),
                     mergeArticleText(a),                    // ★ 항/호/목 재귀 병합
                     changed,
@@ -132,6 +147,39 @@ public class Normalizer {
                     null));                                 // diffVsCurrent — Diff Builder 가 채움
         }
         return out;
+    }
+
+    /**
+     * 조문이동이전·이후 — 이동이 없는 조문에도 API 가 "000000" 자리표시를 채워 보낸다.
+     * 그대로 두면 변경 조문이 전부 이동으로 분류되므로, 0 으로만 된 값은 없는 값(null)으로 본다.
+     *
+     * <p>실제 이동 값은 6자리다 — 앞 4자리 조문번호 + 뒤 2자리 가지번호("000703" = 제7조의3, "005600" = 제56조).
+     * 하류가 조문번호({@code Article.no}) 와 맞춰 보도록 같은 형식("7의3", "56")으로 바꾼다. 6자리가 아니면 그대로 둔다.
+     */
+    private static String movedArticleNo(Object value) {
+        String moved = LawEnvelope.str(value);
+        if (isZeroOrBlank(moved)) return null;
+        if (!MOVED_SIX_DIGITS.matcher(moved).matches()) return moved;
+        int mainNo = Integer.parseInt(moved.substring(0, 4));
+        int branchNo = Integer.parseInt(moved.substring(4));
+        return branchNo == 0 ? String.valueOf(mainNo) : mainNo + "의" + branchNo;
+    }
+
+    /**
+     * 조문번호 — 가지조는 {@code 조문번호} 가 본조와 같고 가지 번호가 {@code 조문가지번호} 로 따로 온다.
+     * 제105조·제105조의2·제105조의4 가 모두 {@code 조문번호="105"} 라서, 가지번호를 버리면
+     * 번호·인용키·대조가 전부 겹친다. 가지가 없으면 빈 값 또는 "0" 으로 오므로 그때는 본조 번호만 쓴다.
+     */
+    private static String articleNo(Map<String, Object> article) {
+        String no = LawEnvelope.str(article.get("조문번호"));
+        String branch = LawEnvelope.str(article.get("조문가지번호"));
+        if (no == null || isZeroOrBlank(branch)) return no;
+        return no + "의" + branch;
+    }
+
+    /** 비었거나 "0"·"00"·"000000" 처럼 0 으로만 된 값 — API 가 "없음" 을 이렇게 채워 보낸다. */
+    private static boolean isZeroOrBlank(String value) {
+        return value == null || value.chars().allMatch(c -> c == '0');
     }
 
     /**
@@ -273,6 +321,8 @@ public class Normalizer {
             sb.append(nz(a.no())).append(':')
               .append(a.changed()).append(':')
               .append(a.changeType()).append(':')
+              .append(nz(a.movedFrom())).append(':')
+              .append(nz(a.movedTo())).append(':')
               .append(nz(a.text())).append(SEP);
         }
         return sha256Hex(sb.toString()).substring(0, 16);

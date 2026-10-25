@@ -25,3 +25,11 @@ export type NotificationEmailConsent =
   components["schemas"]["NotificationEmailConsent"];
 export type Profile = components["schemas"]["ProfileResponse"];
 export type ProfileInput = components["schemas"]["ProfileApiRequest"];
+
+export type LawListPage = components["schemas"]["LawListPage"];
+export type LawListItem = NonNullable<LawListPage["items"]>[number];
+export type LawVersions = components["schemas"]["LawVersions"];
+export type UpcomingVersion = NonNullable<LawVersions["pending"]>[number];
+export type LawDetail = components["schemas"]["LawDetailResponse"];
+export type ChangedArticle = NonNullable<LawDetail["changedArticles"]>[number];
+export type SourceText = NonNullable<LawDetail["addenda"]>[number];

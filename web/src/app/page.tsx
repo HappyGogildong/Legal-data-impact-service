@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { UpcomingLaws } from "@/components/laws/upcoming-laws";
 import { ExampleChips } from "@/components/question/example-chips";
 import { QuestionBox } from "@/components/question/question-box";
 
@@ -33,6 +35,11 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      <div className="mx-auto max-w-[1120px] px-4 pt-5 empty:hidden">
+        <Suspense fallback={null}>
+          <UpcomingLaws />
+        </Suspense>
+      </div>
       <section className="mx-auto grid max-w-[1120px] gap-2.5 px-4 py-5 md:grid-cols-3">
         {PROMISES.map((promise) => (
           <div

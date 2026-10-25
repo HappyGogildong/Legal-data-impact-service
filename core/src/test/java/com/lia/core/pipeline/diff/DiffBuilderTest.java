@@ -108,6 +108,18 @@ class DiffBuilderTest {
         }
 
         @Test
+        @DisplayName("가지조에서 옮겨 온 조문은 이동 표기에도 가지번호를 붙인다")
+        void 이동_표기에_가지번호를_붙인다() {
+            Law p = pending(List.of(moved("57", "7의3", "제57조 이동된 내용.")));
+            Law b = baseline(List.of(art("7의3", "제7조의3 원래 내용.", false, ChangeType.없음)));
+
+            Article r = diffBuilder.build(p, b).article("57");
+
+            assertTrue(r.diffVsCurrent().contains("제7조의3 → 제57조"), r.diffVsCurrent());
+            assertTrue(r.diffVsCurrent().contains("현행: 제7조의3 원래 내용."), r.diffVsCurrent());
+        }
+
+        @Test
         @DisplayName("플래그는 Y인데 자구가 동일하면 개정으로 두되 표기한다")
         void 자구가_동일하면_표기한다() {
             Law p = pending(List.of(art("28", "제28조  동일  본문.", true, ChangeType.개정)));
@@ -150,6 +162,24 @@ class DiffBuilderTest {
             assertNull(r.article("2").diffVsCurrent(), "미변경 조문은 대조하지 않는다");
             assertEquals(ChangeType.없음, r.article("2").changeType());
             assertNotNull(r.article("18").diffVsCurrent());
+        }
+
+        @Test
+        @DisplayName("제목 행은 본문 조문과 번호가 같아도 대조하지 않고, 기준선 조회도 실조문만 본다")
+        void 제목_행과_번호가_겹쳐도_실조문으로_대조한다() {
+            Article heading = new Article("18", "총칙", "제3장 사업계획", true, ChangeType.개정,
+                    null, null, null, false, null);
+            Law p = pending(List.of(heading, art("18", "제18조 개정.", true, ChangeType.개정)));
+            Law b = baseline(List.of(
+                    new Article("18", "총칙", "제3장 사업계획", false, ChangeType.없음, null, null, null, false, null),
+                    art("18", "제18조 현행.", false, ChangeType.없음)));
+
+            Law r = diffBuilder.build(p, b);
+
+            assertNull(r.articles().get(0).diffVsCurrent(), "제목 행은 대조하지 않는다");
+            Article real = r.article("18");
+            assertEquals(ChangeType.개정, real.changeType());
+            assertTrue(real.diffVsCurrent().contains("현행: 제18조 현행."), "기준선도 실조문으로 찾아야 한다");
         }
 
         @Test

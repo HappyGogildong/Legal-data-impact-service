@@ -1,6 +1,9 @@
 package com.lia.core.web;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +15,10 @@ import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.application.profile.ProfileUseCase;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.config.SecurityConfig;
+import com.lia.core.domain.law.Law;
 import com.lia.core.store.DataStatusStore;
+import com.lia.core.store.LawCatalogStore;
+import com.lia.core.store.LawSource;
 import com.lia.core.testsupport.InMemoryAccountStore;
 import com.lia.core.testsupport.InMemoryUserProfileStore;
 
@@ -29,11 +35,13 @@ import com.lia.core.testsupport.InMemoryUserProfileStore;
 @EnableWebSecurity
 @Import({SecurityConfig.class, ApiExceptionHandler.class,
         ProfileController.class, ConsentController.class, AccountController.class,
-        DataStatusController.class})
+        DataStatusController.class, LawController.class})
 class ApiSliceTestConfig {
 
     static final String POLICY = "v-test";
     static final OffsetDateTime STATUS_UPDATED_AT = OffsetDateTime.parse("2026-10-23T04:12:00+09:00");
+    static final LocalDate LAW_EFFECTIVE = LocalDate.of(2026, 11, 1);
+    static final LocalDate LAW_BASELINE = LocalDate.of(2020, 1, 1);
 
     @Bean
     InMemoryUserProfileStore userProfileStore() {
@@ -69,5 +77,48 @@ class ApiSliceTestConfig {
                 return new DataStatus(STATUS_UPDATED_AT, 912);
             }
         };
+    }
+
+    /** DB 없이 고정 목록·시행예정본 목록(웹 슬라이스는 HTTP·검증·인가만 본다). */
+    @Bean
+    LawCatalogStore lawCatalogStore() {
+        return new LawCatalogStore(null) {
+            @Override
+            public LawListPage listPending(LocalDate from, LocalDate to, Cursor after, int limit) {
+                return new LawListPage(List.of(new LawListItem(
+                        "001809", "주택법", LAW_EFFECTIVE, "법률", "국토교통부", "일부개정")), "next-cursor");
+            }
+
+            @Override
+            public Optional<LawVersions> versions(String lawId) {
+                if (!"001809".equals(lawId)) return Optional.empty();
+                return Optional.of(new LawVersions("001809", "주택법",
+                        List.of(new UpcomingVersion(LAW_EFFECTIVE, "21323", "일부개정")),
+                        new InForceVersion(LAW_BASELINE, "20000")));
+            }
+        };
+    }
+
+    /** 주택법 시행예정본(2026-11-01)과 기준선만 있는 메모리 정본. */
+    @Bean
+    LawSource lawSource() {
+        return new LawSource() {
+            @Override
+            public Optional<Law> find(String lawId, LocalDate effectiveDate) {
+                if (!"001809".equals(lawId) || !LAW_EFFECTIVE.equals(effectiveDate)) return Optional.empty();
+                return Optional.of(CitedSourceResolverTest.law(Law.Status.시행예정, LAW_EFFECTIVE, "① 통합심의한다."));
+            }
+
+            @Override
+            public Optional<Law> findBaseline(String lawId) {
+                if (!"001809".equals(lawId)) return Optional.empty();
+                return Optional.of(CitedSourceResolverTest.law(Law.Status.시행중, LAW_BASELINE, "① 심의한다."));
+            }
+        };
+    }
+
+    @Bean
+    LawDetailMapper lawDetailMapper() {
+        return new LawDetailMapper();
     }
 }

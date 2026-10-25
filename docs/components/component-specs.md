@@ -44,7 +44,7 @@ Law {                        // 🟢A(국가법령정보 API) — 전 필드 그
   status: enum("시행중"|"시행예정")     // 현행연혁코드
   amendKind: enum("제정"|"일부개정"|"전부개정"|"타법개정"|"폐지")  // 제개정구분
   lawType: enum("법률"|"대통령령"|"총리령"|"부령"|"기타")          // 법종구분
-  ministry: string?          // 소관부처  ⚠️ 응답이 중첩 객체 — 평탄화 필요
+  ministry: string?          // 소관부처  ⚠️ 응답이 중첩 객체 — content(이름)만, 부처 코드 제외
   promulgateDate: date       // 공포일자
   promulgateNo: string       // 공포번호 — 이번 개정분 부칙 필터 키
   effectiveDate: date        // ★ 시행일자 (시행예정본은 미래일)
@@ -79,15 +79,15 @@ Addendum {
 }
 
 Article {
-  no: string                 // 조문번호 ("제3조")
+  no: string                 // 조문번호 ("18", 가지조는 "105의2" — 조문번호 + 조문가지번호)
   title: string?             // 조문제목
   text: string               // ⚠️ 조문내용 + 항/호/목 재귀 병합 (아래 주의)
   changed: boolean           // ★ 조문변경여부 Y/N — 이번 개정으로 바뀐 조문인가
   changeType: enum("신설"|"개정"|"삭제"|"이동"|"없음")
-  movedFrom: string?         // 조문이동이전
-  movedTo: string?           // 조문이동이후
+  movedFrom: string?         // 조문이동이전 — no 형식("56", "7의3"). 원값은 6자리("000703"), 이동 없음("000000")은 null
+  movedTo: string?           // 조문이동이후 — 같은 규칙
   articleEffectiveDate: date?// 조문시행일자 — 조문별로 다를 수 있음(단계적 시행)
-  isArticle: boolean         // 조문여부 — "조문"만 실조문, 나머지는 장·절 제목
+  isArticle: boolean         // 조문여부 — "조문"만 실조문, 나머지는 장·절 제목(장 첫 조문과 no 가 같다 — 번호 조회·changedArticles() 는 실조문만)
   diffVsCurrent: string?     // 현행본 같은 조문과의 대조 (baselineLawId로 조회)
 }
 ```
@@ -148,7 +148,7 @@ Action { what: string, deadline: string, basis: string[] }
 ```
 revision = sha256( canonical(
    title + amendReason + amendText + fullText
-   + articles[]{no,text,changed,changeType}   // 분석 출력에 영향
+   + articles[]{no,text,changed,changeType,movedFrom,movedTo}   // 분석 출력에 영향
    + effectiveDate + effectiveRule + promulgateNo + baselineLawId
 ) )[:16]
 ```

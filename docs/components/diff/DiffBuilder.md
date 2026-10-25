@@ -25,7 +25,7 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
   - **보장:** `changed=true` 조문만 `diffVsCurrent`·확정 `changeType`를 가진 **새 `Law` 사본**. 미변경 조문은 불변. `baseline`=null이면 변경 조문 **전부 신설**.
 
 ## Invariants
-- 대상은 **`changed=true` 조문뿐**(비용 레버 — 주택법 137→6). 미변경 조문은 손대지 않음(`diffVsCurrent`=null 유지).
+- 대상은 **`changed=true` 실조문뿐**(비용 레버 — 주택법 137→6). 미변경 조문과 장·절 제목 행은 손대지 않음(`diffVsCurrent`=null 유지).
 - **정렬키 = 조문번호**(D42). 이동(`이동`)은 옛 번호(`movedFrom`)로 기준선을 찾는다.
 - **삭제는 in-place "삭제" 마커로 감지** — 시행중·시행예정본이 동일 스키마로 조문 전문을 주므로 삭제도 pending에 마커로 온다(팬텀 스캔 없음, "플래그가 정답").
 - `Law`는 불변 record — 입력을 변형하지 않고 `withArticles`로 사본 반환.

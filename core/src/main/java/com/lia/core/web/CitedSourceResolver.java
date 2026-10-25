@@ -61,7 +61,7 @@ public class CitedSourceResolver {
         if ("art".equals(m.group(3))) {
             Article article = law.article(m.group(4));
             if (article == null) return unknown(sourceId);
-            String label = law.title() + " " + article.label() + titleSuffix(article);
+            String label = law.title() + " " + article.label() + ArticleComparison.titleSuffix(article);
             boolean pending = law.status() == Law.Status.시행예정;
             String changeType = pending && article.changeType() != null ? article.changeType().name() : null;
             String previousText = pending ? previousText(lawId, article, loaded) : null;
@@ -81,23 +81,11 @@ public class CitedSourceResolver {
 
     /** 시행예정본 조문의 현행 원문 — 개정·삭제·이동만(신설·무변경은 null). 이동은 옛 번호로 찾는다. */
     private String previousText(String lawId, Article article, Map<String, Optional<Law>> loaded) {
-        Article.ChangeType type = article.changeType();
-        if (type != Article.ChangeType.개정 && type != Article.ChangeType.삭제 && type != Article.ChangeType.이동) {
-            return null;
-        }
-        String baseNo = type == Article.ChangeType.이동 && article.movedFrom() != null ? article.movedFrom() : article.no();
+        if (!ArticleComparison.comparable(article)) return null;
         // 키는 시행일 없는 인용키와 같은 "lawId@null" — 기준선 조회를 공유한다
         return loaded.computeIfAbsent(lawId + "@" + null, key -> laws.findBaseline(lawId))
-                .map(baseline -> baseline.article(baseNo))
-                .map(Article::text)
+                .map(baseline -> ArticleComparison.previousText(article, baseline))
                 .orElse(null);
-    }
-
-    /** 조문 제목이 있고 라벨과 다르면 "(제목)". 일부 원천은 제목 자리에 "제N조"를 넣어 둔다. */
-    private static String titleSuffix(Article article) {
-        String title = article.title();
-        if (title == null || title.isBlank() || title.equals(article.label())) return "";
-        return "(" + title + ")";
     }
 
     private static CitedSource unknown(String sourceId) {

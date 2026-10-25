@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import com.lia.core.domain.law.Addendum;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
+import com.lia.core.pipeline.connector.LawEnvelope;
 import com.lia.core.pipeline.connector.RawLaw;
 
 /**
@@ -96,6 +97,18 @@ class NormalizerTest {
         }
 
         @Test
+        void 소관부처에_부처_코드가_함께_와도_이름만_남긴다() {
+            Map<String, Object> root = lawRoot();
+            Map<String, Object> info = new LinkedHashMap<>(LawEnvelope.basicInfo(root));
+            info.put("소관부처", Map.of("content", "국토교통부", "소관부처코드", "1613000"));
+            root.put("기본정보", info);
+            RawLaw raw = new RawLaw("001809", "283191", "주택법", "시행예정",
+                    LocalDate.of(2026, 8, 4), LocalDate.of(2026, 2, 3), "21323", root);
+
+            assertEquals("국토교통부", normalizer.normalize(raw).ministry());
+        }
+
+        @Test
         void 본문_없는_RawLaw는_거부한다() {
             RawLaw listOnly = new RawLaw("001809", "283191", "주택법", "시행예정",
                     LocalDate.of(2026, 8, 4), null, "21323", Map.of("법령ID", "001809"));
@@ -126,7 +139,8 @@ class NormalizerTest {
 
             assertEquals(5, law.articles().size(), "전개 항목까지 모두 보존해야 한다");
             assertEquals(4, law.realArticles().size(), "조문여부='조문' 만 실조문이다");
-            assertFalse(law.article("1").isArticle());
+            assertEquals(1, law.articles().stream().filter(a -> !a.isArticle()).count());
+            assertNull(law.article("1"), "제목 행은 조문 조회 대상이 아니다");
         }
 
         @Test
@@ -145,6 +159,124 @@ class NormalizerTest {
 
             assertEquals(Article.ChangeType.이동, law.article("57").changeType());
             assertEquals("56", law.article("57").movedFrom());
+        }
+
+        /** 조문단위 하나만 담은 법령 본문 — 조문번호·가지번호 같은 필드 단위 케이스용. */
+        private List<Article> parseSingle(Map<String, Object> articleUnit) {
+            Map<String, Object> root = lawRoot();
+            root.put("조문", Map.of("조문단위", List.of(articleUnit)));
+            return normalizer.parseArticles(root);
+        }
+
+        @Test
+        void 조문가지번호가_있으면_조문번호에_의를_붙인다() {
+            Article article = parseSingle(Map.of("조문번호", "105", "조문가지번호", "2",
+                    "조문제목", "허가 유효기간 및 재허가", "조문여부", "조문", "조문변경여부", "Y")).get(0);
+
+            assertEquals("105의2", article.no());
+            assertEquals("제105조의2", article.label());
+        }
+
+        @Test
+        void 조문가지번호가_없거나_0이면_조문번호를_그대로_둔다() {
+            Map<String, Object> base = Map.of("조문번호", "105", "조문제목", "저작권위탁관리업의 허가 등",
+                    "조문여부", "조문", "조문변경여부", "Y");
+
+            assertEquals("105", parseSingle(base).get(0).no());
+            for (String noBranch : List.of("0", "00", "", " ")) {
+                Map<String, Object> unit = new LinkedHashMap<>(base);
+                unit.put("조문가지번호", noBranch);
+                assertEquals("105", parseSingle(unit).get(0).no(), "가지번호 '" + noBranch + "' 는 가지 없음이다");
+                assertEquals("제105조", parseSingle(unit).get(0).label());
+            }
+        }
+
+        @Test
+        void 본조와_가지조는_같은_번호로_겹치지_않는다() {
+            Map<String, Object> root = lawRoot();
+            root.put("조문", Map.of("조문단위", List.of(
+                    Map.of("조문번호", "105", "조문제목", "본조", "조문여부", "조문", "조문변경여부", "Y"),
+                    Map.of("조문번호", "105", "조문가지번호", "2", "조문제목", "가지 2", "조문여부", "조문", "조문변경여부", "Y"),
+                    Map.of("조문번호", "105", "조문가지번호", "4", "조문제목", "가지 4", "조문여부", "조문", "조문변경여부", "Y"))));
+
+            List<Article> articles = normalizer.parseArticles(root);
+
+            assertEquals(List.of("105", "105의2", "105의4"), articles.stream().map(Article::no).toList());
+        }
+
+        @Test
+        void 이동_자리표시_000000은_이동으로_보지_않는다() {
+            // 실측: 변경 조문이면 전부 "000000" 이 채워져 와서 모두 이동으로 오인됐다.
+            Article article = parseSingle(Map.of("조문번호", "18", "조문제목", "사업계획의 통합심의 등",
+                    "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "000000", "조문이동이후", "000000")).get(0);
+
+            assertEquals(Article.ChangeType.개정, article.changeType());
+            assertNull(article.movedFrom());
+            assertNull(article.movedTo());
+        }
+
+        @Test
+        void 이동_값이_공백이거나_0으로만_이뤄져도_없는_값이다() {
+            for (String placeholder : List.of("0", "000000", "", "  ")) {
+                Article article = parseSingle(Map.of("조문번호", "18", "조문여부", "조문", "조문변경여부", "Y",
+                        "조문이동이전", placeholder, "조문이동이후", placeholder)).get(0);
+
+                assertEquals(Article.ChangeType.개정, article.changeType(), "'" + placeholder + "'");
+                assertNull(article.movedFrom());
+                assertNull(article.movedTo());
+            }
+        }
+
+        @Test
+        void 한쪽만_실제_이동값이면_이동이고_자리표시쪽은_null이다() {
+            Article article = parseSingle(Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "005600", "조문이동이후", "000000")).get(0);
+
+            assertEquals(Article.ChangeType.이동, article.changeType());
+            assertEquals("56", article.movedFrom());
+            assertNull(article.movedTo());
+        }
+
+        @Test
+        void 이동_값_6자리는_조문번호_형식으로_바꾼다() {
+            // 실측: 4자리 조문번호 + 2자리 가지번호 — 000703 은 제7조의3, 005600 은 제56조.
+            Article article = parseSingle(Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "000703", "조문이동이후", "005600")).get(0);
+
+            assertEquals(Article.ChangeType.이동, article.changeType());
+            assertEquals("7의3", article.movedFrom());
+            assertEquals("56", article.movedTo());
+            assertEquals("제7조의3", Article.labelOf(article.movedFrom()));
+        }
+
+        @Test
+        void 이동_값이_6자리가_아니면_그대로_둔다() {
+            Article article = parseSingle(Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "56", "조문이동이후", "7의3")).get(0);
+
+            assertEquals("56", article.movedFrom());
+            assertEquals("7의3", article.movedTo());
+        }
+
+        @Test
+        void 이동_값이_바뀌면_revision이_바뀐다() {
+            // 이미 저장된 행(원값 000703)이 재적재에서 다시 쓰이려면 revision 에 이동 값이 들어가야 한다.
+            // 이동 여부(changeType)·본문은 같고 이동 값만 다르다.
+            Map<String, Object> fromSeventhThird = Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "000703");
+            Map<String, Object> fromSeventhFourth = Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문이동이전", "000704");
+
+            assertNotEquals(revisionOf(fromSeventhThird), revisionOf(fromSeventhFourth));
+        }
+
+        private String revisionOf(Map<String, Object> articleUnit) {
+            Map<String, Object> root = lawRoot();
+            root.put("조문", Map.of("조문단위", List.of(articleUnit)));
+            RawLaw raw = new RawLaw("001809", "283191", "주택법", "시행예정",
+                    LocalDate.of(2026, 8, 4), LocalDate.of(2026, 2, 3), "21323", root);
+            return normalizer.normalize(raw).revision();
         }
 
         @Test

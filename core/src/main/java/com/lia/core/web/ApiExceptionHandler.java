@@ -36,4 +36,11 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", "unauthenticated", "message", e.getMessage()));
     }
+
+    /** 요청한 법령·버전 없음 — 404. */
+    @ExceptionHandler(LawNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> lawNotFound(LawNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "not_found", "message", e.getMessage()));
+    }
 }

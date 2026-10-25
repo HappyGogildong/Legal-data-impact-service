@@ -64,11 +64,14 @@ public record Law(
     // --- 도메인 질의 -----------------------------------------------------
 
     /**
-     * <b>이번 개정으로 바뀐 조문만.</b> LawDiff·분석의 대상 선별이며 비용 레버다 —
+     * <b>이번 개정으로 바뀐 실조문만.</b> LawDiff·분석의 대상 선별이며 비용 레버다 —
      * 실측(주택법)에서 조문 137개 중 6개였다.
+     *
+     * <p>장·절 제목 행({@code isArticle=false})은 {@code changed} 가 켜져 있어도 뺀다 — 제목 행은
+     * 장의 첫 조문과 조문번호가 같아 인용키·화면 키가 겹치고, 제목 문구가 LLM 컨텍스트·RAG 청크로 새기 때문이다.
      */
     public List<Article> changedArticles() {
-        return articles.stream().filter(Article::changed).toList();
+        return articles.stream().filter(a -> a.isArticle() && a.changed()).toList();
     }
 
     /** 실조문만 (장·절 제목 등 전개 항목 제외). */
@@ -76,8 +79,14 @@ public record Law(
         return articles.stream().filter(Article::isArticle).toList();
     }
 
+    /**
+     * 번호로 찾은 <b>실조문</b>. 장·절 제목 행은 장의 첫 조문과 번호가 같으므로({@code 제1장} 행과 제1조 등)
+     * 대상에서 뺀다 — 안 그러면 먼저 나온 제목 행이 조문 본문 자리에 들어간다.
+     */
     public Article article(String no) {
-        return articles.stream().filter(a -> a.no() != null && a.no().equals(no)).findFirst().orElse(null);
+        return articles.stream()
+                .filter(a -> a.isArticle() && a.no() != null && a.no().equals(no))
+                .findFirst().orElse(null);
     }
 
     /** 시행일 조항 — `effectiveRule` 의 출처. */

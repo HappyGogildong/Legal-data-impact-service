@@ -1,12 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { NAV_ITEMS, isActive } from "./nav-items";
 
-/** 모바일(< 768px) 하단 탭. */
-export function BottomTabs() {
-  const pathname = usePathname();
+/** 모바일(< 768px) 하단 탭. pathname 이 null 이면 주소를 아직 모르는 정적 껍데기(AppShell). */
+export function BottomTabs({ pathname }: { pathname: string | null }) {
   return (
     <nav
       aria-label="하단 메뉴"
@@ -16,7 +14,11 @@ export function BottomTabs() {
         <Link
           key={item.href}
           href={item.href}
-          aria-current={isActive(pathname, item.href) ? "page" : undefined}
+          aria-current={
+            pathname !== null && isActive(pathname, item.href)
+              ? "page"
+              : undefined
+          }
           className="flex-1 py-3 text-center text-xs text-muted-foreground aria-[current=page]:font-bold aria-[current=page]:text-navy"
         >
           {item.label}

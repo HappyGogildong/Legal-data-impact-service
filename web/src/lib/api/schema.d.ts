@@ -100,6 +100,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/laws": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/laws/{lawId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["versions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/laws/{lawId}/{effectiveDate}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profile": {
         parameters: {
             query?: never;
@@ -151,6 +199,15 @@ export interface components {
             query?: string;
             scope?: string[];
         };
+        ChangedArticle: {
+            /** @enum {string} */
+            changeType?: "신설" | "개정" | "삭제" | "이동" | "없음";
+            label?: string;
+            no?: string;
+            previousText?: string;
+            sourceId?: string;
+            text?: string;
+        };
         CitedSource: {
             changeType?: string;
             /** Format: date */
@@ -200,10 +257,40 @@ export interface components {
             summary?: string;
             uncertainties?: string[];
         };
+        InForceVersion: {
+            /** Format: date */
+            effectiveDate?: string;
+            promulgateNo?: string;
+        };
         LawBrief: {
             /** Format: date */
             effectiveDate?: string;
             lawId?: string;
+            title?: string;
+        };
+        LawDetailResponse: {
+            addenda?: components["schemas"]["SourceText"][];
+            amendKind?: string;
+            amendReason?: string;
+            /** Format: date */
+            baselineEffectiveDate?: string;
+            changedArticles?: components["schemas"]["ChangedArticle"][];
+            delegationClauses?: string[];
+            effectiveClause?: components["schemas"]["SourceText"];
+            /** Format: date */
+            effectiveDate?: string;
+            effectiveRule?: string;
+            /** @enum {string} */
+            enforcementType?: "즉시" | "유예" | "단계적";
+            lawId?: string;
+            lawType?: string;
+            ministry?: string;
+            /** Format: date */
+            promulgateDate?: string;
+            promulgateNo?: string;
+            sourceUrl?: string;
+            /** @enum {string} */
+            status?: "시행예정" | "시행중" | "과거" | "철회";
             title?: string;
         };
         LawHeader: {
@@ -215,11 +302,30 @@ export interface components {
             ref?: string;
             title?: string;
         };
+        LawListItem: {
+            amendKind?: string;
+            /** Format: date */
+            effectiveDate?: string;
+            lawId?: string;
+            lawType?: string;
+            ministry?: string;
+            title?: string;
+        };
+        LawListPage: {
+            items?: components["schemas"]["LawListItem"][];
+            nextCursor?: string;
+        };
         LawRefDto: {
             articleNo?: string;
             /** Format: date */
             effectiveDate?: string;
             lawId?: string;
+        };
+        LawVersions: {
+            current?: components["schemas"]["InForceVersion"];
+            lawId?: string;
+            pending?: components["schemas"]["UpcomingVersion"][];
+            title?: string;
         };
         Meta: {
             layer?: string;
@@ -262,10 +368,21 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        SourceText: {
+            label?: string;
+            sourceId?: string;
+            text?: string;
+        };
         Unmet: {
             message?: string;
             /** @enum {string} */
             reason?: "LAW_NOT_LOADED" | "BASELINE_NOT_LOADED" | "PROFILE_REQUIRED" | "NOT_IMPLEMENTED";
+        };
+        UpcomingVersion: {
+            amendKind?: string;
+            /** Format: date */
+            effectiveDate?: string;
+            promulgateNo?: string;
         };
     };
     responses: never;
@@ -436,6 +553,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DataStatus"];
+                };
+            };
+        };
+    };
+    list: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LawListPage"];
+                };
+            };
+        };
+    };
+    versions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lawId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LawVersions"];
+                };
+            };
+        };
+    };
+    detail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lawId: string;
+                effectiveDate: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LawDetailResponse"];
                 };
             };
         };
