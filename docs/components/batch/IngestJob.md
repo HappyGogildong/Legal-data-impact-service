@@ -53,7 +53,7 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 | `run --dry-run` | 탐색 결과(무엇을 할지)만 `ingest_runs`에 기록. 큐·`law_versions`에 쓰지 않음 |
 | `sync <lawId> <efYd> [mst]` | 단건 `SYNC` 등록 후 소진. `mst`를 생략하면 저장된 시행예정본의 값, 그것도 없으면 거부 |
 | `index` | 탐색·수집 없이 **쌓여 있는 `READY` `INDEX`만** 소진 — 색인을 꺼 둔 동안 밀린 작업 처리 |
-| `summarize` | 탐색·수집 없이 **쌓여 있는 `READY` `SUMMARIZE`만** 소진 — 쉬운 요약 일괄 생성(유료 Opus, D67) |
+| `summarize` | 탐색·수집 없이 **모든 시행예정본에 `SUMMARIZE` 등록 후 소진** — 요약이 없거나 낡은 것만 만든다(유효한 요약은 유료 호출 없이 건너뜀). 쉬운 요약 일괄 생성·채우기(유료 Opus, D67) |
 | `reindex-all` | 시행예정 전체에 `INDEX` 등록 후 소진(임베딩 모델 교체 시) |
 | `requeue-dead` | `DEAD` 작업의 **기존 행**을 `READY`로(`task_id`·시도 이력 유지, 시도 횟수 0) 되돌린 뒤 소진 |
 
