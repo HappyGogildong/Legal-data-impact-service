@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Law;
@@ -60,10 +62,26 @@ class LayerAHandlerTest {
         CapturingEngine eng = new CapturingEngine();
         DispatchContext c = ctx(null);
 
-        new SummaryHandler(eng).handle(c);
+        new SummaryHandler(eng, law -> Optional.empty(), new ContextBuilder()).handle(c);
 
         assertEquals(QueryType.SUMMARY, eng.captured.dimension());
         assertSame(c.law(), eng.captured.law());
+    }
+
+    @Test
+    void SummaryHandler는_유효한_저장본이_있으면_엔진을_부르지_않고_그것으로_답한다() {
+        CapturingEngine eng = new CapturingEngine();
+        ImpactResult stored = new ImpactResult("LAW:001809@2026-08-04", "SUMMARY", "저장된 요약",
+                List.of(new ImpactResult.Claim("바뀐다", List.of("LAW:001809@2026-08-04:art:18"), 0.9)),
+                List.of(), List.of(), null, List.of(), "참고용", null);
+        DispatchContext c = ctx(null);
+
+        AnalyzeResponse response = new SummaryHandler(eng, law -> Optional.of(stored), new ContextBuilder()).handle(c);
+
+        assertNull(eng.captured, "저장본 적중 — 추론하지 않는다");
+        assertSame(stored, response.result());
+        assertTrue(response.injectedSourceIds().contains("LAW:001809@2026-08-04:art:18"),
+                "근거 집합은 정본으로 다시 조립한다(인용 칩 근거 해석용)");
     }
 
     @Test
@@ -82,6 +100,6 @@ class LayerAHandlerTest {
     void DiffHandler는_baseline을_요구하고_SummaryHandler는_아니다() {
         CapturingEngine eng = new CapturingEngine();
         assertTrue(new DiffHandler(eng).needsBaseline(), "DIFF는 대조 대상 baseline 필요");
-        assertFalse(new SummaryHandler(eng).needsBaseline(), "SUMMARY는 baseline 불필요");
+        assertFalse(new SummaryHandler(eng, law -> Optional.empty(), new ContextBuilder()).needsBaseline(), "SUMMARY는 baseline 불필요");
     }
 }
