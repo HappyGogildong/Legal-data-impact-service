@@ -69,6 +69,32 @@ class LawSummaryStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("중첩 필드(시행 정보·영향·대응·메타)까지 그대로 왕복")
+    void 전체_필드_왕복() {
+        Law law = TestLaws.law("A", "M1", Law.Status.시행예정, EF);
+        ImpactResult full = new ImpactResult("LAW:A@2027-01-01", "SUMMARY", "요약",
+                List.of(new ImpactResult.Claim("주장", List.of("LAW:A@2027-01-01:art:1"), 0.9)),
+                List.of(new ImpactResult.Impact("비용", "증가", "수수료가 오른다", List.of("LAW:A@2027-01-01:art:1"))),
+                List.of(new ImpactResult.Action("신고", "2027-01-01", List.of("LAW:A@2027-01-01:addenda:제1조"))),
+                new ImpactResult.EffectiveInfo("시행예정", EF, "유예"),
+                List.of(), "참고용", new ImpactResult.Meta("claude-opus-4-8", "p1", "A"));
+
+        summaries.save(law, full, "claude-opus-4-8");
+
+        assertEquals(full, summaries.findCurrent(law).orElseThrow());
+    }
+
+    @Test
+    @DisplayName("저장된 JSON 을 읽을 수 없으면(스키마 변경 등) 낡은 것과 같이 empty — 요청을 실패시키지 않는다")
+    void 읽을_수_없는_행() {
+        Law law = TestLaws.law("A", "M1", Law.Status.시행예정, EF);
+        summaries.save(law, summary("요약"), "claude-opus-4-8");
+        jdbc.sql("UPDATE law_summaries SET result = CAST('{\"claims\": \"문자열\"}' AS jsonb)").update();
+
+        assertTrue(summaries.findCurrent(law).isEmpty());
+    }
+
+    @Test
     @DisplayName("정본 revision 이 바뀌거나 프롬프트 버전이 다르면 낡음 — empty")
     void 낡음() {
         Law law = TestLaws.law("A", "M1", Law.Status.시행예정, EF);

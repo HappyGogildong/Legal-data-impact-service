@@ -4,6 +4,7 @@ import java.util.Optional;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.domain.analysis.ImpactResult;
@@ -56,6 +57,15 @@ public class LawSummaryStore implements LawSummaries {
                 .param("promptVersion", promptVersion)
                 .query(String.class)
                 .optional()
-                .map(text -> json.readValue(text, ImpactResult.class));
+                .flatMap(this::read);
+    }
+
+    /** 읽을 수 없는 저장본(결과 스키마 변경 등)은 낡은 것과 같이 취급한다 — 요청을 실패시키지 않고 다음 적재가 다시 만든다. */
+    private Optional<ImpactResult> read(String text) {
+        try {
+            return Optional.of(json.readValue(text, ImpactResult.class));
+        } catch (JacksonException e) {
+            return Optional.empty();
+        }
     }
 }
