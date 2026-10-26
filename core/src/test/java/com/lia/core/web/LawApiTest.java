@@ -44,6 +44,7 @@ class LawApiTest {
         List<MockHttpServletRequestBuilder> bad = List.of(
                 get("/api/v1/laws").param("limit", "0"),
                 get("/api/v1/laws").param("limit", "51"),
+                get("/api/v1/laws").param("limit", "abc"),
                 get("/api/v1/laws").param("from", "20261101"),
                 get("/api/v1/laws").param("to", "2026-13-01"),
                 get("/api/v1/laws").param("from", "2026-12-01").param("to", "2026-11-01"),

@@ -61,9 +61,12 @@ public class SecurityConfig {
         //    기본 Xor 핸들러는 마스킹 토큰을 요구해 SPA 가 쿠키값을 그대로 보내면 403.
         // ponytail: analyses 예외는 "세션 인증 안 씀" 전제의 임시 조치. 슬라이스 ③에서 이 엔드포인트가
         //           세션 userId 를 읽게 되면 예외를 제거하거나 익명/인증 경로를 분리한다.
+        //           조회 신호(D66)는 세션을 읽지 않는 횟수 증가 — 익명이 S05를 처음 열면 XSRF 쿠키도 없다. 경로·메서드 한정.
         .csrf(csrf -> csrf
             .spa()
-            .ignoringRequestMatchers("/api/v1/analyses"))
+            .ignoringRequestMatchers("/api/v1/analyses")
+            .ignoringRequestMatchers(
+                PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/api/v1/laws/*/*/views")))
 
         // 4) 로그아웃 — 세션 무효화 + 쿠키 삭제 (D41 파기). 기본 URL: POST /logout.
         //    SPA 는 API 루트가 아니라 프론트에 있으므로 리다이렉트 대신 204.

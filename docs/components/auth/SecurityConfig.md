@@ -32,6 +32,7 @@ Auth.md 인가 표의 **구현이자 근거**. 매처는 위→아래 첫 매칭
 | `GET /api/v1/data-status` | 공개 | 데이터 현황(시각·개수만, [[DataStatusApi]]) |
 | `/v3/api-docs/**` | 공개 | OpenAPI(웹 타입 생성). 운영은 springdoc 설정으로 끔 |
 | `POST /api/v1/analyses` | 공개 | 익명 Layer A 허용 — 프로필 없으면 Layer B는 `unmet`(D60). **메서드 한정**: GET 등 후속 생겨도 자동 개방 방지 |
+| `POST /api/v1/laws/{lawId}/{efYd}/views` | 공개(`/api/v1/laws/**`) | S05 조회 신호 — 횟수만 증가, 세션을 읽지 않는다(D66) |
 | `/api/v1/profile/**` | 인증 | 개인 데이터. **동작상 `anyRequest`와 중복** — Auth.md 표 미러용으로 남긴 문서 규칙 |
 | 그 외(`anyRequest`) | 인증 | **화이트리스트 종결** — 이 줄이 없으면 매칭 안 된 경로가 통과된다(Security 6+는 미매칭=abstain=허용) |
 
@@ -54,7 +55,7 @@ Auth.md 인가 표의 **구현이자 근거**. 매처는 위→아래 첫 매칭
 ## CSRF 결정
 - **켠다** — 세션-쿠키 인증이라 브라우저가 쿠키를 자동 첨부 → CSRF 공격면 존재.
 - **`csrf.spa()`**(Security 7) — `XSRF-TOKEN` 쿠키(JS 읽기 가능) + SPA가 쿠키값을 **원문 그대로** `X-XSRF-TOKEN` 헤더로 보내도 통과. 기본 `XorCsrfTokenRequestAttributeHandler`는 **마스킹된 토큰**을 요구하므로 저장소만 `CookieCsrfTokenRepository`로 바꾸면 SPA 요청이 403이 된다(구현 함정).
-- **`ignoringRequestMatchers("/api/v1/analyses")`** — 공개 무상태 POST만 예외. 근거: **세션 인증을 안 쓰는 엔드포인트는 CSRF 공격 대상이 아니다**(공격자가 이용할 세션이 없음). 이걸 빼야 익명 curl/외부 호출이 403 안 난다.
+- **`ignoringRequestMatchers("/api/v1/analyses", POST /api/v1/laws/*/*/views)`** — 공개 무상태 POST만 예외. 근거: **세션 인증을 안 쓰는 엔드포인트는 CSRF 공격 대상이 아니다**(공격자가 이용할 세션이 없음). 이걸 빼야 익명 curl/외부 호출이 403 안 난다. 조회 신호(D66)도 같은 이유 — 익명이 S05를 처음 열 땐 XSRF 쿠키도 없다.
   - ⚠️ **임시 조치** — 슬라이스 ③에서 이 엔드포인트가 세션 `userId`(Layer B 프로필)를 읽게 되면 전제가 깨진다. 그때 예외를 제거하거나 익명/인증 경로를 분리한다(코드에 `ponytail:` 주석).
 - **profile·logout 은 예외에 넣지 않는다** — 세션 인증 + 상태변경이라 반드시 토큰 필요. GET(`/laws`)은 CSRF 대상 아님(안전 메서드).
 

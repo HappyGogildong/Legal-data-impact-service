@@ -3,7 +3,14 @@ import createClient from "openapi-fetch";
 import { apiOrigin } from "@/lib/api-origin";
 import { unwrap } from "./errors";
 import type { paths } from "./schema";
-import type { DataStatus, LawDetail, LawListPage, LawVersions } from "./types";
+import type { TrendingWindowKey } from "@/lib/law-view";
+import type {
+  DataStatus,
+  LawDetail,
+  LawListPage,
+  LawVersions,
+  TrendingPage,
+} from "./types";
 
 /**
  * 서버 렌더링 전용 조회(홈 목록·S05·S06, frontend-stack §5) — Next 서버가 백엔드를 직접 부른다. 공개 데이터라 쿠키를 싣지 않는다.
@@ -68,4 +75,18 @@ export async function fetchDataStatusForPage(): Promise<DataStatus | null> {
   } catch {
     return null;
   }
+}
+
+/** 자주 찾는 법령 순위(홈·S06) — 몇 분 늦어도 괜찮다. */
+export async function fetchTrendingLaws(
+  window: TrendingWindowKey,
+  limit: number,
+): Promise<TrendingPage> {
+  "use cache";
+  cacheLife("minutes");
+  return unwrap(
+    await serverApi().GET("/api/v1/laws/trending", {
+      params: { query: { window, limit } },
+    }),
+  );
 }

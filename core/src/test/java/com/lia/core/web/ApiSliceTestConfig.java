@@ -19,6 +19,8 @@ import com.lia.core.domain.law.Law;
 import com.lia.core.store.DataStatusStore;
 import com.lia.core.store.LawCatalogStore;
 import com.lia.core.store.LawSource;
+import com.lia.core.store.LawViewStore;
+import com.lia.core.store.TrendingWindow;
 import com.lia.core.testsupport.InMemoryAccountStore;
 import com.lia.core.testsupport.InMemoryUserProfileStore;
 
@@ -35,7 +37,7 @@ import com.lia.core.testsupport.InMemoryUserProfileStore;
 @EnableWebSecurity
 @Import({SecurityConfig.class, ApiExceptionHandler.class,
         ProfileController.class, ConsentController.class, AccountController.class,
-        DataStatusController.class, LawController.class})
+        DataStatusController.class, LawController.class, LawViewController.class})
 class ApiSliceTestConfig {
 
     static final String POLICY = "v-test";
@@ -113,6 +115,23 @@ class ApiSliceTestConfig {
             public Optional<Law> findBaseline(String lawId) {
                 if (!"001809".equals(lawId)) return Optional.empty();
                 return Optional.of(CitedSourceResolverTest.law(Law.Status.시행중, LAW_BASELINE, "① 심의한다."));
+            }
+        };
+    }
+
+    /** 001809@2026-11-01 만 있는 조회 집계 — 순위는 고정 1건. */
+    @Bean
+    LawViewStore lawViewStore() {
+        return new LawViewStore(null) {
+            @Override
+            public boolean record(String lawId, LocalDate effectiveDate) {
+                return "001809".equals(lawId) && LAW_EFFECTIVE.equals(effectiveDate);
+            }
+
+            @Override
+            public TrendingPage trending(TrendingWindow window, int limit) {
+                return new TrendingPage(window.name(),
+                        List.of(new TrendingItem(1, "001809", "주택법", LAW_EFFECTIVE, 12, null)));
             }
         };
     }

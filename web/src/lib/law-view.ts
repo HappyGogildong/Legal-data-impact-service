@@ -105,3 +105,59 @@ export function monthDay(date: string): string {
 export function safeExternalUrl(url: string | undefined): string | null {
   return url && /^https?:\/\//i.test(url) ? url : null;
 }
+
+/** S06 자주 찾는 구간 — 오늘 포함 1·7·30일(service-api-spec §3.5). */
+export const TRENDING_WINDOWS = {
+  day: { label: "오늘" },
+  week: { label: "이번 주" },
+  month: { label: "이번 달" },
+} as const;
+export type TrendingWindowKey = keyof typeof TRENDING_WINDOWS;
+export const TRENDING_WINDOW_KEYS = Object.keys(
+  TRENDING_WINDOWS,
+) as TrendingWindowKey[];
+
+export function parseTrendingWindow(
+  value: string | string[] | undefined,
+): TrendingWindowKey {
+  return typeof value === "string" && Object.hasOwn(TRENDING_WINDOWS, value)
+    ? (value as TrendingWindowKey)
+    : "week";
+}
+
+/** S06 탭 — 곧 시행(기본)·자주 찾는. */
+export type LawTab = "upcoming" | "trending";
+
+export function parseLawTab(value: string | string[] | undefined): LawTab {
+  return value === "trending" ? "trending" : "upcoming";
+}
+
+export type RankChange = {
+  kind: "up" | "down" | "same" | "new";
+  /** 화면 글자(▲2·▼1·–·NEW) */
+  text: string;
+  /** 화면 읽기 프로그램용 문장 */
+  label: string;
+};
+
+/** 직전 같은 길이 구간 순위 대비 변화. 직전 순위가 없으면 NEW. */
+export function rankChange(
+  rank: number,
+  previousRank: number | null | undefined,
+): RankChange {
+  if (previousRank === null || previousRank === undefined) {
+    return { kind: "new", text: "NEW", label: "새로 올랐어요" };
+  }
+  const diff = previousRank - rank;
+  if (diff > 0) {
+    return { kind: "up", text: `▲${diff}`, label: `${diff}계단 올랐어요` };
+  }
+  if (diff < 0) {
+    return {
+      kind: "down",
+      text: `▼${-diff}`,
+      label: `${-diff}계단 내려갔어요`,
+    };
+  }
+  return { kind: "same", text: "–", label: "순위 변동 없어요" };
+}

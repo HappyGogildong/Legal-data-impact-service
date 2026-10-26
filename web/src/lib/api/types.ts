@@ -33,3 +33,6 @@ export type UpcomingVersion = NonNullable<LawVersions["pending"]>[number];
 export type LawDetail = components["schemas"]["LawDetailResponse"];
 export type ChangedArticle = NonNullable<LawDetail["changedArticles"]>[number];
 export type SourceText = NonNullable<LawDetail["addenda"]>[number];
+
+export type TrendingPage = components["schemas"]["TrendingPage"];
+export type TrendingItem = NonNullable<TrendingPage["items"]>[number];

@@ -11,6 +11,7 @@ import { lawHref, safeExternalUrl, statusNotice } from "@/lib/law-view";
 import { cn } from "@/lib/utils";
 import { DDayBadge } from "./d-day-badge";
 import { AskAboutLaw, SummaryButton } from "./law-actions";
+import { ViewBeacon } from "./view-beacon";
 
 type LawDetailViewProps = {
   detail: LawDetail;
@@ -49,6 +50,9 @@ export function LawDetailView({
 
   return (
     <div className="mx-auto flex max-w-[720px] flex-col gap-3 px-4 py-5">
+      {pending && lawRef && (
+        <ViewBeacon lawId={lawRef.lawId} effectiveDate={lawRef.effectiveDate} />
+      )}
       <header className="rounded-lg border border-border bg-card p-3.5">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-lg font-bold">{title}</h1>

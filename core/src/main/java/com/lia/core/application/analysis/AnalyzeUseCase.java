@@ -4,6 +4,10 @@ import com.lia.core.pipeline.dispatch.QueryDispatcher;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.PlanResult;
 import com.lia.core.pipeline.plan.QueryPlanner;
+import com.lia.core.pipeline.plan.Target;
+import com.lia.core.store.LawViews;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 온라인 분석 유스케이스 — 계획({@link QueryPlanner})과 실행({@link QueryDispatcher})을 조합해
@@ -16,15 +20,22 @@ import com.lia.core.pipeline.plan.QueryPlanner;
  *
  * <p><b>{@code profilePresent=false} 고정</b> — UserProfile Store 미구현(#12)이라 이번 증분은
  * Layer A만. Layer B(IMPACT·ACTION) 차원은 dispatcher가 {@code unmet}으로 처리한다.
+ *
+ * <p><b>조회 집계(D66)</b> — Reference 분석이 정본으로 답(채운 차원)을 냈으면 {@link LawViews}로 1회 센다.
+ * 기록 실패는 삼키고 로그만 — 분석 응답을 바꾸지 않는다.
  */
 public class AnalyzeUseCase {
 
+    private static final Logger log = LoggerFactory.getLogger(AnalyzeUseCase.class);
+
     private final QueryPlanner planner;
     private final QueryDispatcher dispatcher;
+    private final LawViews views;
 
-    public AnalyzeUseCase(QueryPlanner planner, QueryDispatcher dispatcher) {
+    public AnalyzeUseCase(QueryPlanner planner, QueryDispatcher dispatcher, LawViews views) {
         this.planner = planner;
         this.dispatcher = dispatcher;
+        this.views = views;
     }
 
     /** 자연어 질의 → 분석 결과. 미해소는 분석으로 새지 않는다(fail-closed, plan 게이트가 강제). */
@@ -32,8 +43,24 @@ public class AnalyzeUseCase {
         PlanResult plan = planner.plan(query, explicitRef, false); // 프로필 미도입(#12) → Layer A
         return switch (plan) {
             case PlanResult.Unresolved u -> new AnalysisOutcome.Unresolved(u.resolution());
-            case PlanResult.Planned p ->
-                    new AnalysisOutcome.Analyzed(p.query(), dispatcher.dispatch(p.query()), p.alternatives());
+            case PlanResult.Planned p -> {
+                AnalysisOutcome.Analyzed analyzed =
+                        new AnalysisOutcome.Analyzed(p.query(), dispatcher.dispatch(p.query()), p.alternatives());
+                countView(analyzed);
+                yield analyzed;
+            }
         };
+    }
+
+    /** 정본으로 답을 낸 Reference 분석만 조회 1회(D66). 실패해도 분석은 그대로. */
+    private void countView(AnalysisOutcome.Analyzed analyzed) {
+        if (!(analyzed.query().target() instanceof Target.Reference reference)) return;
+        if (analyzed.result().filled().isEmpty()) return;   // 정본 미적재 등으로 아무 차원도 못 채움
+        LawRef ref = reference.lawRef();
+        try {
+            views.record(ref.lawId(), ref.effectiveDate());
+        } catch (RuntimeException e) {
+            log.warn("조회 집계 실패 — 분석 응답에는 영향 없음: {}", e.toString());
+        }
     }
 }

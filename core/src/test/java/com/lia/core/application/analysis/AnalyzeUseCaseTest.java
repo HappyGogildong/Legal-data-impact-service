@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,8 @@ import com.lia.core.store.LawSource;
  * 조립해 <b>in-JVM 관통</b>을 본다. 실 LLM·DB 없음. plan→dispatch 글루와 4상태/부분성공·explicitRef 분기 검증.
  */
 class AnalyzeUseCaseTest {
+
+    final List<String> recorded = new ArrayList<>();
 
     /** "주택법"만 해소되는 Fake 코퍼스(QueryPlannerTest와 동일 패턴). */
     static class FakeLookup implements LawLookup {
@@ -87,7 +90,8 @@ class AnalyzeUseCaseTest {
         AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
         DimensionHandlerRegistry registry =
                 new DimensionHandlerRegistry(List.of(new SummaryHandler(engine), new DiffHandler(engine)));
-        return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry));
+        return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry),
+                (lawId, efYd) -> { recorded.add(lawId + "@" + efYd); return true; });
     }
 
     @Test
@@ -131,5 +135,50 @@ class AnalyzeUseCaseTest {
 
         AnalysisOutcome.Unresolved u = assertInstanceOf(AnalysisOutcome.Unresolved.class, out);
         assertEquals(ResolutionState.UNVERIFIED, u.resolution().state());
+    }
+
+    @Test
+    void 정본으로_답을_낸_Reference_분석은_조회로_센다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.SUMMARY, Set.of(QueryType.SUMMARY), true, TargetKind.REFERENCE,
+                "주택법", null, List.of(), List.of(), List.of(), "요약");
+
+        useCase(draft, true).analyze("주택법 뭐가 바뀌어?", null);
+
+        assertEquals(List.of("001809@2026-08-04"), recorded);
+    }
+
+    @Test
+    void 정본이_없거나_미해소면_세지_않는다() {
+        AnalysisQueryDraft reference = new AnalysisQueryDraft(
+                QueryType.SUMMARY, Set.of(QueryType.SUMMARY), true, TargetKind.REFERENCE,
+                "주택법", null, List.of(), List.of(), List.of(), "요약");
+        AnalysisQueryDraft offTopic = new AnalysisQueryDraft(
+                QueryType.SUMMARY, Set.of(QueryType.SUMMARY), false, TargetKind.REFERENCE,
+                null, null, List.of(), List.of(), List.of(), "잡담");
+
+        useCase(reference, false).analyze("주택법 뭐가 바뀌어?", null);   // 정본 미적재 → 전부 unmet
+        useCase(offTopic, true).analyze("오늘 점심 뭐 먹지", null);
+
+        assertEquals(List.of(), recorded);
+    }
+
+    @Test
+    void 조회_기록이_실패해도_분석_결과는_그대로다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.SUMMARY, Set.of(QueryType.SUMMARY), true, TargetKind.REFERENCE,
+                "주택법", null, List.of(), List.of(), List.of(), "요약");
+        QueryPlanner planner = new QueryPlanner(q -> draft, new SourceAnalyzer(new FakeLookup()));
+        FakeLawSource src = new FakeLawSource();
+        src.versions.put("001809@2026-08-04", law());
+        AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
+        AnalyzeUseCase failing = new AnalyzeUseCase(planner,
+                new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(new SummaryHandler(engine)))),
+                (lawId, efYd) -> { throw new IllegalStateException("DB 끊김"); });
+
+        AnalysisOutcome out = failing.analyze("주택법 뭐가 바뀌어?", null);
+
+        AnalysisOutcome.Analyzed analyzed = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
+        assertTrue(analyzed.result().filled().containsKey(QueryType.SUMMARY));
     }
 }
