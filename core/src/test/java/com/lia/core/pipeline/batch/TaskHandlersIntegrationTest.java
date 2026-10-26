@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Set;
 
 import javax.sql.DataSource;
@@ -27,6 +28,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.pipeline.analyze.AnalysisContext;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.ContextBuilder;
 import com.lia.core.pipeline.diff.DiffBuilder;
@@ -62,6 +64,8 @@ class TaskHandlersIntegrationTest {
     static TaskQueue queue;
     static ChunkStore chunkStore;
     static LawSummaryStore summaries;
+    /** groundedEngine 의 추론기 호출 수 — 유료 호출이 없었는지 확인용. */
+    static final AtomicInteger reasonerCalls = new AtomicInteger();
     static IngestService ingest;
     static TransactionTemplate tx;
     FakeLawFeed feed;
@@ -87,6 +91,7 @@ class TaskHandlersIntegrationTest {
     void clean() {
         jdbc.sql("DELETE FROM ingest_tasks").update();
         jdbc.sql("DELETE FROM law_summaries").update();
+        reasonerCalls.set(0);
         jdbc.sql("DELETE FROM law_versions").update();
         jdbc.sql("TRUNCATE TABLE vector_store").update();
         feed = new FakeLawFeed().withHousingAct();
@@ -192,9 +197,14 @@ class TaskHandlersIntegrationTest {
 
     /** 주입된 첫 source_id 를 인용해 늘 검증을 통과하는 추론기. */
     private static AnalysisEngine groundedEngine() {
-        return new AnalysisEngine(new ContextBuilder(), ctx -> new ImpactResult(ctx.lawRef(), "SUMMARY", "쉬운 요약",
+        return new AnalysisEngine(new ContextBuilder(), ctx -> countedSummary(ctx), 2);
+    }
+
+    private static ImpactResult countedSummary(AnalysisContext ctx) {
+        reasonerCalls.incrementAndGet();
+        return new ImpactResult(ctx.lawRef(), "SUMMARY", "쉬운 요약",
                 List.of(new ImpactResult.Claim("바뀐다", List.of(ctx.injectedSourceIds().iterator().next()), 0.9)),
-                List.of(), List.of(), null, List.of(), "참고용", null), 2);
+                List.of(), List.of(), null, List.of(), "참고용", null);
     }
 
     @Test
@@ -217,6 +227,35 @@ class TaskHandlersIntegrationTest {
 
         new SummarizeHandler(lawStore, groundedEngine(), summaries, new MinIntervalLimiter(Duration.ZERO), "test-model")
                 .handle(task(TaskKind.SUMMARIZE, "NONE", EF, null));   // 정본 없음 — 조용히 끝
+    }
+
+    @Test
+    @DisplayName("SUMMARIZE 멱등 — 유효한 요약이 이미 있으면 추론기를 부르지 않는다(유료 호출 0)")
+    void summarize_유효한요약_건너뜀() {
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        SummarizeHandler handler = new SummarizeHandler(lawStore, groundedEngine(), summaries,
+                new MinIntervalLimiter(Duration.ZERO), "test-model");
+
+        handler.handle(task(TaskKind.SUMMARIZE, LAW, EF, null));
+        assertEquals(1, reasonerCalls.get());
+
+        handler.handle(task(TaskKind.SUMMARIZE, LAW, EF, null));   // backfill 재등록·저장 후 DONE 전 재시도
+        assertEquals(1, reasonerCalls.get(), "유효한 요약이 있으면 다시 만들지 않는다");
+    }
+
+    @Test
+    @DisplayName("SUMMARIZE — 더는 시행예정이 아니면 추론기를 부르지 않는다(유료 호출 0)")
+    void summarize_시행예정아님_호출없음() {
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        lawStore.updateStatus(LAW, EF, Law.Status.시행중);
+        AnalysisEngine throwing = new AnalysisEngine(new ContextBuilder(), ctx -> {
+            throw new AssertionError("유료 추론기를 부르면 안 된다");
+        }, 2);
+
+        new SummarizeHandler(lawStore, throwing, summaries, new MinIntervalLimiter(Duration.ZERO), "test-model")
+                .handle(task(TaskKind.SUMMARIZE, LAW, EF, null));
+
+        assertTrue(summaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isEmpty());
     }
 
     @Test

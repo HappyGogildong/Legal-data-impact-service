@@ -17,7 +17,9 @@ import com.lia.core.store.LawSummaryStore;
 /**
  * SUMMARIZE — 저장된 시행예정 정본으로 쉬운 요약을 만들어 저장(D67). 분석과 같은 엔진(조립→추론→인용 검증→재생성).
  * 검증이 끝내 실패하면 저장하지 않고 끝낸다 — 같은 입력이라 재시도해도 같은 결과(화면은 실시간 대체).
- * 유료(Opus) 호출 간격은 {@code limiter}로 제한한다. 시행예정이 아니게 됐으면 할 일이 없다.
+ * {@code limiter}는 <b>작업(task) 사이</b>의 간격을 제한한다 — 인용 검증 실패로 엔진이 재생성하는 시도마다 간격을 두지 않는다
+ * (재생성은 엔진의 {@code maxAttempts}가 상한). 시행예정이 아니게 됐거나 유효한 요약이 이미 있으면 유료 호출 없이 끝난다
+ * (backfill 재등록·저장 후 DONE 전 재시도에도 중복 호출 0).
  */
 public class SummarizeHandler implements TaskHandler {
 
@@ -48,6 +50,9 @@ public class SummarizeHandler implements TaskHandler {
         Optional<Law> law = lawStore.find(task.lawId(), task.effectiveDate());
         if (law.isEmpty() || !law.get().pending()) {
             return;
+        }
+        if (summaries.findCurrent(law.get()).isPresent()) {
+            return;   // 이미 유효한 요약 — 유료 호출 없음
         }
         limiter.acquire();
         try {

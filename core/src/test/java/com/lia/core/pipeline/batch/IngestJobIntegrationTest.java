@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -36,6 +37,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.pipeline.analyze.AnalysisContext;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.ContextBuilder;
 import com.lia.core.pipeline.connector.LawApiException;
@@ -71,6 +73,8 @@ class IngestJobIntegrationTest {
     static IngestRunStore runs;
     static ChunkStore chunkStore;
     static LawSummaryStore summaries;
+    /** groundedEngine 의 추론기 호출 수 — 유료 호출이 없었는지 확인용. */
+    static final AtomicInteger reasonerCalls = new AtomicInteger();
     static IngestService ingest;
     static TransactionTemplate tx;
     FakeLawFeed feed;
@@ -94,6 +98,7 @@ class IngestJobIntegrationTest {
         jdbc.sql("DELETE FROM ingest_tasks").update();
         jdbc.sql("DELETE FROM ingest_runs").update();
         jdbc.sql("DELETE FROM law_summaries").update();
+        reasonerCalls.set(0);
         jdbc.sql("DELETE FROM law_versions").update();
         jdbc.sql("TRUNCATE TABLE vector_store").update();
         feed = new FakeLawFeed().withHousingAct();
@@ -114,9 +119,14 @@ class IngestJobIntegrationTest {
 
     /** 주입된 첫 source_id 를 인용해 늘 검증을 통과하는 추론기. */
     private static AnalysisEngine groundedEngine() {
-        return new AnalysisEngine(new ContextBuilder(), ctx -> new ImpactResult(ctx.lawRef(), "SUMMARY", "쉬운 요약",
+        return new AnalysisEngine(new ContextBuilder(), ctx -> countedSummary(ctx), 2);
+    }
+
+    private static ImpactResult countedSummary(AnalysisContext ctx) {
+        reasonerCalls.incrementAndGet();
+        return new ImpactResult(ctx.lawRef(), "SUMMARY", "쉬운 요약",
                 List.of(new ImpactResult.Claim("바뀐다", List.of(ctx.injectedSourceIds().iterator().next()), 0.9)),
-                List.of(), List.of(), null, List.of(), "참고용", null), 2);
+                List.of(), List.of(), null, List.of(), "참고용", null);
     }
 
     /** @param sync null 이면 실제 SyncHandler — 워커 동작을 조종하는 테스트가 바꿔 끼운다 */
@@ -273,6 +283,25 @@ class IngestJobIntegrationTest {
                 .run(new JobCommand(JobCommand.Type.SUMMARIZE, false, false, null, null, null));
         assertEquals(0, summarized.counts().get("deferred.SUMMARIZE"));
         assertTrue(summaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isPresent());
+    }
+
+    @Test
+    @DisplayName("summarize 명령 — 등록 작업이 없는 기존 시행예정본도 등록해 채우고, 다시 돌리면 추론기를 부르지 않는다")
+    void 요약_기존본_채우기() {
+        LocalDate today = LocalDate.of(2026, 7, 1);
+        job(today).run(run());   // 요약 꺼짐 — 정본만 저장, SUMMARIZE 는 READY 로 남음
+        jdbc.sql("DELETE FROM ingest_tasks WHERE kind = 'SUMMARIZE'").update();   // 기능 도입 전에 저장된 법령 흉내
+        JobCommand summarize = new JobCommand(JobCommand.Type.SUMMARIZE, false, false, null, null, null);
+
+        RunReport filled = job(today).run(summarize);
+        assertEquals(1, filled.counts().get("enqueued.SUMMARIZE"));
+        assertEquals(1, filled.counts().get("done"));
+        assertTrue(summaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isPresent());
+        assertEquals(1, reasonerCalls.get());
+
+        RunReport again = job(today).run(summarize);
+        assertEquals(1, again.counts().get("done"), "등록·처리는 되지만");
+        assertEquals(1, reasonerCalls.get(), "유효한 요약이 있어 추론기는 부르지 않는다");
     }
 
     @Test

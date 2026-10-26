@@ -63,7 +63,8 @@ public class IngestJob {
     /**
      * @param indexEnabled false 면 자동 경로({@code run})가 INDEX 를 가져가지 않는다 — 수집은 계속, 색인은 큐에 남김.
      *                     직접 명령({@code index}·{@code reindex-all}·{@code sync})은 이 값과 무관
-     * @param summaryEnabled true 일 때만 run 이 SUMMARIZE(유료 Opus)를 처리 — 다른 수동 명령은 처리하지 않고 summarize 명령만(D67)
+     * @param summaryEnabled true 일 때만 run 이 SUMMARIZE(유료 Opus)를 처리 — 다른 수동 명령은 처리하지 않고 summarize 명령만(D67).
+     *                       summarize 명령은 모든 시행예정본에 SUMMARIZE 를 등록해 요약이 없거나 낡은 것을 채운다
      */
     public IngestJob(TaskQueue queue, IngestRunStore runs, Discoverer discoverer, LawStore lawStore,
                      List<TaskHandler> handlers, int workers, boolean indexEnabled,
@@ -141,7 +142,13 @@ public class IngestJob {
                 }
                 case REQUEUE_DEAD -> counts.put("requeued", queue.requeueDead());
                 case INDEX -> { }   // 등록 없음 — 쌓여 있는 INDEX 만 소진
-                case SUMMARIZE -> { }   // 등록 없음 — 쌓여 있는 SUMMARIZE 만 소진
+                case SUMMARIZE -> {   // 모든 시행예정본에 등록 — 요약이 없거나 낡은 것을 채운다(유효한 요약은 핸들러가 건너뜀)
+                    int enqueued = 0;
+                    for (PendingVersion version : lawStore.listPendingVersions()) {
+                        if (queue.enqueue(TaskKind.SUMMARIZE, version.lawId(), version.effectiveDate(), null)) enqueued++;
+                    }
+                    counts.put("enqueued.SUMMARIZE", enqueued);
+                }
             }
 
             Set<TaskKind> kinds = kindsFor(command);

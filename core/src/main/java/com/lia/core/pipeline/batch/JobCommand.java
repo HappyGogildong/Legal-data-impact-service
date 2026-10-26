@@ -8,6 +8,7 @@ import java.util.Set;
 /**
  * 배치 명령(D62) — {@code run [--full] [--dry-run]} · {@code sync <lawId> <efYd> [mst]} · {@code index} · {@code summarize} ·
  * {@code reindex-all} · {@code requeue-dead}. Spring 의 {@code --spring.*} 옵션은 무시한다.
+ * {@code summarize}는 모든 시행예정본에 요약 작업을 등록해, 요약이 없거나 낡은 것을 채운다(유효한 요약은 건너뜀).
  */
 public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, LocalDate effectiveDate, String mst) {
 
