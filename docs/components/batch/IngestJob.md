@@ -70,7 +70,7 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 | 2 | `PARTIAL` | 이번 실행에서 실패·격리된 작업이 1건 이상 · 목록 미완주(`run`, `--dry-run` 포함) · 종료 신호로 멈춰 `READY`가 남음 |
 
 - 이전 실행에서 이미 격리돼 있던 `DEAD`는 이번 실행 결과에 넣지 않는다 — 그건 별도 신호(`DEAD ≥ 1`)다.
-- 설정으로 미룬 `INDEX`(`deferred.INDEX`)도 결과에 넣지 않는다.
+- 설정으로 미룬 `INDEX`(`deferred.INDEX`)·`SUMMARIZE`(`deferred.SUMMARIZE`)도 결과에 넣지 않는다.
 
 ## 데이터 모델 (Flyway `V5__ingest_batch.sql`)
 ```sql
@@ -80,18 +80,18 @@ ALTER TABLE law_versions ADD COLUMN missing_since date;   -- 완주 목록에서
 
 CREATE TABLE ingest_runs (                          -- 실행 단위
   run_id        bigserial PRIMARY KEY,
-  command       text        NOT NULL,             -- run · run --full · run --dry-run · sync … · index · reindex-all · requeue-dead
+  command       text        NOT NULL,             -- run · run --full · run --dry-run · sync … · index · summarize · reindex-all · requeue-dead
   started_at    timestamptz NOT NULL,
   finished_at   timestamptz,
   outcome       text        CHECK (outcome IN ('SUCCESS', 'PARTIAL', 'FAILED')),
   list_complete boolean,                          -- 목록을 totalCnt 까지 받았는가(사라짐 판정 전제). 탐색 없는 명령은 NULL
-  counts        jsonb       NOT NULL DEFAULT '{}', -- listed · planned.<종류>(계획) · enqueued.<종류>(실제 신규 등록) · done · failed · dead · deferred.INDEX …
+  counts        jsonb       NOT NULL DEFAULT '{}', -- listed · planned.<종류>(계획) · enqueued.<종류>(실제 신규 등록) · done · failed · dead · deferred.INDEX · deferred.SUMMARIZE …
   CHECK ((finished_at IS NULL) = (outcome IS NULL)) -- 종료 기록은 둘 다 있거나 둘 다 없다
 );
 
 CREATE TABLE ingest_tasks (                         -- 작업의 현재 상태
   task_id          bigserial   PRIMARY KEY,
-  kind             text        NOT NULL CHECK (kind IN ('SYNC', 'INDEX', 'TRANSITION', 'PURGE')),
+  kind             text        NOT NULL CHECK (kind IN ('SYNC', 'INDEX', 'SUMMARIZE', 'TRANSITION', 'PURGE'))   -- SUMMARIZE 는 V9(D67),
   law_id           text        NOT NULL,
   effective_date   date        NOT NULL,
   mst              text,                          -- SYNC 전용(본문 fetch 키)
