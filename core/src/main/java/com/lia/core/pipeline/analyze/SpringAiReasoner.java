@@ -17,8 +17,8 @@ import com.lia.core.pipeline.plan.QueryType;
  */
 public class SpringAiReasoner implements Reasoner {
 
-    static final String MODEL = "claude-opus-4-8";
-    static final String PROMPT_VERSION = "0.2";   // analysis-prompt-spec 버전
+    public static final String MODEL = "claude-opus-4-8";
+    public static final String PROMPT_VERSION = "0.2";   // analysis-prompt-spec 버전
 
     private static final String SYSTEM = """
             역할: 대한민국 시행 예정 법령 영향 분석가.
