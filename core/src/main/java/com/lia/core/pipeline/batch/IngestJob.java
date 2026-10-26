@@ -53,6 +53,7 @@ public class IngestJob {
     private final Map<TaskKind, TaskHandler> handlers = new EnumMap<>(TaskKind.class);
     private final int workers;
     private final boolean indexEnabled;
+    private final boolean summaryEnabled;
     private final Duration idlePoll;
     private final Duration doneRetention;
     private final Clock clock;
@@ -62,9 +63,11 @@ public class IngestJob {
     /**
      * @param indexEnabled false 면 자동 경로({@code run})가 INDEX 를 가져가지 않는다 — 수집은 계속, 색인은 큐에 남김.
      *                     직접 명령({@code index}·{@code reindex-all}·{@code sync})은 이 값과 무관
+     * @param summaryEnabled true 일 때만 run 이 SUMMARIZE(유료 Opus)를 처리 — 다른 수동 명령은 처리하지 않고 summarize 명령만(D67)
      */
     public IngestJob(TaskQueue queue, IngestRunStore runs, Discoverer discoverer, LawStore lawStore,
-                     List<TaskHandler> handlers, int workers, boolean indexEnabled, Duration idlePoll,
+                     List<TaskHandler> handlers, int workers, boolean indexEnabled,
+                     boolean summaryEnabled, Duration idlePoll,
                      Duration doneRetention, Clock clock, ObservationRegistry observations) {
         this.queue = queue;
         this.runs = runs;
@@ -81,6 +84,7 @@ public class IngestJob {
         }
         this.workers = workers;
         this.indexEnabled = indexEnabled;
+        this.summaryEnabled = summaryEnabled;
         this.idlePoll = idlePoll;
         this.doneRetention = doneRetention;
         this.clock = clock;
@@ -137,6 +141,7 @@ public class IngestJob {
                 }
                 case REQUEUE_DEAD -> counts.put("requeued", queue.requeueDead());
                 case INDEX -> { }   // 등록 없음 — 쌓여 있는 INDEX 만 소진
+                case SUMMARIZE -> { }   // 등록 없음 — 쌓여 있는 SUMMARIZE 만 소진
             }
 
             Set<TaskKind> kinds = kindsFor(command);
@@ -145,6 +150,7 @@ public class IngestJob {
             counts.put("failed", drained[1]);
             counts.put("dead", drained[2]);
             counts.put("deferred.INDEX", queue.countReady(TaskKind.INDEX));   // 색인 지연 — 미룬 것은 결과에 넣지 않는다
+            counts.put("deferred.SUMMARIZE", queue.countReady(TaskKind.SUMMARIZE));
             return finish(runId, outcome(drained[1], drained[2], listComplete, kinds), listComplete, counts);
         } catch (RuntimeException | Error e) {
             log.error("[batch] 실행 {} 실패", runId, e);
@@ -168,12 +174,21 @@ public class IngestJob {
         return partial ? RunOutcome.PARTIAL : RunOutcome.SUCCESS;
     }
 
-    /** 이번 실행이 처리하는 작업 종류 — 색인 꺼짐은 자동 경로(run)에만, index 명령은 INDEX 만. */
+    /**
+     * 이번 실행이 처리하는 작업 종류 — 색인 꺼짐은 자동 경로(run)에만, index 명령은 INDEX 만.
+     * SUMMARIZE(유료 Opus, D67)는 run(요약 켜짐)과 summarize 명령에서만 — 다른 수동 명령은 건드리지 않는다.
+     */
     private Set<TaskKind> kindsFor(JobCommand command) {
         return switch (command.type()) {
             case INDEX -> EnumSet.of(TaskKind.INDEX);
-            case RUN -> indexEnabled ? EnumSet.allOf(TaskKind.class) : EnumSet.complementOf(EnumSet.of(TaskKind.INDEX));
-            default -> EnumSet.allOf(TaskKind.class);
+            case SUMMARIZE -> EnumSet.of(TaskKind.SUMMARIZE);
+            case RUN -> {
+                Set<TaskKind> kinds = EnumSet.allOf(TaskKind.class);
+                if (!indexEnabled) kinds.remove(TaskKind.INDEX);
+                if (!summaryEnabled) kinds.remove(TaskKind.SUMMARIZE);
+                yield kinds;
+            }
+            default -> EnumSet.complementOf(EnumSet.of(TaskKind.SUMMARIZE));
         };
     }
 

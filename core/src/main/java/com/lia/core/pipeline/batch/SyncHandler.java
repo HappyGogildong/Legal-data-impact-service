@@ -14,7 +14,7 @@ import com.lia.core.store.LawStore;
 
 /**
  * SYNC — 본문·기준선 fetch(트랜잭션 밖) → <b>한 트랜잭션</b>: 정본 조립(revision·상태 같으면 저장 생략) ·
- * 더 오래된 시행중본은 과거로 · 사라짐 해제 · 시행예정본이 바뀌었으면 INDEX 등록(D62).
+ * 더 오래된 시행중본은 과거로 · 사라짐 해제 · 시행예정본이 바뀌었으면 INDEX·SUMMARIZE 등록(D62·D67).
  * 저장과 등록을 묶는 이유: 저장만 되고 등록이 빠지면 재시도 때 revision 이 같아 영영 색인되지 않는다.
  *
  * <p>가드: 시행일이 오늘 이전이거나 저장된 행이 {@code 시행중}·{@code 과거}면 아무것도 하지 않는다(fetch 도 없음) —
@@ -64,6 +64,7 @@ public class SyncHandler implements TaskHandler {
             lawStore.clearMissing(result.lawId(), result.effectiveDate());
             if (result.pendingChanged()) {
                 queue.enqueue(TaskKind.INDEX, result.lawId(), result.effectiveDate(), null);
+                queue.enqueue(TaskKind.SUMMARIZE, result.lawId(), result.effectiveDate(), null);   // D67
             }
         });
     }

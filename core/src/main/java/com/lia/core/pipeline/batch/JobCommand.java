@@ -6,12 +6,12 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 배치 명령(D62) — {@code run [--full] [--dry-run]} · {@code sync <lawId> <efYd> [mst]} · {@code index} ·
+ * 배치 명령(D62) — {@code run [--full] [--dry-run]} · {@code sync <lawId> <efYd> [mst]} · {@code index} · {@code summarize} ·
  * {@code reindex-all} · {@code requeue-dead}. Spring 의 {@code --spring.*} 옵션은 무시한다.
  */
 public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, LocalDate effectiveDate, String mst) {
 
-    public enum Type { RUN, SYNC, INDEX, REINDEX_ALL, REQUEUE_DEAD }
+    public enum Type { RUN, SYNC, INDEX, SUMMARIZE, REINDEX_ALL, REQUEUE_DEAD }
 
     /**
      * @param nonOptionArgs 비옵션 인자 — 명령과 그 인자
@@ -19,7 +19,7 @@ public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, 
      */
     public static JobCommand parse(List<String> nonOptionArgs, Set<String> optionNames) {
         if (nonOptionArgs.isEmpty()) {
-            throw new IllegalArgumentException("명령이 필요합니다: run · sync <lawId> <efYd> [mst] · index · reindex-all · requeue-dead");
+            throw new IllegalArgumentException("명령이 필요합니다: run · sync <lawId> <efYd> [mst] · index · summarize · reindex-all · requeue-dead");
         }
         String name = nonOptionArgs.get(0);
         return switch (name) {
@@ -33,6 +33,7 @@ public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, 
                         nonOptionArgs.size() > 3 ? nonOptionArgs.get(3) : null);
             }
             case "index" -> new JobCommand(Type.INDEX, false, false, null, null, null);
+            case "summarize" -> new JobCommand(Type.SUMMARIZE, false, false, null, null, null);
             case "reindex-all" -> new JobCommand(Type.REINDEX_ALL, false, false, null, null, null);
             case "requeue-dead" -> new JobCommand(Type.REQUEUE_DEAD, false, false, null, null, null);
             default -> throw new IllegalArgumentException("모르는 명령: " + name);
@@ -45,6 +46,7 @@ public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, 
             case RUN -> "run" + (full ? " --full" : "") + (dryRun ? " --dry-run" : "");
             case SYNC -> "sync " + lawId + " " + effectiveDate + (mst == null ? "" : " " + mst);
             case INDEX -> "index";
+            case SUMMARIZE -> "summarize";
             case REINDEX_ALL -> "reindex-all";
             case REQUEUE_DEAD -> "requeue-dead";
         };
