@@ -21,8 +21,8 @@ class SpringAiReasonerTest {
     @Test
     void stampMeta는_실제_모델명과_버전으로_덮어쓴다() {
         ImpactResult out = SpringAiReasoner.stampMeta(withMeta("gpt"), QueryType.DIFF);
-        assertEquals("claude-opus-4-8", out.meta().model(), "LLM의 잘못된 모델명 교정");
-        assertEquals("0.2", out.meta().promptVersion());
+        assertEquals("claude-opus-5-5", out.meta().model(), "LLM의 잘못된 모델명 교정");
+        assertEquals("0.3", out.meta().promptVersion());
     }
 
     @Test

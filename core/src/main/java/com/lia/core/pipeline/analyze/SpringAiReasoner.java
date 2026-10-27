@@ -4,12 +4,16 @@ import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 
+import com.anthropic.models.messages.OutputConfig;
+
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.analyze.AnalysisContext.SourceBlock;
 import com.lia.core.pipeline.plan.QueryType;
 
 /**
- * {@link Reasoner}의 Spring AI 구현 — 조립된 context → Opus 4.8 → 구조화 {@link ImpactResult}(§3·§4).
+ * {@link Reasoner}의 Spring AI 구현 — 조립된 context → Opus 5.5 → 구조화 {@link ImpactResult}(§3·§4).
+ * adaptive thinking(Opus 5.5 는 끌 수 없다) + effort {@code medium}(D68). thinking 토큰도 {@code max_tokens}에 들어가므로
+ * 상한은 {@code spring.ai.anthropic.chat.options.max-tokens}(16000)로 넉넉히 둔다.
  *
  * <p>시스템 프롬프트가 그라운딩 가드레일(§3 SYSTEM)을 고정하고, 구조화 출력 `.entity(ImpactResult.class)`로
  * 스키마를 강제한다. 인용 존재성 <b>검증·재생성은 상위 {@link AnalysisEngine}</b>이 결정론으로 한다.
@@ -17,13 +21,13 @@ import com.lia.core.pipeline.plan.QueryType;
  */
 public class SpringAiReasoner implements Reasoner {
 
-    public static final String MODEL = "claude-opus-4-8";
+    public static final String MODEL = "claude-opus-5-5";
     /**
      * analysis-prompt-spec 버전. 올리면 {@code law_summaries}의 저장본이 모두 낡은 것이 된다(유효 = 프롬프트 버전 일치).
      * 적재는 대기 내용이 바뀔 때만 요약을 다시 등록하므로, 올린 뒤에는 운영자가 {@code summarize} 명령을 돌려 다시 채워야 한다
-     * (유료 호출 규모는 먼저 {@code summarize --dry-run}으로 확인). 결과 스키마({@code ImpactResult})를 바꿀 때도 같다.
+     * (유료 호출 규모는 먼저 {@code summarize --dry-run}으로 확인). 결과 스키마({@code ImpactResult})·모델·추론 설정을 바꿀 때도 같다.
      */
-    public static final String PROMPT_VERSION = "0.2";
+    public static final String PROMPT_VERSION = "0.3";
 
     private static final String SYSTEM = """
             역할: 대한민국 시행 예정 법령 영향 분석가.
@@ -40,7 +44,10 @@ public class SpringAiReasoner implements Reasoner {
 
     public SpringAiReasoner(ChatModel chatModel) {
         this.chat = ChatClient.builder(chatModel)
-                .defaultOptions(AnthropicChatOptions.builder().model(MODEL))
+                .defaultOptions(AnthropicChatOptions.builder()
+                        .model(MODEL)
+                        .thinkingAdaptive()
+                        .effort(OutputConfig.Effort.MEDIUM))
                 .defaultSystem(SYSTEM)
                 .build();
     }
