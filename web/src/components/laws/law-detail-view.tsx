@@ -138,7 +138,7 @@ export function LawDetailView({
             />
             <Collapsible className="mt-2">
               <CollapsibleTrigger className="text-xs font-bold text-navy">
-                개정 이유 원문 보기 ▾
+                개정 이유 원문 보기 <span aria-hidden>▾</span>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-1 text-sm whitespace-pre-line">
                 {detail.amendReason || "개정 이유가 제공되지 않았어요."}

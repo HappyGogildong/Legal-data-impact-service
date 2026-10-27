@@ -1,6 +1,19 @@
 import type { LawSummary } from "@/lib/api/types";
 import { citationChip } from "@/lib/law-view";
 
+/** 한 주장의 칩 — 같은 조문의 하위 청크(#n)·중복 인용은 칩 하나로. */
+function uniqueChips(citations: string[], labels: Map<string, string>) {
+  const seen = new Set<string>();
+  return citations
+    .map((sourceId) => citationChip(sourceId, labels))
+    .filter((chip) => {
+      const key = `${chip.text}${chip.href ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
 /** S05 쉬운 요약(D67) — 미리 만든 그라운딩 요약. 칩은 같은 페이지의 그 조문으로(펼침·스크롤은 바뀐 조문 목록이 한다). */
 export function LawSummaryCard({
   summary,
@@ -23,19 +36,19 @@ export function LawSummaryCard({
             {claims.map((claim, i) => (
               <li key={i}>
                 <span>{claim.statement}</span>
-                {(claim.citations ?? []).map((sourceId) => {
-                  const chip = citationChip(sourceId, labels);
+                {uniqueChips(claim.citations ?? [], labels).map((chip) => {
+                  const key = `${chip.text}${chip.href ?? ""}`;
                   return chip.href ? (
                     <a
-                      key={sourceId}
+                      key={key}
                       href={chip.href}
-                      className="ml-1 rounded-sm bg-chip px-1.5 py-0.5 text-[11px] font-bold text-navy"
+                      className="ml-1 rounded-sm bg-chip px-1.5 py-0.5 text-[11px] font-bold text-navy underline-offset-2 hover:underline"
                     >
                       {chip.text}
                     </a>
                   ) : (
                     <span
-                      key={sourceId}
+                      key={key}
                       className="ml-1 rounded-sm bg-chip px-1.5 py-0.5 text-[11px] font-bold text-navy"
                     >
                       {chip.text}

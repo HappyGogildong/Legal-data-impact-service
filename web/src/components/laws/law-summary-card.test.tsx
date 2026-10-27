@@ -32,6 +32,29 @@ describe("LawSummaryCard", () => {
     ).toBeInTheDocument();
   });
 
+  it("같은 조문의 하위 청크·중복 인용은 칩 하나", () => {
+    render(
+      <LawSummaryCard
+        summary={{
+          text: "요약",
+          claims: [
+            {
+              statement: "주장",
+              citations: [
+                "LAW:001809@2026-11-03:art:18#1",
+                "LAW:001809@2026-11-03:art:18#2",
+                "LAW:001809@2026-11-03:art:18",
+              ],
+            },
+          ],
+          uncertainties: [],
+        }}
+        labels={new Map([["LAW:001809@2026-11-03:art:18", "제18조"]])}
+      />,
+    );
+    expect(screen.getAllByRole("link", { name: "제18조" })).toHaveLength(1);
+  });
+
   it("주요 내용·불확실한 점이 없으면 그 칸을 그리지 않는다", () => {
     render(
       <LawSummaryCard
