@@ -75,6 +75,17 @@ class GroundedSummariesTest {
     }
 
     @Test
+    @DisplayName("주장이 없거나 인용 없는 주장이 있으면 empty — 엔진이 거부했을 결과는 저장본이어도 돌려주지 않는다")
+    void 주장_없음_또는_무인용_주장() {
+        ImpactResult noClaims = citing(List.of(), List.of(), List.of());
+        ImpactResult uncitedClaim = citing(
+                List.of(new ImpactResult.Claim("주장", List.of(), 0.9)), List.of(), List.of());
+
+        assertTrue(summariesOf(noClaims).findCurrent(LAW).isEmpty());
+        assertTrue(summariesOf(uncitedClaim).findCurrent(LAW).isEmpty());
+    }
+
+    @Test
     @DisplayName("저장본이 없으면 empty")
     void 저장본_없음() {
         assertTrue(summariesOf(null).findCurrent(LAW).isEmpty());
