@@ -76,6 +76,16 @@ function detail(effectiveDate) {
     status: "시행예정",
     amendKind: "일부개정",
     sourceUrl: "https://www.law.go.kr/",
+    summary: {
+      text: "주택 사업계획 심의를 한 번에 묶어 절차가 짧아져요.",
+      claims: [
+        {
+          statement: "교육환경·재해영향 평가도 통합심의 대상이 돼요.",
+          citations: [`${ref}:art:18`],
+        },
+      ],
+      uncertainties: [],
+    },
     amendReason: "주택 사업계획 심의 절차를 간소화한다.",
     enforcementType: "유예",
     effectiveRule: "공포 후 6개월이 경과한 날부터 시행",
