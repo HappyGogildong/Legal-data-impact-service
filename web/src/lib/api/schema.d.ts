@@ -323,6 +323,7 @@ export interface components {
             sourceUrl?: string;
             /** @enum {string} */
             status?: "시행예정" | "시행중" | "과거" | "철회";
+            summary?: components["schemas"]["LawSummary"];
             title?: string;
         };
         LawHeader: {
@@ -352,6 +353,11 @@ export interface components {
             /** Format: date */
             effectiveDate?: string;
             lawId?: string;
+        };
+        LawSummary: {
+            claims?: components["schemas"]["SummaryClaim"][];
+            text?: string;
+            uncertainties?: string[];
         };
         LawVersions: {
             current?: components["schemas"]["InForceVersion"];
@@ -404,6 +410,10 @@ export interface components {
             label?: string;
             sourceId?: string;
             text?: string;
+        };
+        SummaryClaim: {
+            citations?: string[];
+            statement?: string;
         };
         TrendingItem: {
             /** Format: date */

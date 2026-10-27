@@ -4,11 +4,14 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
+import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Addendum;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
 import com.lia.core.web.LawDetailResponse.ChangedArticle;
+import com.lia.core.web.LawDetailResponse.LawSummary;
 import com.lia.core.web.LawDetailResponse.SourceText;
+import com.lia.core.web.LawDetailResponse.SummaryClaim;
 
 /**
  * {@link Law}(+기준선) → {@link LawDetailResponse} 표현 매핑(S05). 조문 대비는 시행예정본일 때만 — 시행된 버전은
@@ -17,8 +20,11 @@ import com.lia.core.web.LawDetailResponse.SourceText;
 @Component
 public class LawDetailMapper {
 
-    /** @param baseline 시행중 기준선, 없으면 null(제정·시행된 버전) */
-    public LawDetailResponse toBody(Law law, Law baseline) {
+    /**
+     * @param baseline 시행중 기준선, 없으면 null(제정·시행된 버전)
+     * @param summary  유효한 쉬운 요약, 없으면 null — 시행예정본일 때만 싣는다
+     */
+    public LawDetailResponse toBody(Law law, Law baseline, ImpactResult summary) {
         boolean pending = law.pending();
         Law comparedTo = pending ? baseline : null;
         List<ChangedArticle> changed = law.changedArticles().stream()
@@ -32,7 +38,17 @@ public class LawDetailMapper {
                 law.effectiveRule(), clause == null ? null : addendum(law, clause), changed,
                 law.addenda().stream().map(addendum -> addendum(law, addendum)).toList(),
                 law.delegationClauses(),
-                comparedTo == null ? null : comparedTo.effectiveDate());
+                comparedTo == null ? null : comparedTo.effectiveDate(),
+                pending && summary != null ? summary(summary) : null);
+    }
+
+    private static LawSummary summary(ImpactResult result) {
+        List<SummaryClaim> claims = result.claims() == null ? List.of() : result.claims().stream()
+                .map(claim -> new SummaryClaim(claim.statement(),
+                        claim.citations() == null ? List.of() : claim.citations()))
+                .toList();
+        return new LawSummary(result.summary(), claims,
+                result.uncertainties() == null ? List.of() : result.uncertainties());
     }
 
     private static ChangedArticle changedArticle(Law law, Article article, Law baseline) {

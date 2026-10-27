@@ -15,10 +15,12 @@ import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.application.profile.ProfileUseCase;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.config.SecurityConfig;
+import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
 import com.lia.core.store.DataStatusStore;
 import com.lia.core.store.LawCatalogStore;
 import com.lia.core.store.LawSource;
+import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawViewStore;
 import com.lia.core.store.TrendingWindow;
 import com.lia.core.testsupport.InMemoryAccountStore;
@@ -117,6 +119,16 @@ class ApiSliceTestConfig {
                 return Optional.of(CitedSourceResolverTest.law(Law.Status.시행중, LAW_BASELINE, "① 심의한다."));
             }
         };
+    }
+
+    /** 주택법 2026-11-01 만 요약이 있다. */
+    @Bean
+    LawSummaries lawSummaries() {
+        return law -> "001809".equals(law.lawId()) && LAW_EFFECTIVE.equals(law.effectiveDate())
+                ? Optional.of(new ImpactResult("LAW:001809@2026-11-01", "SUMMARY", "절차가 짧아져요.",
+                        List.of(new ImpactResult.Claim("통합심의가 넓어진다", List.of("LAW:001809@2026-11-01:art:18"), 0.9)),
+                        List.of(), List.of(), null, List.of(), "참고용", null))
+                : Optional.empty();
     }
 
     /** 001809@2026-11-01 만 있는 조회 집계 — 순위는 고정 1건. */
