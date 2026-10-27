@@ -204,4 +204,36 @@ describe("LawDetailView", () => {
       screen.queryByRole("link", { name: "국가법령정보센터 원문 ↗" }),
     ).not.toBeInTheDocument();
   });
+
+  it("요약이 있으면 요약이 기본, 개정 이유 원문은 접힘, 쉬운 요약 보기 버튼 없음", async () => {
+    renderDetail({
+      ...DETAIL,
+      summary: {
+        text: "절차가 짧아져요.",
+        claims: [
+          {
+            statement: "통합심의가 넓어진다",
+            citations: ["LAW:001809@2026-11-03:art:18"],
+          },
+        ],
+        uncertainties: [],
+      },
+    });
+
+    expect(screen.getByText("절차가 짧아져요.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "제18조" })).toHaveAttribute(
+      "href",
+      "#art-18",
+    );
+    expect(
+      screen.queryByRole("button", { name: "쉬운 요약 보기" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("심의 절차를 간소화한다."),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: /개정 이유 원문 보기/ }),
+    );
+    expect(screen.getByText("심의 절차를 간소화한다.")).toBeInTheDocument();
+  });
 });

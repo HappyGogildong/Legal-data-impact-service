@@ -50,9 +50,9 @@ public class AnalysisEngine {
      * 이 필드로 새는 것을 차단(DIFF는 impacts를 산출한다, §5).
      *
      * <p>현재 Layer A(SUMMARY·DIFF)는 claims를 필수로 본다. Layer B(IMPACT·ACTION) 착지 시
-     * 차원별 필수 필드로 정교화한다.
+     * 차원별 필수 필드로 정교화한다. 저장된 요약 재검증({@link GroundedSummaries})도 이 규칙을 그대로 쓴다.
      */
-    private static boolean grounded(ImpactResult r, Set<String> injectedSourceIds) {
+    static boolean grounded(ImpactResult r, Set<String> injectedSourceIds) {
         if (r == null || r.claims() == null || r.claims().isEmpty()) {
             return false;   // 스키마 불일치(누락)·무근거 → 재생성 대상
         }
@@ -66,7 +66,7 @@ public class AnalysisEngine {
     }
 
     /** 결과가 인용한 모든 source_id 수집(claims·impacts·actions.basis) — null 안전. */
-    private static Set<String> citedSourceIds(ImpactResult r) {
+    static Set<String> citedSourceIds(ImpactResult r) {
         Set<String> ids = new HashSet<>();
         if (r.claims() != null) {
             r.claims().forEach(c -> { if (c.citations() != null) ids.addAll(c.citations()); });

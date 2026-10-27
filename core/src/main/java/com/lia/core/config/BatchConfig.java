@@ -27,16 +27,21 @@ import com.lia.core.pipeline.batch.IngestRunStore;
 import com.lia.core.pipeline.batch.MinIntervalLimiter;
 import com.lia.core.pipeline.batch.PurgeHandler;
 import com.lia.core.pipeline.batch.RateLimitedLawFeed;
+import com.lia.core.pipeline.batch.SummarizeHandler;
 import com.lia.core.pipeline.batch.SyncHandler;
 import com.lia.core.pipeline.batch.TaskHandler;
 import com.lia.core.pipeline.batch.TaskQueue;
 import com.lia.core.pipeline.batch.TransitionHandler;
+import com.lia.core.pipeline.analyze.AnalysisEngine;
+import com.lia.core.pipeline.analyze.SpringAiReasoner;
 import com.lia.core.pipeline.connector.LawConnector;
 import com.lia.core.pipeline.connector.PendingLawFeed;
 import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.ingest.IngestService;
 import com.lia.core.store.ChunkStore;
 import com.lia.core.store.LawStore;
+import com.lia.core.store.LawSummaries;
+import com.lia.core.store.LawSummaryStore;
 
 /**
  * 적재 배치 배선(D62) — {@code batch} 프로파일에서만. 웹 컨텍스트에는 배치 빈이 없다.
@@ -82,10 +87,14 @@ public class BatchConfig {
     public IngestJob ingestJob(TaskQueue queue, IngestRunStore runs, Discoverer discoverer, LawStore lawStore,
                                PendingLawFeed feed, IngestService ingest, ChunkStore chunkStore, RAGIndexer indexer,
                                Clock batchClock, ObservationRegistry observations,
+                               AnalysisEngine analysisEngine, LawSummaryStore lawSummaryStore,
+                               LawSummaries lawSummaries,
                                PlatformTransactionManager transactionManager,
                                @Value("${lia.batch.workers}") int workers,
                                @Value("${lia.batch.index.enabled}") boolean indexEnabled,
+                               @Value("${lia.batch.summary.enabled}") boolean summaryEnabled,
                                @Value("${lia.batch.embedding-interval}") Duration embeddingInterval,
+                               @Value("${lia.batch.summary-interval}") Duration summaryInterval,
                                @Value("${lia.batch.idle-poll}") Duration idlePoll,
                                @Value("${lia.batch.done-retention}") Duration doneRetention) {
         // 같은 PlatformTransactionManager — LawStore·TaskQueue·ChunkStore 가 한 트랜잭션에 참여한다
@@ -93,9 +102,13 @@ public class BatchConfig {
         List<TaskHandler> handlers = List.of(
                 new SyncHandler(feed, ingest, lawStore, queue, transactions, batchClock),
                 new IndexHandler(lawStore, indexer, new MinIntervalLimiter(embeddingInterval)),
+                new SummarizeHandler(lawStore, analysisEngine, lawSummaryStore, lawSummaries,
+                        new MinIntervalLimiter(summaryInterval),
+                        SpringAiReasoner.MODEL),
                 new TransitionHandler(lawStore, chunkStore, queue, transactions),
                 new PurgeHandler(lawStore, chunkStore, transactions));
-        return new IngestJob(queue, runs, discoverer, lawStore, handlers, workers, indexEnabled, idlePoll,
+        return new IngestJob(queue, runs, discoverer, lawStore, lawSummaries, handlers, workers, indexEnabled, summaryEnabled,
+                idlePoll,
                 doneRetention, batchClock, observations);
     }
 

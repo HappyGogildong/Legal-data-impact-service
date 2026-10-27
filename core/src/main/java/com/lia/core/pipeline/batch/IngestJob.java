@@ -26,8 +26,10 @@ import org.slf4j.LoggerFactory;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 
+import com.lia.core.domain.law.Law;
 import com.lia.core.observability.Obs;
 import com.lia.core.store.LawStore;
+import com.lia.core.store.LawSummaries;
 import com.lia.core.store.PendingVersion;
 
 /**
@@ -50,9 +52,11 @@ public class IngestJob {
     private final IngestRunStore runs;
     private final Discoverer discoverer;
     private final LawStore lawStore;
+    private final LawSummaries summaries;
     private final Map<TaskKind, TaskHandler> handlers = new EnumMap<>(TaskKind.class);
     private final int workers;
     private final boolean indexEnabled;
+    private final boolean summaryEnabled;
     private final Duration idlePoll;
     private final Duration doneRetention;
     private final Clock clock;
@@ -62,14 +66,19 @@ public class IngestJob {
     /**
      * @param indexEnabled false 면 자동 경로({@code run})가 INDEX 를 가져가지 않는다 — 수집은 계속, 색인은 큐에 남김.
      *                     직접 명령({@code index}·{@code reindex-all}·{@code sync})은 이 값과 무관
+     * @param summaryEnabled true 일 때만 run 이 SUMMARIZE(유료 Opus)를 처리 — 다른 수동 명령은 처리하지 않고 summarize 명령만(D67).
+     *                       summarize 명령은 모든 시행예정본에 SUMMARIZE 를 등록해 요약이 없거나 낡은 것을 채운다
+     * @param summaries      {@code summarize --dry-run}이 요약이 필요한 시행예정본 수를 셀 때 쓴다(핸들러와 같은 유효 기준)
      */
     public IngestJob(TaskQueue queue, IngestRunStore runs, Discoverer discoverer, LawStore lawStore,
-                     List<TaskHandler> handlers, int workers, boolean indexEnabled, Duration idlePoll,
+                     LawSummaries summaries, List<TaskHandler> handlers, int workers, boolean indexEnabled,
+                     boolean summaryEnabled, Duration idlePoll,
                      Duration doneRetention, Clock clock, ObservationRegistry observations) {
         this.queue = queue;
         this.runs = runs;
         this.discoverer = discoverer;
         this.lawStore = lawStore;
+        this.summaries = summaries;
         handlers.forEach(h -> this.handlers.put(h.kind(), h));
         for (TaskKind kind : TaskKind.values()) {
             if (!this.handlers.containsKey(kind)) {
@@ -81,6 +90,7 @@ public class IngestJob {
         }
         this.workers = workers;
         this.indexEnabled = indexEnabled;
+        this.summaryEnabled = summaryEnabled;
         this.idlePoll = idlePoll;
         this.doneRetention = doneRetention;
         this.clock = clock;
@@ -137,6 +147,17 @@ public class IngestJob {
                 }
                 case REQUEUE_DEAD -> counts.put("requeued", queue.requeueDead());
                 case INDEX -> { }   // 등록 없음 — 쌓여 있는 INDEX 만 소진
+                case SUMMARIZE -> {   // 모든 시행예정본에 등록 — 요약이 없거나 낡은 것을 채운다(유효한 요약은 핸들러가 건너뜀)
+                    if (command.dryRun()) {   // 대상 수만 — 등록·소진(유료 호출) 없음
+                        counts.put("planned.SUMMARIZE", countSummaryTargets());
+                        return finish(runId, outcome(0, 0, null, Set.of()), null, counts);
+                    }
+                    int enqueued = 0;
+                    for (PendingVersion version : lawStore.listPendingVersions()) {
+                        if (queue.enqueue(TaskKind.SUMMARIZE, version.lawId(), version.effectiveDate(), null)) enqueued++;
+                    }
+                    counts.put("enqueued.SUMMARIZE", enqueued);
+                }
             }
 
             Set<TaskKind> kinds = kindsFor(command);
@@ -145,6 +166,7 @@ public class IngestJob {
             counts.put("failed", drained[1]);
             counts.put("dead", drained[2]);
             counts.put("deferred.INDEX", queue.countReady(TaskKind.INDEX));   // 색인 지연 — 미룬 것은 결과에 넣지 않는다
+            counts.put("deferred.SUMMARIZE", queue.countReady(TaskKind.SUMMARIZE));
             return finish(runId, outcome(drained[1], drained[2], listComplete, kinds), listComplete, counts);
         } catch (RuntimeException | Error e) {
             log.error("[batch] 실행 {} 실패", runId, e);
@@ -155,6 +177,16 @@ public class IngestJob {
             }
             throw e;
         }
+    }
+
+    /** 요약이 필요한 시행예정본 수 — 시행예정 정본이 있고 유효한 요약이 없는 것(SummarizeHandler 의 건너뜀 기준과 같다). */
+    private int countSummaryTargets() {
+        int targets = 0;
+        for (PendingVersion version : lawStore.listPendingVersions()) {
+            Optional<Law> law = lawStore.find(version.lawId(), version.effectiveDate());
+            if (law.isPresent() && law.get().pending() && summaries.findCurrent(law.get()).isEmpty()) targets++;
+        }
+        return targets;
     }
 
     /**
@@ -168,12 +200,21 @@ public class IngestJob {
         return partial ? RunOutcome.PARTIAL : RunOutcome.SUCCESS;
     }
 
-    /** 이번 실행이 처리하는 작업 종류 — 색인 꺼짐은 자동 경로(run)에만, index 명령은 INDEX 만. */
+    /**
+     * 이번 실행이 처리하는 작업 종류 — 색인 꺼짐은 자동 경로(run)에만, index 명령은 INDEX 만.
+     * SUMMARIZE(유료 Opus, D67)는 run(요약 켜짐)과 summarize 명령에서만 — 다른 수동 명령은 건드리지 않는다.
+     */
     private Set<TaskKind> kindsFor(JobCommand command) {
         return switch (command.type()) {
             case INDEX -> EnumSet.of(TaskKind.INDEX);
-            case RUN -> indexEnabled ? EnumSet.allOf(TaskKind.class) : EnumSet.complementOf(EnumSet.of(TaskKind.INDEX));
-            default -> EnumSet.allOf(TaskKind.class);
+            case SUMMARIZE -> EnumSet.of(TaskKind.SUMMARIZE);
+            case RUN -> {
+                Set<TaskKind> kinds = EnumSet.allOf(TaskKind.class);
+                if (!indexEnabled) kinds.remove(TaskKind.INDEX);
+                if (!summaryEnabled) kinds.remove(TaskKind.SUMMARIZE);
+                yield kinds;
+            }
+            default -> EnumSet.complementOf(EnumSet.of(TaskKind.SUMMARIZE));
         };
     }
 

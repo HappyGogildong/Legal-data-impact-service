@@ -17,8 +17,13 @@ import com.lia.core.pipeline.plan.QueryType;
  */
 public class SpringAiReasoner implements Reasoner {
 
-    static final String MODEL = "claude-opus-4-8";
-    static final String PROMPT_VERSION = "0.2";   // analysis-prompt-spec 버전
+    public static final String MODEL = "claude-opus-4-8";
+    /**
+     * analysis-prompt-spec 버전. 올리면 {@code law_summaries}의 저장본이 모두 낡은 것이 된다(유효 = 프롬프트 버전 일치).
+     * 적재는 대기 내용이 바뀔 때만 요약을 다시 등록하므로, 올린 뒤에는 운영자가 {@code summarize} 명령을 돌려 다시 채워야 한다
+     * (유료 호출 규모는 먼저 {@code summarize --dry-run}으로 확인). 결과 스키마({@code ImpactResult})를 바꿀 때도 같다.
+     */
+    public static final String PROMPT_VERSION = "0.2";
 
     private static final String SYSTEM = """
             역할: 대한민국 시행 예정 법령 영향 분석가.

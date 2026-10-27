@@ -46,6 +46,24 @@ class JobCommandTest {
     }
 
     @Test
+    @DisplayName("summarize 명령")
+    void summarize_명령() {
+        JobCommand command = JobCommand.parse(List.of("summarize"), Set.of());
+        assertEquals(JobCommand.Type.SUMMARIZE, command.type());
+        assertEquals("summarize", command.label());
+        assertFalse(command.dryRun());
+    }
+
+    @Test
+    @DisplayName("summarize --dry-run — 시험 실행 표기")
+    void summarize_시험실행() {
+        JobCommand command = JobCommand.parse(List.of("summarize"), Set.of("dry-run"));
+        assertEquals(JobCommand.Type.SUMMARIZE, command.type());
+        assertTrue(command.dryRun());
+        assertEquals("summarize --dry-run", command.label());
+    }
+
+    @Test
     @DisplayName("명령 없음·모르는 명령·sync 인자 부족·잘못된 날짜 → IllegalArgumentException")
     void 잘못된입력() {
         assertThrows(IllegalArgumentException.class, () -> JobCommand.parse(List.of(), Set.of()));

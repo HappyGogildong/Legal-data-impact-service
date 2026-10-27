@@ -89,7 +89,7 @@ class AnalyzeUseCaseTest {
         if (lawLoaded) src.versions.put("001809@2026-08-04", law());
         AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
         DimensionHandlerRegistry registry =
-                new DimensionHandlerRegistry(List.of(new SummaryHandler(engine), new DiffHandler(engine)));
+                new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder()), new DiffHandler(engine)));
         return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry),
                 (lawId, efYd) -> { recorded.add(lawId + "@" + efYd); return true; });
     }
@@ -173,7 +173,7 @@ class AnalyzeUseCaseTest {
         src.versions.put("001809@2026-08-04", law());
         AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
         AnalyzeUseCase failing = new AnalyzeUseCase(planner,
-                new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(new SummaryHandler(engine)))),
+                new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder())))),
                 (lawId, efYd) -> { throw new IllegalStateException("DB 끊김"); });
 
         AnalysisOutcome out = failing.analyze("주택법 뭐가 바뀌어?", null);

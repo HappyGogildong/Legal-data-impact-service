@@ -25,6 +25,7 @@ related: ["mvp/service-api-spec.md", "product/screen-plan.md", "components/web/A
 - 상세는 **상태 무관**(시행예정·시행중·과거·철회) — 예전 인용이 깨지지 않게(D62 행 보존).
 - `previousText`는 시행예정본의 개정·삭제·이동 조문만 — 시행된 버전은 기준선이 자기 자신이라 대비하지 않는다.
 - 커서는 불투명 — `(effectiveDate, lawId)`의 base64url. 클라이언트는 해석하지 않는다.
+- 상세의 `summary`는 `LawSummaries`가 주는 **유효한 저장본만**(정본 revision·프롬프트 버전 일치) — 시행예정본일 때만 싣는다(D67). 없으면 생략.
 
 ## 인덱스
 - V6 `law_versions (status, effective_date, law_id)` — 목록 조건·정렬·키셋을 한 인덱스로.

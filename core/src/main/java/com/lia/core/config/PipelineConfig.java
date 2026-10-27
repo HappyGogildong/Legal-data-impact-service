@@ -4,9 +4,11 @@ import java.time.LocalDate;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.client.RestClient;
 
 import io.micrometer.observation.ObservationRegistry;
+import tools.jackson.databind.ObjectMapper;
 
 import org.springframework.ai.anthropic.AnthropicChatModel;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -22,6 +24,7 @@ import com.lia.core.pipeline.embed.OpenAiEmbedder;
 import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.ContextBuilder;
+import com.lia.core.pipeline.analyze.GroundedSummaries;
 import com.lia.core.pipeline.analyze.Reasoner;
 import com.lia.core.pipeline.analyze.SpringAiReasoner;
 import com.lia.core.pipeline.normalize.Normalizer;
@@ -34,6 +37,8 @@ import com.lia.core.pipeline.resolve.ChunkStoreLawSearch;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
 import com.lia.core.store.ChunkStore;
+import com.lia.core.store.LawSummaries;
+import com.lia.core.store.LawSummaryStore;
 import com.lia.core.store.LawViews;
 import com.lia.core.store.PgVectorChunkStore;
 
@@ -139,6 +144,18 @@ public class PipelineConfig {
     @Bean
     public AnalysisEngine analysisEngine(ContextBuilder contextBuilder, Reasoner reasoner) {
         return new AnalysisEngine(contextBuilder, reasoner, ANALYZE_MAX_ATTEMPTS);
+    }
+
+    /** 쉬운 요약 저장소(D67) — 지금 프롬프트 버전으로 유효성을 가린다. */
+    @Bean
+    public LawSummaryStore lawSummaryStore(JdbcClient jdbcClient, ObjectMapper objectMapper) {
+        return new LawSummaryStore(jdbcClient, objectMapper, SpringAiReasoner.PROMPT_VERSION);
+    }
+
+    /** 쉬운 요약 읽기 포트(D67)의 유일한 구현 — 인용이 지금 근거 집합 안인 저장본만. 분석·법령 상세·배치가 공유한다. */
+    @Bean
+    public LawSummaries lawSummaries(LawSummaryStore lawSummaryStore, ContextBuilder contextBuilder) {
+        return new GroundedSummaries(lawSummaryStore, contextBuilder);
     }
 
     /** 온라인 유스케이스(plan→dispatch). 애노테이션 없는 코어를 여기서 배선(프레임워크 비의존). */

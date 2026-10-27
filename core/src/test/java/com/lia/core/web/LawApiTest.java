@@ -76,7 +76,9 @@ class LawApiTest {
                 .andExpect(jsonPath("$.title").value("주택법"))
                 .andExpect(jsonPath("$.status").value("시행예정"))
                 .andExpect(jsonPath("$.changedArticles[0].previousText").value("① 심의한다."))
-                .andExpect(jsonPath("$.baselineEffectiveDate").value("2020-01-01"));
+                .andExpect(jsonPath("$.baselineEffectiveDate").value("2020-01-01"))
+                .andExpect(jsonPath("$.summary.text").value("절차가 짧아져요."))
+                .andExpect(jsonPath("$.summary.claims[0].citations[0]").value("LAW:001809@2026-11-01:art:18"));
         mvc.perform(get("/api/v1/laws/001809/2027-01-01"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("not_found"));

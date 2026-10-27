@@ -55,14 +55,20 @@ curl -X POST localhost:8080/api/v1/analyses -H "Content-Type: application/json" 
 법령 수집·RAG 색인은 같은 이미지를 **`batch` 프로파일로 띄워 한 번 돌고 종료**하는 잡이다([[IngestJob]]). 웹 서버 없이 실행되고, 온라인 `core`와 자원이 분리된다. compose에는 `ingest` 서비스(`profiles: [batch]` — 평소 `up`에는 안 뜸)로 둔다.
 
 ```bash
-# 수동 실행 — 명령은 run · run --full · run --dry-run · sync <lawId> <efYd> [mst] · index · reindex-all · requeue-dead
+# 수동 실행 — 명령은 run · run --full · run --dry-run · sync <lawId> <efYd> [mst] · index · summarize [--dry-run] · reindex-all · requeue-dead
 docker compose run --rm ingest run
 
 # 정기 실행에서 임베딩(색인)만 끄기 — 수집·시행 전환·철회는 계속, INDEX 는 큐에 쌓임
 #   compose ingest 서비스 environment 에 LIA_BATCH_INDEX_ENABLED: "false" (cron 줄은 그대로)
 # 밀린 색인을 원하는 때 처리 — 설정과 무관하게 동작
 docker compose run --rm ingest index
+# 쉬운 요약 일괄 생성(유료 Opus, D67) — 정기 run 에서 켜려면 env LIA_BATCH_SUMMARY_ENABLED=true
+docker compose run --rm ingest summarize
+# 비용 확인 — 요약이 필요한 시행예정본 수만 센다(등록·유료 호출 없음)
+docker compose run --rm ingest summarize --dry-run
 ```
+
+> **요약 비용 확인(D67):** 정기 `run`에서 요약을 켜기 전에 `summarize --dry-run`으로 대상 수를 본다. 설정을 끈 동안 밀린 요약은 `deferred.SUMMARIZE`로 `ingest_runs.counts`에 남으므로, **직전 실행의 `deferred.SUMMARIZE`가 설정을 켜는 순간 청구될 규모**다 — 처음 켠 실행이 그만큼을 한 번에 소진한다. 프롬프트 버전이나 결과 스키마를 바꾼 뒤에는 저장본이 모두 낡으므로 `summarize`를 한 번 돌린다(적재는 내용이 바뀐 법령만 다시 등록).
 
 정기 실행은 **외부 스케줄러**가 띄운다(로컬은 호스트 cron, 클라우드는 ECS 예약 작업 등):
 

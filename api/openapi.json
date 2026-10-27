@@ -739,6 +739,9 @@
             "type" : "string",
             "enum" : [ "시행예정", "시행중", "과거", "철회" ]
           },
+          "summary" : {
+            "$ref" : "#/components/schemas/LawSummary"
+          },
           "title" : {
             "type" : "string"
           }
@@ -818,6 +821,26 @@
           },
           "lawId" : {
             "type" : "string"
+          }
+        }
+      },
+      "LawSummary" : {
+        "type" : "object",
+        "properties" : {
+          "claims" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SummaryClaim"
+            }
+          },
+          "text" : {
+            "type" : "string"
+          },
+          "uncertainties" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
           }
         }
       },
@@ -964,6 +987,20 @@
             "type" : "string"
           },
           "text" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SummaryClaim" : {
+        "type" : "object",
+        "properties" : {
+          "citations" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "statement" : {
             "type" : "string"
           }
         }

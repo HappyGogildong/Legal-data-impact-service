@@ -218,6 +218,10 @@ GET /api/v1/laws?from=2026-10-25&to=2026-11-24&limit=20&cursor=MjAyNi0xMS0wMXwwM
   "promulgateDate": "2026-05-01", "promulgateNo": "21323",
   "effectiveDate": "2026-11-01", "status": "시행예정",      // 시행예정 · 시행중 · 과거 · 철회
   "amendKind": "일부개정", "sourceUrl": "https://www.law.go.kr/…",
+  "summary": { "text": "주택 사업계획 심의를 한 번에 묶어 절차가 짧아져요.",
+               "claims": [ { "statement": "교육환경·재해영향 평가도 통합심의 대상이 돼요.",
+                             "citations": ["LAW:001809@2026-11-01:art:18"] } ],
+               "uncertainties": [] },                // 미리 만든 쉬운 요약(D67) — 없으면 생략
   "amendReason": "주택 사업계획 심의 절차를 간소화하고 …",   // 제개정이유 원문
   "enforcementType": "유예",                                 // 즉시 · 유예 · 단계적
   "effectiveRule": "이 법은 공포 후 6개월이 경과한 날부터 시행한다.",
@@ -237,7 +241,7 @@ GET /api/v1/laws?from=2026-10-25&to=2026-11-24&limit=20&cursor=MjAyNi0xMS0wMXwwM
 
 - `changedArticles[].previousText` — **시행예정본**의 개정·삭제·이동 조문일 때만 기준선(시행중본)의 현행 원문(이동은 옛 번호로 찾는다). 신설·무변경·시행된 버전은 없다. 근거 패널(`POST /analyses`의 `sources`)과 같은 규칙이다.
 - `sourceId`는 인용키 형식 그대로라 결과 화면의 인용 칩이 상세의 해당 조문(`#art-18`)으로 이어진다.
-- 쉬운 요약은 이 응답에 없다 — 화면의 "쉬운 요약 보기"가 이 법령 `lawRef`로 `POST /analyses`를 부른다(D65). 개인화 분석도 `POST /analyses`로만 한다.
+- `summary` — **적재 배치가 미리 만든 쉬운 요약**(D67): `{ "text": "…", "claims": [{ "statement": "…", "citations": ["LAW:…:art:18"] }], "uncertainties": ["…"] }`. 분석과 같은 엔진·인용 검증을 통과한 것만 저장되고, 정본 revision·프롬프트 버전이 지금과 같을 때만, **시행예정본일 때만** 싣는다. 없으면 필드를 생략 — 화면은 "쉬운 요약 보기"가 이 법령 `lawRef`로 `POST /analyses`를 부르는 대체로 간다. 개인화 분석은 `POST /analyses`로만 한다.
 - `404`: 그 버전이 없음. `400`: `efYd` 형식 오류.
 
 ### 3.4 프로필·동의·계정 — `/profile` · `/consents` · `/account` (S3)

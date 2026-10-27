@@ -9,9 +9,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
 import com.lia.core.store.LawCatalogStore;
 import com.lia.core.store.LawSource;
+import com.lia.core.store.LawSummaries;
 
 /**
  * {@code /api/v1/laws} — 곧 시행되는 법령 목록·시행예정본 목록·법령 상세([[service-api-spec]] §3.1~3.3, D65).
@@ -27,11 +29,13 @@ public class LawController {
 
     private final LawCatalogStore catalog;
     private final LawSource laws;
+    private final LawSummaries summaries;
     private final LawDetailMapper mapper;
 
-    public LawController(LawCatalogStore catalog, LawSource laws, LawDetailMapper mapper) {
+    public LawController(LawCatalogStore catalog, LawSource laws, LawSummaries summaries, LawDetailMapper mapper) {
         this.catalog = catalog;
         this.laws = laws;
+        this.summaries = summaries;
         this.mapper = mapper;
     }
 
@@ -63,7 +67,8 @@ public class LawController {
         LocalDate date = date(effectiveDate, "effectiveDate");
         Law law = laws.find(lawId, date).orElseThrow(() -> new LawNotFoundException(lawId + "@" + effectiveDate));
         Law baseline = law.pending() ? laws.findBaseline(lawId).orElse(null) : null;   // 대비는 시행예정본만
-        return mapper.toBody(law, baseline);
+        ImpactResult summary = law.pending() ? summaries.findCurrent(law).orElse(null) : null;   // D67
+        return mapper.toBody(law, baseline, summary);
     }
 
     /** "YYYY-MM-DD"(달력에 있는 날)만. null 은 조건 없음. */

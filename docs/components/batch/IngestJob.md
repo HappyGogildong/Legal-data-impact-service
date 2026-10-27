@@ -13,12 +13,12 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 
 ## 설계 결정 (D62)
 - **실행 모델 = 1회성 잡 프로파일** — 웹 서버 없이 실행 후 종료. 정기 실행은 외부 스케줄러(로컬: 호스트 cron + `docker compose run`, 클라우드: ECS 예약 작업 등), 수동 실행은 **명령줄 인자**. 온라인과 자원이 분리되고, 수동 실행용 관리자 API·인증이 필요 없다.
-- **작업 큐 테이블** — 작업 종류 4개(`SYNC`·`INDEX`·`TRANSITION`·`PURGE`)를 큐에 넣고 공용 워커 풀이 `FOR UPDATE SKIP LOCKED`로 가져간다. 단계별 재시도·재개·병렬 처리를 큐가 책임진다.
+- **작업 큐 테이블** — 작업 종류 5개(`SYNC`·`INDEX`·`SUMMARIZE`·`TRANSITION`·`PURGE`)를 큐에 넣고 공용 워커 풀이 `FOR UPDATE SKIP LOCKED`로 가져간다. 단계별 재시도·재개·병렬 처리를 큐가 책임진다.
 - **지나간 버전은 상태로 보존** — `과거`(대체된 시행중본)·`철회`(목록에서 사라진 시행예정본). 행은 남기고 RAG 색인에서만 뺀다(과거 답변의 인용 조문을 계속 되짚을 수 있게).
 - **재시도 = 다음 실행에서**, 실행당 1회 시도. 일시적 오류는 3회 시도 후 격리(`DEAD`), 영구 오류는 즉시 격리.
 - **단일 프로세스 + 소유권 확인, lease 없음** — advisory lock으로 배치는 한 번에 한 프로세스뿐이라, 새 실행이 잠금을 잡은 시점에 남은 `RUNNING`은 모두 죽은 프로세스의 것이다. 시간 기반 lease 대신 시작 시 일괄 복구하고, 완료·실패 기록은 `last_attempt_run`(실행 토큰)으로 소유권을 확인한다(§동시성).
 - **시도 이력은 별도 테이블** — `ingest_tasks`는 작업의 *현재 상태*, `ingest_task_attempts`는 *시도마다의 이력*, `ingest_runs`는 *실행 단위*. `docker compose run --rm`은 컨테이너와 함께 로그를 지우므로 오류 이력은 DB에 남긴다.
-- **Layer A 선계산은 범위 밖**(#38) — 큐에 작업 종류를 추가하는 방식으로 나중에 붙인다(아래 Design Constraints).
+- **쉬운 요약 선계산**(D67, #38 일부) — `SUMMARIZE` 작업. DIFF·LawFacts 선계산은 아직 범위 밖.
 
 ## Responsibility
 - **담당:** 실행 진입·단일 실행 보장 · 목록 ⟷ 저장 상태 비교(탐색) · 작업 등록·분배·재시도·격리 · 법령 라이프사이클(시행 전환·철회) · 실행·시도 기록 · 중단된 실행 정리.
@@ -36,7 +36,7 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 | `IngestJob` | 실행 한 번의 흐름: 정리(중단된 실행·`RUNNING` 복구·보존 정리) → 탐색 → 큐 소진 → 기록 |
 | `Discoverer` | 목록 전체 조회 ⟷ `law_versions` 비교 → 작업 등록. 목록 완주 여부 판정 |
 | `TaskQueue` | `ingest_tasks`·`ingest_task_attempts`: 등록(중복 방지) · 가져가기(`SKIP LOCKED` + 시도 행) · 완료·실패(소유권 확인) · 격리 재투입 · 중단 복구 |
-| `SyncHandler` · `IndexHandler` · `TransitionHandler` · `PurgeHandler` | 작업 종류당 하나. 아래 §작업별 동작 |
+| `SyncHandler` · `IndexHandler` · `SummarizeHandler` · `TransitionHandler` · `PurgeHandler` | 작업 종류당 하나. 아래 §작업별 동작 |
 | `MinIntervalLimiter` | 외부 API별 최소 호출 간격(국가법령정보·임베딩 각각) |
 | `IngestRunStore` | `ingest_runs`: 실행 기록 · 중단된 실행 정리 |
 
@@ -53,12 +53,15 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 | `run --dry-run` | 탐색 결과(무엇을 할지)만 `ingest_runs`에 기록. 큐·`law_versions`에 쓰지 않음 |
 | `sync <lawId> <efYd> [mst]` | 단건 `SYNC` 등록 후 소진. `mst`를 생략하면 저장된 시행예정본의 값, 그것도 없으면 거부 |
 | `index` | 탐색·수집 없이 **쌓여 있는 `READY` `INDEX`만** 소진 — 색인을 꺼 둔 동안 밀린 작업 처리 |
+| `summarize [--dry-run]` | 탐색·수집 없이 **모든 시행예정본에 `SUMMARIZE` 등록 후 소진** — 요약이 없거나 낡은 것만 만든다(유효한 요약은 유료 호출 없이 건너뜀). 쉬운 요약 일괄 생성·채우기(유료 Opus, D67). `--dry-run`은 요약이 필요한 시행예정본 수(`planned.SUMMARIZE`)만 기록하고 등록·소진(유료 호출)은 하지 않는다 — 비용 확인용 |
 | `reindex-all` | 시행예정 전체에 `INDEX` 등록 후 소진(임베딩 모델 교체 시) |
-| `requeue-dead` | `DEAD` 작업의 **기존 행**을 `READY`로(`task_id`·시도 이력 유지, 시도 횟수 0) 되돌린 뒤 소진 |
+| `requeue-dead` | `DEAD` 작업의 **기존 행**을 `READY`로(`task_id`·시도 이력 유지, 시도 횟수 0) 되돌린 뒤 소진. 되돌아온 `SUMMARIZE`는 이 명령이 처리하지 않고 `run`(요약 켜짐) 또는 `summarize`를 기다린다. `DEAD` `SUMMARIZE`는 격리 작업이라 `summarize`가 다시 등록하지 않는다 — `requeue-dead`로 먼저 풀어야 한다 |
 
 **설정 `lia.batch.index.enabled`**(기본 `true`, env `LIA_BATCH_INDEX_ENABLED`) — `false`면 **`run`(자동 경로)의 워커가 `INDEX`를 가져가지 않는다**. 수집(`SYNC`)·시행 전환·철회는 그대로 돌고, `INDEX`는 `READY`로 남는다(법령 버전당 하나라 무한히 쌓이지 않음). 실행 기록에 `deferred.INDEX`(남은 `READY` `INDEX` 수)를 남기고, 의도된 미룸이라 결과는 `SUCCESS`. 사람이 직접 친 명령(`index`·`reindex-all`·`sync`)은 이 설정과 무관하게 `INDEX`까지 처리한다 — 명령했다면 그게 의도다.
 - 꺼 둔 동안: `TRANSITION`·`PURGE`의 색인 제거는 계속된다(삭제만 — 임베딩 비용 없음) → "시행예정 색인에는 시행예정 버전만" 불변식 유지. 대신 새·바뀐 법령은 검색 색인에 반영되지 않는다(정확 조회는 정본이라 영향 없음). "색인 지연" 신호로 보인다.
 - 플래그(`run --no-index`) 대신 설정인 이유: 정기 실행(cron) 줄을 고치지 않고 켜고 끈다.
+
+**설정 `lia.batch.summary.enabled`**(기본 **`false`**, env `LIA_BATCH_SUMMARY_ENABLED`) — `true`일 때만 `run`의 워커가 `SUMMARIZE`를 가져간다. 꺼져 있으면 `SUMMARIZE`는 `READY`로 남고 실행 기록에 `deferred.SUMMARIZE`. **유료(Opus)라 위 색인 설정과 달리 다른 수동 명령(`sync`·`index`·`reindex-all`·`requeue-dead`)도 `SUMMARIZE`를 처리하지 않는다** — `summarize` 명령으로만(D67). 최소 호출 간격 `lia.batch.summary-interval`.
 
 | 종료 코드 | 실행 결과 | 판정 기준 |
 |---|---|---|
@@ -67,7 +70,7 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 | 2 | `PARTIAL` | 이번 실행에서 실패·격리된 작업이 1건 이상 · 목록 미완주(`run`, `--dry-run` 포함) · 종료 신호로 멈춰 `READY`가 남음 |
 
 - 이전 실행에서 이미 격리돼 있던 `DEAD`는 이번 실행 결과에 넣지 않는다 — 그건 별도 신호(`DEAD ≥ 1`)다.
-- 설정으로 미룬 `INDEX`(`deferred.INDEX`)도 결과에 넣지 않는다.
+- 설정으로 미룬 `INDEX`(`deferred.INDEX`)·`SUMMARIZE`(`deferred.SUMMARIZE`)도 결과에 넣지 않는다.
 
 ## 데이터 모델 (Flyway `V5__ingest_batch.sql`)
 ```sql
@@ -77,18 +80,18 @@ ALTER TABLE law_versions ADD COLUMN missing_since date;   -- 완주 목록에서
 
 CREATE TABLE ingest_runs (                          -- 실행 단위
   run_id        bigserial PRIMARY KEY,
-  command       text        NOT NULL,             -- run · run --full · run --dry-run · sync … · index · reindex-all · requeue-dead
+  command       text        NOT NULL,             -- run · run --full · run --dry-run · sync … · index · summarize · reindex-all · requeue-dead
   started_at    timestamptz NOT NULL,
   finished_at   timestamptz,
   outcome       text        CHECK (outcome IN ('SUCCESS', 'PARTIAL', 'FAILED')),
   list_complete boolean,                          -- 목록을 totalCnt 까지 받았는가(사라짐 판정 전제). 탐색 없는 명령은 NULL
-  counts        jsonb       NOT NULL DEFAULT '{}', -- listed · planned.<종류>(계획) · enqueued.<종류>(실제 신규 등록) · done · failed · dead · deferred.INDEX …
+  counts        jsonb       NOT NULL DEFAULT '{}', -- listed · planned.<종류>(계획) · enqueued.<종류>(실제 신규 등록) · done · failed · dead · deferred.INDEX · deferred.SUMMARIZE …
   CHECK ((finished_at IS NULL) = (outcome IS NULL)) -- 종료 기록은 둘 다 있거나 둘 다 없다
 );
 
 CREATE TABLE ingest_tasks (                         -- 작업의 현재 상태
   task_id          bigserial   PRIMARY KEY,
-  kind             text        NOT NULL CHECK (kind IN ('SYNC', 'INDEX', 'TRANSITION', 'PURGE')),
+  kind             text        NOT NULL CHECK (kind IN ('SYNC', 'INDEX', 'SUMMARIZE', 'TRANSITION', 'PURGE')),   -- SUMMARIZE 는 V9(D67)
   law_id           text        NOT NULL,
   effective_date   date        NOT NULL,
   mst              text,                          -- SYNC 전용(본문 fetch 키)
@@ -130,7 +133,7 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
    - 끝나지 않은 시도 행 → `ABANDONED`. `RUNNING` 작업 → `READY`(시도 횟수가 한도면 `DEAD` — 프로세스를 죽이는 작업이 무한 반복되지 않게).
    - 30일 지난 `DONE` 삭제.
 3. **시작** — `ingest_runs` 행 생성.
-4. **등록** — `Discoverer`(명령에 따라 생략·대체: `sync`·`reindex-all`·`requeue-dead`는 해당 작업만 등록, `index`는 등록 없음). `--dry-run`은 여기서 기록 후 종료.
+4. **등록** — `Discoverer`(명령에 따라 생략·대체: `sync`·`reindex-all`·`summarize`·`requeue-dead`는 해당 작업만 등록, `index`는 등록 없음). `--dry-run`은 여기서 기록 후 종료.
 5. **소진** — 워커 풀이 작업을 처리한다. 실행 중에 생긴 작업(SYNC → INDEX, TRANSITION → SYNC)도 같은 실행에서 처리한다. 워커는 가져갈 작업이 없어도 **진행 중인 작업이 남아 있으면** 잠시 기다렸다 다시 가져가고(그 작업이 새 작업을 만들 수 있으므로), **가져갈 작업도 진행 중인 작업도 없을 때** 종료한다.
 6. **기록** — 건수·결과·`list_complete`·종료 시각을 `ingest_runs`에. 예외로 끝나도 `FAILED`로 기록한 뒤 전파한다. 잠금 해제.
 
@@ -169,8 +172,9 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
 ## 작업별 동작
 | 작업 | 동작 | 완료(`DONE`) 조건 |
 |---|---|---|
-| `SYNC(lawId, 시행일, mst)` | 시행일이 오늘 이전이거나 저장된 행이 `시행중`·`과거`면 **아무것도 안 함**(그 버전은 `TRANSITION`이 맡는다 — 오래된 SYNC가 전환된 버전을 시행예정으로 되돌리지 않게). 그 외: `fetchPending`·`fetchCurrent`(트랜잭션 밖) → **한 트랜잭션**: [[IngestService]] `store`(revision·상태가 같으면 저장 생략) · 같은 법령의 더 오래된 `시행중` → `과거` · `missing_since` 지움 · 시행예정본이 바뀌었으면 `INDEX` 등록 | 원문 조회·정본 저장(또는 동일해 생략)·필요 시 `INDEX` 등록까지 커밋. **색인 완료를 뜻하지 않는다** |
+| `SYNC(lawId, 시행일, mst)` | 시행일이 오늘 이전이거나 저장된 행이 `시행중`·`과거`면 **아무것도 안 함**(그 버전은 `TRANSITION`이 맡는다 — 오래된 SYNC가 전환된 버전을 시행예정으로 되돌리지 않게). 그 외: `fetchPending`·`fetchCurrent`(트랜잭션 밖) → **한 트랜잭션**: [[IngestService]] `store`(revision·상태가 같으면 저장 생략) · 같은 법령의 더 오래된 `시행중` → `과거` · `missing_since` 지움 · 시행예정본이 바뀌었으면 `INDEX`·`SUMMARIZE` 등록 | 원문 조회·정본 저장(또는 동일해 생략)·필요 시 `INDEX`·`SUMMARIZE` 등록까지 커밋. **색인 완료를 뜻하지 않는다** |
 | `INDEX(lawId, 시행일)` | [[LawStore]]에서 정본을 읽어 [[RAGIndexer]] `index` → [[ChunkStore]] `replaceVersion`(**한 트랜잭션**). 상태가 `시행예정`이 아니면(그 사이 전환·철회) 아무것도 안 함 | 벡터 교체 커밋, 또는 할 일 없음 |
+| `SUMMARIZE(lawId, 시행일)` | [[LawStore]]에서 정본을 읽어 `AnalysisEngine` SUMMARY(조립→Opus→인용 검증→재생성≤N) → `law_summaries` upsert(정본 revision·프롬프트 버전·모델과 함께). 상태가 `시행예정`이 아니면 아무것도 안 함. 인용 검증이 끝내 실패하면 **저장하지 않고 완료**(재시도해도 같은 입력이라 같은 실패 — 화면은 실시간 대체) | 요약 저장 커밋, 또는 할 일 없음 |
 | `TRANSITION(lawId, 시행일)` | **한 트랜잭션**: 상태 `시행예정 → 시행중`, 같은 법령의 더 오래된 `시행중` → `과거`, 이 버전의 pending 색인 제거(`replaceVersion(…, [])`), 같은 법령의 **남은 시행예정본마다 `SYNC`** 등록(기준선이 바뀌어 diff 재생성 필요). 버전이 이미 `시행예정`이 아니면 상태는 건드리지 않고 **그 버전의 시행예정 색인만 제거**(시행예정이 아닌 버전의 시행예정 청크 제거는 언제나 옳다) | 상태 전환·색인 제거·형제 `SYNC` 등록, 또는 색인 제거만 |
 | `PURGE(lawId, 시행일)` | **한 트랜잭션**: 상태 → `철회`, 이 버전의 색인 제거. **행은 남긴다**. 버전이 `시행예정`이 아니면 색인만 제거, `missing_since`가 없으면(그 사이 목록에 다시 보임) 아무것도 안 함 | 상태 전환·색인 제거, 또는 색인 제거만·할 일 없음 |
 
@@ -285,7 +289,7 @@ Pushgateway는 두지 않는다. **신호:** `DEAD ≥ 1` · 마지막 성공 �
 
 ## Design Constraints
 - **오프라인 전용**(D40) — 온라인 요청 경로에서 호출하지 않는다.
-- **Layer A 선계산(#38) 연결점** — 붙일 때는 작업 종류(예: `PRECOMPUTE_A`)를 추가하고, `SYNC`가 revision 변경 시 `INDEX`와 함께 등록하게 한다. 큐·재시도·격리·한도는 그대로 재사용된다(`kind` CHECK에 값 추가 마이그레이션).
+- **Layer A 선계산(#38) 연결점** — 쉬운 요약은 `SUMMARIZE`로 붙었다(D67). DIFF·LawFacts 도 같은 방식(작업 종류 + `SYNC` 등록 + `kind` CHECK 마이그레이션).
 - **Spring Batch 미사용** — 하루 1회·수백 건 규모에 메타 테이블과 개념이 과하다.
 - **임베딩 Batch API 미사용** — 임베딩은 전체 재색인도 저비용으로 추정되고, revision 증분이면 바뀐 법령만 다시 임베딩한다.
 - **여러 프로세스로 늘리면** — 잠금을 풀고 큐만으로 분산하려면 그때 lease(`lease_until`)·하트비트·DB 기반 법령 직렬화가 필요하다. 지금은 단일 프로세스 전제.

@@ -7,10 +7,16 @@ import {
 } from "@/components/ui/collapsible";
 import type { LawDetail, UpcomingVersion } from "@/lib/api/types";
 import { formatSeoulDateTime } from "@/lib/dates";
-import { lawHref, safeExternalUrl, statusNotice } from "@/lib/law-view";
+import {
+  citationLabels,
+  lawHref,
+  safeExternalUrl,
+  statusNotice,
+} from "@/lib/law-view";
 import { cn } from "@/lib/utils";
 import { DDayBadge } from "./d-day-badge";
 import { AskAboutLaw, SummaryButton } from "./law-actions";
+import { LawSummaryCard } from "./law-summary-card";
 import { ViewBeacon } from "./view-beacon";
 
 type LawDetailViewProps = {
@@ -22,7 +28,7 @@ type LawDetailViewProps = {
   lawsUpdatedAt: string | null;
 };
 
-/** S05 법령 상세 — 정본에서 결정론으로 만든 사실만(요약은 버튼 → S02, D65). 서버 렌더링, 접기·버튼만 브라우저. */
+/** S05 법령 상세 — 정본에서 결정론으로 만든 사실 + 미리 만든 쉬운 요약(없으면 버튼 → S02, D65). 서버 렌더링, 접기·버튼만 브라우저. */
 export function LawDetailView({
   detail,
   upcoming,
@@ -124,22 +130,41 @@ export function LawDetailView({
         <h2 id="law-summary-title" className="mb-1 font-bold">
           {pending ? "쉬운 요약" : "개정 이유"}
         </h2>
-        {pending && lawRef && (
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <SummaryButton title={title} lawRef={lawRef} />
-            <span className="text-xs text-muted-foreground">
-              근거 조문과 함께 쉽게 풀어 드려요.
-            </span>
-          </div>
+        {pending && detail.summary ? (
+          <>
+            <LawSummaryCard
+              summary={detail.summary}
+              labels={citationLabels(detail)}
+            />
+            <Collapsible className="mt-2">
+              <CollapsibleTrigger className="text-xs font-bold text-navy">
+                개정 이유 원문 보기 <span aria-hidden>▾</span>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-1 text-sm whitespace-pre-line">
+                {detail.amendReason || "개정 이유가 제공되지 않았어요."}
+              </CollapsibleContent>
+            </Collapsible>
+          </>
+        ) : (
+          <>
+            {pending && lawRef && (
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <SummaryButton title={title} lawRef={lawRef} />
+                <span className="text-xs text-muted-foreground">
+                  근거 조문과 함께 쉽게 풀어 드려요.
+                </span>
+              </div>
+            )}
+            {pending && (
+              <h3 className="mt-2 text-xs font-bold text-muted-foreground">
+                개정 이유
+              </h3>
+            )}
+            <p className="text-sm whitespace-pre-line">
+              {detail.amendReason || "개정 이유가 제공되지 않았어요."}
+            </p>
+          </>
         )}
-        {pending && (
-          <h3 className="mt-2 text-xs font-bold text-muted-foreground">
-            개정 이유
-          </h3>
-        )}
-        <p className="text-sm whitespace-pre-line">
-          {detail.amendReason || "개정 이유가 제공되지 않았어요."}
-        </p>
       </section>
 
       <section

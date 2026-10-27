@@ -49,6 +49,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/lia
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
       # LIA_BATCH_INDEX_ENABLED: "false"   # 정기 실행에서 색인(임베딩)만 끄기 — 수집은 계속, `run --rm ingest index`로 처리
+      # LIA_BATCH_SUMMARY_ENABLED: "true"  # 정기 실행에서 쉬운 요약(유료 Opus)도 만들기 — 기본 꺼짐. 켜기 전 `run --rm ingest summarize --dry-run`으로 규모 확인
     depends_on:
       db:
         condition: service_healthy
