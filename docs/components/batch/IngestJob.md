@@ -53,9 +53,9 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 | `run --dry-run` | 탐색 결과(무엇을 할지)만 `ingest_runs`에 기록. 큐·`law_versions`에 쓰지 않음 |
 | `sync <lawId> <efYd> [mst]` | 단건 `SYNC` 등록 후 소진. `mst`를 생략하면 저장된 시행예정본의 값, 그것도 없으면 거부 |
 | `index` | 탐색·수집 없이 **쌓여 있는 `READY` `INDEX`만** 소진 — 색인을 꺼 둔 동안 밀린 작업 처리 |
-| `summarize` | 탐색·수집 없이 **모든 시행예정본에 `SUMMARIZE` 등록 후 소진** — 요약이 없거나 낡은 것만 만든다(유효한 요약은 유료 호출 없이 건너뜀). 쉬운 요약 일괄 생성·채우기(유료 Opus, D67) |
+| `summarize [--dry-run]` | 탐색·수집 없이 **모든 시행예정본에 `SUMMARIZE` 등록 후 소진** — 요약이 없거나 낡은 것만 만든다(유효한 요약은 유료 호출 없이 건너뜀). 쉬운 요약 일괄 생성·채우기(유료 Opus, D67). `--dry-run`은 요약이 필요한 시행예정본 수(`planned.SUMMARIZE`)만 기록하고 등록·소진(유료 호출)은 하지 않는다 — 비용 확인용 |
 | `reindex-all` | 시행예정 전체에 `INDEX` 등록 후 소진(임베딩 모델 교체 시) |
-| `requeue-dead` | `DEAD` 작업의 **기존 행**을 `READY`로(`task_id`·시도 이력 유지, 시도 횟수 0) 되돌린 뒤 소진 |
+| `requeue-dead` | `DEAD` 작업의 **기존 행**을 `READY`로(`task_id`·시도 이력 유지, 시도 횟수 0) 되돌린 뒤 소진. 되돌아온 `SUMMARIZE`는 이 명령이 처리하지 않고 `run`(요약 켜짐) 또는 `summarize`를 기다린다. `DEAD` `SUMMARIZE`는 격리 작업이라 `summarize`가 다시 등록하지 않는다 — `requeue-dead`로 먼저 풀어야 한다 |
 
 **설정 `lia.batch.index.enabled`**(기본 `true`, env `LIA_BATCH_INDEX_ENABLED`) — `false`면 **`run`(자동 경로)의 워커가 `INDEX`를 가져가지 않는다**. 수집(`SYNC`)·시행 전환·철회는 그대로 돌고, `INDEX`는 `READY`로 남는다(법령 버전당 하나라 무한히 쌓이지 않음). 실행 기록에 `deferred.INDEX`(남은 `READY` `INDEX` 수)를 남기고, 의도된 미룸이라 결과는 `SUCCESS`. 사람이 직접 친 명령(`index`·`reindex-all`·`sync`)은 이 설정과 무관하게 `INDEX`까지 처리한다 — 명령했다면 그게 의도다.
 - 꺼 둔 동안: `TRANSITION`·`PURGE`의 색인 제거는 계속된다(삭제만 — 임베딩 비용 없음) → "시행예정 색인에는 시행예정 버전만" 불변식 유지. 대신 새·바뀐 법령은 검색 색인에 반영되지 않는다(정확 조회는 정본이라 영향 없음). "색인 지연" 신호로 보인다.
@@ -91,7 +91,7 @@ CREATE TABLE ingest_runs (                          -- 실행 단위
 
 CREATE TABLE ingest_tasks (                         -- 작업의 현재 상태
   task_id          bigserial   PRIMARY KEY,
-  kind             text        NOT NULL CHECK (kind IN ('SYNC', 'INDEX', 'SUMMARIZE', 'TRANSITION', 'PURGE'))   -- SUMMARIZE 는 V9(D67),
+  kind             text        NOT NULL CHECK (kind IN ('SYNC', 'INDEX', 'SUMMARIZE', 'TRANSITION', 'PURGE')),   -- SUMMARIZE 는 V9(D67)
   law_id           text        NOT NULL,
   effective_date   date        NOT NULL,
   mst              text,                          -- SYNC 전용(본문 fetch 키)
@@ -133,7 +133,7 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
    - 끝나지 않은 시도 행 → `ABANDONED`. `RUNNING` 작업 → `READY`(시도 횟수가 한도면 `DEAD` — 프로세스를 죽이는 작업이 무한 반복되지 않게).
    - 30일 지난 `DONE` 삭제.
 3. **시작** — `ingest_runs` 행 생성.
-4. **등록** — `Discoverer`(명령에 따라 생략·대체: `sync`·`reindex-all`·`requeue-dead`는 해당 작업만 등록, `index`는 등록 없음). `--dry-run`은 여기서 기록 후 종료.
+4. **등록** — `Discoverer`(명령에 따라 생략·대체: `sync`·`reindex-all`·`summarize`·`requeue-dead`는 해당 작업만 등록, `index`는 등록 없음). `--dry-run`은 여기서 기록 후 종료.
 5. **소진** — 워커 풀이 작업을 처리한다. 실행 중에 생긴 작업(SYNC → INDEX, TRANSITION → SYNC)도 같은 실행에서 처리한다. 워커는 가져갈 작업이 없어도 **진행 중인 작업이 남아 있으면** 잠시 기다렸다 다시 가져가고(그 작업이 새 작업을 만들 수 있으므로), **가져갈 작업도 진행 중인 작업도 없을 때** 종료한다.
 6. **기록** — 건수·결과·`list_complete`·종료 시각을 `ingest_runs`에. 예외로 끝나도 `FAILED`로 기록한 뒤 전파한다. 잠금 해제.
 
@@ -172,7 +172,7 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
 ## 작업별 동작
 | 작업 | 동작 | 완료(`DONE`) 조건 |
 |---|---|---|
-| `SYNC(lawId, 시행일, mst)` | 시행일이 오늘 이전이거나 저장된 행이 `시행중`·`과거`면 **아무것도 안 함**(그 버전은 `TRANSITION`이 맡는다 — 오래된 SYNC가 전환된 버전을 시행예정으로 되돌리지 않게). 그 외: `fetchPending`·`fetchCurrent`(트랜잭션 밖) → **한 트랜잭션**: [[IngestService]] `store`(revision·상태가 같으면 저장 생략) · 같은 법령의 더 오래된 `시행중` → `과거` · `missing_since` 지움 · 시행예정본이 바뀌었으면 `INDEX`·`SUMMARIZE` 등록 | 원문 조회·정본 저장(또는 동일해 생략)·필요 시 `INDEX` 등록까지 커밋. **색인 완료를 뜻하지 않는다** |
+| `SYNC(lawId, 시행일, mst)` | 시행일이 오늘 이전이거나 저장된 행이 `시행중`·`과거`면 **아무것도 안 함**(그 버전은 `TRANSITION`이 맡는다 — 오래된 SYNC가 전환된 버전을 시행예정으로 되돌리지 않게). 그 외: `fetchPending`·`fetchCurrent`(트랜잭션 밖) → **한 트랜잭션**: [[IngestService]] `store`(revision·상태가 같으면 저장 생략) · 같은 법령의 더 오래된 `시행중` → `과거` · `missing_since` 지움 · 시행예정본이 바뀌었으면 `INDEX`·`SUMMARIZE` 등록 | 원문 조회·정본 저장(또는 동일해 생략)·필요 시 `INDEX`·`SUMMARIZE` 등록까지 커밋. **색인 완료를 뜻하지 않는다** |
 | `INDEX(lawId, 시행일)` | [[LawStore]]에서 정본을 읽어 [[RAGIndexer]] `index` → [[ChunkStore]] `replaceVersion`(**한 트랜잭션**). 상태가 `시행예정`이 아니면(그 사이 전환·철회) 아무것도 안 함 | 벡터 교체 커밋, 또는 할 일 없음 |
 | `SUMMARIZE(lawId, 시행일)` | [[LawStore]]에서 정본을 읽어 `AnalysisEngine` SUMMARY(조립→Opus→인용 검증→재생성≤N) → `law_summaries` upsert(정본 revision·프롬프트 버전·모델과 함께). 상태가 `시행예정`이 아니면 아무것도 안 함. 인용 검증이 끝내 실패하면 **저장하지 않고 완료**(재시도해도 같은 입력이라 같은 실패 — 화면은 실시간 대체) | 요약 저장 커밋, 또는 할 일 없음 |
 | `TRANSITION(lawId, 시행일)` | **한 트랜잭션**: 상태 `시행예정 → 시행중`, 같은 법령의 더 오래된 `시행중` → `과거`, 이 버전의 pending 색인 제거(`replaceVersion(…, [])`), 같은 법령의 **남은 시행예정본마다 `SYNC`** 등록(기준선이 바뀌어 diff 재생성 필요). 버전이 이미 `시행예정`이 아니면 상태는 건드리지 않고 **그 버전의 시행예정 색인만 제거**(시행예정이 아닌 버전의 시행예정 청크 제거는 언제나 옳다) | 상태 전환·색인 제거·형제 `SYNC` 등록, 또는 색인 제거만 |
