@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   articleAnchor,
+  citationChip,
+  citationLabels,
   isIsoDate,
   lawHref,
   monthDay,
@@ -118,5 +120,40 @@ describe("자주 찾는 법령", () => {
       label: "새로 올랐어요",
     });
     expect(rankChange(5, undefined).kind).toBe("new");
+  });
+});
+
+describe("요약 인용 칩", () => {
+  const detail = {
+    changedArticles: [
+      {
+        sourceId: "LAW:001809@2026-11-03:art:18",
+        label: "제18조(사업계획의 통합심의)",
+      },
+    ],
+    addenda: [
+      {
+        sourceId: "LAW:001809@2026-11-03:addenda:제1조",
+        label: "부칙 제1조(시행일)",
+      },
+    ],
+  };
+
+  it("바뀐 조문은 같은 페이지 조문 주소, 부칙은 칩만, 모르는 근거는 '근거'", () => {
+    const labels = citationLabels(detail);
+    expect(citationChip("LAW:001809@2026-11-03:art:18#2", labels)).toEqual({
+      text: "제18조",
+      href: "#art-18",
+    });
+    expect(citationChip("LAW:001809@2026-11-03:addenda:제1조", labels)).toEqual(
+      {
+        text: "부칙 제1조",
+        href: null,
+      },
+    );
+    expect(citationChip("LAW:001809@2026-11-03:amend", labels)).toEqual({
+      text: "근거",
+      href: null,
+    });
   });
 });

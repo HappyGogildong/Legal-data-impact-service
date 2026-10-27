@@ -161,3 +161,32 @@ export function rankChange(
   }
   return { kind: "same", text: "–", label: "순위 변동 없어요" };
 }
+
+/** 요약 인용 칩용 — 상세에 실린 근거(바뀐 조문·부칙·시행 조항)의 인용키 → 짧은 글자("제18조"·"부칙 제1조"). */
+export function citationLabels(
+  detail: Pick<LawDetail, "changedArticles" | "addenda" | "effectiveClause">,
+): Map<string, string> {
+  const labels = new Map<string, string>();
+  const sources = [
+    ...(detail.changedArticles ?? []),
+    ...(detail.addenda ?? []),
+    ...(detail.effectiveClause ? [detail.effectiveClause] : []),
+  ];
+  for (const source of sources) {
+    if (source.sourceId && source.label) {
+      labels.set(source.sourceId, source.label.replace(/\(.*\)$/, ""));
+    }
+  }
+  return labels;
+}
+
+/** 인용키 → 칩(글자·같은 페이지 주소). 하위 청크(#n)는 같은 근거. 바뀐 조문만 주소가 있다. */
+export function citationChip(
+  sourceId: string,
+  labels: Map<string, string>,
+): { text: string; href: string | null } {
+  const base = sourceId.replace(/#\d+$/, "");
+  const text = labels.get(base) ?? "근거";
+  const anchor = labels.has(base) ? sourceAnchor(base) : null;
+  return { text, href: anchor ? `#${anchor}` : null };
+}
