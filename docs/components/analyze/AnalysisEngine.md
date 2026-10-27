@@ -8,7 +8,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 # AnalysisEngine (Spring, 해석)
 
-> 해소된 **시행예정 법령**에 대해, **LawStore에서 정확 조회한 정본으로 context를 조립** → 외부 foundation API(Opus 4.8) 추론 → 구조화 `ImpactResult` + 1차 인용검증. 관련: [[component-specs]] §4 #11 · [[analysis-prompt-spec]] · [[QueryPlanner]].
+> 해소된 **시행예정 법령**에 대해, **LawStore에서 정확 조회한 정본으로 context를 조립** → 외부 foundation API(Opus 5.5, D68) 추론 → 구조화 `ImpactResult` + 1차 인용검증. 관련: [[component-specs]] §4 #11 · [[analysis-prompt-spec]] · [[QueryPlanner]].
 >
 > **정합화 (2026-08-27).** 구 스펙의 "쿼리 임베딩 → `law` ns 시행중 조문 **RAG 검색**"은 **폐기**한다. 아래 근거로 **분석 경로에는 벡터 검색이 없다** — context는 조회로 확보한다.
 >
@@ -33,7 +33,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 ## 동작 (명시적 워크플로)
 1. **context 조립** — [[analysis-prompt-spec]] §3 템플릿으로 `source_id` 부여: **변경 조문 + baseline 대응 조문(DIFF) + 개정문 + 부칙(시행일) + (Layer B면) 프로필**. 벡터 검색 없음 — `law`/`baseline` 애그리거트에서 직접.
    ⚠️ 인용키는 **시행일 포함**: `LAW:{lawId}@{effectiveDate}:art:{no}`(복수 시행예정본, D43). 형식은 [[component-specs]] §1.3.
-2. **Opus API 호출** — constrained JSON([[analysis-prompt-spec]] §4 스키마), adaptive thinking·effort=high.
+2. **Opus API 호출** — constrained JSON([[analysis-prompt-spec]] §4 스키마), adaptive thinking(항상 켜짐)·effort=medium(D68).
 3. **1차 인용검증** — 스키마 유효 + **인용 존재성**(모든 `claims[].citations` ⊆ 주입 `source_id`). 실패 시 재생성(≤`regen_max`).
 4. 산출: `ImpactResult` + `injectedSourceIds`(2차 게이트용). **(후속)** Layer A 결과·`LawFacts` 캐시(D51 — 이번 범위 밖, 온디맨드 산출).
 

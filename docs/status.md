@@ -41,7 +41,7 @@ related: ["ARCHITECTURE.md", "backend/observability.md", "adr/decision-log.md"]
 | Gradle | 9.5.1 (wrapper) | 툴체인 자동 프로비저닝(foojay) 포함 |
 | TypeScript | 5.5+ / Node 20+ | 웹 프론트엔드 |
 | DB | PostgreSQL 16 + pgvector | `pgvector/pgvector:pg16` |
-| 추론 모델 | Claude Opus 4.8 | `claude-opus-4-8`, 입력~32K / 출력 4K |
+| 추론 모델 | Claude Opus 5.5 | `claude-opus-5-5`, adaptive thinking·effort `medium`, 출력 상한 16K(D68) |
 | 분류·번역 모델 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001`, 질의 번역(티어링) |
 | 임베딩 | 외부 API, dim 1536 | OpenAI vs Upstage 벤치 후 확정 |
 | Python | 3.12+ | 진단 스크립트 전용(운영 경로 아님) |

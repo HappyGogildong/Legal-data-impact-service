@@ -1,7 +1,7 @@
 ---
 title: LLM 분석 엔진 — API 호출 프롬프트 정의서
 status: Draft
-version: 0.2
+version: 0.3
 date: 2026-08-14
 tags: [prompt, llm, analysis-engine, spec]
 related:
@@ -11,15 +11,17 @@ related:
   - "backend/observability.md"
 ---
 
-# LLM 분석 엔진 — API 호출 프롬프트 정의서 (v0.2 Draft)
+# LLM 분석 엔진 — API 호출 프롬프트 정의서 (v0.3 Draft)
 
 **관련:** [[v0.9-nl-query-planner|아키텍처 v0.9]] §4.6 · [[component-specs]] §1·§3 · [[QueryPlanner]]
 
 > **v0.1 → v0.2 (D41·D42·D44·D46·D51, 2026-08-14):** 대상이 *의안(Bill)* → **시행예정 법령(Law)**, 개인화 입력이 *Nemotron 세그먼트* → **자기신고 프로필**, 인용키 `BILL:` → **`LAW:{lawId}@{efYd}`**, 커맨드(사용자 선택) → **차원(플래너가 고르는 가드레일)**, 캐시는 **prompt caching + 완전동일 답만**(D51). 이 문서는 **Opus 생성 콜**의 프롬프트를 규정한다(질의 번역은 Haiku, [[QueryPlanner]]).
 
+> **v0.2 → v0.3 (D68, 2026-10-27):** 프롬프트 문구는 같고 **모델이 Opus 5.5**(adaptive thinking·effort `medium`)로 바뀌었다. 모델·추론 설정도 결과를 바꾸므로 버전을 올린다 — 저장된 쉬운 요약(D67)은 모두 낡은 것이 된다.
+
 ## 0. 목적·전제
 
-외부 **foundation 모델 API**(Claude Opus 4.8)를 호출해 입법 영향 분석을 생성할 때 **프롬프트를 어떻게 구성하고 응답을 어떤 형식으로 받을지** 규정한다.
+외부 **foundation 모델 API**(Claude Opus 5.5, D68)를 호출해 입법 영향 분석을 생성할 때 **프롬프트를 어떻게 구성하고 응답을 어떤 형식으로 받을지** 규정한다.
 
 전제:
 - 모델은 **외부 API**. 자체 학습 없음(D19·D32). 번역·분류는 Haiku, 생성은 Opus(티어링).
@@ -123,7 +125,7 @@ Spring AI 구조화 출력(constrained decoding)으로 **스키마 강제**. [[c
   "effective_info": { "status": "시행예정", "effective_date": "2026-08-04", "enforcement": "단계적" },
   "uncertainties": ["세부기준이 대통령령에 위임되어 확정 전"],
   "disclaimer": "본 정보는 법률 자문이 아닌 참고용입니다.",
-  "meta": { "model": "claude-opus-4-8", "prompt_version": "0.2", "layer": "B" }
+  "meta": { "model": "claude-opus-5-5", "prompt_version": "0.3", "layer": "B" }
 }
 ```
 

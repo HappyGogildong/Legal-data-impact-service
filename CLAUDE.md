@@ -43,7 +43,7 @@ Spring 버전 변경점(Boot 3.x→4.0, AI 1.x→2.0)은 `docs/reference/spring-
 - **fail-closed 해소 4상태**: `RESOLVED / AMBIGUOUS / NOT_FOUND_YET / UNVERIFIED`. 신뢰 출처에서 확인 안 되면 분석하지 않는다. 뉴스·사용자 입력 *내용*은 사실이 아니라 식별 단서.
 - **2계층 분석**: Layer A(법령 사실·LawFacts·조문 diff — 프로필 무관, 오프라인 선계산·캐시) → Layer B(프로필별 영향·대응안, 온라인).
 - **RAG는 탐색(Discovery)에만**: 시행예정 변경조문·요약을 단일 `pending` ns에 색인(D55), "어떤 법인지 찾기"에 사용(SourceAnalyzer/LawDiscovery). **분석 경로는 벡터 검색이 아니다** — 대상이 특정된 뒤 정본·baseline을 `(lawId, effectiveDate)`로 LawStore에서 **정확 조회**해 컨텍스트에 통째로 넣는다(전문 임베딩 안 함, AnalysisEngine 정합화 2026-08-27). 색인·검색은 PgVectorStore가 **동일 EmbeddingModel**로 내부 임베딩해 벡터공간 일치를 보장(옛 law ns·공유 Embedder 핫패스 가정은 폐기).
-- 추론=Claude Opus 4.8(외부 API), 임베딩=별도 외부 API(OpenAI vs Upstage 벤치 중, `docs/reference/embedding-benchmark.md`). 자체 모델 학습·파인튜닝 없음.
+- 추론=Claude Opus 5.5(외부 API, D68), 임베딩=별도 외부 API(OpenAI vs Upstage 벤치 중, `docs/reference/embedding-benchmark.md`). 자체 모델 학습·파인튜닝 없음.
 - 저장소=단일 Postgres+pgvector(ADR-001). 임베딩 테이블은 파이프라인 소유(`db/init.sql`), 관계형 도메인은 Spring 소유.
 
 ## 신뢰 출처 — 이름 혼동 주의
