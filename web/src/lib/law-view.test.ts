@@ -139,7 +139,7 @@ describe("요약 인용 칩", () => {
     ],
   };
 
-  it("바뀐 조문은 같은 페이지 조문 주소, 부칙은 칩만, 모르는 근거는 '근거'", () => {
+  it("바뀐 조문은 같은 페이지 조문 주소, 부칙은 칩만, 개정문은 '개정문', 모르는 근거는 '근거'", () => {
     const labels = citationLabels(detail);
     expect(citationChip("LAW:001809@2026-11-03:art:18#2", labels)).toEqual({
       text: "제18조",
@@ -152,6 +152,14 @@ describe("요약 인용 칩", () => {
       },
     );
     expect(citationChip("LAW:001809@2026-11-03:amend", labels)).toEqual({
+      text: "개정문",
+      href: null,
+    });
+    expect(citationChip("LAW:001809@2026-11-03:amend#1", labels)).toEqual({
+      text: "개정문",
+      href: null,
+    });
+    expect(citationChip("LAW:001809@2026-11-03:unknown", labels)).toEqual({
       text: "근거",
       href: null,
     });

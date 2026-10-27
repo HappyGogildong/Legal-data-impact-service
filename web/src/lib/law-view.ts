@@ -180,13 +180,14 @@ export function citationLabels(
   return labels;
 }
 
-/** 인용키 → 칩(글자·같은 페이지 주소). 하위 청크(#n)는 같은 근거. 바뀐 조문만 주소가 있다. */
+/** 인용키 → 칩(글자·같은 페이지 주소). 하위 청크(#n)는 같은 근거. 바뀐 조문만 주소가 있다. 개정문 인용은 '개정문'(주소 없음). */
 export function citationChip(
   sourceId: string,
   labels: Map<string, string>,
 ): { text: string; href: string | null } {
   const base = sourceId.replace(/#\d+$/, "");
-  const text = labels.get(base) ?? "근거";
+  const text =
+    labels.get(base) ?? (base.endsWith(":amend") ? "개정문" : "근거");
   const anchor = labels.has(base) ? sourceAnchor(base) : null;
   return { text, href: anchor ? `#${anchor}` : null };
 }

@@ -42,7 +42,7 @@ export function LawSummaryCard({
                     <a
                       key={key}
                       href={chip.href}
-                      className="ml-1 rounded-sm bg-chip px-1.5 py-0.5 text-[11px] font-bold text-navy underline-offset-2 hover:underline"
+                      className="ml-1 rounded-sm bg-chip px-1.5 py-0.5 text-[11px] font-bold text-navy underline underline-offset-2"
                     >
                       {chip.text}
                     </a>
