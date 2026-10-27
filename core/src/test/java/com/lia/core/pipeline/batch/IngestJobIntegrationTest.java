@@ -140,7 +140,7 @@ class IngestJobIntegrationTest {
                 new SummarizeHandler(lawStore, groundedEngine(), summaries, new MinIntervalLimiter(Duration.ZERO), "test-model"),
                 new TransitionHandler(lawStore, chunkStore, queue, tx),
                 new PurgeHandler(lawStore, chunkStore, tx));
-        return new IngestJob(queue, runs, discoverer, lawStore, handlers, workers, indexEnabled, summaryEnabled,
+        return new IngestJob(queue, runs, discoverer, lawStore, summaries, handlers, workers, indexEnabled, summaryEnabled,
                 Duration.ofMillis(20), Duration.ofDays(30), clock, null);
     }
 
@@ -302,6 +302,32 @@ class IngestJobIntegrationTest {
         RunReport again = job(today).run(summarize);
         assertEquals(1, again.counts().get("done"), "등록·처리는 되지만");
         assertEquals(1, reasonerCalls.get(), "유효한 요약이 있어 추론기는 부르지 않는다");
+    }
+
+    @Test
+    @DisplayName("summarize --dry-run — 요약 대상 수만 기록, 등록·추론기 호출 없음")
+    void 요약_시험실행() {
+        LocalDate today = LocalDate.of(2026, 7, 1);
+        job(today).run(run());   // 요약 꺼짐 — 정본 저장, SUMMARIZE 는 READY 로 남음
+        int readyBefore = readyCount(TaskKind.SUMMARIZE);
+        JobCommand dryRun = new JobCommand(JobCommand.Type.SUMMARIZE, false, true, null, null, null);
+
+        RunReport planned = job(today).run(dryRun);
+
+        assertEquals(RunOutcome.SUCCESS, planned.outcome());
+        assertEquals(1, planned.counts().get("planned.SUMMARIZE"));
+        assertFalse(planned.counts().containsKey("enqueued.SUMMARIZE"));
+        assertEquals(readyBefore, readyCount(TaskKind.SUMMARIZE), "큐에 아무것도 더하지 않는다");
+        assertEquals(0, reasonerCalls.get(), "유료 호출 없음");
+        assertTrue(summaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isEmpty());
+
+        job(today).run(new JobCommand(JobCommand.Type.SUMMARIZE, false, false, null, null, null));
+        RunReport afterFill = job(today).run(dryRun);
+        assertEquals(0, afterFill.counts().get("planned.SUMMARIZE"), "유효한 요약이 있으면 대상이 아니다");
+    }
+
+    private int readyCount(TaskKind kind) {
+        return queue.countReady(kind);
     }
 
     @Test

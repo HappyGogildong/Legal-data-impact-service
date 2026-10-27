@@ -40,6 +40,7 @@ import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.ingest.IngestService;
 import com.lia.core.store.ChunkStore;
 import com.lia.core.store.LawStore;
+import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
 
 /**
@@ -87,6 +88,7 @@ public class BatchConfig {
                                PendingLawFeed feed, IngestService ingest, ChunkStore chunkStore, RAGIndexer indexer,
                                Clock batchClock, ObservationRegistry observations,
                                AnalysisEngine analysisEngine, LawSummaryStore lawSummaryStore,
+                               LawSummaries lawSummaries,
                                PlatformTransactionManager transactionManager,
                                @Value("${lia.batch.workers}") int workers,
                                @Value("${lia.batch.index.enabled}") boolean indexEnabled,
@@ -104,7 +106,7 @@ public class BatchConfig {
                         SpringAiReasoner.MODEL),
                 new TransitionHandler(lawStore, chunkStore, queue, transactions),
                 new PurgeHandler(lawStore, chunkStore, transactions));
-        return new IngestJob(queue, runs, discoverer, lawStore, handlers, workers, indexEnabled, summaryEnabled,
+        return new IngestJob(queue, runs, discoverer, lawStore, lawSummaries, handlers, workers, indexEnabled, summaryEnabled,
                 idlePoll,
                 doneRetention, batchClock, observations);
     }

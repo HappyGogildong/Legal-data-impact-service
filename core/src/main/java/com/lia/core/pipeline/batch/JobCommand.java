@@ -6,9 +6,10 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 배치 명령(D62) — {@code run [--full] [--dry-run]} · {@code sync <lawId> <efYd> [mst]} · {@code index} · {@code summarize} ·
+ * 배치 명령(D62) — {@code run [--full] [--dry-run]} · {@code sync <lawId> <efYd> [mst]} · {@code index} · {@code summarize [--dry-run]} ·
  * {@code reindex-all} · {@code requeue-dead}. Spring 의 {@code --spring.*} 옵션은 무시한다.
  * {@code summarize}는 모든 시행예정본에 요약 작업을 등록해, 요약이 없거나 낡은 것을 채운다(유효한 요약은 건너뜀).
+ * {@code --dry-run}은 요약이 필요한 시행예정본 수만 세고 등록·유료 호출은 하지 않는다.
  */
 public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, LocalDate effectiveDate, String mst) {
 
@@ -34,7 +35,7 @@ public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, 
                         nonOptionArgs.size() > 3 ? nonOptionArgs.get(3) : null);
             }
             case "index" -> new JobCommand(Type.INDEX, false, false, null, null, null);
-            case "summarize" -> new JobCommand(Type.SUMMARIZE, false, false, null, null, null);
+            case "summarize" -> new JobCommand(Type.SUMMARIZE, false, optionNames.contains("dry-run"), null, null, null);
             case "reindex-all" -> new JobCommand(Type.REINDEX_ALL, false, false, null, null, null);
             case "requeue-dead" -> new JobCommand(Type.REQUEUE_DEAD, false, false, null, null, null);
             default -> throw new IllegalArgumentException("모르는 명령: " + name);
@@ -47,7 +48,7 @@ public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, 
             case RUN -> "run" + (full ? " --full" : "") + (dryRun ? " --dry-run" : "");
             case SYNC -> "sync " + lawId + " " + effectiveDate + (mst == null ? "" : " " + mst);
             case INDEX -> "index";
-            case SUMMARIZE -> "summarize";
+            case SUMMARIZE -> "summarize" + (dryRun ? " --dry-run" : "");
             case REINDEX_ALL -> "reindex-all";
             case REQUEUE_DEAD -> "requeue-dead";
         };
