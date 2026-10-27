@@ -40,6 +40,7 @@ import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalysisContext;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.ContextBuilder;
+import com.lia.core.pipeline.analyze.GroundedSummaries;
 import com.lia.core.pipeline.connector.LawApiException;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.diff.DiffBuilder;
@@ -48,6 +49,7 @@ import com.lia.core.pipeline.ingest.IngestService;
 import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.store.ChunkStore;
 import com.lia.core.store.LawStore;
+import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
 import com.lia.core.testsupport.FakeEmbeddingModel;
 import com.lia.core.testsupport.FakeLawFeed;
@@ -73,6 +75,8 @@ class IngestJobIntegrationTest {
     static IngestRunStore runs;
     static ChunkStore chunkStore;
     static LawSummaryStore summaries;
+    /** 지금 근거 집합 안 인용만 인정하는 읽기 — 운영 배선과 같은 구성. */
+    static LawSummaries groundedSummaries;
     /** groundedEngine 의 추론기 호출 수 — 유료 호출이 없었는지 확인용. */
     static final AtomicInteger reasonerCalls = new AtomicInteger();
     static IngestService ingest;
@@ -88,6 +92,7 @@ class IngestJobIntegrationTest {
         queue = new TaskQueue(jdbc);
         runs = new IngestRunStore(jdbc, new ObjectMapper());
         summaries = new LawSummaryStore(jdbc, new ObjectMapper(), "p-test");
+        groundedSummaries = new GroundedSummaries(summaries, new ContextBuilder());
         chunkStore = TestDatabases.chunkStore(ds, new FakeEmbeddingModel(8), 8);
         ingest = new IngestService(new Normalizer(), new DiffBuilder(), lawStore, null);
         tx = new TransactionTemplate(new DataSourceTransactionManager(ds));
@@ -132,15 +137,21 @@ class IngestJobIntegrationTest {
     /** @param sync null 이면 실제 SyncHandler — 워커 동작을 조종하는 테스트가 바꿔 끼운다 */
     private IngestJob job(LocalDate today, boolean indexEnabled, boolean summaryEnabled, int workers,
                           TaskHandler sync) {
+        return job(today, indexEnabled, summaryEnabled, workers, sync, groundedEngine());
+    }
+
+    /** @param summaryEngine 요약 추론에 쓸 엔진 — 추론 실패 처리를 확인하는 테스트가 바꿔 끼운다 */
+    private IngestJob job(LocalDate today, boolean indexEnabled, boolean summaryEnabled, int workers,
+                          TaskHandler sync, AnalysisEngine summaryEngine) {
         Clock clock = Clock.fixed(today.atStartOfDay(SEOUL).toInstant(), SEOUL);
         Discoverer discoverer = new Discoverer(feed, lawStore, queue, clock, 10);
         List<TaskHandler> handlers = List.of(
                 sync != null ? sync : new SyncHandler(feed, ingest, lawStore, queue, tx, clock),
                 new IndexHandler(lawStore, new RAGIndexer(chunkStore), new MinIntervalLimiter(Duration.ZERO)),
-                new SummarizeHandler(lawStore, groundedEngine(), summaries, new MinIntervalLimiter(Duration.ZERO), "test-model"),
+                new SummarizeHandler(lawStore, summaryEngine, summaries, groundedSummaries, new MinIntervalLimiter(Duration.ZERO), "test-model"),
                 new TransitionHandler(lawStore, chunkStore, queue, tx),
                 new PurgeHandler(lawStore, chunkStore, tx));
-        return new IngestJob(queue, runs, discoverer, lawStore, summaries, handlers, workers, indexEnabled, summaryEnabled,
+        return new IngestJob(queue, runs, discoverer, lawStore, groundedSummaries, handlers, workers, indexEnabled, summaryEnabled,
                 Duration.ofMillis(20), Duration.ofDays(30), clock, null);
     }
 
@@ -282,7 +293,7 @@ class IngestJobIntegrationTest {
         RunReport summarized = job(today)
                 .run(new JobCommand(JobCommand.Type.SUMMARIZE, false, false, null, null, null));
         assertEquals(0, summarized.counts().get("deferred.SUMMARIZE"));
-        assertTrue(summaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isPresent());
+        assertTrue(groundedSummaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isPresent());
     }
 
     @Test
@@ -296,7 +307,7 @@ class IngestJobIntegrationTest {
         RunReport filled = job(today).run(summarize);
         assertEquals(1, filled.counts().get("enqueued.SUMMARIZE"));
         assertEquals(1, filled.counts().get("done"));
-        assertTrue(summaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isPresent());
+        assertTrue(groundedSummaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isPresent());
         assertEquals(1, reasonerCalls.get());
 
         RunReport again = job(today).run(summarize);
@@ -319,7 +330,7 @@ class IngestJobIntegrationTest {
         assertFalse(planned.counts().containsKey("enqueued.SUMMARIZE"));
         assertEquals(readyBefore, readyCount(TaskKind.SUMMARIZE), "큐에 아무것도 더하지 않는다");
         assertEquals(0, reasonerCalls.get(), "유료 호출 없음");
-        assertTrue(summaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isEmpty());
+        assertTrue(groundedSummaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isEmpty());
 
         job(today).run(new JobCommand(JobCommand.Type.SUMMARIZE, false, false, null, null, null));
         RunReport afterFill = job(today).run(dryRun);
@@ -331,11 +342,82 @@ class IngestJobIntegrationTest {
     }
 
     @Test
+    @DisplayName("reindex-all·requeue-dead — SUMMARIZE 는 READY 로 남고 추론기를 부르지 않는다(유료 보호)")
+    void 요약_다른명령_보호() {
+        LocalDate today = LocalDate.of(2026, 7, 1);
+        feed.head("008888", "WRONG", LocalDate.of(2027, 1, 1)).failFetch("WRONG", new LawApiException("잘못된 MST"));
+        job(today).run(run());   // 요약 꺼짐 — 주택법 SUMMARIZE 는 READY, WRONG 의 SYNC 는 DEAD
+        assertEquals(1, readyCount(TaskKind.SUMMARIZE));
+
+        RunReport reindexed = job(today)
+                .run(new JobCommand(JobCommand.Type.REINDEX_ALL, false, false, null, null, null));
+        assertEquals(1, reindexed.counts().get("deferred.SUMMARIZE"));
+        assertEquals(1, readyCount(TaskKind.SUMMARIZE));
+
+        feed.failFetch("WRONG", null).pendingBody("WRONG", LawFixtures.raw(LawFixtures.HOUSING_PENDING, "시행예정"));
+        RunReport requeued = job(today)
+                .run(new JobCommand(JobCommand.Type.REQUEUE_DEAD, false, false, null, null, null));
+        assertEquals(1, requeued.counts().get("requeued"));
+        assertEquals(1, requeued.counts().get("deferred.SUMMARIZE"), "WRONG 의 요약도 새로 READY 로 쌓일 뿐 처리하지 않는다");
+        assertEquals(0, reasonerCalls.get(), "run(요약 켜짐)·summarize 밖에서는 유료 추론 0");
+    }
+
+    @Test
+    @DisplayName("요약 추론이 일시적으로 실패하면(RuntimeException) READY 로 남아 다음 실행에서 다시 시도한다")
+    void 요약_일시오류_재시도() {
+        LocalDate today = LocalDate.of(2026, 7, 1);
+        job(today).run(run());   // SUMMARIZE READY
+        AnalysisEngine flaky = new AnalysisEngine(new ContextBuilder(), ctx -> {
+            throw new ResourceAccessException("Opus 응답 시간 초과");
+        }, 2);
+
+        RunReport failed = job(today, true, false, 2, null, flaky)
+                .run(new JobCommand(JobCommand.Type.SUMMARIZE, false, false, null, null, null));
+
+        assertEquals(RunOutcome.PARTIAL, failed.outcome());
+        assertEquals(1, failed.counts().get("failed"));
+        assertEquals(0, failed.counts().get("dead"));
+        assertEquals(1, readyCount(TaskKind.SUMMARIZE), "다음 실행이 다시 시도한다");
+
+        RunReport retried = job(today)
+                .run(new JobCommand(JobCommand.Type.SUMMARIZE, false, false, null, null, null));
+        assertEquals(1, retried.counts().get("done"));
+        assertTrue(groundedSummaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isPresent());
+    }
+
+    @Test
+    @DisplayName("요약 추론 오류의 원인이 파싱 실패(JacksonException)면 ErrorClassifier 정책대로 바로 격리(DEAD)")
+    void 요약_파싱오류_격리() {
+        LocalDate today = LocalDate.of(2026, 7, 1);
+        job(today).run(run());   // SUMMARIZE READY
+        AnalysisEngine unparsable = new AnalysisEngine(new ContextBuilder(), ctx -> {
+            throw new IllegalStateException("추론 응답 해석 실패", parseFailure());
+        }, 2);
+
+        RunReport report = job(today, true, false, 2, null, unparsable)
+                .run(new JobCommand(JobCommand.Type.SUMMARIZE, false, false, null, null, null));
+
+        assertEquals(1, report.counts().get("dead"));
+        assertEquals(0, readyCount(TaskKind.SUMMARIZE));
+        assertEquals(1, queue.countByStatus().get(TaskStatus.DEAD));
+    }
+
+    /** 깨진 JSON 을 읽으려다 나는 JacksonException. */
+    private static RuntimeException parseFailure() {
+        try {
+            new ObjectMapper().readValue("{", ImpactResult.class);
+        } catch (tools.jackson.core.JacksonException e) {
+            return e;
+        }
+        throw new AssertionError("파싱 실패가 나야 한다");
+    }
+
+    @Test
     @DisplayName("요약 켜짐 — run 이 SUMMARIZE 까지 처리")
     void 요약_켜짐() {
         RunReport report = job(LocalDate.of(2026, 7, 1), true, true, 2, null).run(run());
         assertEquals(0, report.counts().get("deferred.SUMMARIZE"));
-        assertTrue(summaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isPresent());
+        assertTrue(groundedSummaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isPresent());
     }
 
     @Test

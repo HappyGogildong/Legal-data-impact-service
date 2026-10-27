@@ -102,7 +102,8 @@ public class BatchConfig {
         List<TaskHandler> handlers = List.of(
                 new SyncHandler(feed, ingest, lawStore, queue, transactions, batchClock),
                 new IndexHandler(lawStore, indexer, new MinIntervalLimiter(embeddingInterval)),
-                new SummarizeHandler(lawStore, analysisEngine, lawSummaryStore, new MinIntervalLimiter(summaryInterval),
+                new SummarizeHandler(lawStore, analysisEngine, lawSummaryStore, lawSummaries,
+                        new MinIntervalLimiter(summaryInterval),
                         SpringAiReasoner.MODEL),
                 new TransitionHandler(lawStore, chunkStore, queue, transactions),
                 new PurgeHandler(lawStore, chunkStore, transactions));

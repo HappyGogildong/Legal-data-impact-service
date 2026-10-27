@@ -31,6 +31,7 @@ import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalysisContext;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.ContextBuilder;
+import com.lia.core.pipeline.analyze.GroundedSummaries;
 import com.lia.core.pipeline.diff.DiffBuilder;
 import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.ingest.IngestService;
@@ -38,6 +39,7 @@ import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.store.Chunk;
 import com.lia.core.store.ChunkStore;
 import com.lia.core.store.LawStore;
+import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
 import com.lia.core.testsupport.FakeEmbeddingModel;
 import com.lia.core.testsupport.FakeLawFeed;
@@ -64,6 +66,8 @@ class TaskHandlersIntegrationTest {
     static TaskQueue queue;
     static ChunkStore chunkStore;
     static LawSummaryStore summaries;
+    /** 지금 근거 집합 안 인용만 인정하는 읽기 — 운영 배선과 같은 구성. */
+    static LawSummaries groundedSummaries;
     /** groundedEngine 의 추론기 호출 수 — 유료 호출이 없었는지 확인용. */
     static final AtomicInteger reasonerCalls = new AtomicInteger();
     static IngestService ingest;
@@ -82,6 +86,7 @@ class TaskHandlersIntegrationTest {
         lawStore = new LawStore(jdbc, new ObjectMapper());
         queue = new TaskQueue(jdbc);
         summaries = new LawSummaryStore(jdbc, new ObjectMapper(), "p-test");
+        groundedSummaries = new GroundedSummaries(summaries, new ContextBuilder());
         chunkStore = TestDatabases.chunkStore(ds, new FakeEmbeddingModel(8), 8);
         ingest = new IngestService(new Normalizer(), new DiffBuilder(), lawStore, null);
         tx = new TransactionTemplate(new DataSourceTransactionManager(ds));   // jdbc 와 같은 DataSource
@@ -97,7 +102,7 @@ class TaskHandlersIntegrationTest {
         feed = new FakeLawFeed().withHousingAct();
         sync = syncOn(TODAY);
         index = new IndexHandler(lawStore, new RAGIndexer(chunkStore), new MinIntervalLimiter(Duration.ZERO));
-        summarizer = new SummarizeHandler(lawStore, groundedEngine(), summaries, new MinIntervalLimiter(Duration.ZERO), "test-model");
+        summarizer = new SummarizeHandler(lawStore, groundedEngine(), summaries, groundedSummaries, new MinIntervalLimiter(Duration.ZERO), "test-model");
         transition = new TransitionHandler(lawStore, chunkStore, queue, tx);
         purge = new PurgeHandler(lawStore, chunkStore, tx);
     }
@@ -213,19 +218,19 @@ class TaskHandlersIntegrationTest {
         sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
         Law law = lawStore.find(LAW, EF).orElseThrow();
 
-        new SummarizeHandler(lawStore, groundedEngine(), summaries, new MinIntervalLimiter(Duration.ZERO), "test-model")
+        new SummarizeHandler(lawStore, groundedEngine(), summaries, groundedSummaries, new MinIntervalLimiter(Duration.ZERO), "test-model")
                 .handle(task(TaskKind.SUMMARIZE, LAW, EF, null));
-        assertEquals("쉬운 요약", summaries.findCurrent(law).orElseThrow().summary());
+        assertEquals("쉬운 요약", groundedSummaries.findCurrent(law).orElseThrow().summary());
 
         jdbc.sql("DELETE FROM law_summaries").update();
         AnalysisEngine ungrounded = new AnalysisEngine(new ContextBuilder(), ctx -> new ImpactResult(ctx.lawRef(), "SUMMARY", "환각",
                 List.of(new ImpactResult.Claim("근거 없음", List.of("LAW:없음:art:1"), 0.9)),
                 List.of(), List.of(), null, List.of(), "참고용", null), 2);
-        new SummarizeHandler(lawStore, ungrounded, summaries, new MinIntervalLimiter(Duration.ZERO), "test-model")
+        new SummarizeHandler(lawStore, ungrounded, summaries, groundedSummaries, new MinIntervalLimiter(Duration.ZERO), "test-model")
                 .handle(task(TaskKind.SUMMARIZE, LAW, EF, null));
-        assertTrue(summaries.findCurrent(law).isEmpty());
+        assertTrue(groundedSummaries.findCurrent(law).isEmpty());
 
-        new SummarizeHandler(lawStore, groundedEngine(), summaries, new MinIntervalLimiter(Duration.ZERO), "test-model")
+        new SummarizeHandler(lawStore, groundedEngine(), summaries, groundedSummaries, new MinIntervalLimiter(Duration.ZERO), "test-model")
                 .handle(task(TaskKind.SUMMARIZE, "NONE", EF, null));   // 정본 없음 — 조용히 끝
     }
 
@@ -233,7 +238,7 @@ class TaskHandlersIntegrationTest {
     @DisplayName("SUMMARIZE 멱등 — 유효한 요약이 이미 있으면 추론기를 부르지 않는다(유료 호출 0)")
     void summarize_유효한요약_건너뜀() {
         sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
-        SummarizeHandler handler = new SummarizeHandler(lawStore, groundedEngine(), summaries,
+        SummarizeHandler handler = new SummarizeHandler(lawStore, groundedEngine(), summaries, groundedSummaries,
                 new MinIntervalLimiter(Duration.ZERO), "test-model");
 
         handler.handle(task(TaskKind.SUMMARIZE, LAW, EF, null));
@@ -241,6 +246,23 @@ class TaskHandlersIntegrationTest {
 
         handler.handle(task(TaskKind.SUMMARIZE, LAW, EF, null));   // backfill 재등록·저장 후 DONE 전 재시도
         assertEquals(1, reasonerCalls.get(), "유효한 요약이 있으면 다시 만들지 않는다");
+    }
+
+    @Test
+    @DisplayName("SUMMARIZE — 저장본의 인용이 지금 근거 밖이면 낡은 것으로 보고 다시 만든다")
+    void summarize_근거밖_인용_재생성() {
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST));
+        Law law = lawStore.find(LAW, EF).orElseThrow();
+        summaries.save(law, new ImpactResult(law.ref(), "SUMMARY", "옛 요약",
+                List.of(new ImpactResult.Claim("옛 형식 인용", List.of("LAW:옛형식:art:1"), 0.9)),
+                List.of(), List.of(), null, List.of(), "참고용", null), "test-model");   // revision·프롬프트 버전은 같다
+        assertTrue(summaries.findStored(law).isPresent());
+        assertTrue(groundedSummaries.findCurrent(law).isEmpty());
+
+        summarizer.handle(task(TaskKind.SUMMARIZE, LAW, EF, null));
+
+        assertEquals(1, reasonerCalls.get(), "근거 밖 저장본은 건너뛰지 않는다");
+        assertEquals("쉬운 요약", groundedSummaries.findCurrent(law).orElseThrow().summary());
     }
 
     @Test
@@ -252,10 +274,10 @@ class TaskHandlersIntegrationTest {
             throw new AssertionError("유료 추론기를 부르면 안 된다");
         }, 2);
 
-        new SummarizeHandler(lawStore, throwing, summaries, new MinIntervalLimiter(Duration.ZERO), "test-model")
+        new SummarizeHandler(lawStore, throwing, summaries, groundedSummaries, new MinIntervalLimiter(Duration.ZERO), "test-model")
                 .handle(task(TaskKind.SUMMARIZE, LAW, EF, null));
 
-        assertTrue(summaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isEmpty());
+        assertTrue(groundedSummaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isEmpty());
     }
 
     @Test

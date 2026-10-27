@@ -58,10 +58,10 @@ class LawSummaryStoreIntegrationTest {
         Law law = TestLaws.law("A", "M1", Law.Status.시행예정, EF);
 
         summaries.save(law, summary("첫 요약"), "claude-opus-4-8");
-        assertEquals("첫 요약", summaries.findCurrent(law).orElseThrow().summary());
+        assertEquals("첫 요약", summaries.findStored(law).orElseThrow().summary());
 
         summaries.save(law, summary("새 요약"), "claude-opus-4-8");
-        ImpactResult found = summaries.findCurrent(law).orElseThrow();
+        ImpactResult found = summaries.findStored(law).orElseThrow();
         assertEquals("새 요약", found.summary());
         assertEquals(List.of("LAW:A@2027-01-01:art:1"), found.claims().get(0).citations());
         assertEquals(List.of("불확실"), found.uncertainties());
@@ -81,7 +81,7 @@ class LawSummaryStoreIntegrationTest {
 
         summaries.save(law, full, "claude-opus-4-8");
 
-        assertEquals(full, summaries.findCurrent(law).orElseThrow());
+        assertEquals(full, summaries.findStored(law).orElseThrow());
     }
 
     @Test
@@ -91,7 +91,7 @@ class LawSummaryStoreIntegrationTest {
         summaries.save(law, summary("요약"), "claude-opus-4-8");
         jdbc.sql("UPDATE law_summaries SET result = CAST('{\"claims\": \"문자열\"}' AS jsonb)").update();
 
-        assertTrue(summaries.findCurrent(law).isEmpty());
+        assertTrue(summaries.findStored(law).isEmpty());
     }
 
     @Test
@@ -101,11 +101,11 @@ class LawSummaryStoreIntegrationTest {
         summaries.save(law, summary("요약"), "claude-opus-4-8");
 
         Law changed = TestLaws.law("A", "M2", Law.Status.시행예정, EF);   // revision rev-M2
-        assertTrue(summaries.findCurrent(changed).isEmpty());
+        assertTrue(summaries.findStored(changed).isEmpty());
 
         LawSummaryStore newerPrompt = new LawSummaryStore(jdbc, new ObjectMapper(), "p2");
-        assertTrue(newerPrompt.findCurrent(law).isEmpty());
-        assertTrue(summaries.findCurrent(TestLaws.law("B", "M1", Law.Status.시행예정, EF)).isEmpty());
+        assertTrue(newerPrompt.findStored(law).isEmpty());
+        assertTrue(summaries.findStored(TestLaws.law("B", "M1", Law.Status.시행예정, EF)).isEmpty());
     }
 
     @Test

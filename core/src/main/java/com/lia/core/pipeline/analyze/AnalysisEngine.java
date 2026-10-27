@@ -65,8 +65,8 @@ public class AnalysisEngine {
         return injectedSourceIds.containsAll(citedSourceIds(r));
     }
 
-    /** 결과가 인용한 모든 source_id 수집(claims·impacts·actions.basis) — null 안전. */
-    private static Set<String> citedSourceIds(ImpactResult r) {
+    /** 결과가 인용한 모든 source_id 수집(claims·impacts·actions.basis) — null 안전. 저장된 요약 재검증({@link GroundedSummaries})도 쓴다. */
+    static Set<String> citedSourceIds(ImpactResult r) {
         Set<String> ids = new HashSet<>();
         if (r.claims() != null) {
             r.claims().forEach(c -> { if (c.citations() != null) ids.addAll(c.citations()); });
