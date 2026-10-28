@@ -65,6 +65,14 @@ public class QueryPlanner {
             types.add(target instanceof Target.Discovery ? QueryType.LOOKUP : QueryType.SUMMARY);
         }
 
+        // 프로필이 없고 Layer A 차원이 하나도 없으면 SUMMARY 를 더한다 — 선계산이라 비용이 0이고(D67)
+        // 익명 첫 질문이 로그인 안내만 남기지 않게 한다. Layer B 차원은 그대로 둬 미충족 카드가 로그인을 이끈다.
+        // 발견(Discovery)은 대상 법령이 없어 요약할 게 없다.
+        if (!profilePresent && target instanceof Target.Reference
+                && types.stream().allMatch(QueryType::isLayerB)) {
+            types.add(QueryType.SUMMARY);
+        }
+
         QueryType primary = types.contains(draft.primaryType()) ? draft.primaryType() : types.iterator().next();
         boolean profileBound = profilePresent && types.stream().anyMatch(QueryType::isLayerB);
 

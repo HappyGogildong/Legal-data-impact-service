@@ -72,7 +72,7 @@ AnalysisQuery {
   2. **`!draft.isLawQuery` → `Unresolved(UNVERIFIED)`** — 오프토픽(S9) 조기 거부(fail-closed).
   3. REFERENCE(또는 explicitLawRef): `SourceAnalyzer.resolve` → `RESOLVED`→`Planned`(Reference) / `AMBIGUOUS`·`NOT_FOUND_YET`·`UNVERIFIED`→`Unresolved`.
   4. DISCOVERY: `DiscoveryCriteria` 구성 → `Planned`(검색 실행은 dispatch라 이번 범위 밖).
-  5. **프로필 게이팅**: 프로필 유무로 Layer B(`IMPACT`·`ACTION`) 차원을 빼지 않는다(D69) — 프로필을 못 쓰는 사유는 디스패처가 `unmet` 으로 표기한다. 타입이 비면 기본 `SUMMARY`(Reference)/`LOOKUP`(Discovery) — **분류 실패로 거부하지 않는다**(best-effort, 자유도 보존).
+  5. **프로필 게이팅**: 프로필 유무로 Layer B(`IMPACT`·`ACTION`) 차원을 빼지 않는다(D69) — 프로필을 못 쓰는 사유는 디스패처가 `unmet` 으로 표기한다. 단 프로필이 없고 Layer A 차원이 하나도 없으면(Reference) `SUMMARY` 를 더해 요약은 보여 준다(선계산이라 비용 0, 주 차원은 그대로). 타입이 비면 기본 `SUMMARY`(Reference)/`LOOKUP`(Discovery) — **분류 실패로 거부하지 않는다**(best-effort, 자유도 보존).
 
 ### 후속 (AnalysisEngine 랜딩 시)
 

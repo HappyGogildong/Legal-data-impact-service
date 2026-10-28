@@ -88,6 +88,45 @@ class QueryPlannerTest {
     }
 
     @Test
+    void 프로필_없이_LayerB만_있으면_선계산_요약을_더해_보여준다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.IMPACT, Set.of(QueryType.IMPACT, QueryType.ACTION), true,
+                TargetKind.REFERENCE, "주택법", null, List.of(), List.of(), List.of(), "전세 영향");
+
+        PlanResult result = plannerFor(draft).plan("주택법 바뀌면 나 어떻게 돼", null, false);
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class, result).query();
+        assertEquals(Set.of(QueryType.SUMMARY, QueryType.IMPACT, QueryType.ACTION), q.types());
+        assertEquals(QueryType.IMPACT, q.primaryType(), "주 차원은 질문이 정한 그대로");
+        assertFalse(q.profileBound());
+    }
+
+    @Test
+    void 프로필이_있으면_요약을_더하지_않는다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.IMPACT, Set.of(QueryType.IMPACT), true,
+                TargetKind.REFERENCE, "주택법", null, List.of(), List.of(), List.of(), "전세 영향");
+
+        PlanResult result = plannerFor(draft).plan("주택법 바뀌면 나 어떻게 돼", null, true);
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class, result).query();
+        assertEquals(Set.of(QueryType.IMPACT), q.types());
+        assertTrue(q.profileBound());
+    }
+
+    @Test
+    void 프로필이_없어도_LayerA_차원이_이미_있으면_요약을_더하지_않는다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.IMPACT, Set.of(QueryType.DIFF, QueryType.IMPACT), true,
+                TargetKind.REFERENCE, "주택법", null, List.of(), List.of(), List.of(), "전세 영향");
+
+        PlanResult result = plannerFor(draft).plan("주택법 바뀐 점이랑 내 영향", null, false);
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class, result).query();
+        assertEquals(Set.of(QueryType.DIFF, QueryType.IMPACT), q.types());
+    }
+
+    @Test
     void 프로필이_없어도_LayerB_차원을_유지한다_미충족_안내가_응답에_실리게() {
         AnalysisQueryDraft draft = new AnalysisQueryDraft(
                 QueryType.IMPACT, Set.of(QueryType.DIFF, QueryType.IMPACT, QueryType.ACTION), true,
