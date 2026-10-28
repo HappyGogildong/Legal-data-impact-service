@@ -434,7 +434,7 @@ export interface components {
         Unmet: {
             message?: string;
             /** @enum {string} */
-            reason?: "LAW_NOT_LOADED" | "BASELINE_NOT_LOADED" | "PROFILE_REQUIRED" | "NOT_IMPLEMENTED";
+            reason?: "LAW_NOT_LOADED" | "BASELINE_NOT_LOADED" | "PROFILE_REQUIRED" | "CONSENT_OUTDATED" | "DAILY_LIMIT" | "INSUFFICIENT_GROUNDING" | "NOT_IMPLEMENTED";
         };
         UpcomingVersion: {
             amendKind?: string;

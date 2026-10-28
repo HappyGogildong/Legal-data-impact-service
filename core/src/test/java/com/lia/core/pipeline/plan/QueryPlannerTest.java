@@ -88,8 +88,7 @@ class QueryPlannerTest {
     }
 
     @Test
-    void 프로필_없으면_LayerB_제거_primary도_교체() {
-        // S1류 포괄질의지만 프로필 미제공 → IMPACT·ACTION 제거, DIFF만 남음
+    void 프로필이_없어도_LayerB_차원을_유지한다_미충족_안내가_응답에_실리게() {
         AnalysisQueryDraft draft = new AnalysisQueryDraft(
                 QueryType.IMPACT, Set.of(QueryType.DIFF, QueryType.IMPACT, QueryType.ACTION), true,
                 TargetKind.REFERENCE, "주택법", null, List.of(), List.of(), List.of(), "전세 영향");
@@ -97,11 +96,9 @@ class QueryPlannerTest {
         PlanResult result = plannerFor(draft).plan("주택법 바뀌면 나 전세 어떻게 돼", null, false);
 
         AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class, result).query();
-        assertFalse(q.profileBound(), "프로필 없으면 profileBound=false");
-        assertFalse(q.types().contains(QueryType.IMPACT), "IMPACT 제거");
-        assertFalse(q.types().contains(QueryType.ACTION), "ACTION 제거");
-        assertTrue(q.types().contains(QueryType.DIFF), "Layer A는 유지");
-        assertFalse(q.primaryType().isLayerB(), "primary가 Layer B면 교체되어야");
+        assertEquals(Set.of(QueryType.DIFF, QueryType.IMPACT, QueryType.ACTION), q.types());
+        assertEquals(QueryType.IMPACT, q.primaryType());
+        assertFalse(q.profileBound(), "프로필 없으면 profileBound=false (채울 수는 없다)");
     }
 
     @Test

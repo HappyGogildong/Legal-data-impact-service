@@ -54,6 +54,10 @@ spring:
         options:
           model: claude-opus-5-5
           max-tokens: 16000           # thinking 토큰 포함 — 구조화 JSON 이 잘리지 않게(D68)
+    chat:
+      observations:
+        log-prompt: false           # 프롬프트(프로필·질문 포함)를 로그·트레이스에 남기지 않는다(D41·D69) — 기본값을 명시해 고정
+        log-completion: false
     openai:                         # Embedder (D32: 외부 임베딩 API, dim 1536)
       api-key: ${OPENAI_API_KEY:}
       embedding:

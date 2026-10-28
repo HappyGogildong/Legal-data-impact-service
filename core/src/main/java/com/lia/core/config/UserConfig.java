@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.lia.core.application.account.AccountUseCase;
+import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.application.profile.ProfileUseCase;
 import com.lia.core.auth.AccountStore;
 import com.lia.core.profile.UserProfileStore;
@@ -20,6 +21,12 @@ public class UserConfig {
     public ProfileUseCase profileUseCase(UserProfileStore store,
             @Value("${lia.privacy.policy-version}") String policyVersion) {
         return new ProfileUseCase(store, policyVersion);
+    }
+
+    @Bean
+    public PersonalizationGate personalizationGate(UserProfileStore store,
+            @Value("${lia.privacy.policy-version}") String policyVersion) {
+        return new PersonalizationGate(store, policyVersion);
     }
 
     @Bean

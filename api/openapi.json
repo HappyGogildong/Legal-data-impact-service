@@ -1054,7 +1054,7 @@
           },
           "reason" : {
             "type" : "string",
-            "enum" : [ "LAW_NOT_LOADED", "BASELINE_NOT_LOADED", "PROFILE_REQUIRED", "NOT_IMPLEMENTED" ]
+            "enum" : [ "LAW_NOT_LOADED", "BASELINE_NOT_LOADED", "PROFILE_REQUIRED", "CONSENT_OUTDATED", "DAILY_LIMIT", "INSUFFICIENT_GROUNDING", "NOT_IMPLEMENTED" ]
           }
         }
       },

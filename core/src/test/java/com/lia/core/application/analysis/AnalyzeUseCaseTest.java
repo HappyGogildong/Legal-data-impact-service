@@ -4,15 +4,18 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
@@ -26,6 +29,7 @@ import com.lia.core.pipeline.dispatch.DimensionHandlerRegistry;
 import com.lia.core.pipeline.dispatch.PersonalizedHandler;
 import com.lia.core.pipeline.dispatch.QueryDispatcher;
 import com.lia.core.pipeline.dispatch.SummaryHandler;
+import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.AnalysisQueryDraft;
 import com.lia.core.pipeline.plan.AnalysisQueryDraft.TargetKind;
 import com.lia.core.pipeline.plan.LawRef;
@@ -36,6 +40,9 @@ import com.lia.core.pipeline.plan.Target;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.ResolutionState;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
+import com.lia.core.profile.StoredProfile;
+import com.lia.core.profile.UserProfile;
+import com.lia.core.profile.UserProfileStore;
 import com.lia.core.store.LawSource;
 
 /**
@@ -92,7 +99,44 @@ class AnalyzeUseCaseTest {
         DimensionHandlerRegistry registry =
                 new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder()), new DiffHandler(engine)));
         return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry, new PersonalizedHandler(null), userId -> false),
-                (lawId, efYd) -> { recorded.add(lawId + "@" + efYd); return true; });
+                (lawId, efYd) -> { recorded.add(lawId + "@" + efYd); return true; }, anonymousGate());
+    }
+
+    /** 저장소가 항상 같은 프로필 행(없으면 null)을 돌려주는 게이트 — DB 없이. */
+    private static PersonalizationGate gate(StoredProfile stored, String currentPolicyVersion) {
+        UserProfileStore store = new UserProfileStore(null) {
+            @Override public Optional<StoredProfile> find(UUID userId) { return Optional.ofNullable(stored); }
+        };
+        return new PersonalizationGate(store, currentPolicyVersion);
+    }
+
+    private static PersonalizationGate anonymousGate() { return gate(null, "v1"); }
+
+    /** 번역기가 IMPACT 를 고르고, 게이트 저장소엔 storedPolicyVersion 동의의 채워진 프로필이 있다. 디스패처 한도는 열려 있다. */
+    private AnalyzeUseCase useCaseWithGateVersion(String storedPolicyVersion) {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.IMPACT, Set.of(QueryType.IMPACT), true, TargetKind.REFERENCE,
+                "주택법", null, List.of(), List.of(), List.of(), "영향");
+        QueryPlanner planner = new QueryPlanner(q -> draft, new SourceAnalyzer(new FakeLookup()));
+        FakeLawSource src = new FakeLawSource();
+        src.versions.put("001809@2026-08-04", law());
+        AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
+        DimensionHandlerRegistry registry =
+                new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder()), new DiffHandler(engine)));
+        OffsetDateTime now = OffsetDateTime.parse("2026-10-28T00:00:00Z");
+        StoredProfile stored = new StoredProfile(new UserProfile(null, 34, null, null, null, null, null),
+                storedPolicyVersion, now, now);
+        return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry, new PersonalizedHandler(null), userId -> true),
+                (lawId, efYd) -> true, gate(stored, "v1"));
+    }
+
+    @Test
+    void 로그인_사용자의_게이트_판정이_디스패처까지_간다_옛_동의면_LayerB_는_CONSENT_OUTDATED() {
+        AnalysisOutcome outcome = useCaseWithGateVersion("v0")
+                .analyze("주택법 내 영향", null, Optional.of(UUID.fromString("00000000-0000-0000-0000-000000000001")));
+
+        AnalysisOutcome.Analyzed analyzed = assertInstanceOf(AnalysisOutcome.Analyzed.class, outcome);
+        assertEquals(Unmet.Reason.CONSENT_OUTDATED, analyzed.result().unmet().get(QueryType.IMPACT).reason());
     }
 
     @Test
@@ -101,7 +145,7 @@ class AnalyzeUseCaseTest {
                 QueryType.SUMMARY, Set.of(QueryType.SUMMARY), true, TargetKind.REFERENCE,
                 "주택법", null, List.of(), List.of(), List.of(), "요약");
 
-        AnalysisOutcome out = useCase(draft, true).analyze("주택법 뭐가 바뀌어?", null);
+        AnalysisOutcome out = useCase(draft, true).analyze("주택법 뭐가 바뀌어?", null, Optional.empty());
 
         AnalysisOutcome.Analyzed a = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
         assertTrue(a.result().filled().containsKey(QueryType.SUMMARY), "SUMMARY 차원이 채워져야");
@@ -117,7 +161,7 @@ class AnalyzeUseCaseTest {
                 null, null, List.of(), List.of(), List.of(), "요약");
         LawRef pinned = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
 
-        AnalysisOutcome out = useCase(draft, true).analyze("법명 안 대는 자연어", pinned);
+        AnalysisOutcome out = useCase(draft, true).analyze("법명 안 대는 자연어", pinned, Optional.empty());
 
         AnalysisOutcome.Analyzed a = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
         Target.Reference ref = assertInstanceOf(Target.Reference.class, a.query().target(),
@@ -132,7 +176,7 @@ class AnalyzeUseCaseTest {
                 QueryType.SUMMARY, Set.of(QueryType.SUMMARY), false, TargetKind.REFERENCE,
                 null, null, List.of(), List.of(), List.of(), "점심 메뉴");
 
-        AnalysisOutcome out = useCase(draft, false).analyze("오늘 점심 뭐 먹지", null);
+        AnalysisOutcome out = useCase(draft, false).analyze("오늘 점심 뭐 먹지", null, Optional.empty());
 
         AnalysisOutcome.Unresolved u = assertInstanceOf(AnalysisOutcome.Unresolved.class, out);
         assertEquals(ResolutionState.UNVERIFIED, u.resolution().state());
@@ -144,7 +188,7 @@ class AnalyzeUseCaseTest {
                 QueryType.SUMMARY, Set.of(QueryType.SUMMARY), true, TargetKind.REFERENCE,
                 "주택법", null, List.of(), List.of(), List.of(), "요약");
 
-        useCase(draft, true).analyze("주택법 뭐가 바뀌어?", null);
+        useCase(draft, true).analyze("주택법 뭐가 바뀌어?", null, Optional.empty());
 
         assertEquals(List.of("001809@2026-08-04"), recorded);
     }
@@ -158,8 +202,8 @@ class AnalyzeUseCaseTest {
                 QueryType.SUMMARY, Set.of(QueryType.SUMMARY), false, TargetKind.REFERENCE,
                 null, null, List.of(), List.of(), List.of(), "잡담");
 
-        useCase(reference, false).analyze("주택법 뭐가 바뀌어?", null);   // 정본 미적재 → 전부 unmet
-        useCase(offTopic, true).analyze("오늘 점심 뭐 먹지", null);
+        useCase(reference, false).analyze("주택법 뭐가 바뀌어?", null, Optional.empty());   // 정본 미적재 → 전부 unmet
+        useCase(offTopic, true).analyze("오늘 점심 뭐 먹지", null, Optional.empty());
 
         assertEquals(List.of(), recorded);
     }
@@ -176,9 +220,9 @@ class AnalyzeUseCaseTest {
         AnalyzeUseCase failing = new AnalyzeUseCase(planner,
                 new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder()))),
                         new PersonalizedHandler(null), userId -> false),
-                (lawId, efYd) -> { throw new IllegalStateException("DB 끊김"); });
+                (lawId, efYd) -> { throw new IllegalStateException("DB 끊김"); }, anonymousGate());
 
-        AnalysisOutcome out = failing.analyze("주택법 뭐가 바뀌어?", null);
+        AnalysisOutcome out = failing.analyze("주택법 뭐가 바뀌어?", null, Optional.empty());
 
         AnalysisOutcome.Analyzed analyzed = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
         assertTrue(analyzed.result().filled().containsKey(QueryType.SUMMARY));
