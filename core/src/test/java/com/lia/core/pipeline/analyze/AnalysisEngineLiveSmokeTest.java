@@ -17,6 +17,8 @@ import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.plan.QueryType;
+import com.lia.core.profile.HousingType;
+import com.lia.core.profile.UserProfile;
 
 /**
  * 실 Opus 해석 스모크 — <b>비용 발생</b>. 기본 {@code ./gradlew test}에서 절대 안 돈다:
@@ -46,6 +48,21 @@ class AnalysisEngineLiveSmokeTest {
             assertTrue(resp.injectedSourceIds().containsAll(c.citations()),
                     "환각 인용(주입 안 된 source_id): " + c.citations());
         }
+    }
+
+    @Test
+    void layerB_실생성이_영향과_대응을_주입_source_id_로만_인용한다() {
+        UserProfile profile = new UserProfile(null, 34, null, null, null, HousingType.전세, null);
+        AnalyzeResponse resp = engine.analyze(new AnalyzeRequest(QueryType.IMPACT, housing(), null,
+                profile, "주택법 바뀌면 전세 사는 나는 뭘 해야 해?"));
+        ImpactResult r = resp.result();
+
+        System.out.printf("[live] impacts=%d actions=%d%n", r.impacts().size(), r.actions().size());
+
+        assertFalse(r.impacts().isEmpty(), "영향이 없다");
+        assertFalse(r.actions().isEmpty(), "대응이 없다");
+        r.impacts().forEach(i -> assertTrue(resp.injectedSourceIds().containsAll(i.citations()), "환각 인용: " + i.citations()));
+        r.actions().forEach(a -> assertTrue(resp.injectedSourceIds().containsAll(a.basis()), "환각 근거: " + a.basis()));
     }
 
     private static Law housing() {
