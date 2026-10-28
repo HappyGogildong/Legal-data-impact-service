@@ -229,6 +229,21 @@ class QueryDispatcherTest {
     }
 
     @Test
+    void 제정본은_기준선이_없어도_LayerB_가_핸들러에_닿는다() {
+        FakeLawSource src = new FakeLawSource();
+        src.versions.put("001809@2026-08-04", law(Law.AmendKind.제정));   // baseline 없음 — 제정이라 정상
+        QueryDispatcher d = dispatcher(src);
+
+        DispatchResult r = d.dispatch(refQuery(Set.of(QueryType.IMPACT, QueryType.ACTION), QueryType.IMPACT, true),
+                "질문", USABLE);
+
+        assertEquals(1, personalized.calls);
+        assertEquals(1, quota.consumed);
+        assertTrue(r.filled().keySet().containsAll(Set.of(QueryType.IMPACT, QueryType.ACTION)));
+        assertTrue(r.unmet().isEmpty());
+    }
+
+    @Test
     void LayerB_근거부족이면_요청한_차원_모두_INSUFFICIENT_GROUNDING() {
         personalized.failure = new InsufficientGroundingException("근거 부족");
         QueryDispatcher d = dispatcher(loadedWithBaseline());

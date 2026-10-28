@@ -169,7 +169,7 @@ public class PipelineConfig {
         return new AnalyzeUseCase(queryPlanner, queryDispatcher, lawViews, personalizationGate);
     }
 
-    /** 사용자별 하루 개인화 분석 한도(D69) — Opus 호출 직전 차감. 디스패처 주입은 Task 5. */
+    /** 사용자별 하루 개인화 분석 한도(D69) — Opus 호출 직전 차감. */
     @Bean
     public PersonalizationQuota personalizationQuota(JdbcClient jdbcClient,
             @Value("${lia.personalization.daily-limit}") int dailyLimit) {
