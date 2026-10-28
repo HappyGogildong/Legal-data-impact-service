@@ -33,10 +33,11 @@ function renderConsent() {
 beforeEach(() => {
   router.push.mockReset();
   router.replace.mockReset();
+  sessionStorage.clear();
 });
 
 describe("ConsentScreen", () => {
-  it("처음 동의 — 두 항목을 모두 체크해야 보내고, 동의 후 프로필로", async () => {
+  it("처음 동의 — 두 항목을 모두 체크해야 보내고, 동의 후 프로필로(돌아올 경로가 없으면 그다음은 홈)", async () => {
     const requests = mockApi({
       "GET /api/v1/account": () => json(ACCOUNT),
       "GET /api/v1/consents": () => json({}),
@@ -61,10 +62,36 @@ describe("ConsentScreen", () => {
     );
     const put = requests.find((request) => request.method === "PUT")!;
     expect(await put.json()).toEqual({ over14: true });
+    expect(sessionStorage.getItem("lia.returnTo")).toBe("/");
     // 이동 중에는 보조 버튼도 막는다 — 누르면 돌아올 경로가 지워진다
     expect(
       screen.getByRole("button", { name: "동의하지 않고 계속 보기" }),
     ).toBeDisabled();
+  });
+
+  it("처음 동의 — 돌아올 경로가 있으면 그대로 둔다(프로필 뒤 그 화면으로)", async () => {
+    setReturnTo("/ask");
+    mockApi({
+      "GET /api/v1/account": () => json(ACCOUNT),
+      "GET /api/v1/consents": () => json({}),
+      "PUT /api/v1/consents/profile": () => json(CONSENT),
+    });
+    renderConsent();
+
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: /만 14세 이상입니다/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /프로필 수집·이용에 동의합니다/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "동의하고 프로필 입력" }),
+    );
+
+    await vi.waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith("/profile"),
+    );
+    expect(sessionStorage.getItem("lia.returnTo")).toBe("/ask");
   });
 
   it("재동의 — 옛 버전이면 안내하고, 동의 후 돌아올 경로로", async () => {

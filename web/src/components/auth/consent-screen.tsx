@@ -7,7 +7,12 @@ import { useState } from "react";
 import { agreeProfileConsent, fetchConsents } from "@/lib/api/auth";
 import { isUnauthorized } from "@/lib/api/errors";
 import type { Consents } from "@/lib/api/types";
-import { clearReturnTo, takeReturnTo } from "@/lib/return-to";
+import {
+  clearReturnTo,
+  readReturnTo,
+  setReturnTo,
+  takeReturnTo,
+} from "@/lib/return-to";
 import { CONSENTS_KEY, useRequireSession } from "@/lib/session";
 import { CheckRow } from "./check-row";
 import { LoadError } from "./load-error";
@@ -50,7 +55,9 @@ export function ConsentScreen() {
       if (reconsent) {
         router.replace(takeReturnTo(pathname) ?? "/");
       } else {
-        router.replace("/profile"); // 첫 동의는 프로필 입력을 거친다 — 돌아올 경로는 프로필이 쓴다
+        // 첫 동의는 프로필 입력을 거친다 — 돌아올 경로는 프로필이 쓴다. 없으면 내 정보가 아니라 홈으로
+        if (!readReturnTo()) setReturnTo("/");
+        router.replace("/profile");
       }
     },
     onError: (error) => {
