@@ -49,7 +49,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 |---|---|
 | `AnalysisEngine` | 오케스트레이터(얇음) — `조립 → 추론 → 검증 → 재생성(≤N) → 폴백`. 흐름·정책만. |
 | `ContextBuilder` | **결정론** — 해소된 `Law`+`baseline`에서 차원별 근거 블록 조립 + **`source_id` 부여**. LLM 없음, 단위 테스트 가능. 그라운딩 임계(주입 `source_id` = 게이트 기준). |
-| `Reasoner` (포트) | Opus 호출 경계. `SpringAiReasoner`(ChatClient `.entity(ImpactResult)`, §3 템플릿+차원 변형). **포트인 이유 = 재생성 루프 테스트 심**(스크립트된 결과 주입), 교체용 아님. |
+| `Reasoner` (포트) | Opus 호출 경계. `SpringAiReasoner`(ChatClient `.entity(ImpactResult)`, §3 템플릿+차원 변형). 응답의 thinking 블록은 `ThinkingBlockFilter` advisor 가 걷어 낸다(D68 ⑤). **포트인 이유 = 재생성 루프 테스트 심**(스크립트된 결과 주입), 교체용 아님. |
 | `FaithfulnessGate` | 인용 존재성 검증(§6.2) — **기존 클래스 재사용**(D08 그라운딩 규칙, `eval`↔런타임 공용). `passes(claims, injectedIds)`. CitationGate를 따로 만들지 않는다(규칙 이중화 금지). |
 
 - **PromptBuilder를 따로 두지 않는다** — 프롬프트 조립은 `Reasoner` 내부(과분할 회피). 분리 기준 = "레이어를 위한 레이어"가 아니라 **순수/LLM 경계 + 테스트 가능성**.

@@ -48,6 +48,7 @@ public class SpringAiReasoner implements Reasoner {
                         .model(MODEL)
                         .thinkingAdaptive()
                         .effort(OutputConfig.Effort.MEDIUM))
+                .defaultAdvisors(new ThinkingBlockFilter())   // thinking 블록이 첫 generation 이라 .entity() 가 빈 내용을 파싱하는 것 방지
                 .defaultSystem(SYSTEM)
                 .build();
     }
