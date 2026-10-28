@@ -44,7 +44,8 @@ public record Law(
 
     public enum AmendKind { 제정, 일부개정, 전부개정, 타법개정, 폐지, 기타 }
 
-    public enum LawType { 법률, 대통령령, 총리령, 부령, 기타 }
+    /** 법종구분. 헌법기관 규칙(대법원규칙 등)도 시행예정 목록에 온다 — 원문 문자열 포함 여부로 판정(Normalizer). */
+    public enum LawType { 법률, 대통령령, 총리령, 부령, 대법원규칙, 국회규칙, 헌법재판소규칙, 중앙선거관리위원회규칙, 감사원규칙, 기타 }
 
     /** 부칙 단서조항 유무로 판정한다. */
     public enum EnforcementType { 즉시, 유예, 단계적 }

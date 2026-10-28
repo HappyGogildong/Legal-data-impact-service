@@ -10,6 +10,8 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.lia.core.domain.law.Addendum;
 import com.lia.core.domain.law.Article;
@@ -106,6 +108,20 @@ class NormalizerTest {
                     LocalDate.of(2026, 8, 4), LocalDate.of(2026, 2, 3), "21323", root);
 
             assertEquals("국토교통부", normalizer.normalize(raw).ministry());
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"대법원규칙", "국회규칙", "헌법재판소규칙", "중앙선거관리위원회규칙", "감사원규칙"})
+        void 헌법기관_규칙도_법종으로_구분한다(String kind) {
+            // 시행예정 목록에 대법원규칙 등이 온다 — 기타로 뭉뚱그리지 않는다
+            Map<String, Object> root = lawRoot();
+            Map<String, Object> info = new LinkedHashMap<>(LawEnvelope.basicInfo(root));
+            info.put("법종구분", kind);
+            root.put("기본정보", info);
+            RawLaw raw = new RawLaw("001809", "283191", "주택법", "시행예정",
+                    LocalDate.of(2026, 8, 4), LocalDate.of(2026, 2, 3), "21323", root);
+
+            assertEquals(Law.LawType.valueOf(kind), normalizer.normalize(raw).lawType());
         }
 
         @Test
