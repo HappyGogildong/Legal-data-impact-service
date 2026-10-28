@@ -105,7 +105,7 @@ BASE  /api/v1
 사용자 행위의 중심. **자연어 질문**을 받아 해소→조립→추론→인용검증을 거쳐 **그라운딩된 구조화 답변**을 돌려준다. 로그인 세션이 있으면 서버가 userId 로 프로필을 읽어 Layer B 를 채운다(본문에 프로필을 보내지 않는다). 익명도 허용 — Layer B 는 PROFILE_REQUIRED.
 
 ```jsonc
-// POST /api/v1/analyses   (Authorization 있으면 Layer B까지)
+// POST /api/v1/analyses   (로그인 세션 쿠키가 있으면 Layer B까지)
 // 요청
 {
   "query": "주택법 바뀌면 나 전세 계약 어떻게 돼?",   // ★ 필수 — 자연어
@@ -159,15 +159,15 @@ BASE  /api/v1
 
 **동작 규칙:**
 - 각 차원 결과는 [[component-specs]] §1 `ImpactResult` 스키마를 따른다.
-- **인용검증 게이트**를 통과한 차원만 나간다. 근거 부족 차원은 `422`가 아니라 `unmet`에 사유(사유 코드 `INSUFFICIENT_GROUNDING` — 인용검증 게이트를 응답에 붙일 때 추가)로 표기(부분 성공 허용).
+- **인용검증 게이트**를 통과한 차원만 나간다. 근거 부족 차원은 `422`가 아니라 `unmet`에 사유(사유 코드 `INSUFFICIENT_GROUNDING`, D69)로 표기(부분 성공 허용).
 - 익명 요청에 F3·F4가 필요하면 그 차원은 생략하고 `unmet: {"impact": {"reason":"PROFILE_REQUIRED", "message":"…"}}`(차원→사유 코드·설명) — 전체를 막지 않는다.
 - `CONSENT_OUTDATED` — 개인화 차원(Layer B)인데 프로필 동의가 옛 처리방침 버전이다 → 재동의 안내 (D69)
 - `DAILY_LIMIT` — 오늘 개인화 분석 한도(`lia.personalization.daily-limit`, 기본 20)를 다 썼다 (D69)
 - `INSUFFICIENT_GROUNDING` — 재생성 후에도 인용 검증을 통과하지 못했다(환각 노출 금지). Layer A·B 공통 (D69)
-- 캐시 키는 `userId`가 아니라 **프로필 속성 해시 + 법령 참조(law.ref) + 차원**(D41).
+- 캐시 키는 `userId`가 아니라 **프로필 속성 해시 + 법령 참조(law.ref) + 차원**(D41). (Layer B 개인화 답은 D69 로 저장하지 않음 — 답변 캐시는 후속)
 - **멀티턴(대화 상태 지속)은 MVP 밖** — 단발 질의만. 멀티턴은 D37 재검토 트리거라 별도 결정 후 도입.
 
-> **멱등성 주의.** `POST`지만 같은 `(query, lawRef, profileHash)`는 캐시로 같은 결과를 준다. 리소스 신규 생성(분석 이력 저장)은 post-MVP — 그때 `GET /analyses/{id}`(이력·공유)로 확장.
+> **멱등성 주의.** `POST`지만 같은 `(query, lawRef, profileHash)`는 캐시로 같은 결과를 준다(Layer B 개인화 답은 D69 로 저장하지 않으므로 답변 캐시 도입 뒤의 동작 — 현재는 매번 생성). 리소스 신규 생성(분석 이력 저장)은 post-MVP — 그때 `GET /analyses/{id}`(이력·공유)로 확장.
 
 ### 3.1 `GET /laws` — 곧 시행되는 법령 목록 (홈·S06)
 

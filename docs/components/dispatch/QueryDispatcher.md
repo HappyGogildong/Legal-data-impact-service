@@ -58,8 +58,8 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 `Target.Discovery`(코퍼스 검색)는 LOOKUP 전용 경로 — LookupHandler·LawDiscovery(#19) 착지 전까지 전 타입 `unmet`. `Target.Reference`면 정본을 조회하고(미적재면 전 타입 `unmet`), `query.types`의 각 `type`에 대해:
 
-1. `registry.get(type)` 없으면 → `unmet("핸들러 미구현")`. (현재 LOOKUP·IMPACT·ACTION)
-2. `handler.needsProfile() && !query.profileBound()` → `unmet("프로필 필요")`. (미래 Layer B가 프로필 없이 올 때)
+1. `registry.get(type)` 없으면 → `unmet("핸들러 미구현")`. (현재 LOOKUP만 — IMPACT·ACTION 은 레지스트리를 거치지 않고 `PersonalizedHandler` 경로, D69)
+2. IMPACT·ACTION(Layer B)은 이 순회가 아니라 아래 **Layer B(D69)** 항목의 순서(`Personalization.Blocked` 사유 → `BASELINE_NOT_LOADED` → `DAILY_LIMIT` → 핸들러 1회)로 처리한다. 프로필 유무 검사는 그 게이트의 몫이다.
 3. `handler.needsBaseline() && baseline==null && !제정` → `unmet("기준선 미적재")`. **개정본인데 시행중본이 없는 데이터 이상을 조용히 '제정'으로 오인하지 않는다** — `제정`(baseline이 원래 없음)만 통과시킨다.
 4. 그 외 → `filled(handler.handle(ctx))`.
 
@@ -76,8 +76,8 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 ## Error Handling
 
-- 예외를 던지지 않는다 — 라우팅 불가·정본 미적재·핸들러 부재는 전부 `unmet` 사유로 흡수(부분성공).
-- 핸들러 내부(AnalysisEngine)의 `InsufficientGroundingException` 전파 정책은 [[AnalysisEngine]] 소관. (현재는 핸들러가 그대로 전파 — 재생성≤N 후 근거부족)
+- 예외를 던지지 않는다 — 라우팅 불가·정본 미적재·핸들러 부재·근거 부족(`InsufficientGroundingException`)은 전부 `unmet` 사유로 흡수(부분성공).
+- 핸들러(AnalysisEngine)가 재생성≤N 후에도 던지는 `InsufficientGroundingException` 은 그 차원의 `INSUFFICIENT_GROUNDING` unmet 으로 바뀌고, 다른 차원은 그대로 채워진다(D69).
 
 ## Side Effects
 
