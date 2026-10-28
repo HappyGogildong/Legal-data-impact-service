@@ -17,6 +17,7 @@ import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
+import com.lia.core.pipeline.analyze.InsufficientGroundingException;
 import com.lia.core.pipeline.plan.AnalysisQuery;
 import com.lia.core.pipeline.plan.ArticleScope;
 import com.lia.core.pipeline.plan.DiscoveryCriteria;
@@ -194,5 +195,21 @@ class QueryDispatcherTest {
 
         assertTrue(r.filled().isEmpty());
         assertEquals(Unmet.Reason.NOT_IMPLEMENTED, r.unmet().get(QueryType.LOOKUP).reason());
+    }
+
+    @Test
+    void 핸들러가_근거부족이면_그_차원만_INSUFFICIENT_GROUNDING_나머지는_filled() {
+        DimensionHandler failing = new DimensionHandler() {
+            public QueryType type() { return QueryType.DIFF; }
+            public AnalyzeResponse handle(DispatchContext ctx) {
+                throw new InsufficientGroundingException("근거 부족");
+            }
+        };
+        QueryDispatcher d = dispatcher(loaded(), handler(QueryType.SUMMARY, false, resp("S")), failing);
+
+        DispatchResult r = d.dispatch(refQuery(Set.of(QueryType.SUMMARY, QueryType.DIFF), QueryType.SUMMARY, false));
+
+        assertTrue(r.filled().containsKey(QueryType.SUMMARY));
+        assertEquals(Unmet.Reason.INSUFFICIENT_GROUNDING, r.unmet().get(QueryType.DIFF).reason());
     }
 }

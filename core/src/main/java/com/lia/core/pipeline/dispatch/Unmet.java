@@ -16,6 +16,12 @@ public record Unmet(Reason reason, String message) {
         BASELINE_NOT_LOADED,
         /** 개인화 차원(Layer B)인데 프로필이 없다 — 익명이거나 프로필 미입력. */
         PROFILE_REQUIRED,
+        /** 개인화 차원(Layer B)인데 프로필 동의가 옛 처리방침 버전이다 — 재동의 필요(D69). */
+        CONSENT_OUTDATED,
+        /** 오늘 개인화 분석 한도를 다 썼다(D69). */
+        DAILY_LIMIT,
+        /** 재생성 후에도 인용 검증을 통과하지 못했다 — 환각을 내보내지 않는다(D69, Layer A·B 공통). */
+        INSUFFICIENT_GROUNDING,
         /** 그 차원·경로를 아직 구현하지 않았다(핸들러 없음·Discovery #19). */
         NOT_IMPLEMENTED
     }

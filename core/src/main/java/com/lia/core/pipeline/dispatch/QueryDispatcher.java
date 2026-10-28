@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
+import com.lia.core.pipeline.analyze.InsufficientGroundingException;
 import com.lia.core.pipeline.plan.AnalysisQuery;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
@@ -75,8 +76,16 @@ public class QueryDispatcher {
                         "기준선 미적재 — 개정본(" + law.amendKind() + ")인데 시행중본 없음"));
                 continue;
             }
-            filled.put(t, h.handle(ctx));
+            try {
+                filled.put(t, h.handle(ctx));
+            } catch (InsufficientGroundingException e) {
+                unmet.put(t, insufficientGrounding(t));   // 다른 차원은 그대로 — 부분 성공(D69)
+            }
         }
         return new DispatchResult(query.primaryType(), filled, unmet);
+    }
+
+    private static Unmet insufficientGrounding(QueryType type) {
+        return new Unmet(Unmet.Reason.INSUFFICIENT_GROUNDING, "근거 부족 — 재생성 후에도 인용 검증 실패: " + type);
     }
 }
