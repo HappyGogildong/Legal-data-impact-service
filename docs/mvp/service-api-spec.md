@@ -117,7 +117,7 @@ BASE  /api/v1
 **처리 순서**(온라인 경로, [[v0.9-nl-query-planner]] §3.2 · [[QueryPlanner]]):
 1. **번역** — `QueryTranslator`(Haiku)가 자연어를 `AnalysisQuery`(타입 집합·엔티티·target)로. `scope`/`lawRef`가 오면 힌트로 병합.
 2. **해소/발견** — target이 `Reference`면 해소(4상태, fail-closed), `Discovery`(LOOKUP)면 `pending` ns 코퍼스 검색.
-3. **플래닝** — 프로필 유무로 Layer B 차원을 빼지 않는다(D69). 프로필을 못 쓰면 디스패처가 그 차원을 사유(`PROFILE_REQUIRED`·`CONSENT_OUTDATED`)와 함께 `unmet` 으로 표기한다. 단 프로필이 없고 Layer A 차원이 하나도 없으면 `SUMMARY` 를 더해 요약은 보여 준다(선계산이라 비용 0). 검증된 `AnalysisQuery` 확정.
+3. **플래닝** — 프로필 유무로 Layer B 차원을 빼지 않는다(D69). 프로필을 못 쓰면 디스패처가 그 차원을 사유(`PROFILE_REQUIRED`·`CONSENT_OUTDATED`)와 함께 `unmet` 으로 표기한다. 단 프로필이 없고 Layer A 차원이 하나도 없으면 `SUMMARY` 를 더해 요약은 보여 준다(선계산본이 있으면 비용 0). 검증된 `AnalysisQuery` 확정.
 4. **디스패치·검증** — 타입별 핸들러(Layer A=캐시 조회, Layer B=RAG+Opus) → 인용검증 게이트. Discovery+분석은 top-K 팬아웃.
 
 **RESOLVED 응답** — 해소되고 분석까지 성공:
