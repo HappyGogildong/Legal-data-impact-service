@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { empty, json, mockApi } from "@/test/api-mock";
+import type { Unmet } from "@/lib/api/types";
+import { json, mockApi } from "@/test/api-mock";
 import { PersonalizeAction } from "./personalize-action";
 
 const router = { push: vi.fn(), replace: vi.fn() };
@@ -17,13 +18,13 @@ const PROFILE_REQUIRED = {
   message: "프로필 필요 (Layer B)",
 };
 
-function renderAction() {
+function renderAction(unmet: Unmet = PROFILE_REQUIRED) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   render(
     <QueryClientProvider client={client}>
-      <PersonalizeAction unmet={PROFILE_REQUIRED} />
+      <PersonalizeAction unmet={unmet} />
     </QueryClientProvider>,
   );
 }
@@ -44,11 +45,8 @@ describe("PersonalizeAction", () => {
     expect(router.push).toHaveBeenCalledWith("/login");
   });
 
-  it("로그인했지만 프로필 없음 → 프로필 입력", async () => {
-    mockApi({
-      "GET /api/v1/account": () => json(ACCOUNT),
-      "GET /api/v1/profile": () => empty(404),
-    });
+  it("로그인했는데 PROFILE_REQUIRED 면(프로필 없음·빈 프로필) 프로필 입력하기", async () => {
+    mockApi({ "GET /api/v1/account": () => json(ACCOUNT) });
     renderAction();
 
     await userEvent.click(
@@ -56,20 +54,24 @@ describe("PersonalizeAction", () => {
     );
     expect(sessionStorage.getItem("lia.returnTo")).toBe("/ask");
     expect(router.push).toHaveBeenCalledWith("/profile");
+    expect(screen.queryByText(/곧 제공/)).not.toBeInTheDocument();
   });
 
-  it("프로필 있음 → 곧 제공 안내(지키지 못할 약속을 하지 않는다)", async () => {
-    mockApi({
-      "GET /api/v1/account": () => json(ACCOUNT),
-      "GET /api/v1/profile": () => json({ housingType: "전세" }),
-    });
-    renderAction();
+  it("CONSENT_OUTDATED 면 동의하기 → /consent (복귀 주소는 /ask)", async () => {
+    mockApi({ "GET /api/v1/account": () => json(ACCOUNT) });
+    renderAction({ reason: "CONSENT_OUTDATED", message: "" });
 
-    expect(
-      await screen.findByText(
-        "프로필을 반영한 내 영향·대응 방안은 곧 제공돼요.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("button")).toBeNull();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "동의하기" }),
+    );
+    expect(sessionStorage.getItem("lia.returnTo")).toBe("/ask");
+    expect(router.push).toHaveBeenCalledWith("/consent");
+  });
+
+  it("한도·근거 부족 사유엔 버튼이 없다(문구만)", async () => {
+    mockApi({ "GET /api/v1/account": () => json(ACCOUNT) });
+    renderAction({ reason: "DAILY_LIMIT", message: "" });
+
+    await waitFor(() => expect(screen.queryByRole("button")).toBeNull());
   });
 });

@@ -15,7 +15,7 @@ import {
 } from "@/lib/law-view";
 import { cn } from "@/lib/utils";
 import { DDayBadge } from "./d-day-badge";
-import { AskAboutLaw, SummaryButton } from "./law-actions";
+import { AskAboutLaw, PersonalizeButton, SummaryButton } from "./law-actions";
 import { LawSummaryCard } from "./law-summary-card";
 import { ViewBeacon } from "./view-beacon";
 
@@ -130,6 +130,11 @@ export function LawDetailView({
         <h2 id="law-summary-title" className="mb-1 font-bold">
           {pending ? "쉬운 요약" : "개정 이유"}
         </h2>
+        {pending && lawRef && (
+          <div className="mb-2">
+            <PersonalizeButton title={title} lawRef={lawRef} />
+          </div>
+        )}
         {pending && detail.summary ? (
           <>
             <LawSummaryCard
