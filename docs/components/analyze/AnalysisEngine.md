@@ -8,7 +8,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 # AnalysisEngine (Spring, 해석)
 
-> 해소된 **시행예정 법령**에 대해, **LawStore에서 정확 조회한 정본으로 context를 조립** → 외부 foundation API(Opus 4.8) 추론 → 구조화 `ImpactResult` + 1차 인용검증. 관련: [[component-specs]] §4 #11 · [[analysis-prompt-spec]] · [[QueryPlanner]].
+> 해소된 **시행예정 법령**에 대해, **LawStore에서 정확 조회한 정본으로 context를 조립** → 외부 foundation API(Opus 5.5, D68) 추론 → 구조화 `ImpactResult` + 1차 인용검증. 관련: [[component-specs]] §4 #11 · [[analysis-prompt-spec]] · [[QueryPlanner]].
 >
 > **정합화 (2026-08-27).** 구 스펙의 "쿼리 임베딩 → `law` ns 시행중 조문 **RAG 검색**"은 **폐기**한다. 아래 근거로 **분석 경로에는 벡터 검색이 없다** — context는 조회로 확보한다.
 >
@@ -33,7 +33,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 ## 동작 (명시적 워크플로)
 1. **context 조립** — [[analysis-prompt-spec]] §3 템플릿으로 `source_id` 부여: **변경 조문 + baseline 대응 조문(DIFF) + 개정문 + 부칙(시행일) + (Layer B면) 프로필**. 벡터 검색 없음 — `law`/`baseline` 애그리거트에서 직접.
    ⚠️ 인용키는 **시행일 포함**: `LAW:{lawId}@{effectiveDate}:art:{no}`(복수 시행예정본, D43). 형식은 [[component-specs]] §1.3.
-2. **Opus API 호출** — constrained JSON([[analysis-prompt-spec]] §4 스키마), adaptive thinking·effort=high.
+2. **Opus API 호출** — constrained JSON([[analysis-prompt-spec]] §4 스키마), adaptive thinking(항상 켜짐)·effort=medium(D68).
 3. **1차 인용검증** — 스키마 유효 + **인용 존재성**(모든 `claims[].citations` ⊆ 주입 `source_id`). 실패 시 재생성(≤`regen_max`).
 4. 산출: `ImpactResult` + `injectedSourceIds`(2차 게이트용). **(후속)** Layer A 결과·`LawFacts` 캐시(D51 — 이번 범위 밖, 온디맨드 산출).
 
@@ -49,7 +49,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 |---|---|
 | `AnalysisEngine` | 오케스트레이터(얇음) — `조립 → 추론 → 검증 → 재생성(≤N) → 폴백`. 흐름·정책만. |
 | `ContextBuilder` | **결정론** — 해소된 `Law`+`baseline`에서 차원별 근거 블록 조립 + **`source_id` 부여**. LLM 없음, 단위 테스트 가능. 그라운딩 임계(주입 `source_id` = 게이트 기준). |
-| `Reasoner` (포트) | Opus 호출 경계. `SpringAiReasoner`(ChatClient `.entity(ImpactResult)`, §3 템플릿+차원 변형). **포트인 이유 = 재생성 루프 테스트 심**(스크립트된 결과 주입), 교체용 아님. |
+| `Reasoner` (포트) | Opus 호출 경계. `SpringAiReasoner`(ChatClient `.entity(ImpactResult)`, §3 템플릿+차원 변형). 응답의 thinking 블록은 `ThinkingBlockFilter` advisor 가 걷어 낸다(D68 ⑤). **포트인 이유 = 재생성 루프 테스트 심**(스크립트된 결과 주입), 교체용 아님. |
 | `FaithfulnessGate` | 인용 존재성 검증(§6.2) — **기존 클래스 재사용**(D08 그라운딩 규칙, `eval`↔런타임 공용). `passes(claims, injectedIds)`. CitationGate를 따로 만들지 않는다(규칙 이중화 금지). |
 
 - **PromptBuilder를 따로 두지 않는다** — 프롬프트 조립은 `Reasoner` 내부(과분할 회피). 분리 기준 = "레이어를 위한 레이어"가 아니라 **순수/LLM 경계 + 테스트 가능성**.

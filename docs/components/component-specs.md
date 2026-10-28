@@ -348,15 +348,15 @@ Content-Type: application/json
 
 | 단계 | 모델 | ID | 단가(in/out $/1M) | 설정 |
 |---|---|---|---|---|
-| 영향 추론(Layer A·B) | **Claude Opus 4.8** | `claude-opus-4-8` | 5 / 25 | adaptive thinking, `effort:"high"` |
+| 영향 추론(Layer A·B) | **Claude Opus 5.5** (D68) | `claude-opus-5-5` | 4 / 20 | adaptive thinking(항상 켜짐), `effort:"medium"` |
 | (후속) triage·추출 | Claude Haiku 4.5 | `claude-haiku-4-5` | 1 / 5 | 저비용 분류 |
 | (대안) 비용 압박 시 추론 | Claude Sonnet 4.6 | `claude-sonnet-4-6` | 3 / 15 | — |
 | **임베딩(적재·검색)** | **외부 임베딩 API** (자체 호스팅 X) | 벤더 미확정(후보 아래) | ~0.02~0.13 / — | 분석용·탐색용 공유, **dim 1536** |
 
 - **임베딩 모델 = 외부 API 확정(자체 호스팅 제외).** 인프라 예산 없음 → API 호출. ① 공유 `Embedder`(Spring AI `EmbeddingModel` 위임)가 RAG Indexer·Analysis Engine·SourceAnalyzer에 **동일 모델** 제공. 후보: OpenAI `text-embedding-3-small`(1536, 기본·최저가) / Upstage `solar-embedding`(한국어 특화, 4096) / Cohere·Voyage(1024) — 벤치 후 확정. **기본 1536차원**(ADR-001 가정과 일치 → 저장 결정 불변). 추론 모델(Opus)과 별개이며, **모델 변경 시 전 코퍼스 재색인** 필요. 데이터 민감도 낮음(공개 법령)이라 외부 API 적합 — 사용자 프로필은 임베딩 대상이 아니다.
-- **MVP 추론 기본 = Opus 4.8** (1M 컨텍스트, 128K 출력). 법적 정확도 우선. 모델 픽은 `prompt_version`/`meta`로 교체 가능.
-- **토큰 예산:** 입력 컨텍스트 상한 **~32K**(초과 시 §2 우선순위로 자르기), 출력 `max_tokens=4000`(구조화 JSON엔 충분, 스트리밍 불필요).
-- **프롬프트 캐싱:** 안정 프리픽스(시스템 가드레일 + Layer A 사실 블록)에 `cache_control` → 재호출 시 읽기 ~0.1×. 쓰기 1.25×(5분)/2×(1h). **Opus 4.8 최소 캐시 프리픽스 4096토큰** — 그보다 짧으면 캐시 미적용. 캐시 키 안정성 위해 시스템 프롬프트에 날짜·UUID 주입 금지(프로필·대상 법령은 프리픽스 뒤에 배치). → 이것이 **캐싱 모델의 주 수단**(§3.4, D51).
+- **MVP 추론 기본 = Opus 5.5**(D68, D19 개정) (1M 컨텍스트, 128K 출력). thinking 은 끌 수 없고 effort 로 깊이를 정한다. 법적 정확도 우선. 모델 픽은 `prompt_version`/`meta`로 교체 가능.
+- **토큰 예산:** 입력 컨텍스트 상한 **~32K**(초과 시 §2 우선순위로 자르기), 출력 `max_tokens=16000`(thinking 토큰 포함 — 구조화 JSON 이 잘리지 않게, 비스트리밍 권장 상한, D68).
+- **프롬프트 캐싱:** 안정 프리픽스(시스템 가드레일 + Layer A 사실 블록)에 `cache_control` → 재호출 시 읽기 ~0.1×. 쓰기 1.25×(5분)/2×(1h). **Opus 최소 캐시 프리픽스 4096토큰** — 그보다 짧으면 캐시 미적용. 캐시 키 안정성 위해 시스템 프롬프트에 날짜·UUID 주입 금지(프로필·대상 법령은 프리픽스 뒤에 배치). → 이것이 **캐싱 모델의 주 수단**(§3.4, D51).
 
 ---
 

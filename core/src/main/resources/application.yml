@@ -46,12 +46,12 @@ spring:
     enabled: true                               # 시작 시 스키마 마이그레이션(실행엔 DB 필요). 테스트·demo는 끔
     locations: classpath:db/migration
   ai:
-    anthropic:                      # AnalysisEngine 추론 (D19: Opus 4.8)
+    anthropic:                      # AnalysisEngine 추론 (D68: Opus 5.5)
       api-key: ${ANTHROPIC_API_KEY:}
       chat:
         options:
-          model: claude-opus-4-8
-          max-tokens: 4000
+          model: claude-opus-5-5
+          max-tokens: 16000           # thinking 토큰 포함 — 구조화 JSON 이 잘리지 않게(D68)
     openai:                         # Embedder (D32: 외부 임베딩 API, dim 1536)
       api-key: ${OPENAI_API_KEY:}
       embedding:
