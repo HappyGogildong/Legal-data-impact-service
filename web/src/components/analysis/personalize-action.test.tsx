@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Unmet } from "@/lib/api/types";
+import { SESSION_KEY } from "@/lib/session";
 import { json, mockApi } from "@/test/api-mock";
 import { PersonalizeAction } from "./personalize-action";
 
@@ -27,6 +28,7 @@ function renderAction(unmet: Unmet = PROFILE_REQUIRED) {
       <PersonalizeAction unmet={unmet} />
     </QueryClientProvider>,
   );
+  return client;
 }
 
 beforeEach(() => router.push.mockReset());
@@ -68,10 +70,17 @@ describe("PersonalizeAction", () => {
     expect(router.push).toHaveBeenCalledWith("/consent");
   });
 
-  it("한도·근거 부족 사유엔 버튼이 없다(문구만)", async () => {
-    mockApi({ "GET /api/v1/account": () => json(ACCOUNT) });
-    renderAction({ reason: "DAILY_LIMIT", message: "" });
+  it.each(["DAILY_LIMIT", "INSUFFICIENT_GROUNDING"] as const)(
+    "%s 사유엔 버튼이 없다(문구만)",
+    async (reason) => {
+      mockApi({ "GET /api/v1/account": () => json(ACCOUNT) });
+      const client = renderAction({ reason, message: "" });
 
-    await waitFor(() => expect(screen.queryByRole("button")).toBeNull());
-  });
+      // 세션이 풀리기 전엔 어떤 사유든 아무것도 그리지 않는다 — 풀린 뒤에도 버튼이 없어야 의미가 있다
+      await waitFor(() =>
+        expect(client.getQueryState(SESSION_KEY)?.status).toBe("success"),
+      );
+      expect(screen.queryByRole("button")).toBeNull();
+    },
+  );
 });

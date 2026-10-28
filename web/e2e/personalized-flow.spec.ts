@@ -49,9 +49,14 @@ test("로그인 사용자: 결과의 '내 영향·대응 방안 보기' → 같�
   page,
 }) => {
   const queries: string[] = [];
+  const lawRefs: unknown[] = [];
   await page.route("**/api/v1/analyses", async (route) => {
-    const body = route.request().postDataJSON() as { query: string };
+    const body = route.request().postDataJSON() as {
+      query: string;
+      lawRef?: unknown;
+    };
     queries.push(body.query);
+    lawRefs.push(body.lawRef);
     await route.fulfill({
       json: body.query.includes("내 영향과 대응 방안")
         ? personalizedResponse
@@ -79,4 +84,8 @@ test("로그인 사용자: 결과의 '내 영향·대응 방안 보기' → 같�
   ).toBeVisible();
   expect(queries).toHaveLength(2);
   expect(queries[1]).toBe("주택법 내 영향과 대응 방안");
+  expect(lawRefs[1]).toEqual({
+    lawId: resolvedResponse.law!.lawId,
+    effectiveDate: resolvedResponse.law!.effectiveDate,
+  });
 });

@@ -70,6 +70,20 @@ describe("ResultView — 모바일", () => {
     });
   });
 
+  it("법령명이 없으면 보기 버튼을 두지 않는다(앞 공백만 있는 질문 방지)", () => {
+    const lawWithoutTitle = { ...resolvedResponse.law!, title: undefined };
+    render(
+      <ResultView
+        response={{ ...resolvedResponse, law: lawWithoutTitle, unmet: {} }}
+        ask={ask}
+        onAsk={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "내 영향·대응 방안 보기" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("내 영향 미충족 카드가 있으면 보기 버튼을 따로 두지 않는다", () => {
     renderResult();
     expect(

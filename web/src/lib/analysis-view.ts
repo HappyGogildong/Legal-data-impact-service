@@ -79,7 +79,7 @@ export function articleTitle(label: string): string {
 
 export type UnmetCopy = { title: string; body: string };
 
-/** 미충족 차원의 안내 — 사유 코드별(계약: service-api-spec §3.0). 프로필 필요(PROFILE_REQUIRED)의 상태별 설명·버튼은 PersonalizeAction. */
+/** 미충족 차원의 안내 — 사유 코드별(계약: service-api-spec §3.0). 프로필 필요(PROFILE_REQUIRED)·재동의(CONSENT_OUTDATED)의 상태별 설명·버튼은 PersonalizeAction. */
 export function unmetCopy(unmet: Pick<Unmet, "reason"> | undefined): UnmetCopy {
   switch (unmet?.reason) {
     case "PROFILE_REQUIRED":

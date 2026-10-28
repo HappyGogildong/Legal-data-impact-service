@@ -36,7 +36,7 @@ export function ResultView({
   const law = response.law;
   if (!law) return <DiscoveryNotice query={ask.query} />;
 
-  const { lawId, effectiveDate } = law;
+  const { lawId, effectiveDate, title } = law;
   const sources = sourceIndex(response);
   const selectedSource = selected ? (sources.get(selected) ?? null) : null;
   const pickAlternative = (alternative: LawBrief) => {
@@ -76,12 +76,12 @@ export function ResultView({
               renderUnmetAction={renderUnmetAction}
             />
           ))}
-          {!hasPersonalized(response) && lawId && effectiveDate && (
+          {!hasPersonalized(response) && lawId && effectiveDate && title && (
             <button
               type="button"
               onClick={() =>
                 onAsk({
-                  query: personalizedQuery(law.title ?? ""),
+                  query: personalizedQuery(title),
                   lawRef: { lawId, effectiveDate },
                 })
               }
