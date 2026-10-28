@@ -1,7 +1,7 @@
 ---
 title: AnalysisEngine — 컴포넌트 설계 (정합화)
 status: Draft
-date: 2026-08-27
+date: 2026-10-29
 tags: [component, pipeline, llm, grounding]
 related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "components/store/LawStore.md", "prompts/analysis-prompt-spec.md", "adr/decision-log.md"]
 ---
@@ -27,21 +27,21 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 ## 입력 / 출력
 | | 타입 | 설명 |
 |---|---|---|
-| 입력 | `{ dimension(QueryType), law, baseline?, profile?, options{prompt_version, layer, max_tokens} }` | `law`=시행예정 정본, `baseline`=시행중본(제정이면 null). 조문은 **변경분만**(실측 137→6) |
-| 출력 | `{ result: ImpactResult, injectedSourceIds[] }` | 2차 검증 게이트(#12) 입력 포함 |
+| 입력 | `AnalyzeRequest{ dimension(QueryType), law, baseline?, profile?, question? }` | `law`=시행예정 정본, `baseline`=시행중본(제정이면 null). 조문은 **변경분만**(실측 137→6). `profile`·`question` 은 Layer B 만. 프롬프트 버전·max_tokens 는 설정값(요청 필드 아님) |
+| 출력 | `AnalyzeResponse{ result: ImpactResult, injectedSourceIds[] }` | 끝까지 인용 검증 실패면 `InsufficientGroundingException`(디스패처가 차원별 unmet 으로) |
 
 ## 동작 (명시적 워크플로)
 1. **context 조립** — [[analysis-prompt-spec]] §3 템플릿으로 `source_id` 부여: **변경 조문 + baseline 대응 조문(DIFF) + 개정문 + 부칙(시행일) + (Layer B면) 프로필**. 벡터 검색 없음 — `law`/`baseline` 애그리거트에서 직접.
    ⚠️ 인용키는 **시행일 포함**: `LAW:{lawId}@{effectiveDate}:art:{no}`(복수 시행예정본, D43). 형식은 [[component-specs]] §1.3.
 2. **Opus API 호출** — constrained JSON([[analysis-prompt-spec]] §4 스키마), adaptive thinking(항상 켜짐)·effort=medium(D68).
 3. **1차 인용검증** — 스키마 유효 + **인용 존재성**(모든 `claims[].citations` ⊆ 주입 `source_id`). 실패 시 재생성(≤`regen_max`).
-4. 산출: `ImpactResult` + `injectedSourceIds`(2차 게이트용). **(후속)** Layer A 결과·`LawFacts` 캐시(D51 — 이번 범위 밖, 온디맨드 산출).
+4. 산출: `ImpactResult` + `injectedSourceIds`. 쉬운 요약(SUMMARY)은 배치가 이 엔진으로 미리 만들어 `law_summaries` 에 저장하고(D67, [[IngestJob]] SUMMARIZE), 읽을 때 `GroundedSummaries` 가 같은 `grounded` 규칙으로 지금의 근거 집합에 다시 대 본다. **(후속)** `LawFacts`·답변 캐시(D51).
 
 - **Layer B 입력·검증(D69):** `AnalyzeRequest` 에 `profile`·`question`(Layer B 일 때만 non-null). `ContextBuilder` 는 Layer B 에도 현행 기준선 블록을 넣는다. 검증은 Layer A 규칙 + 영향·대응 둘 다 ≥ 1·항목마다 인용. 프로필은 근거 집합 밖이라 인용하면 실패.
 
 ## 2계층
-- **Layer A**(프로필 무관): 법령 사실·조문 diff·`LawFacts` → **오프라인 선계산 후 캐시**(`ImpactSummary`/`LawDiff`). 프로필 N명이 재사용(비용 레버, D07).
-- **Layer B**(프로필별): A를 입력으로 `PersonaImpact`/`ActionPlan`. 캐시 키는 `userId`가 아니라 **프로필 속성 해시**(D41).
+- **Layer A**(프로필 무관, SUMMARY·DIFF): 지금은 SUMMARY 만 오프라인 선계산(D67) — 모든 사용자가 재사용(비용 레버, D07). DIFF 는 요청 시 생성. `LawFacts` 는 후속.
+- **Layer B**(프로필별, IMPACT·ACTION): 정본 근거 + 프로필 속성 + 질문으로 **Opus 1회**에 둘 다 생성(D69). 저장하지 않는다 — 답변 캐시를 도입하면 키는 `userId`가 아니라 **프로필 속성 해시**(D41).
 
 ## 구조 (컴포넌트)
 
@@ -59,7 +59,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 ## 도메인 타입 (`domain/analysis`)
 - `ImpactResult`(§4) + `Claim`·`Impact`·`Action`·`EffectiveInfo`·`Meta`. **LLM 출력이라 record는 관대**(필드 생략 허용), **불변식(인용 존재성)은 `FaithfulnessGate`가 강제**(record 아님). `affected_profiles`는 제거(D57).
-- `AnalyzeRequest{dimension, law, baseline?}` — **우리 판정 타입이라 생성자가 `dimension·law` 비-null 강제**(ContextBuilder는 assembly layer라 방어 안 함). `AnalyzeResponse{result, injectedSourceIds}`. (이번 증분 `profile` 미사용 — Layer A.)
+- `AnalyzeRequest{dimension, law, baseline?, profile?, question?}` — **우리 판정 타입이라 생성자가 `dimension·law` 비-null 과 `profile ≠ null ⇔ Layer B` 를 강제**(ContextBuilder는 assembly layer라 방어 안 함). Layer A 용 3인자 생성자가 있다. `AnalyzeResponse{result, injectedSourceIds}`.
 - `AnalysisContext`·`SourceBlock`은 **불변**(`List.copyOf`). `SourceBlock.type`은 문자열이 아니라 **`SourceType` enum**(ARTICLE·AMEND·ADDENDA·BASELINE — 오타 컴파일 차단, 프롬프트/필터 안전). *baseline은 엄밀히 role이나 MVP에선 type로 둠(role 분리 후속).*
 
 ## source_id 생성 권위 (리뷰 반영)

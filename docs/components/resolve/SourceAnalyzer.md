@@ -1,7 +1,7 @@
 ---
 title: SourceAnalyzer — 클래스 스펙
 status: Draft
-date: 2026-08-22
+date: 2026-10-29
 tags: [component, pipeline, resolver]
 related: ["components/component-specs.md", "architecture/v0.8-pending-law-corpus.md", "reference/law-domain-basics.md"]
 ---
@@ -15,7 +15,9 @@ related: ["components/component-specs.md", "architecture/v0.8-pending-law-corpus
 - **담당 안 함:** 분석·생성(입력을 사실로 받지 않음) · 본문 fetch(`LawConnector`) · 저장소 조회 *구현*(`LawLookup` 포트 뒤).
 
 ## Collaborators
-- 아웃바운드 포트: **`LawLookup`**(정확 매칭) · `semanticSearch`(의미검색, 선택). 현재 `LawConnector` 어댑터 → 적재 후 Law Store+Vector Index로 **구현만 교체**(무수정).
+- 아웃바운드 포트: **`LawLookup`**(정확 매칭) · `semanticSearch`(의미검색, 선택 — `Function<String, List<RawLaw>>`).
+  - `LawLookup` 구현 = `LawConnector.searchPending`(내일~2년 뒤 시행예정, `PipelineConfig` 람다). 저장소 조회로 바꿔도 **구현만 교체**(무수정).
+  - `semanticSearch` 구현 = **`ChunkStoreLawSearch`** — [[ChunkStore]] 검색 청크 20개를 `lawId` 로 dedupe(랭킹 순서 보존)해 후보 5개, 메타(title·efYd)는 청크 metadata([[RAGIndexer]]).
 - 계측: `ObservationRegistry`(선택, `NOOP`) — `lia.resolve{state}`.
 - 외부 시스템: 없음(포트 뒤).
 
@@ -26,7 +28,7 @@ related: ["components/component-specs.md", "architecture/v0.8-pending-law-corpus
 
 ## Behavior (해소 3단계)
 1. **법령명 정확·퍼지 매칭**(`LawLookup`, 토큰 유사도) — 단일 강매칭→`RESOLVED` / **같은 `lawId` 복수→가장 이른 본 `RESOLVED`+`alternatives`**(D43) / 다른 법령 복수·약매칭→`AMBIGUOUS`.
-2. **의미검색**(`pending` ns, [[RAGIndexer]]) — 1 실패 시 모호 서술을 후보화(주입된 경우).
+2. **의미검색**(`ChunkStoreLawSearch`, 색인 [[RAGIndexer]]) — 1 실패 시 모호 서술을 후보화. 색인이 비어 있으면 후보가 없어 3으로 간다.
 3. **fail-closed 판정** — 못 찾으면: 법령스러우면 `NOT_FOUND_YET`, 아니면 `UNVERIFIED`.
 - 임계: `confident=88`(단정), `ambiguous-min=60`(후보).
 
@@ -45,5 +47,6 @@ related: ["components/component-specs.md", "architecture/v0.8-pending-law-corpus
 - **포트 격리** — 저장소가 생겨도 `SourceAnalyzer`는 무수정, `LawLookup` 구현만 교체([[v0.8-pending-law-corpus]] §3.2).
 
 ## 의존 / 후속
-- 포트: `LawLookup` → (현재) [[SourceConnector|LawConnector]] · (예정) Law Store + Vector Index `pending` ns
+- 포트: `LawLookup` → [[SourceConnector|LawConnector]] · `semanticSearch` → `ChunkStoreLawSearch`([[ChunkStore]])
+- 우회: 법령 목록·상세에서 시작한 분석은 `explicitRef` 로 이 해소를 건너뛴다([[QueryPlanner]]).
 - 게이트 소비: `QueryDispatcher`/Orchestrator(#8) — `RESOLVED`만 통과

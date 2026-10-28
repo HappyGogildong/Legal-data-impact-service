@@ -1,8 +1,8 @@
 ---
 title: ProfileUseCase — 프로필·프로필 동의 유스케이스 (application 계층)
 status: Draft
-version: 0.1
-date: 2026-09-27
+version: 0.2
+date: 2026-10-29
 tags: [component, application, usecase, profile, consent]
 related: ["components/profile/UserProfile.md", "components/web/ProfileApi.md", "components/web/ConsentApi.md", "components/application/AccountUseCase.md", "adr/decision-log.md"]
 ---
@@ -26,6 +26,7 @@ ConsentController ─┴──→  ProfileUseCase  ──→  UserProfileStore
 | `ProfileUseCase` | 아래 Contract. 생성자에 현재 처리방침 버전(`lia.privacy.policy-version`)을 받는다. |
 | `ProfileConsent` (record) | 동의 상태 — `policyVersion` · `consentedAt` · `upToDate`. |
 | `ConsentRequiredException` | 현재 버전 동의 없이 수정 시도 → web이 **409 `consent_required`**로 매핑. |
+| `PersonalizationGate` | Layer B 소비 판정(D69) — 아래 §PersonalizationGate. `ProfileUseCase` 와 같은 처리방침 버전 기준. |
 
 Spring 애노테이션 없음 — `config/UserConfig`의 `@Bean`이 배선([[AnalyzeUseCase]]와 같은 방식·같은 이유).
 
@@ -44,11 +45,23 @@ Spring 애노테이션 없음 — `config/UserConfig`의 `@Bean`이 배선([[Ana
 - **클라이언트는 버전을 보내지 않는다.** 서버가 동의 시점의 설정값을 찍는다(게시된 처리방침 = 시행 중인 버전). "현재 버전 조회" 엔드포인트가 필요 없다.
 - 경합: 동의 확인과 교체 사이에 프로필이 삭제되면 `replaceAttributes`가 false → `ConsentRequiredException`(동의 없는 행을 만들지 않는다).
 
+## PersonalizationGate (D69)
+`check(Optional<UUID> userId) → Personalization` — [[AnalyzeUseCase]] 가 분석마다 부른다. 읽기만 한다.
+
+| 상황 | 결과 |
+|---|---|
+| 익명 · 프로필 행 없음 · 속성이 하나도 없음 | `Blocked(PROFILE_REQUIRED)` |
+| 동의 버전 ≠ 현재 버전(`upToDate=false`) | `Blocked(CONSENT_OUTDATED)` — 옛 동의로는 개인화하지 않는다 |
+| 그 외 | `Usable(userId, UserProfile)` — 프롬프트에는 `UserProfile` 속성만 간다(userId 는 한도 키) |
+
+- `Personalization`·사유 코드는 [[QueryDispatcher]] 가 정의한다(디스패처가 사유를 그대로 `unmet` 에 싣는다).
+
 ## Side Effects
 - 없음(조합) — 쓰기는 [[UserProfile|UserProfileStore]].
 
 ## 검증
 - 웹 슬라이스(MockMvc, 실제 보안 설정 + 가짜 store)로 규칙을 HTTP에서 함께 검증 — [[ConsentApi]]·[[ProfileApi]] §검증. 동의 전 수정 409 · 동의 후 200 · 버전 상승 시 `upToDate=false`+409 → 재동의 후 200 · `over14=false` 400.
+- `PersonalizationGateTest`(단위) — 익명 · 행 없음 · 빈 프로필 · 옛 동의 · 정상.
 
 ## 의존 / 관련
 [[UserProfile]] · [[ProfileApi]] · [[ConsentApi]] · [[AccountUseCase]] · [[component-specs]] §2(동의 모델) · D41·D61.

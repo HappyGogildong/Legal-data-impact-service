@@ -62,8 +62,8 @@ related:
 BASE  /api/v1
 포맷  요청·응답 모두 application/json; charset=utf-8
 언어  응답 자연어는 한국어(ko) 고정 (MVP)
-인증  프로필·Layer B 분석은 인증 세션 필요 (Authorization: Bearer <token>)
-      — 인증 방식 확정은 웹 구현 시. 조회·요약(Layer A)은 익명 허용
+인증  프로필·Layer B 분석은 로그인 세션 필요 — 소셜 OAuth2 + 서버 세션 쿠키(D60, SameSite=Lax)
+      조회·요약(Layer A)은 익명 허용
 ```
 
 **두 종류의 리소스로 나뉜다.** 분석(`/analyses`)이 사용자 행위의 중심이고, 법령(`/laws`)은 그것이 *참조*하는 읽기 전용 사실 데이터다. **분석은 법령의 하위 리소스가 아니다** — 사용자는 `lawId`를 모른 채 질문할 수 있고, 해소 자체가 질의의 일부이기 때문이다.
@@ -118,7 +118,7 @@ BASE  /api/v1
 1. **번역** — `QueryTranslator`(Haiku)가 자연어를 `AnalysisQuery`(타입 집합·엔티티·target)로. `scope`/`lawRef`가 오면 힌트로 병합.
 2. **해소/발견** — target이 `Reference`면 해소(4상태, fail-closed), `Discovery`(LOOKUP)면 `pending` ns 코퍼스 검색.
 3. **플래닝** — 프로필 유무로 Layer B 차원을 빼지 않는다(D69). 프로필을 못 쓰면 디스패처가 그 차원을 사유(`PROFILE_REQUIRED`·`CONSENT_OUTDATED`)와 함께 `unmet` 으로 표기한다. 단 프로필이 없고 Layer A 차원이 하나도 없으면 `SUMMARY` 를 더해 요약은 보여 준다(선계산본이 있으면 비용 0). 검증된 `AnalysisQuery` 확정.
-4. **디스패치·검증** — 타입별 핸들러(Layer A=캐시 조회, Layer B=RAG+Opus) → 인용검증 게이트. Discovery+분석은 top-K 팬아웃.
+4. **디스패치·검증** — 타입별 핸들러(SUMMARY=쉬운 요약 저장본 있으면 그것·없으면 Opus, DIFF=Opus, Layer B=개인화 게이트·하루 한도 통과 시 Opus 1회로 IMPACT·ACTION, D67·D69) → 엔진 내부 인용검증(근거 부족은 그 차원만 `INSUFFICIENT_GROUNDING`). 정본은 저장소 정확 조회(벡터 검색 아님). Discovery+분석 팬아웃은 후속(#19).
 
 **RESOLVED 응답** — 해소되고 분석까지 성공:
 ```jsonc
@@ -392,7 +392,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 
 - [x] **Query Planner 설계 확정(D46)** — 자연어 → `AnalysisQuery`(타입 DTO) → dispatch. 5 QueryType(LOOKUP 포함), Reference/Discovery target. 상세 [[QueryPlanner]]
 - [ ] LOOKUP 팬아웃 정책 — top-K 자동 분석 vs 후보만 반환 후 사용자 선택
-- [ ] 인증 방식 확정(세션 쿠키 vs Bearer 토큰) — 웹 구현 단계
+- [x] 인증 방식 확정 — 소셜 OAuth2 + 서버 세션 쿠키(D60)
 - [ ] `AMBIGUOUS` 시행일 복수(D43)의 **기본 선택 정책**(가장 이른 시행일 자동 vs 선택 강제)
 - [ ] 부분 성공(`unmet` 차원) 렌더링 규약 — 웹 UX
 - [ ] 멀티턴 대화(상태 지속) — **D37 재검토 트리거**. 단발 질의로 MVP 한정

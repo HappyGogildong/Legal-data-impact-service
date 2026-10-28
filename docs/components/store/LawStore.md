@@ -1,7 +1,7 @@
 ---
 title: LawStore — 클래스 스펙 (spec-first)
 status: Draft
-date: 2026-08-22
+date: 2026-10-29
 tags: [component, store, repository, pgvector]
 related: ["components/component-specs.md", "components/normalize/Normalizer.md", "components/embed/Embedder.md", "components/dispatch/QueryDispatcher.md", "reference/law-domain-basics.md", "adr/decision-log.md"]
 ---
@@ -41,6 +41,22 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 
 검색은 chunks(pgvector)로 후보를 찾고, `source_id`로 `law_versions`에서 **정본을 되짚어** 인용한다(그라운딩) — 두 저장소를 잇는 키가 `source_id`.
 
+## store 패키지 테이블
+
+`com.lia.core.store` 의 저장소 전체. 정본(`law_versions`) 외에는 각자 좁은 용도의 별도 테이블·클래스다(한 클래스에 몰지 않는다).
+
+| 테이블 (Flyway) | 클래스 · 포트 | 용도 | 상세 |
+|---|---|---|---|
+| `law_versions` (V1·V5·V6·V7) | `LawStore` · `LawSource` | 정본·기준선 · 배치 상태(V5) · 목록 인덱스(V6) | 이 문서 |
+| (같은 테이블 읽기) | `LawCatalogStore` | 곧 시행 목록(키셋 커서)·한 법령의 버전들(D65) | [[LawCatalogApi]] |
+| (여러 테이블 집계) | `DataStatusStore` | 데이터 현황(적재 시각·건수) | [[DataStatusApi]] |
+| `vector_store` | `PgVectorChunkStore` · `ChunkStore` | 조문·요약 청크 임베딩 | [[ChunkStore]] |
+| `law_summaries` (V9) | `LawSummaryStore` · `LawSummaries`(구현 `pipeline.analyze.GroundedSummaries`) | 쉬운 요약 선계산(D67) — 버전마다 1행. 저장 revision·프롬프트 버전이 지금과 같을 때만 읽고, 지금의 근거 집합으로 인용 검증을 다시 통과해야 쓴다 | [[IngestJob]](SUMMARIZE) · [[QueryDispatcher]](SummaryHandler) |
+| `law_views_daily` (V8) | `LawViewStore` · `LawViews` | 자주 찾는 법령(D66) — 서울 날짜별 조회 횟수만(누가 봤는지 없음) | [[TrendingApi]] |
+| `personalization_usage_daily` (V10) | `PersonalizationUsageStore` · `PersonalizationQuota` | 사용자별 하루 개인화 한도(D69) — 원자 upsert 차감, 계정 삭제 시 cascade | [[QueryDispatcher]] |
+| `accounts`·`user_profiles` (V2~V4) | `auth.AccountStore`·`profile.UserProfileStore` | 계정·프로필·동의 | [[Auth]] · [[UserProfile]] |
+| `ingest_*` (V5) | `pipeline.batch.TaskQueue`·`IngestRunStore` | 배치 작업 큐·실행 기록 | [[IngestJob]] |
+
 ## Persistence Contract
 - **정본 (law_versions)**
   - `upsert(Law)` — `(lawId, effectiveDate)` 단위 삽입/갱신. `revision` 다르면 payload·인덱스 갱신.
@@ -51,9 +67,10 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 - **배치용 계약**([[IngestJob]]): 탐색용 시행예정 버전 목록(`lawId`·`efYd`·`mst`·`missing_since`) · 상태 변경(**컬럼과 payload의 `status`를 함께** — `find`는 payload를 역직렬화) · 더 오래된 `시행중` → `과거` 일괄 전환 · `missing_since` 설정/해제 · 같은 법령의 남은 시행예정본 조회 · 증분 비교용 저장 revision 조회(**상태가 같을 때만** 일치로 본다 — 철회본이 같은 내용으로 다시 나타나도 `시행예정`으로 복원되게). 컬럼 `missing_since date`(완주 목록에서 처음 안 보인 날, KST)는 `V5__ingest_batch.sql`.
 - 배치 쓰기는 호출자 트랜잭션에 참여한다(`JdbcClient` → 같은 `DataSource`) — `SyncHandler`가 저장과 `INDEX` 등록을 한 트랜잭션으로 묶는다.
 - **벡터 (chunks)** — [[ChunkStore]] 소유. 여기서 다루지 않는다.
+- **쉬운 요약 저장본** — `law_summaries`(위 표, D67). 답변 캐시가 아니라 배치가 미리 만든 Layer A 결과.
 - **캐시 (후속)**
   - `LawFacts` — 키 `lawId@efYd + revision`(프로필 무관).
-  - `ImpactResult` 답변 캐시 — 키 `hash(정규화 질문)+law_ref+profileHash+prompt_version+revision`(완전 동일 질의, D51).
+  - `ImpactResult` 답변 캐시 — 키 `hash(정규화 질문)+law_ref+profileHash+prompt_version+revision`(완전 동일 질의, D51). Layer B 개인화 답은 지금 저장하지 않는다(D69).
 
 ## Query · Index
 - `law_versions`: **UNIQUE `(lawId, effectiveDate)`**. 보조 인덱스 `status`, `lawId`(baseline 조회). `payload jsonb`(필요 시 GIN).
@@ -88,4 +105,5 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 ## 구현 순서 (near-term → later)
 1. **완료:** `law_versions` upsert + `find`/`findBaseline` + Flyway 스키마 → 적재 파이프라인(Normalizer→DiffBuilder→Store).
 2. 벡터 chunks는 [[ChunkStore]]로 분리 — [[Embedder]]·[[RAGIndexer]]와 함께.
-3. `LawFacts`·`ImpactResult` 캐시 — Layer A/B·[[AnalysisEngine]] landing 시.
+3. **완료:** 쉬운 요약 저장본 `law_summaries`(D67) · 조회 집계(D66) · 개인화 한도(D69) — 위 §store 패키지 테이블.
+4. `LawFacts`·답변 캐시 — 병목을 지표로 증명한 뒤(D48·D51).

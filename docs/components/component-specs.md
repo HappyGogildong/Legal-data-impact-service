@@ -1,8 +1,8 @@
 ---
 title: 컴포넌트 상세 스펙 (역할·입출력·동작) + 계약 + 정합성 검증
 status: Draft
-version: 0.2
-date: 2026-08-02
+version: 0.3
+date: 2026-10-29
 tags: [spec, components, contract, profile-schema, consistency]
 related:
   - "architecture/v0.8-pending-law-corpus.md"
@@ -11,7 +11,9 @@ related:
   - "adr/decision-log.md"
 ---
 
-# 컴포넌트 상세 스펙 + 계약 + 정합성 검증 (v0.2 Draft)
+# 컴포넌트 상세 스펙 + 계약 + 정합성 검증 (v0.3 Draft)
+
+> **v0.3 (2026-10-29)** — 구현 현황에 맞춤: 분석 계약을 커맨드 4종에서 **차원(QueryType)** 으로(§3.1), 쉬운 요약 선계산(D67)·추론 모델 Opus 5.5(D68)·Layer B 개인화(D69)를 §3·§4·§5에 반영. 클래스 단위 상세는 각 컴포넌트 문서가 기준이다.
 
 **관련:** [[components-io-and-scope|컴포넌트·MVP 범위]] · [[analysis-prompt-spec|프롬프트 정의서]] · [[v0.8-pending-law-corpus|아키텍처 v0.8]] · [[decision-log|결정 로그]]
 
@@ -267,22 +269,23 @@ analyze(request)                 // 내부 호출(D35). 아래 HTTP 표기는 �
 Content-Type: application/json
 ```
 
-요청:
+요청 — 구현은 `AnalyzeRequest(dimension, law, baseline, profile, question)`:
 ```jsonc
 {
-  "command": "PersonaImpactCommand",         // 4종 중 1
+  "dimension": "IMPACT",                     // SUMMARY | DIFF | IMPACT(Layer B — IMPACT·ACTION 을 함께 생성, D69)
   "law": { /* Law 부분집합: lawId,title,effectiveDate,effectiveRule,promulgateNo,
               articles[](changed=true 만), amendText, addenda[], revision */ },
-  "baseline": { /* 같은 lawId 의 시행중본 — 변경 조문에 대응하는 현행 조문만 */ } | null,
-  "profile": { /* UserProfile 속성만 — userId 제외 */ } | null,  // Layer B만 non-null
-  "options": {
-    "prompt_version": "0.1",
-    "layer": "B",                            // "A"|"B"
+  "baseline": { /* 같은 lawId 의 시행중본 — 변경 조문에 대응하는 현행 조문만 */ } | null,  // DIFF·Layer B. 제정이면 null
+  "profile": { /* UserProfile 속성만 — userId 제외 */ } | null,  // Layer B만 non-null (profile ⇔ Layer B, 생성자 불변식)
+  "question": "주택법 바뀌면 나는 뭘 해야 해?" | null,             // Layer B만 — 사용자 질문 원문
+  "options": {                               // 설정값(코드 고정) — 요청 필드가 아니다
+    "prompt_version": "0.3",
     "language": "ko",
-    "max_tokens": 4000
+    "max_tokens": 16000                      // thinking 포함(D68)
   }
 }
 ```
+Layer A(SUMMARY·DIFF) 프롬프트에는 질문이 들어가지 않는다 — 같은 법령의 요약을 미리 만들어 모든 사용자에게 재사용하기 때문이다(D67).
 
 응답(200):
 ```jsonc
@@ -297,14 +300,15 @@ Content-Type: application/json
 | 코드 | status | 의미 | Spring 처리 |
 |---|---|---|---|
 | 400 | `bad_request` | 필수 필드 누락/스키마 위반 | 버그 — 로그·중단 |
-| 422 | `insufficient_grounding` | 재생성 N회 후에도 인용검증 실패 | "근거 부족" 폴백 표시 |
+| 422 | `insufficient_grounding` | 재생성 N회 후에도 인용검증 실패 | `InsufficientGroundingException` → 디스패처가 그 차원만 `unmet(INSUFFICIENT_GROUNDING)`, 다른 차원은 그대로(D69) |
 | 429 | `rate_limited` | foundation API 한도 | 백오프 재시도 |
 | 503 | `upstream_error` | 모델 API 장애 | 백오프·서킷브레이커 |
 
 계약 규칙:
 - **요청 게이트는 오케스트레이터(#8)가 먼저** 수행한다. Analysis Engine(#11)은 방어적 재검증만.
-- 응답 `result`는 **항상 §1 ImpactResult 스키마**. 인용검증은 엔진 내부 1차 + Verification Gate(#12) 2차.
-- **답변 캐시 키(완전 동일 질의 전용, §3.4)**: `hash(정규화 질문) + law.lawId + law.effectiveDate + law.revision + (profileHash|"-") + prompt_version`. **질문 해시를 반드시 포함**해야 다른 질의가 같은 답으로 collapse되지 않는다(D51). context 재사용은 이 키가 아니라 **prompt caching**(§3.3·§3.4)이 담당.
+- 응답 `result`는 **항상 §1 ImpactResult 스키마**. 인용검증은 엔진 내부(`AnalysisEngine.grounded`)가 수행하고, 독립 Verification Gate(#12)는 이연(§4 #12).
+- **답변 캐시는 아직 없다** — Layer A 요약만 배치가 미리 만들어 저장하고(D67, `law_summaries`), Layer B 개인화 답은 저장하지 않는다(D69). 도입 시 키는 아래.
+- **답변 캐시 키(완전 동일 질의 전용, §3.4, 후속)**: `hash(정규화 질문) + law.lawId + law.effectiveDate + law.revision + (profileHash|"-") + prompt_version`. **질문 해시를 반드시 포함**해야 다른 질의가 같은 답으로 collapse되지 않는다(D51). context 재사용은 이 키가 아니라 **prompt caching**(§3.3·§3.4)이 담당.
   `effectiveDate` 를 넣는 이유: 같은 법령에 시행예정본이 복수일 수 있어 `lawId` 만으로는 캐시가 충돌한다(D43).
   `profileHash` = 주입 대상 프로필 속성의 정규화 해시 — **`userId`를 키에 쓰지 않는다**(동일 속성 사용자 간 캐시 재사용 + 개인 추적 방지, D41).
 
@@ -428,9 +432,10 @@ Content-Type: application/json
 - ⚠️ `조문내용`만 읽으면 본문이 빈다. 부칙은 이력 전체(실측 42개)가 오므로 필터 없이 쓰면 옛 경과조치를 이번 개정으로 오인한다. 상세: [[Normalizer]]
 
 ### #4 Law Store (RDB / Postgres+pgvector)
-- 역할: 법령 정본(`Law`/`Article`/`Addendum`) + `LawFacts`(Layer A 캐시) + `ImpactResult`(Layer B 캐시). **벡터 chunks는 별도 [[ChunkStore]]**(PgVectorStore)가 소유 — JSONB 정본(JdbcClient)과 벡터(PgVectorStore)를 분리(2026-08-27).
-- 입력/출력: Law/Article/LawFacts/ImpactResult CRUD; 검색 쿼리→Law[].
-- 동작: upsert. **유니크 키는 `(lawId, effectiveDate)`** — `lawId` 단독은 안 된다. 같은 법령에 시행예정본이 복수일 수 있다(D43). `LawFacts` 캐시 키=`lawId@effectiveDate + revision`(프로필 무관), `ImpactResult` 답변 캐시 키=§3.4(질문 해시 포함·완전 동일 질의 전용, D51).
+- 역할: 법령 정본(`Law`/`Article`/`Addendum`) + 쉬운 요약 저장본(D67) + (후속) `LawFacts`(Layer A 캐시)·답변 캐시. **벡터 chunks는 별도 [[ChunkStore]]**(PgVectorStore)가 소유 — JSONB 정본(JdbcClient)과 벡터(PgVectorStore)를 분리(2026-08-27).
+- 입력/출력: Law/Article CRUD · 목록·상세 조회([[LawCatalogApi]]) · 요약 저장본 읽기·쓰기.
+- 동작: upsert. **유니크 키는 `(lawId, effectiveDate)`** — `lawId` 단독은 안 된다. 같은 법령에 시행예정본이 복수일 수 있다(D43). 쉬운 요약은 `law_summaries` 에 버전마다 1행 — 정본 revision·프롬프트 버전이 같고 지금의 근거 집합으로 인용 검증을 다시 통과할 때만 유효(`GroundedSummaries`). `LawFacts` 캐시 키=`lawId@effectiveDate + revision`(후속), 답변 캐시 키=§3.4(후속).
+- store 패키지의 테이블 전체는 [[LawStore]] §store 패키지 테이블.
 - 의존: 없음.
 - 오류: 제약 위반 → upsert 충돌 해소.
 - **저장소 결정 영향:** [[ADR-001-knowledge-store-sizing|ADR-001]] **불변**이며 D42로 여유가 커졌다 — MVP 코퍼스가 *의안 5만 건 가정*에서 **시행예정 899건 실측**으로 줄었다. 부피 주축은 diff 기준선용 시행중 법령 본문(~0.4GB 추정) 안쪽.
@@ -444,51 +449,52 @@ Content-Type: application/json
 
 ### #7b Query Planner (Spring) — 자연어 → `AnalysisQuery` (D46)
 - 역할: 자연어 질의를 타입 DTO로 번역·검증. **상세·시나리오 [[QueryPlanner]]**.
-- 구성: `QueryTranslator`(Haiku, NL→DTO) → `QueryPlanner`(해소/발견 결정·프로필 게이트) → `QueryDispatcher`(타입별 라우팅).
+- 구성: `QueryTranslator`(Haiku, NL→DTO) → `QueryPlanner`(해소/발견 결정 — 프로필 유무로 Layer B 차원을 빼지 않는다, D69) → `QueryDispatcher`(타입별 라우팅·개인화 게이트).
 - 입력: `{ query, lawRef?, scope? }` → 출력: `PlanResult = Planned(AnalysisQuery) | Unresolved(ResolutionResult)`.
 - 의존: `ChatClient`(Haiku), #2 SourceAnalyzer(Reference 해소), LawDiscovery(Discovery 검색, 후속).
 
 ### #8 QueryDispatcher / Orchestrator (Spring)
-- 역할: 검증된 `AnalysisQuery`를 **QueryType별 핸들러로 라우팅**·조립 → 검증 → 캐시.
-- 입력: `AnalysisQuery` (해소·발견 완료). 출력: 타입별 결과 묶음.
+- 역할: 검증된 `AnalysisQuery`를 **QueryType별 핸들러로 라우팅**·조립. 상세 [[QueryDispatcher]].
+- 입력: `AnalysisQuery`(해소·발견 완료) + 질문 원문 + `Personalization`(개인화 판정, [[ProfileUseCase|PersonalizationGate]]). 출력: `DispatchResult{ primaryType, filled, unmet }`.
 - 동작:
-  1. `types` 순회 — Layer A(SUMMARY·DIFF)=선계산 캐시 조회, Layer B(IMPACT·ACTION)=Analysis Engine(#11) RAG+LLM.
-  2. `Target.Discovery`면 검색 후보 top-K에 분석 타입 **팬아웃**.
-  3. **완전 동일 질의**면 답변 캐시(§3.4) 히트 반환. 그 외엔 prompt caching으로 context 재사용하며 생성 — 차원은 캐시 키가 아니다(D51).
-  4. **Verification Gate(#12)** 통과분만. 근거 부족 차원은 `unmet`으로 부분성공.
-- 의존: #4, #7, #7b, #11, #12, `DimensionHandler` 레지스트리.
+  1. `Target.Reference`면 정본·기준선을 1회 조회(미적재면 전 차원 `unmet`).
+  2. Layer A(SUMMARY·DIFF) — 차원별 핸들러. SUMMARY 는 유효한 쉬운 요약 저장본이 있으면 그것(D67), 없으면 Analysis Engine(#11) 실시간. DIFF 는 실시간.
+  3. Layer B(IMPACT·ACTION) — `PersonalizedHandler` 를 **한 번**(Opus 1회, 결과를 차원별 분할). 게이트 순서: 개인화 불가 사유 → 기준선 미적재 → 하루 한도(D69).
+  4. 근거 부족(`InsufficientGroundingException`)은 그 차원만 `unmet(INSUFFICIENT_GROUNDING)` — 부분성공.
+  5. (후속) `Target.Discovery` top-K 팬아웃 — LawDiscovery(#19). 지금은 전 차원 `unmet`. 답변 캐시(§3.4)도 후속.
+- 의존: #4(`LawSource`·`LawSummaries`), #11, `DimensionHandler` 레지스트리, `PersonalizationQuota`.
 
 ### #9 DimensionHandler Registry (Spring)
 - 역할: `DimensionHandler` 구현체 자동 발견(`@Component`) → `QueryType → Handler`.
 
-### #10 DimensionHandler ×5 (Spring)
-Layer A 핸들러 = `type() / needsRag() / needsBaseline() / 실행`(Layer B 는 `PersonalizedHandler`, D69). 사용자 선택 모드가 아니라 플래너가 고르는 내부 분해(D46).
-| 핸들러 | 입력 | kind | 출력 핵심 |
-|---|---|---|---|
-| `LookupHandler` | DiscoveryCriteria + (프로필) | 발견 | 후보 법령 랭킹 |
-| `SummaryHandler` | Law + `제개정이유` | A | summary, claims |
-| `DiffHandler` | Law(변경조문) + baseline 시행중본 + 개정문·부칙 | A | claims(조문별 현행→개정), 시행일 |
-| `ImpactHandler` | Law(변경조문) + LawFacts + **UserProfile** | B | impacts |
-| `ActionHandler` | Law + 부칙(시행일) + **UserProfile** | B | actions(deadline, basis) |
+### #10 차원 핸들러 (Spring)
+Layer A 핸들러 = `DimensionHandler` 포트(`type() / needsRag() / needsBaseline() / handle(ctx)`). Layer B 는 레지스트리를 거치지 않는 `PersonalizedHandler` 하나가 두 차원을 맡는다(D69). 사용자 선택 모드가 아니라 플래너가 고르는 내부 분해(D46).
+| 핸들러 | 차원 | kind | 입력 | 출력 핵심 | 상태 |
+|---|---|---|---|---|---|
+| `SummaryHandler` | SUMMARY | A | Law + `제개정이유` (저장 요약 있으면 그것, D67) | summary, claims | ✅ |
+| `DiffHandler` | DIFF | A | Law(변경조문) + baseline 시행중본 + 개정문·부칙 | claims(조문별 현행→개정), 시행일 | ✅ |
+| `PersonalizedHandler` | IMPACT·ACTION | B | Law + baseline + **UserProfile 속성** + 질문 | IMPACT ← summary·claims·impacts / ACTION ← actions·effectiveInfo (공통: uncertainties·disclaimer) | ✅ D69 |
+| `LookupHandler` | LOOKUP | 발견 | DiscoveryCriteria + (프로필) | 후보 법령 랭킹 | ⬜ LawDiscovery(#19) |
 
 ### #11 Analysis Engine (Spring · Spring AI)
 - 역할: **정본에서 context 조립**(LawStore 정확 조회 — 벡터 검색 아님, [[AnalysisEngine]] 정합화 2026-08-27) + 프롬프트 빌드 + **foundation API 호출**(Opus) + 1차 인용검증.
-- 입력: §3.1 요청(`law`+`baseline`+`profile?`+`options`).
-- 출력: §3.1 응답(ImpactResult 또는 오류) + `injected_source_ids`.
-- 동작: source_id 부여 → 프롬프트 정의서 §3 템플릿 조립(변경조문·baseline 대응·개정문·부칙·프로필) → API 호출(constrained JSON) → 스키마·인용 존재성 1차 검증 → 실패 시 재생성(≤N).
-- 의존: **Law Store**(정본·캐시) · foundation 모델 API(Opus). *벡터 검색(ChunkStore)은 Discovery 전용이라 분석 경로 무관.*
+- 입력: §3.1 요청(`dimension`+`law`+`baseline?`+`profile?`+`question?`).
+- 출력: §3.1 응답(ImpactResult 또는 `InsufficientGroundingException`) + `injected_source_ids`.
+- 동작: source_id 부여(`ContextBuilder`) → 프롬프트 정의서 §3 템플릿 조립(변경조문·baseline 대응·개정문·부칙, Layer B 는 `[PROFILE]`·`[QUESTION]` 블록 추가) → Opus 5.5 호출(구조화 JSON, thinking 블록은 `ThinkingBlockFilter` 가 걷어 냄, D68) → 인용 검증(`grounded` — 주장 ≥1·인용 ≥1·모든 인용이 근거 집합 안, Layer B 는 영향·대응 둘 다 필수) → 실패 시 재생성(≤2).
+- 의존: **Law Store**(정본) · foundation 모델 API(Opus 5.5). *벡터 검색(ChunkStore)은 Discovery 전용이라 분석 경로 무관.* 상세 [[AnalysisEngine]].
 
 ### #12 Verification Gate (Spring)
 - 역할: 최종 응답 게이트.
 - 입력: `ImpactResult` + 주입 source_id 집합.
 - 출력: 통과 `ImpactResult` | "근거 부족" 폴백.
 - 동작: ① 스키마 유효 ② 모든 `claims[].citations` 비어있지 않음 ③ 인용 source_id가 주입 집합(`injected_source_ids`, §3.1 응답)에 실재. 실패 시 422 경로.
+- **현재: 독립 컴포넌트 없음(이연).** 위 ①~③은 [[AnalysisEngine]] 의 `grounded` 가 재생성 루프 안에서 수행하고, 쉬운 요약 저장본도 읽을 때 같은 검증을 다시 통과해야 쓴다(`GroundedSummaries`, D67). 조립 단계의 별도 게이트는 필요가 생기면 도입.
 
-### #13 Web Frontend (TS)
-- 역할: 검색·선택·결과 표시.
+### #13 Web Frontend (Next.js · TS, D64)
+- 역할: 질문·법령 목록·상세·결과 표시, 로그인·동의·프로필. 화면은 [[screen-plan]], 스택은 [[frontend-stack]].
 - 입력: 사용자 액션.
-- 출력: Spring REST 호출 + 렌더(요약/내 영향/대응안 + 인용 표시).
-- 동작: 검색→**법령 선택(시행일 포함)**→(프로필 기반)4종 호출→결과·인용·**시행일**·면책 표시. 프로필 미설정 시 안내 후 입력 유도. 같은 법령에 시행예정본이 여럿이면 **가장 이른 시행일 기준으로 표시**하고 다른 시행일 선택 UI 제공(D43).
+- 출력: Spring REST 호출(같은 출처 rewrites — 세션 쿠키 그대로) + 렌더(요약/바뀐 조문/내 영향/대응 방안 + 근거 칩·원문).
+- 동작: 질문(S01) 또는 법령 목록·상세(S04·S05) → 분석 결과(S02) — 차원별 카드, 미충족 차원은 사유별 안내(로그인·프로필·재동의·한도·근거 부족). "내 영향·대응 방안 보기" 버튼이 Layer B 를 요청(D69). 같은 법령에 시행예정본이 여럿이면 **가장 이른 시행일 기준으로 표시**하고 다른 시행일 선택 UI 제공(D43). 계약 타입은 `api/openapi.json` 에서 생성(`schema.d.ts`).
 
 ### #15 Evaluation Harness (오프라인/CI)
 - 역할: 합성 프로필 패널로 E2E smoke·회귀(구동·정성), 정답판정 금지.
@@ -508,16 +514,16 @@ happy-path를 따라 **생산자 출력 ⊇ 소비자 입력 요건**을 점검�
 | 2 | #3 → #4 | `Law`(+Article, Addendum, revision) | ✅ Store 스키마=공통모델 §1.1. 유니크 키 `(lawId, effectiveDate)` |
 | 3 | #13 → #2 | `{type,value}` | ✅ MVP는 lawName/text 활성, url은 스텁 |
 | 4 | #2 → #8 | `ResolutionResult`(4상태) | ✅ `analyzable()`만 `lawRef`로 진행; 불변식은 생성자가 강제 |
-| 5 | #8 게이트 | command별 requirements | ✅ §4#10 표와 일치(프로필 필수성) |
-| 6 | #4,#7 → #8 → #11 | §3.1 요청(Law+baseline+profile+options) | ✅ profile=UserProfile 속성(userId 제외, D41) |
-| 7 | #11 → #12 | §3.1 응답(ImpactResult) | ✅ 스키마=§1=프롬프트 정의서 §4 |
-| 8 | #12 → #4 → #13 | 검증된 ImpactResult | ✅ 캐시 키=§3.1 키 |
+| 5 | #8 게이트 | 차원별 요건(정본·기준선·개인화·한도) | ✅ §4#10 표·[[QueryDispatcher]] 게이트 순서와 일치(D69) |
+| 6 | #4,#7 → #8 → #11 | §3.1 요청(dimension+Law+baseline+profile+question) | ✅ profile=UserProfile 속성(userId 제외, D41) |
+| 7 | #11 → #8 | §3.1 응답(ImpactResult, 엔진 내부 인용 검증 통과분) | ✅ 스키마=§1=프롬프트 정의서 §4 |
+| 8 | #8 → #13 | `DispatchResult` → `AnalysisApiResponse`(camelCase) | ✅ 계약 원본=`api/openapi.json`. 요약 저장본은 D67 키(revision·prompt_version), Layer B 는 저장 안 함 |
 | 9 | #15 → REST | 동일 경로 재사용 | ✅ 런타임과 같은 계약 |
 
 **교차 문서 일관성 점검**
 - source_id 형식: 공통모델 §1 = 프롬프트 정의서 §2 ✅
 - ImpactResult 필드: 공통모델 §1 = 프롬프트 정의서 §4 ✅
-- 커맨드 4종·requirements: §4#10 = [[components-io-and-scope]] §4 = [[decision-log]] D25 ✅
+- 차원(QueryType)·핸들러: §1.4 = §4#10 = [[QueryDispatcher]] ✅ (옛 커맨드 4종·D25 는 D46 차원 모델로 대체)
 - 프로필 비인용 격리: §2 = 프롬프트 정의서 §3 = D41 ✅
 - 캐시 키(Layer A 프로필 제외): §3.1 = 프롬프트 정의서 §2 ✅
 
