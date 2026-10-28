@@ -1,5 +1,6 @@
 package com.lia.core.application.analysis;
 
+import com.lia.core.pipeline.dispatch.Personalization;
 import com.lia.core.pipeline.dispatch.QueryDispatcher;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.PlanResult;
@@ -45,7 +46,7 @@ public class AnalyzeUseCase {
             case PlanResult.Unresolved u -> new AnalysisOutcome.Unresolved(u.resolution());
             case PlanResult.Planned p -> {
                 AnalysisOutcome.Analyzed analyzed =
-                        new AnalysisOutcome.Analyzed(p.query(), dispatcher.dispatch(p.query()), p.alternatives());
+                        new AnalysisOutcome.Analyzed(p.query(), dispatcher.dispatch(p.query(), query, Personalization.anonymous()), p.alternatives());
                 countView(analyzed);
                 yield analyzed;
             }

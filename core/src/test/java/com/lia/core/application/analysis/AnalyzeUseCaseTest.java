@@ -23,6 +23,7 @@ import com.lia.core.pipeline.analyze.Reasoner;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.dispatch.DiffHandler;
 import com.lia.core.pipeline.dispatch.DimensionHandlerRegistry;
+import com.lia.core.pipeline.dispatch.PersonalizedHandler;
 import com.lia.core.pipeline.dispatch.QueryDispatcher;
 import com.lia.core.pipeline.dispatch.SummaryHandler;
 import com.lia.core.pipeline.plan.AnalysisQueryDraft;
@@ -90,7 +91,7 @@ class AnalyzeUseCaseTest {
         AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
         DimensionHandlerRegistry registry =
                 new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder()), new DiffHandler(engine)));
-        return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry),
+        return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry, new PersonalizedHandler(null), userId -> false),
                 (lawId, efYd) -> { recorded.add(lawId + "@" + efYd); return true; });
     }
 
@@ -173,7 +174,8 @@ class AnalyzeUseCaseTest {
         src.versions.put("001809@2026-08-04", law());
         AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
         AnalyzeUseCase failing = new AnalyzeUseCase(planner,
-                new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder())))),
+                new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder()))),
+                        new PersonalizedHandler(null), userId -> false),
                 (lawId, efYd) -> { throw new IllegalStateException("DB 끊김"); });
 
         AnalysisOutcome out = failing.analyze("주택법 뭐가 바뀌어?", null);
