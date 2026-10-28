@@ -14,8 +14,8 @@ import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalysisContext.SourceBlock;
-import com.lia.core.pipeline.analyze.SourceType;
 import com.lia.core.pipeline.plan.QueryType;
+import com.lia.core.profile.UserProfile;
 
 /**
  * ContextBuilder 단위 — 해소된 정본에서 <b>차원별 근거 블록 + source_id</b>를 조립한다.
@@ -73,6 +73,27 @@ class ContextBuilderTest {
                 .filter(b -> b.sourceId().equals("LAW:001809:art:18")).findFirst().orElseThrow();
         assertEquals(SourceType.BASELINE, base18.type());
         assertTrue(base18.text().contains("개별로 심의"), "옛 조문 본문");
+    }
+
+    @Test
+    void LayerB_는_기준선_블록을_넣고_프로필과_질문을_싣되_근거_집합엔_없다() {
+        UserProfile profile = new UserProfile(null, 34, null, null, null, null, null);
+        AnalysisContext ctx = builder.build(
+                new AnalyzeRequest(QueryType.IMPACT, housing(), baseline(), profile, "내 영향"));
+
+        assertTrue(ctx.blocks().stream().anyMatch(b -> b.type() == SourceType.BASELINE), "기준선 블록");
+        assertSame(profile, ctx.profile());
+        assertEquals("내 영향", ctx.question());
+        assertTrue(ctx.injectedSourceIds().stream().allMatch(id -> id.startsWith("LAW:")), "근거 집합엔 조문 키만");
+    }
+
+    @Test
+    void LayerA_SUMMARY_는_기준선도_프로필도_없다() {
+        AnalysisContext ctx = builder.build(new AnalyzeRequest(QueryType.SUMMARY, housing(), baseline()));
+
+        assertFalse(ctx.blocks().stream().anyMatch(b -> b.type() == SourceType.BASELINE));
+        assertNull(ctx.profile());
+        assertNull(ctx.question());
     }
 
     private static Law baseline() {

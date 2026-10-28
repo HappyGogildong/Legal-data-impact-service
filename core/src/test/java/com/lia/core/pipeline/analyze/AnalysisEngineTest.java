@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -111,6 +112,51 @@ class AnalysisEngineTest {
         AnalysisEngine engine = engine(scripted(result()));   // claims 빈 배열 = 근거 없음
         assertThrows(InsufficientGroundingException.class,
                 () -> engine.analyze(new AnalyzeRequest(QueryType.SUMMARY, law, null)));
+    }
+
+    private static final String ART = "LAW:A@2027-01-01:art:1";
+
+    private static ImpactResult layerB(List<ImpactResult.Impact> impacts, List<ImpactResult.Action> actions) {
+        return new ImpactResult("LAW:A@2027-01-01", "IMPACT", "요약",
+                List.of(new ImpactResult.Claim("주장", List.of(ART), 0.9)),
+                impacts, actions, null, List.of(), "참고용", null);
+    }
+
+    @Test
+    void LayerB_는_영향과_대응이_모두_있고_항목마다_인용이_있어야_통과() {
+        Set<String> injected = Set.of(ART);
+        ImpactResult ok = layerB(
+                List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of(ART))),
+                List.of(new ImpactResult.Action("확인", null, List.of(ART))));
+        ImpactResult noActions = layerB(
+                List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of(ART))), List.of());
+        ImpactResult uncitedImpact = layerB(
+                List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of())),
+                List.of(new ImpactResult.Action("확인", null, List.of(ART))));
+        ImpactResult basislessAction = layerB(
+                List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of(ART))),
+                List.of(new ImpactResult.Action("확인", null, List.of())));
+
+        assertTrue(AnalysisEngine.grounded(QueryType.IMPACT, ok, injected));
+        assertFalse(AnalysisEngine.grounded(QueryType.IMPACT, noActions, injected), "대응 없음");
+        assertFalse(AnalysisEngine.grounded(QueryType.IMPACT, uncitedImpact, injected), "무인용 영향");
+        assertFalse(AnalysisEngine.grounded(QueryType.IMPACT, basislessAction, injected), "무근거 대응");
+    }
+
+    @Test
+    void 해당_없음도_조문_인용이_있으면_정상_답() {
+        ImpactResult none = layerB(
+                List.of(new ImpactResult.Impact("주거", "영향 없음", "적용 대상이 아님", List.of(ART))),
+                List.of(new ImpactResult.Action("따로 할 일 없음", null, List.of(ART))));
+        assertTrue(AnalysisEngine.grounded(QueryType.IMPACT, none, Set.of(ART)));
+    }
+
+    @Test
+    void LayerA_는_영향_대응이_없어도_기존_규칙대로_통과() {
+        ImpactResult summary = new ImpactResult("LAW:A@2027-01-01", "SUMMARY", "요약",
+                List.of(new ImpactResult.Claim("주장", List.of(ART), 0.9)),
+                List.of(), List.of(), null, List.of(), "참고용", null);
+        assertTrue(AnalysisEngine.grounded(QueryType.SUMMARY, summary, Set.of(ART)));
     }
 
     // --- fixtures --------------------------------------------------------

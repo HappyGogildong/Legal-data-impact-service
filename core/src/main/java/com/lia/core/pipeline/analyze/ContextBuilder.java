@@ -33,8 +33,9 @@ public class ContextBuilder {
         for (Addendum ad : law.addenda()) {
             blocks.add(new SourceBlock(law.addendumSourceId(ad), SourceType.ADDENDA, ad.text()));
         }
-        // DIFF — 변경 조문의 시행중(baseline) 대응 조문. baseline=null이면 제정(전부 신설, D42) → 스킵
-        if (req.dimension() == QueryType.DIFF && req.baseline() != null) {
+        // 기준선 — DIFF(대조)와 Layer B(바뀐 점을 알아야 영향을 판단, D69). baseline=null이면 제정(전부 신설, D42) → 스킵
+        boolean needsBaseline = req.dimension() == QueryType.DIFF || req.dimension().isLayerB();
+        if (needsBaseline && req.baseline() != null) {
             Law baseline = req.baseline();
             for (Article a : law.changedArticles()) {
                 Article base = baseline.article(a.no());
@@ -44,6 +45,6 @@ public class ContextBuilder {
             }
         }
 
-        return new AnalysisContext(req.dimension(), law.ref(), blocks);
+        return new AnalysisContext(req.dimension(), law.ref(), blocks, req.profile(), req.question());
     }
 }
