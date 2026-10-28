@@ -68,7 +68,7 @@ user_profiles(
 - **"개인정보 아님"이 아니라 최소 수집** — 조합 재식별 가능성 → 처리방침·동의·**파기(DELETE)** 필요.
 - **답변 캐시 키 = 프로필 속성 해시**(userId 아님, D41·D51) — 동일 속성 재사용·개인 추적 회피.
 - 정량 인구통계 용도 금지(자기신고 표본, 대표성 없음).
-- **Layer B 소비 규칙(③)**: 현재 버전 동의(`upToDate`)가 있는 프로필만 프롬프트에 주입한다. 옛 버전 동의로는 개인화하지 않는다.
+- **Layer B 소비 규칙(③, D69 구현)**: `PersonalizationGate` 가 현재 버전 동의(`upToDate`) + 속성 ≥ 1 인 프로필만 Layer B 에 넘긴다(빈 프로필 → `PROFILE_REQUIRED`, 옛 동의 → `CONSENT_OUTDATED`). 넘기는 값은 `UserProfile` 속성뿐.
 
 ## 검증
 - 단위: `UserProfile` 불변식(age 13/14/120/121/null · purposes null→빈 집합·중복 제거 · 전부 null 허용) · 라벨 변환(모르는 값·시도 약칭 거부).

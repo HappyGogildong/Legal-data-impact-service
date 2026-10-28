@@ -65,6 +65,9 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 > **`baseline == null`의 두 의미를 가른다:** ① `제정`(정상, 대조 대상 없음) ② 개정본인데 미적재(이상). `Law.amendKind() == 제정`으로 구별해 ①만 진행하고 ②는 `unmet`으로 거른다. 아니면 개정 법령이 "전부 신설"로 오분석된다(그라운딩 붕괴).
 
+- **Layer B(D69):** IMPACT·ACTION 은 레지스트리를 거치지 않고 `PersonalizedHandler` 를 **한 번** 부른다. 순서: `Personalization.Blocked` → 사유 unmet · 개정본인데 기준선 없음 → `BASELINE_NOT_LOADED` · `PersonalizationQuota.tryConsume` 실패 → `DAILY_LIMIT` · 그 외 핸들러 1회 → 결과 분할. 프로필·질문은 이 호출 인자로만 — Layer A 핸들러에는 닿지 않는다.
+- **근거 부족(D69):** 어떤 핸들러든 `InsufficientGroundingException` 은 그 차원의 `INSUFFICIENT_GROUNDING` unmet 으로(다른 차원은 그대로).
+
 ## Invariants
 
 - **fail-closed 승계**: 못 채우는 차원은 예외가 아니라 `unmet`으로 **정직하게** 표시(지어내지 않음).

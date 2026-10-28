@@ -84,7 +84,7 @@ related: ["product/screen-plan.md", "backend/cloud-infra.md", "mvp/service-api-s
 | 로그인 상태 | `GET /api/v1/account` — 401이면 익명. 보호 화면(`/consent`·`/profile`·`/me`)은 익명이면 `/login`으로, 작업 중 401은 "다시 로그인" 대화상자(S16) | 계정 API가 상태 확인 겸용([[AccountApi]]) |
 | 재동의 | 프로필 저장이 409면 화면을 떠나지 않고 대화상자에서 동의 후 저장을 다시 시도. 재동의도 만 14세 확인을 함께 받는다(API가 매번 요구) | 입력한 값을 잃지 않게 |
 | 프로필 선택지 | `web/src/lib/profile-options.json` 한 곳 — 백엔드 `ProfileOptionsSyncTest`가 enum 라벨과 같은지 확인 | [[screen-plan]] S09 "프런트 상수, enum 변경 시 함께" |
-| 내 영향 안내 | `PROFILE_REQUIRED` 카드는 상태별 행동 — 익명: 로그인 / 프로필 없음: 프로필 입력 / 프로필 있음: "곧 제공"(분석이 아직 프로필을 읽지 않는다, D60 슬라이스 ③) | 지키지 못할 약속을 하지 않는다 |
+| 내 영향 안내 | PersonalizeAction 은 미충족 사유별 행동 — `PROFILE_REQUIRED`: 익명 → "로그인하기"(`/login`), 로그인 → "프로필 입력하기"(`/profile`, 빈 프로필 포함) <br> `CONSENT_OUTDATED`: "동의하기"(`/consent`) <br> 그 외 사유는 버튼 없이 문구만(`unmetCopy`) | 지키지 못할 약속을 하지 않는다 |
 | 알림 이메일 | 내 정보의 스위치는 수신 동의 저장만 — 발송은 S11(4단계). 화면에 "알림 기능은 곧 제공돼요" | — |
 | 법령 화면 경로 | `/laws`(S06 곧 시행, `?range=week·month·quarter` = 오늘부터 7·30·90일, 기본 month) · `/laws/[lawId]`(가장 이른 시행예정본으로 이동) · `/laws/[lawId]/[efYd]`(S05). 홈 질문창 아래 곧 시행 5개 | [[screen-plan]] S01·S05·S06 |
 | 없는 법령·이동 | 상세·이동 라우트는 `<Suspense>` 안에서 조회하므로 응답이 이미 흐르기 시작한 뒤 `notFound()`·`redirect()`가 결정된다 — HTTP 상태는 200(운영 빌드도 같음). not-found 화면엔 Next가 `<meta name="robots" content="noindex">`를 자동으로 붙여 검색에 남지 않고, 이동은 meta refresh 로 된다 | Cache Components 스트리밍의 성질. 실제 404 가 필요해지면 조회를 Suspense 밖(정적 매개변수)으로 옮겨야 한다 |
