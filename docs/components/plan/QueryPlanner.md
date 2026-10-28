@@ -72,7 +72,7 @@ AnalysisQuery {
   2. **`!draft.isLawQuery` → `Unresolved(UNVERIFIED)`** — 오프토픽(S9) 조기 거부(fail-closed).
   3. REFERENCE(또는 explicitLawRef): `SourceAnalyzer.resolve` → `RESOLVED`→`Planned`(Reference) / `AMBIGUOUS`·`NOT_FOUND_YET`·`UNVERIFIED`→`Unresolved`.
   4. DISCOVERY: `DiscoveryCriteria` 구성 → `Planned`(검색 실행은 dispatch라 이번 범위 밖).
-  5. **프로필 게이팅**: `profilePresent` 아니면 Layer B(`IMPACT`·`ACTION`) 제거·`profileBound=false`. 타입이 비면 기본 `SUMMARY`(Reference)/`LOOKUP`(Discovery) — **분류 실패로 거부하지 않는다**(best-effort, 자유도 보존).
+  5. **프로필 게이팅**: 프로필 유무로 Layer B(`IMPACT`·`ACTION`) 차원을 빼지 않는다(D69) — 프로필을 못 쓰는 사유는 디스패처가 `unmet` 으로 표기한다. 단 프로필이 없고 Layer A 차원이 하나도 없으면(Reference) `SUMMARY` 를 더해 요약은 보여 준다(선계산본이 있으면 비용 0, 주 차원은 그대로). 타입이 비면 기본 `SUMMARY`(Reference)/`LOOKUP`(Discovery) — **분류 실패로 거부하지 않는다**(best-effort, 자유도 보존).
 
 ### 후속 (AnalysisEngine 랜딩 시)
 
@@ -88,7 +88,7 @@ AnalysisQuery {
 ## 3.2 계측 · 검증
 
 - **계측**: 별도 `lia.plan` 스팬 없음 — Haiku 호출은 Spring AI `gen_ai.*`, 해소는 기존 `lia.resolve`가 커버(이중 스팬 회피, 임베딩 교훈 동일).
-- **단위**: `FakeQueryTranslator`(캔드 draft) + `SourceAnalyzer`(기존 `FakeLookup` 패턴) → Reference RESOLVED→Planned / 비법령→Unresolved(UNVERIFIED) / 무프로필→Layer B 제거 / Discovery→Planned criteria / AMBIGUOUS→Unresolved.
+- **단위**: `FakeQueryTranslator`(캔드 draft) + `SourceAnalyzer`(기존 `FakeLookup` 패턴) → Reference RESOLVED→Planned / 비법령→Unresolved(UNVERIFIED) / 무프로필→Layer B 차원 유지(D69) / Discovery→Planned criteria / AMBIGUOUS→Unresolved.
 - **라이브 스모크(수동·게이트)**: `SpringAiQueryTranslator` 실 Haiku 호출 — `LIA_PLAN_LIVE`+`ANTHROPIC_API_KEY` 옵트인(비용, 사용자 실행). 기본 test에서 스킵.
 
 ## 4. 구조 결정 의도 (왜 이렇게)

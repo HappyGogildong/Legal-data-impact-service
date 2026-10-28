@@ -56,18 +56,25 @@ public class QueryPlanner {
 
     private static PlanResult planned(AnalysisQueryDraft draft, Target target, boolean profilePresent,
                                       List<RawLaw> alternatives) {
-        // 프로필 게이팅 — 프로필 없으면 Layer B(IMPACT·ACTION) 제거(best-effort, 거부 아님).
+        // Layer B 는 프로필이 없어도 빼지 않는다 — 디스패처가 사유(PROFILE_REQUIRED 등)를 unmet 으로 실어
+        // 화면이 로그인·프로필 안내를 띄우게 한다(D69). profileBound 는 "채울 수 있는가"만 뜻한다.
         EnumSet<QueryType> types = draft.types().isEmpty()
                 ? EnumSet.noneOf(QueryType.class) : EnumSet.copyOf(draft.types());
-        if (!profilePresent) types.removeIf(QueryType::isLayerB);
         if (types.isEmpty()) {
-            // 다 걸러졌으면 기본 차원으로 강등 — 분류 실패로 거부하지 않는다.
+            // 분류 실패면 기본 차원으로 — 거부하지 않는다.
             types.add(target instanceof Target.Discovery ? QueryType.LOOKUP : QueryType.SUMMARY);
         }
 
-        // primaryType이 제거됐으면 남은 것 중 결정론적으로(EnumSet=ordinal 순) 선택.
+        // 프로필이 없고 Layer A 차원이 하나도 없으면 SUMMARY 를 더한다 — 선계산이라 비용이 0이고(D67)
+        // 익명 첫 질문이 로그인 안내만 남기지 않게 한다. Layer B 차원은 그대로 둬 미충족 카드가 로그인을 이끈다.
+        // 발견(Discovery)은 대상 법령이 없어 요약할 게 없다.
+        if (!profilePresent && target instanceof Target.Reference
+                && types.stream().allMatch(QueryType::isLayerB)) {
+            types.add(QueryType.SUMMARY);
+        }
+
         QueryType primary = types.contains(draft.primaryType()) ? draft.primaryType() : types.iterator().next();
-        boolean profileBound = types.stream().anyMatch(QueryType::isLayerB);
+        boolean profileBound = profilePresent && types.stream().anyMatch(QueryType::isLayerB);
 
         AnalysisQuery q = new AnalysisQuery(primary, types, target,
                 draft.intentSummary(), ArticleScope.CHANGED_ONLY, profileBound, AnalysisQuery.Options.defaults());

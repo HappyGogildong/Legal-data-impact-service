@@ -462,7 +462,7 @@ Content-Type: application/json
 - 역할: `DimensionHandler` 구현체 자동 발견(`@Component`) → `QueryType → Handler`.
 
 ### #10 DimensionHandler ×5 (Spring)
-각 핸들러 = `type() / needsProfile() / needsRag() / 실행`. 사용자 선택 모드가 아니라 플래너가 고르는 내부 분해(D46).
+Layer A 핸들러 = `type() / needsRag() / needsBaseline() / 실행`(Layer B 는 `PersonalizedHandler`, D69). 사용자 선택 모드가 아니라 플래너가 고르는 내부 분해(D46).
 | 핸들러 | 입력 | kind | 출력 핵심 |
 |---|---|---|---|
 | `LookupHandler` | DiscoveryCriteria + (프로필) | 발견 | 후보 법령 랭킹 |

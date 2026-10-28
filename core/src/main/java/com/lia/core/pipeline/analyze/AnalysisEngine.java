@@ -6,6 +6,7 @@ import java.util.Set;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.eval.FaithfulnessGate;
+import com.lia.core.pipeline.plan.QueryType;
 
 /**
  * 해석 오케스트레이터(얇음) — {@code 조립 → 추론 → 인용검증 → 재생성(≤N) → 폴백}(D37 명시적 워크플로).
@@ -32,7 +33,7 @@ public class AnalysisEngine {
         // 조립된 근거로 추론 → 1차 인용검증. 실패 시 재생성(≤N), 끝까지 실패면 근거부족 폴백(환각 미노출).
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             ImpactResult result = reasoner.reason(ctx);
-            if (grounded(result, injected)) {
+            if (grounded(req.dimension(), result, injected)) {
                 return new AnalyzeResponse(result, injected);
             }
         }
@@ -49,8 +50,9 @@ public class AnalysisEngine {
      * ② {@code impacts}·{@code actions}가 인용한 source_id도 모두 실재해야 한다 — 환각 인용이
      * 이 필드로 새는 것을 차단(DIFF는 impacts를 산출한다, §5).
      *
-     * <p>현재 Layer A(SUMMARY·DIFF)는 claims를 필수로 본다. Layer B(IMPACT·ACTION) 착지 시
-     * 차원별 필수 필드로 정교화한다. 저장된 요약 재검증({@link GroundedSummaries})도 이 규칙을 그대로 쓴다.
+     * <p>현재 Layer A(SUMMARY·DIFF)는 claims를 필수로 본다. Layer B 는
+     * {@link #grounded(QueryType, ImpactResult, Set)}가 더 엄격히 본다(D69).
+     * 저장된 요약 재검증({@link GroundedSummaries})도 이 규칙을 그대로 쓴다.
      */
     static boolean grounded(ImpactResult r, Set<String> injectedSourceIds) {
         if (r == null || r.claims() == null || r.claims().isEmpty()) {
@@ -63,6 +65,24 @@ public class AnalysisEngine {
             return false;
         }
         return injectedSourceIds.containsAll(citedSourceIds(r));
+    }
+
+    /**
+     * 차원별 인용 검증 — Layer A 는 {@link #grounded(ImpactResult, Set)} 그대로, Layer B 는 거기에 더해
+     * 영향·대응이 <b>둘 다</b> 있고 항목마다 인용(영향 citations·대응 basis)이 있어야 한다(D69).
+     * 둘 다 요구하는 건 결과를 IMPACT·ACTION 으로 나눴을 때 두 차원이 늘 채워지게 하려는 것 — 해당이 없으면
+     * 모델이 "영향 없음"·"따로 할 일 없음"을 조문 인용과 함께 쓴다.
+     */
+    static boolean grounded(QueryType dimension, ImpactResult r, Set<String> injectedSourceIds) {
+        if (!grounded(r, injectedSourceIds)) return false;
+        return !dimension.isLayerB() || personalizedComplete(r);
+    }
+
+    private static boolean personalizedComplete(ImpactResult r) {
+        return r.impacts() != null && !r.impacts().isEmpty()
+                && r.actions() != null && !r.actions().isEmpty()
+                && r.impacts().stream().allMatch(i -> i.citations() != null && !i.citations().isEmpty())
+                && r.actions().stream().allMatch(a -> a.basis() != null && !a.basis().isEmpty());
     }
 
     /** 결과가 인용한 모든 source_id 수집(claims·impacts·actions.basis) — null 안전. */

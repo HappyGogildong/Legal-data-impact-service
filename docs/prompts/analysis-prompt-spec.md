@@ -52,7 +52,7 @@ related:
 | 12 | **언어·톤** | 시스템 | 필수 | 일반 시민 평이 한국어 |
 
 **게이트(조립 전 검사):**
-- `IMPACT/ACTION` → 프로필(7) 없으면 **해당 차원만 생략**(부분성공 `unmet`, [[service-api-spec]] §3.0) — 전체 거부 아님.
+- `IMPACT/ACTION` → 프로필(7)이 사용 가능하지 않으면(익명·빈 프로필·옛 동의·하루 한도) **해당 차원만 unmet**(부분성공, D69) — 전체 거부 아님. 둘 다 요청돼도 **Opus 1회(근거 부족 시 재생성 ≤2회, 한도는 요청당 1)**로 함께 만들고 결과를 나눈다.
 - `DIFF` → 기준선(5) 없으면 표시 후 진행.
 - 요소 3·4 없음 = **법령 미해소** → 분석 거부(fail-closed).
 
@@ -100,6 +100,8 @@ related:
 
 > **`<profile>`은 "수신자 정보"일 뿐 인용 가능한 source가 아니다**(D10 승계). `<context>`(법령)와 분리하고, `userId`는 넣지 않으며 속성만 직렬화한다(D41). 인구통계 정량 용도 금지(자기신고 표본, 대표성 없음).
 
+> **Layer B 실제 메시지(D69):** `[CONTEXT]`(Layer A 블록 + 현행 기준선) → `[PROFILE]`(닫힌 값 속성 라벨, 없는 항목 생략) → `[QUESTION]`(사용자 질문 원문) → `[TASK]`. Layer A(SUMMARY·DIFF) 메시지에는 PROFILE·QUESTION 이 없다(선계산 재사용, D67).
+
 ---
 
 ## 4. 응답 포맷 (구조화 JSON)
@@ -146,6 +148,8 @@ Spring AI 구조화 출력(constrained decoding)으로 **스키마 강제**. [[c
 | `DIFF` | 4, 5 | claims(조문 대조), impacts | A |
 | `IMPACT` | 4, 6, 7 | impacts(내 영향) | B |
 | `ACTION` | 4, 부칙, 7 | actions(기한·근거) | B |
+
+Layer B 는 IMPACT·ACTION 을 한 호출로 만든다(요청 dimension=IMPACT). 결과 분할: IMPACT ← summary·claims·impacts·uncertainties·disclaimer, ACTION ← actions·effectiveInfo·uncertainties·disclaimer. 검증은 §6 + 영향·대응 둘 다 ≥ 1·항목마다 인용(D69).
 
 ---
 

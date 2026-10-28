@@ -88,8 +88,46 @@ class QueryPlannerTest {
     }
 
     @Test
-    void 프로필_없으면_LayerB_제거_primary도_교체() {
-        // S1류 포괄질의지만 프로필 미제공 → IMPACT·ACTION 제거, DIFF만 남음
+    void 프로필_없이_LayerB만_있으면_선계산_요약을_더해_보여준다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.IMPACT, Set.of(QueryType.IMPACT, QueryType.ACTION), true,
+                TargetKind.REFERENCE, "주택법", null, List.of(), List.of(), List.of(), "전세 영향");
+
+        PlanResult result = plannerFor(draft).plan("주택법 바뀌면 나 어떻게 돼", null, false);
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class, result).query();
+        assertEquals(Set.of(QueryType.SUMMARY, QueryType.IMPACT, QueryType.ACTION), q.types());
+        assertEquals(QueryType.IMPACT, q.primaryType(), "주 차원은 질문이 정한 그대로");
+        assertFalse(q.profileBound());
+    }
+
+    @Test
+    void 프로필이_있으면_요약을_더하지_않는다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.IMPACT, Set.of(QueryType.IMPACT), true,
+                TargetKind.REFERENCE, "주택법", null, List.of(), List.of(), List.of(), "전세 영향");
+
+        PlanResult result = plannerFor(draft).plan("주택법 바뀌면 나 어떻게 돼", null, true);
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class, result).query();
+        assertEquals(Set.of(QueryType.IMPACT), q.types());
+        assertTrue(q.profileBound());
+    }
+
+    @Test
+    void 프로필이_없어도_LayerA_차원이_이미_있으면_요약을_더하지_않는다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.IMPACT, Set.of(QueryType.DIFF, QueryType.IMPACT), true,
+                TargetKind.REFERENCE, "주택법", null, List.of(), List.of(), List.of(), "전세 영향");
+
+        PlanResult result = plannerFor(draft).plan("주택법 바뀐 점이랑 내 영향", null, false);
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class, result).query();
+        assertEquals(Set.of(QueryType.DIFF, QueryType.IMPACT), q.types());
+    }
+
+    @Test
+    void 프로필이_없어도_LayerB_차원을_유지한다_미충족_안내가_응답에_실리게() {
         AnalysisQueryDraft draft = new AnalysisQueryDraft(
                 QueryType.IMPACT, Set.of(QueryType.DIFF, QueryType.IMPACT, QueryType.ACTION), true,
                 TargetKind.REFERENCE, "주택법", null, List.of(), List.of(), List.of(), "전세 영향");
@@ -97,11 +135,9 @@ class QueryPlannerTest {
         PlanResult result = plannerFor(draft).plan("주택법 바뀌면 나 전세 어떻게 돼", null, false);
 
         AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class, result).query();
-        assertFalse(q.profileBound(), "프로필 없으면 profileBound=false");
-        assertFalse(q.types().contains(QueryType.IMPACT), "IMPACT 제거");
-        assertFalse(q.types().contains(QueryType.ACTION), "ACTION 제거");
-        assertTrue(q.types().contains(QueryType.DIFF), "Layer A는 유지");
-        assertFalse(q.primaryType().isLayerB(), "primary가 Layer B면 교체되어야");
+        assertEquals(Set.of(QueryType.DIFF, QueryType.IMPACT, QueryType.ACTION), q.types());
+        assertEquals(QueryType.IMPACT, q.primaryType());
+        assertFalse(q.profileBound(), "프로필 없으면 profileBound=false (채울 수는 없다)");
     }
 
     @Test

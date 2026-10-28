@@ -79,7 +79,7 @@ export function articleTitle(label: string): string {
 
 export type UnmetCopy = { title: string; body: string };
 
-/** 미충족 차원의 안내 — 사유 코드별(계약: service-api-spec §3.0). 프로필 필요(PROFILE_REQUIRED)의 상태별 설명·버튼은 PersonalizeAction. */
+/** 미충족 차원의 안내 — 사유 코드별(계약: service-api-spec §3.0). 프로필 필요(PROFILE_REQUIRED)·재동의(CONSENT_OUTDATED)의 상태별 설명·버튼은 PersonalizeAction. */
 export function unmetCopy(unmet: Pick<Unmet, "reason"> | undefined): UnmetCopy {
   switch (unmet?.reason) {
     case "PROFILE_REQUIRED":
@@ -94,6 +94,21 @@ export function unmetCopy(unmet: Pick<Unmet, "reason"> | undefined): UnmetCopy {
         title: "현행 법령 정보를 아직 받지 못했어요",
         body: "바뀐 점을 비교하려면 현행 법령이 필요해요. 잠시 후 다시 확인해 주세요.",
       };
+    case "CONSENT_OUTDATED":
+      return {
+        title: "처리방침이 바뀌어 다시 동의가 필요해요",
+        body: "다시 동의하면 내 영향과 대응 방안을 볼 수 있어요.",
+      };
+    case "DAILY_LIMIT":
+      return {
+        title: "오늘 개인화 분석 한도를 다 썼어요",
+        body: "내일 다시 이용해 주세요.",
+      };
+    case "INSUFFICIENT_GROUNDING":
+      return {
+        title: "근거가 부족해 답하지 않았어요",
+        body: "조문 근거로 확인할 수 있는 내용만 답해요.",
+      };
     case "NOT_IMPLEMENTED":
       return { title: "곧 제공할 기능이에요", body: "" };
     default:
@@ -106,6 +121,9 @@ const UNMET_STATUS: Record<string, string> = {
   LAW_NOT_LOADED: "준비 중",
   BASELINE_NOT_LOADED: "준비 중",
   NOT_IMPLEMENTED: "준비 중",
+  CONSENT_OUTDATED: "재동의 필요",
+  DAILY_LIMIT: "한도 초과",
+  INSUFFICIENT_GROUNDING: "근거 부족",
 };
 
 /** 접힌 카드 제목 옆 상태 — 변경점은 조문 수, 미충족은 짧은 사유. 없으면 null. */

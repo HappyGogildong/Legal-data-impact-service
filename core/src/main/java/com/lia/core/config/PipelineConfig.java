@@ -2,6 +2,7 @@ package com.lia.core.config;
 
 import java.time.LocalDate;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -32,6 +33,8 @@ import com.lia.core.pipeline.plan.QueryPlanner;
 import com.lia.core.pipeline.plan.QueryTranslator;
 import com.lia.core.pipeline.plan.SpringAiQueryTranslator;
 import com.lia.core.application.analysis.AnalyzeUseCase;
+import com.lia.core.application.profile.PersonalizationGate;
+import com.lia.core.pipeline.dispatch.PersonalizationQuota;
 import com.lia.core.pipeline.dispatch.QueryDispatcher;
 import com.lia.core.pipeline.resolve.ChunkStoreLawSearch;
 import com.lia.core.pipeline.resolve.LawLookup;
@@ -40,6 +43,7 @@ import com.lia.core.store.ChunkStore;
 import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
 import com.lia.core.store.LawViews;
+import com.lia.core.store.PersonalizationUsageStore;
 import com.lia.core.store.PgVectorChunkStore;
 
 /**
@@ -160,7 +164,15 @@ public class PipelineConfig {
 
     /** 온라인 유스케이스(plan→dispatch). 애노테이션 없는 코어를 여기서 배선(프레임워크 비의존). */
     @Bean
-    public AnalyzeUseCase analyzeUseCase(QueryPlanner queryPlanner, QueryDispatcher queryDispatcher, LawViews lawViews) {
-        return new AnalyzeUseCase(queryPlanner, queryDispatcher, lawViews);
+    public AnalyzeUseCase analyzeUseCase(QueryPlanner queryPlanner, QueryDispatcher queryDispatcher, LawViews lawViews,
+                                         PersonalizationGate personalizationGate) {
+        return new AnalyzeUseCase(queryPlanner, queryDispatcher, lawViews, personalizationGate);
+    }
+
+    /** 사용자별 하루 개인화 분석 한도(D69) — Opus 호출 직전 차감. */
+    @Bean
+    public PersonalizationQuota personalizationQuota(JdbcClient jdbcClient,
+            @Value("${lia.personalization.daily-limit}") int dailyLimit) {
+        return new PersonalizationUsageStore(jdbcClient, dailyLimit);
     }
 }

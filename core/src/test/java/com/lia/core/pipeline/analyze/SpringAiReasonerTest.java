@@ -14,6 +14,9 @@ import org.springframework.ai.chat.prompt.Prompt;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.plan.QueryType;
+import com.lia.core.profile.HousingType;
+import com.lia.core.profile.Sido;
+import com.lia.core.profile.UserProfile;
 
 /** SpringAiReasoner 단위 — meta 확정(모델명·버전·계층)과 응답에서 thinking 블록 거르기. 실 API 없음(고정 응답 ChatModel). */
 class SpringAiReasonerTest {
@@ -82,6 +85,35 @@ class SpringAiReasonerTest {
         assertEquals("A", SpringAiReasoner.stampMeta(withMeta("x"), QueryType.DIFF).meta().layer());
         assertEquals("B", SpringAiReasoner.stampMeta(withMeta("x"), QueryType.IMPACT).meta().layer());
         assertEquals("B", SpringAiReasoner.stampMeta(withMeta("x"), QueryType.ACTION).meta().layer());
+    }
+
+    @Test
+    void LayerB_메시지에_프로필_라벨과_질문이_CONTEXT_뒤에_붙는다() {
+        UserProfile profile = new UserProfile(null, 34, null, null, null, HousingType.전세, Sido.서울특별시);
+        AnalysisContext ctx = new AnalysisContext(QueryType.IMPACT, "LAW:A@2027-01-01",
+                List.of(new AnalysisContext.SourceBlock("LAW:A@2027-01-01:art:1", SourceType.ARTICLE, "제1조 본문")),
+                profile, "주택법 내 영향과 대응 방안");
+
+        String message = SpringAiReasoner.userMessage(ctx);
+
+        assertTrue(message.indexOf("[PROFILE]") > message.indexOf("[CONTEXT]"), "PROFILE 은 CONTEXT 뒤");
+        assertTrue(message.contains("나이: 34"));
+        assertTrue(message.contains("주거: 전세"));
+        assertTrue(message.contains("거주 시도: 서울특별시"));
+        assertFalse(message.contains("직업:"), "없는 항목은 생략");
+        assertTrue(message.contains("[QUESTION] 주택법 내 영향과 대응 방안"));
+        assertTrue(message.contains("impacts") && message.contains("actions"), "Layer B TASK");
+    }
+
+    @Test
+    void LayerA_메시지에는_프로필과_질문이_없다() {
+        AnalysisContext ctx = new AnalysisContext(QueryType.SUMMARY, "LAW:A@2027-01-01",
+                List.of(new AnalysisContext.SourceBlock("LAW:A@2027-01-01:art:1", SourceType.ARTICLE, "제1조 본문")));
+
+        String message = SpringAiReasoner.userMessage(ctx);
+
+        assertFalse(message.contains("[PROFILE]"));
+        assertFalse(message.contains("[QUESTION]"));
     }
 
     @Test

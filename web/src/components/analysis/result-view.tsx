@@ -5,6 +5,7 @@ import { useIsDesktop } from "@/hooks/use-browser";
 import type { AnalysisResponse, LawBrief, Unmet } from "@/lib/api/types";
 import { presentDimensions, sourceIndex } from "@/lib/analysis-view";
 import type { AskRequest } from "@/lib/ask-store";
+import { personalizedQuery } from "@/components/laws/law-actions";
 import { DimensionCard } from "./dimension-card";
 import { DiscoveryNotice } from "./discovery-notice";
 import { FollowUpBar } from "./follow-up-bar";
@@ -35,6 +36,7 @@ export function ResultView({
   const law = response.law;
   if (!law) return <DiscoveryNotice query={ask.query} />;
 
+  const { lawId, effectiveDate, title } = law;
   const sources = sourceIndex(response);
   const selectedSource = selected ? (sources.get(selected) ?? null) : null;
   const pickAlternative = (alternative: LawBrief) => {
@@ -74,6 +76,20 @@ export function ResultView({
               renderUnmetAction={renderUnmetAction}
             />
           ))}
+          {!hasPersonalized(response) && lawId && effectiveDate && title && (
+            <button
+              type="button"
+              onClick={() =>
+                onAsk({
+                  query: personalizedQuery(title),
+                  lawRef: { lawId, effectiveDate },
+                })
+              }
+              className="self-start rounded-md border border-navy px-3 py-1.5 text-[13px] font-bold text-navy"
+            >
+              내 영향·대응 방안 보기
+            </button>
+          )}
           {response.disclaimer && (
             <p className="text-[11px] text-muted-foreground">
               {response.disclaimer}
@@ -102,5 +118,15 @@ export function ResultView({
         />
       )}
     </div>
+  );
+}
+
+/** 응답에 내 영향·대응 방안(답 또는 미충족 안내)이 이미 있는가 — 있으면 보기 버튼을 두지 않는다. */
+function hasPersonalized(response: AnalysisResponse): boolean {
+  return Boolean(
+    response.answer?.impact ||
+      response.answer?.action ||
+      response.unmet?.impact ||
+      response.unmet?.action,
   );
 }

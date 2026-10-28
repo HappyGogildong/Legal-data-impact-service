@@ -28,6 +28,7 @@ function renderConsent() {
       <ConsentScreen />
     </QueryClientProvider>,
   );
+  return client;
 }
 
 beforeEach(() => {
@@ -121,6 +122,56 @@ describe("ConsentScreen", () => {
 
     await vi.waitFor(() => expect(router.replace).toHaveBeenCalledWith("/ask"));
     expect(sessionStorage.getItem("lia.returnTo")).toBeNull();
+  });
+
+  it("재동의 성공 — 캐시된 분석을 지워 돌아간 화면이 새로 받는다", async () => {
+    setReturnTo("/ask");
+    mockApi({
+      "GET /api/v1/account": () => json(ACCOUNT),
+      "GET /api/v1/consents": () =>
+        json({
+          profile: { ...CONSENT, policyVersion: "2026-09", upToDate: false },
+        }),
+      "PUT /api/v1/consents/profile": () => json(CONSENT),
+    });
+    const client = renderConsent();
+    client.setQueryData(["analysis", "개정 질문", null], { stale: true });
+
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: /만 14세 이상입니다/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /바뀐 처리방침에 동의합니다/ }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "동의하기" }));
+
+    await vi.waitFor(() => expect(router.replace).toHaveBeenCalledWith("/ask"));
+    expect(client.getQueriesData({ queryKey: ["analysis"] })).toHaveLength(0);
+  });
+
+  it("첫 동의 성공 — 캐시된 분석을 지운다", async () => {
+    mockApi({
+      "GET /api/v1/account": () => json(ACCOUNT),
+      "GET /api/v1/consents": () => json({}),
+      "PUT /api/v1/consents/profile": () => json(CONSENT),
+    });
+    const client = renderConsent();
+    client.setQueryData(["analysis", "개정 질문", null], { stale: true });
+
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: /만 14세 이상입니다/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /프로필 수집·이용에 동의합니다/ }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "동의하고 프로필 입력" }),
+    );
+
+    await vi.waitFor(() =>
+      expect(router.replace).toHaveBeenCalledWith("/profile"),
+    );
+    expect(client.getQueriesData({ queryKey: ["analysis"] })).toHaveLength(0);
   });
 
   it("만 14세 미만 — 개인화 이용 불가 안내", async () => {

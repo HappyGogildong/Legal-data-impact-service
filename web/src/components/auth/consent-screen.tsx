@@ -52,6 +52,8 @@ export function ConsentScreen() {
         ...old,
         profile,
       }));
+      // 동의 전에 받은 분석(PROFILE_REQUIRED·CONSENT_OUTDATED)이 캐시에 남으면 돌아간 화면이 새로 받지 못한다
+      queryClient.removeQueries({ queryKey: ["analysis"] });
       if (reconsent) {
         router.replace(takeReturnTo(pathname) ?? "/");
       } else {

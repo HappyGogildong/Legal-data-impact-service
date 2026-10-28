@@ -37,8 +37,9 @@ Controller·Mapper·DTO    AnalyzeUseCase             QueryPlanner · QueryDispa
 ## HTTP Contract ([[service-api-spec]] §3.0)
 
 - `POST /api/v1/analyses` · 요청 `{ "query": <필수>, "lawRef"?: {lawId, effectiveDate, articleNo?}, "scope"?: [...] }`.
+- 세션 쿠키가 있으면 컨트롤러가 CurrentUser.userId 로 유스케이스에 넘긴다(익명은 empty). 응답 unmet 사유에 CONSENT_OUTDATED·DAILY_LIMIT·INSUFFICIENT_GROUNDING 추가(D69).
 - **응답은 해소 4상태·분석 모두 HTTP 200** (4xx/5xx는 시스템 오류 전용, §4.1). 빈 `query` → **400**.
-- **Analyzed** → `{ resolution:"RESOLVED", law:{ref,lawId,title,effectiveDate,lawType,ministry}, alternatives:[LawBrief], answer:{ <차원소문자>: ImpactResult }, unmet:{ <차원소문자>: {reason, message} }, sources:[CitedSource], disclaimer }`. `reason` ∈ `LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`·`PROFILE_REQUIRED`·`NOT_IMPLEMENTED`.
+- **Analyzed** → `{ resolution:"RESOLVED", law:{ref,lawId,title,effectiveDate,lawType,ministry}, alternatives:[LawBrief], answer:{ <차원소문자>: ImpactResult }, unmet:{ <차원소문자>: {reason, message} }, sources:[CitedSource], disclaimer }`. `reason` ∈ `LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`·`PROFILE_REQUIRED`·`NOT_IMPLEMENTED`·`CONSENT_OUTDATED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`.
 - **Unresolved** → `{ resolution:<NOT_FOUND_YET|AMBIGUOUS|UNVERIFIED>, message, candidates? }`.
 - **OpenAPI** — springdoc이 `/v3/api-docs`(경로 `/api/**`만)를 만든다. `OpenApiSnapshotTest`가 레포 `api/openapi.json`과 비교해 계약 변경을 드러낸다. 운영은 `SPRINGDOC_API_DOCS_ENABLED=false`.
 

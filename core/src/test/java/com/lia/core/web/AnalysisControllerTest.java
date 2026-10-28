@@ -2,7 +2,10 @@ package com.lia.core.web;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
@@ -10,12 +13,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.application.analysis.AnalyzeUseCase;
+import com.lia.core.auth.CurrentUser;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
@@ -59,10 +65,10 @@ class AnalysisControllerTest {
 
     @Test
     void 분석되면_RESOLVED_law_answer_unmet을_매핑한다() {
-        when(useCase.analyze(any(), any())).thenReturn(analyzed());
+        when(useCase.analyze(any(), any(), any())).thenReturn(analyzed());
 
         ResponseEntity<AnalysisApiResponse> resp =
-                controller.analyze(new AnalyzeApiRequest("주택법 뭐가 바뀌어?", null, null));
+                controller.analyze(new AnalyzeApiRequest("주택법 뭐가 바뀌어?", null, null), new MockHttpServletRequest());
 
         assertEquals(200, resp.getStatusCode().value());
         AnalysisApiResponse body = resp.getBody();
@@ -76,19 +82,42 @@ class AnalysisControllerTest {
     @Test
     void 빈_query는_IllegalArgumentException_400매핑() {
         assertThrows(IllegalArgumentException.class,
-                () -> controller.analyze(new AnalyzeApiRequest("   ", null, null)));
+                () -> controller.analyze(new AnalyzeApiRequest("   ", null, null), new MockHttpServletRequest()));
     }
 
     @Test
     void 미해소면_resolution과_message를_200으로_전달한다() {
-        when(useCase.analyze(any(), any()))
+        when(useCase.analyze(any(), any(), any()))
                 .thenReturn(new AnalysisOutcome.Unresolved(ResolutionResult.notFoundYet("그 법을 아직 못 찾았어요.")));
 
         ResponseEntity<AnalysisApiResponse> resp =
-                controller.analyze(new AnalyzeApiRequest("어떤 이상한 법", null, null));
+                controller.analyze(new AnalyzeApiRequest("어떤 이상한 법", null, null), new MockHttpServletRequest());
 
         assertEquals(200, resp.getStatusCode().value());
         assertEquals("NOT_FOUND_YET", resp.getBody().resolution());
         assertEquals("그 법을 아직 못 찾았어요.", resp.getBody().message());
+    }
+
+    @Test
+    void 세션이_있으면_userId_를_유스케이스에_넘긴다() {
+        UUID userId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession(true).setAttribute(CurrentUser.SESSION_KEY, userId);
+        when(useCase.analyze(eq("주택법 내 영향"), isNull(), eq(Optional.of(userId))))
+                .thenReturn(new AnalysisOutcome.Unresolved(ResolutionResult.notFoundYet("그 법을 아직 못 찾았어요.")));
+
+        controller.analyze(new AnalyzeApiRequest("주택법 내 영향", null, null), request);
+
+        verify(useCase).analyze("주택법 내 영향", null, Optional.of(userId));
+    }
+
+    @Test
+    void 세션이_없으면_익명으로_넘긴다() {
+        when(useCase.analyze(any(), any(), any()))
+                .thenReturn(new AnalysisOutcome.Unresolved(ResolutionResult.notFoundYet("x")));
+
+        controller.analyze(new AnalyzeApiRequest("주택법 내 영향", null, null), new MockHttpServletRequest());
+
+        verify(useCase).analyze("주택법 내 영향", null, Optional.empty());
     }
 }

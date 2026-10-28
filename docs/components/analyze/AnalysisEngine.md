@@ -37,6 +37,8 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 3. **1차 인용검증** — 스키마 유효 + **인용 존재성**(모든 `claims[].citations` ⊆ 주입 `source_id`). 실패 시 재생성(≤`regen_max`).
 4. 산출: `ImpactResult` + `injectedSourceIds`(2차 게이트용). **(후속)** Layer A 결과·`LawFacts` 캐시(D51 — 이번 범위 밖, 온디맨드 산출).
 
+- **Layer B 입력·검증(D69):** `AnalyzeRequest` 에 `profile`·`question`(Layer B 일 때만 non-null). `ContextBuilder` 는 Layer B 에도 현행 기준선 블록을 넣는다. 검증은 Layer A 규칙 + 영향·대응 둘 다 ≥ 1·항목마다 인용. 프로필은 근거 집합 밖이라 인용하면 실패.
+
 ## 2계층
 - **Layer A**(프로필 무관): 법령 사실·조문 diff·`LawFacts` → **오프라인 선계산 후 캐시**(`ImpactSummary`/`LawDiff`). 프로필 N명이 재사용(비용 레버, D07).
 - **Layer B**(프로필별): A를 입력으로 `PersonaImpact`/`ActionPlan`. 캐시 키는 `userId`가 아니라 **프로필 속성 해시**(D41).

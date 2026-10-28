@@ -52,6 +52,45 @@ describe("ResultView — 모바일", () => {
     ).toBeInTheDocument();
   });
 
+  it("응답에 내 영향·대응 방안이 없으면 보기 버튼, 누르면 같은 법령으로 다시 묻는다", async () => {
+    const onAsk = vi.fn();
+    const response = { ...resolvedResponse, unmet: {} }; // impact·action 없음
+    render(<ResultView response={response} ask={ask} onAsk={onAsk} />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "내 영향·대응 방안 보기" }),
+    );
+
+    expect(onAsk).toHaveBeenCalledWith({
+      query: `${resolvedResponse.law!.title} 내 영향과 대응 방안`,
+      lawRef: {
+        lawId: resolvedResponse.law!.lawId,
+        effectiveDate: resolvedResponse.law!.effectiveDate,
+      },
+    });
+  });
+
+  it("법령명이 없으면 보기 버튼을 두지 않는다(앞 공백만 있는 질문 방지)", () => {
+    const lawWithoutTitle = { ...resolvedResponse.law!, title: undefined };
+    render(
+      <ResultView
+        response={{ ...resolvedResponse, law: lawWithoutTitle, unmet: {} }}
+        ask={ask}
+        onAsk={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "내 영향·대응 방안 보기" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("내 영향 미충족 카드가 있으면 보기 버튼을 따로 두지 않는다", () => {
+    renderResult();
+    expect(
+      screen.queryByRole("button", { name: "내 영향·대응 방안 보기" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("바뀐 조문 펼치면 현행·개정 대비(바뀐 구간 강조)", async () => {
     renderResult();
     await userEvent.click(

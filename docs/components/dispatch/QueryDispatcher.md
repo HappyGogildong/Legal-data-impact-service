@@ -29,7 +29,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 | 클래스 | 역할 |
 |---|---|
 | `QueryDispatcher` | 오케스트레이터 — target 해석 → 차원 라우팅 → `DispatchResult` 조립. 흐름·게이트만. |
-| `DimensionHandler` (포트) | 한 차원의 실행 계약 — `type() / needsProfile() / needsRag() / needsBaseline() / handle(ctx)`. 실행 본체는 AnalysisEngine 위임. |
+| `DimensionHandler` (포트) | **Layer A 전용** 한 차원의 실행 계약 — `type() / needsRag() / needsBaseline() / handle(ctx)`. 실행 본체는 AnalysisEngine 위임. Layer B(IMPACT·ACTION)는 이 포트가 아니라 `PersonalizedHandler`(D69). |
 | `DimensionHandlerRegistry` | `QueryType → DimensionHandler` 매핑. `@Component` 자동수집, 중복 타입 fail-fast, 구성 후 불변. |
 | `SummaryHandler` | SUMMARY(Layer A) — 정본을 SUMMARY로 위임. 비교 아님 → baseline 미사용. 저장된 쉬운 요약(D67, `LawSummaries`)이 유효하면 그것으로 답하고 추론기를 부르지 않는다 — 없거나 낡았으면 실시간. |
 | `DiffHandler` | DIFF(Layer A) — 정본+기준선을 DIFF로 위임. baseline null이면 제정(D42). |
@@ -58,12 +58,15 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 `Target.Discovery`(코퍼스 검색)는 LOOKUP 전용 경로 — LookupHandler·LawDiscovery(#19) 착지 전까지 전 타입 `unmet`. `Target.Reference`면 정본을 조회하고(미적재면 전 타입 `unmet`), `query.types`의 각 `type`에 대해:
 
-1. `registry.get(type)` 없으면 → `unmet("핸들러 미구현")`. (현재 LOOKUP·IMPACT·ACTION)
-2. `handler.needsProfile() && !query.profileBound()` → `unmet("프로필 필요")`. (미래 Layer B가 프로필 없이 올 때)
+1. `registry.get(type)` 없으면 → `unmet("핸들러 미구현")`. (현재 LOOKUP만 — IMPACT·ACTION 은 레지스트리를 거치지 않고 `PersonalizedHandler` 경로, D69)
+2. IMPACT·ACTION(Layer B)은 이 순회가 아니라 아래 **Layer B(D69)** 항목의 순서(`Personalization.Blocked` 사유 → `BASELINE_NOT_LOADED` → `DAILY_LIMIT` → 핸들러 1회)로 처리한다. 프로필 유무 검사는 그 게이트의 몫이다.
 3. `handler.needsBaseline() && baseline==null && !제정` → `unmet("기준선 미적재")`. **개정본인데 시행중본이 없는 데이터 이상을 조용히 '제정'으로 오인하지 않는다** — `제정`(baseline이 원래 없음)만 통과시킨다.
 4. 그 외 → `filled(handler.handle(ctx))`.
 
 > **`baseline == null`의 두 의미를 가른다:** ① `제정`(정상, 대조 대상 없음) ② 개정본인데 미적재(이상). `Law.amendKind() == 제정`으로 구별해 ①만 진행하고 ②는 `unmet`으로 거른다. 아니면 개정 법령이 "전부 신설"로 오분석된다(그라운딩 붕괴).
+
+- **Layer B(D69):** IMPACT·ACTION 은 레지스트리를 거치지 않고 `PersonalizedHandler` 를 **한 번** 부른다. 순서: `Personalization.Blocked` → 사유 unmet · 개정본인데 기준선 없음 → `BASELINE_NOT_LOADED` · `PersonalizationQuota.tryConsume` 실패 → `DAILY_LIMIT` · 그 외 핸들러 1회 → 결과 분할. 프로필·질문은 이 호출 인자로만 — Layer A 핸들러에는 닿지 않는다.
+- **근거 부족(D69):** 어떤 핸들러든 `InsufficientGroundingException` 은 그 차원의 `INSUFFICIENT_GROUNDING` unmet 으로(다른 차원은 그대로).
 
 ## Invariants
 
@@ -73,8 +76,8 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 ## Error Handling
 
-- 예외를 던지지 않는다 — 라우팅 불가·정본 미적재·핸들러 부재는 전부 `unmet` 사유로 흡수(부분성공).
-- 핸들러 내부(AnalysisEngine)의 `InsufficientGroundingException` 전파 정책은 [[AnalysisEngine]] 소관. (현재는 핸들러가 그대로 전파 — 재생성≤N 후 근거부족)
+- 예외를 던지지 않는다 — 라우팅 불가·정본 미적재·핸들러 부재·근거 부족(`InsufficientGroundingException`)은 전부 `unmet` 사유로 흡수(부분성공).
+- 핸들러(AnalysisEngine)가 재생성≤N 후에도 던지는 `InsufficientGroundingException` 은 그 차원의 `INSUFFICIENT_GROUNDING` unmet 으로 바뀌고, 다른 차원은 그대로 채워진다(D69).
 
 ## Side Effects
 
@@ -89,7 +92,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 ## 검증
 
-- **Dispatcher 단위**(FakeHandler·Fake `LawSource`): 단일/복수 차원 filled · 미구현 차원 unmet · `needsProfile`+`profileBound=false` unmet · 정본 미적재 전타입 unmet · Discovery unmet.
+- **Dispatcher 단위**(FakeHandler·Fake `LawSource`): 단일/복수 차원 filled · 미구현 차원 unmet · 정본 미적재 전타입 unmet · Discovery unmet. Layer B(D69): 핸들러 1회 호출·쿼터 1회 소비로 두 차원 filled · `Blocked` 사유면 쿼터·핸들러 무접촉 · `DAILY_LIMIT` · 개정본인데 기준선 없음 → `BASELINE_NOT_LOADED` · 근거 부족 → `INSUFFICIENT_GROUNDING`.
 - **핸들러 단위**: Summary/Diff가 올바른 `AnalyzeRequest(dimension, law, baseline)` 구성해 위임(CapturingEngine).
 - **레지스트리 단위**: 타입 매핑 · 중복타입 실패.
 

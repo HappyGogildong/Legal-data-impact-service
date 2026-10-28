@@ -103,6 +103,37 @@ describe("LawDetailView", () => {
     });
   });
 
+  it("내 영향·대응 방안 보기 — 질문을 탭 저장소에 두고 /ask", async () => {
+    renderDetail();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "내 영향·대응 방안 보기" }),
+    );
+
+    expect(router.push).toHaveBeenCalledWith("/ask");
+    expect(JSON.parse(sessionStorage.getItem("lia.ask") ?? "null")).toEqual({
+      query: "주택법 내 영향과 대응 방안",
+      lawRef: { lawId: "001809", effectiveDate: "2026-11-03" },
+    });
+  });
+
+  it("요약이 있어도 내 영향·대응 방안 보기 버튼은 있다", () => {
+    renderDetail({
+      ...DETAIL,
+      summary: { text: "요약", claims: [], uncertainties: [] },
+    });
+    expect(
+      screen.getByRole("button", { name: "내 영향·대응 방안 보기" }),
+    ).toBeInTheDocument();
+  });
+
+  it("철회된 버전엔 내 영향 버튼도 없다", () => {
+    renderDetail({ ...DETAIL, status: "철회" }, []);
+    expect(
+      screen.queryByRole("button", { name: "내 영향·대응 방안 보기" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("개정 이유·시행 규칙·위임 조항 안내", async () => {
     renderDetail();
 

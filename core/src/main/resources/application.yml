@@ -32,6 +32,8 @@ lia:
     frontend-url: ${FRONTEND_URL:http://localhost:3000}   # 로그인 성공·실패 후 리다이렉트할 웹 UI(#14) 주소
   privacy:
     policy-version: ${PRIVACY_POLICY_VERSION:draft-2026-09}   # 동의 시 기록할 처리방침 버전(D61). 실제 처리방침 게시 시 교체
+  personalization:
+    daily-limit: ${LIA_PERSONALIZATION_DAILY_LIMIT:20}   # 사용자별 하루 Layer B(내 영향·대응 방안) 생성 한도(D69)
 
 spring:
   application:
@@ -52,6 +54,10 @@ spring:
         options:
           model: claude-opus-5-5
           max-tokens: 16000           # thinking 토큰 포함 — 구조화 JSON 이 잘리지 않게(D68)
+    chat:
+      observations:
+        log-prompt: false           # 프롬프트(프로필·질문 포함)를 로그·트레이스에 남기지 않는다(D41·D69) — 기본값을 명시해 고정
+        log-completion: false
     openai:                         # Embedder (D32: 외부 임베딩 API, dim 1536)
       api-key: ${OPENAI_API_KEY:}
       embedding:

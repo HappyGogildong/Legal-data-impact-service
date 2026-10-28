@@ -59,8 +59,9 @@ public class SecurityConfig {
 
         // 3) CSRF — 세션-쿠키 인증이라 켠다. spa(): XSRF-TOKEN 쿠키(JS 읽기 가능) + 원문 헤더 토큰 허용.
         //    기본 Xor 핸들러는 마스킹 토큰을 요구해 SPA 가 쿠키값을 그대로 보내면 403.
-        // ponytail: analyses 예외는 "세션 인증 안 씀" 전제의 임시 조치. 슬라이스 ③에서 이 엔드포인트가
-        //           세션 userId 를 읽게 되면 예외를 제거하거나 익명/인증 경로를 분리한다.
+        // analyses 예외(D69): 익명 첫 방문은 XSRF 쿠키가 없어 예외를 유지한다. 이 엔드포인트는 이제 세션 userId 로
+        //           개인화·한도 차감을 하지만, 세션 쿠키가 SameSite=Lax(application.yml)라 다른 사이트의 POST 에는
+        //           세션이 실리지 않는다 — 남의 한도·개인화를 유발할 수 없다.
         //           조회 신호(D66)는 세션을 읽지 않는 횟수 증가 — 익명이 S05를 처음 열면 XSRF 쿠키도 없다. 경로·메서드 한정.
         .csrf(csrf -> csrf
             .spa()
