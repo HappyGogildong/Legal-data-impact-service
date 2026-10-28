@@ -29,7 +29,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 | 클래스 | 역할 |
 |---|---|
 | `QueryDispatcher` | 오케스트레이터 — target 해석 → 차원 라우팅 → `DispatchResult` 조립. 흐름·게이트만. |
-| `DimensionHandler` (포트) | 한 차원의 실행 계약 — `type() / needsProfile() / needsRag() / needsBaseline() / handle(ctx)`. 실행 본체는 AnalysisEngine 위임. |
+| `DimensionHandler` (포트) | **Layer A 전용** 한 차원의 실행 계약 — `type() / needsRag() / needsBaseline() / handle(ctx)`. 실행 본체는 AnalysisEngine 위임. Layer B(IMPACT·ACTION)는 이 포트가 아니라 `PersonalizedHandler`(D69). |
 | `DimensionHandlerRegistry` | `QueryType → DimensionHandler` 매핑. `@Component` 자동수집, 중복 타입 fail-fast, 구성 후 불변. |
 | `SummaryHandler` | SUMMARY(Layer A) — 정본을 SUMMARY로 위임. 비교 아님 → baseline 미사용. 저장된 쉬운 요약(D67, `LawSummaries`)이 유효하면 그것으로 답하고 추론기를 부르지 않는다 — 없거나 낡았으면 실시간. |
 | `DiffHandler` | DIFF(Layer A) — 정본+기준선을 DIFF로 위임. baseline null이면 제정(D42). |
@@ -92,7 +92,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 ## 검증
 
-- **Dispatcher 단위**(FakeHandler·Fake `LawSource`): 단일/복수 차원 filled · 미구현 차원 unmet · `needsProfile`+`profileBound=false` unmet · 정본 미적재 전타입 unmet · Discovery unmet.
+- **Dispatcher 단위**(FakeHandler·Fake `LawSource`): 단일/복수 차원 filled · 미구현 차원 unmet · 정본 미적재 전타입 unmet · Discovery unmet. Layer B(D69): 핸들러 1회 호출·쿼터 1회 소비로 두 차원 filled · `Blocked` 사유면 쿼터·핸들러 무접촉 · `DAILY_LIMIT` · 개정본인데 기준선 없음 → `BASELINE_NOT_LOADED` · 근거 부족 → `INSUFFICIENT_GROUNDING`.
 - **핸들러 단위**: Summary/Diff가 올바른 `AnalyzeRequest(dimension, law, baseline)` 구성해 위임(CapturingEngine).
 - **레지스트리 단위**: 타입 매핑 · 중복타입 실패.
 
