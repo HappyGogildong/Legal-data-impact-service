@@ -155,16 +155,20 @@ describe("AskScreen", () => {
     expect(router.push).toHaveBeenCalledWith("/");
   });
 
-  it("법령 없는 결과 → '질문 고치기'도 질문을 초안으로 두고 홈으로", async () => {
+  it("법령 이름 없는 질문 → 발견 결과(S04)로 가르고, 후보가 없으면 '질문 고치기'가 초안으로 홈", async () => {
     setAsk({ query: "전세 계약 어떻게 돼?" });
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      json({ ...resolvedResponse, law: undefined }),
+      json({
+        resolution: "RESOLVED",
+        discovery: { candidates: [], profileApplied: false },
+      }),
     );
     renderScreen();
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "질문 고치기" }),
-    );
+    expect(
+      await screen.findByText("관련 시행예정 법령을 찾지 못했어요"),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "질문 고치기" }));
 
     expect(sessionStorage.getItem("lia.draft")).toBe("전세 계약 어떻게 돼?");
     expect(router.push).toHaveBeenCalledWith("/");

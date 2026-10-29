@@ -6,7 +6,11 @@ import type { LawRefInput } from "@/lib/api/types";
  * 분석 API 로는 POST 본문으로 보낸다(lib/api/analysis.ts).
  * 저장소를 못 쓰는 환경(사생활 보호 모드 등)이면 메모리로 대신한다.
  */
-export type AskRequest = { query: string; lawRef?: LawRefInput };
+export type AskRequest = {
+  query: string;
+  lawRef?: LawRefInput;
+  profileSearch?: boolean;
+};
 
 const ASK_KEY = "lia.ask";
 const DRAFT_KEY = "lia.draft";
@@ -68,12 +72,13 @@ export function useAsk(): AskRequest | null {
   return useSyncExternalStore(subscribe, readAsk, () => null);
 }
 
-/** 분석 캐시 키 — 같은 질문·같은 법령이면 같은 결과(답변 캐시 D51과 같은 단위). */
+/** 분석 캐시 키 — 같은 질문·같은 법령·같은 프로필 기준 찾기 여부면 같은 결과(답변 캐시 D51과 같은 단위). */
 export function askKey(request: AskRequest): string {
   return JSON.stringify([
     request.query,
     request.lawRef?.lawId ?? null,
     request.lawRef?.effectiveDate ?? null,
+    request.profileSearch ?? false,
   ]);
 }
 

@@ -38,6 +38,15 @@ describe("ask-store", () => {
     );
   });
 
+  it("askKey 는 프로필 기준 찾기 여부를 구분한다", () => {
+    expect(askKey({ query: "전세", profileSearch: true })).not.toBe(
+      askKey({ query: "전세" }),
+    );
+    expect(askKey({ query: "전세", profileSearch: false })).toBe(
+      askKey({ query: "전세" }),
+    );
+  });
+
   it("초안 — 질문 고치기로 넘긴 문장을 질문창이 받는다", () => {
     const { result } = renderHook(() => useDraft());
     act(() => setDraft("자본시장법"));

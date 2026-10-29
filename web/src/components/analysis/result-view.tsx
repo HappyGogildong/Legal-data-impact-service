@@ -7,7 +7,6 @@ import { presentDimensions, sourceIndex } from "@/lib/analysis-view";
 import type { AskRequest } from "@/lib/ask-store";
 import { personalizedQuery } from "@/components/laws/law-actions";
 import { DimensionCard } from "./dimension-card";
-import { DiscoveryNotice } from "./discovery-notice";
 import { FollowUpBar } from "./follow-up-bar";
 import { LawHeaderView } from "./law-header-view";
 import { LawInfoPanel } from "./law-info-panel";
@@ -34,7 +33,7 @@ export function ResultView({
   const isDesktop = useIsDesktop();
   const [selected, setSelected] = useState<string | null>(null);
   const law = response.law;
-  if (!law) return <DiscoveryNotice query={ask.query} />;
+  if (!law) return null; // 발견 응답은 AskScreen 이 S04 로 보낸다 — 여기 오는 응답엔 law 가 있다
 
   const { lawId, effectiveDate, title } = law;
   const sources = sourceIndex(response);
