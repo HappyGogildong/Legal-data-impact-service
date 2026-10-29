@@ -31,7 +31,7 @@ class RAGIndexerTest {
             this.seenEfYd = efYd;
             captured.addAll(chunks);
         }
-        @Override public List<Chunk> search(String query, int topK) { return List.of(); }
+        @Override public List<Chunk> search(String query, int topK, double minSimilarity) { return List.of(); }
     }
 
     private final CapturingChunkStore store = new CapturingChunkStore();

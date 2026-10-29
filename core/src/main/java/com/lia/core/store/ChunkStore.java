@@ -24,6 +24,14 @@ public interface ChunkStore {
      */
     void replaceVersion(String lawId, String efYd, List<Chunk> chunks);
 
-    /** 질의 유사도 top-k. 질의 임베딩은 구현체 안에서 수행. 이번 증분은 라운드트립 검증용. */
-    List<Chunk> search(String query, int topK);
+    /** 질의 유사도 top-k — 하한 없음. 질의 임베딩은 구현체 안에서 수행. */
+    default List<Chunk> search(String query, int topK) {
+        return search(query, topK, 0.0);
+    }
+
+    /**
+     * 질의 유사도 top-k 중 코사인 유사도가 {@code minSimilarity} 이상인 것만, 유사도 내림차순.
+     * {@code 0.0} 이면 하한 없음. 법령 발견(D70)이 관련 없는 후보를 거르는 데 쓴다.
+     */
+    List<Chunk> search(String query, int topK, double minSimilarity);
 }

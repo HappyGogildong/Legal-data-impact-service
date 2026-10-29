@@ -139,6 +139,20 @@ class PgVectorChunkStoreIntegrationTest {
         assertEquals(0, rowsByLaw(LAW, EF));
     }
 
+    @Test
+    @DisplayName("유사도 하한 아래 청크는 버린다 — 같은 텍스트만 남는다")
+    void 유사도_하한() {
+        store.replaceVersion(LAW, EF, List.of(
+                chunk(LAW, EF, "LAW:001809@2026-08-04:art:18", "통합심의 절차를 통합하여 검토한다"),
+                chunk(LAW, EF, "LAW:001809@2026-08-04:art:104", "벌칙 2년 이하의 징역")));
+
+        List<Chunk> all = store.search("통합심의 절차를 통합하여 검토한다", 5, 0.0);
+        List<Chunk> strict = store.search("통합심의 절차를 통합하여 검토한다", 5, 0.999);
+
+        assertEquals(2, all.size(), "하한 0 이면 전부");
+        assertEquals(List.of("LAW:001809@2026-08-04:art:18"), strict.stream().map(Chunk::sourceId).toList());
+    }
+
     private Integer rowsBySource(String sourceId) {
         return jdbc.queryForObject("SELECT count(*) FROM vector_store WHERE metadata->>'source_id' = ?",
                 Integer.class, sourceId);

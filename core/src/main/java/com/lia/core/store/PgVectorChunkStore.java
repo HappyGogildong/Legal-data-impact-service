@@ -51,9 +51,9 @@ public class PgVectorChunkStore implements ChunkStore {
     }
 
     @Override
-    public List<Chunk> search(String query, int topK) {
+    public List<Chunk> search(String query, int topK, double minSimilarity) {
         List<Document> hits = vectorStore.similaritySearch(
-                SearchRequest.builder().query(query).topK(topK).build());
+                SearchRequest.builder().query(query).topK(topK).similarityThreshold(minSimilarity).build());
         return hits.stream().map(PgVectorChunkStore::toChunk).toList();
     }
 

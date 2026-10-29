@@ -334,7 +334,7 @@ class TaskHandlersIntegrationTest {
             }
 
             @Override
-            public List<Chunk> search(String query, int topK) {
+            public List<Chunk> search(String query, int topK, double minSimilarity) {
                 return List.of();
             }
         };
