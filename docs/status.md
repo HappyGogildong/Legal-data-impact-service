@@ -98,16 +98,16 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 자주 찾는 법령(하위 프로젝트 2/7, D66): 조회 1회 = S05 상세 방문(브라우저 조회 신호·탭당 1회) + 분석 해소 · `law_views_daily`(V8, 서울 날짜별 횟수만) · `GET /api/v1/laws/trending`(day·week·month, `previousRank`) · `POST …/views`(CSRF 예외) · 웹 홈 이번 주 5개·S06 탭 곧 시행·자주 찾는 | ✅ 단위·통합·웹 슬라이스·E2E(모의 API). 요청 빈도 제한·분야 필터는 후속 |
 | 쉬운 요약 선계산(D67, #38 일부): 배치 작업 `SUMMARIZE`(SYNC 가 바뀐 시행예정본에 등록, `summarize` 명령은 시행예정본 전체를 등록하고 유효한 요약은 건너뜀, 분석과 같은 엔진·인용 검증, 실패면 저장 안 함) · `law_summaries`(V9, revision·프롬프트 버전으로 유효성, 읽을 수 없는 행은 낡음) · 유료 보호(`run`은 `lia.batch.summary.enabled` 켜짐일 때만, 다른 수동 명령은 처리 안 함) · 분석 SUMMARY 가 저장본으로 답 · 상세 API `summary` · S05 쉬운 요약 기본·인용 칩 → 조문·개정 이유 원문 접힘 | ✅ 단위·통합·E2E(가짜 추론기·모의 API). 실제 일괄 생성(유료 Opus)은 사용자 승인 후. DIFF·LawFacts 선계산은 후속 |
 | Layer B — 내 영향·대응 방안 (D69) | ✅ 질문·버튼 요청 시 Opus 1회(근거 부족 시 재생성 ≤2회, 한도는 요청당 1), 하루 한도 20(`lia.personalization.daily-limit`, 서울 날짜), 미충족 사유 3종(`CONSENT_OUTDATED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`). 라이브 스모크(`layerB_실생성이_…`)는 옵트인(`LIA_ANALYZE_LIVE`, 유료) — 실행은 사용자 승인 후 |
-| 법령 발견(#19, D70): 법령명 없는 질문 → pending 색인 유사도 검색·법령 단위 묶기·시행예정 확인 → S04 후보(쉬운 요약 첫 문장·근거 칩), 프로필 기준 토글, 후보 선택 시 기존 분석 | ✅ 단위·통합·웹·E2E. 유사도 하한은 클라우드 전체 색인 뒤 조정 |
+| 법령 발견(#19, D70): 법령명 없는 질문 → pending 색인 유사도 검색·법령 단위 묶기·시행예정 확인 → S04 후보(쉬운 요약 첫 문장·근거 칩), 프로필 기준 토글, 후보 선택 시 기존 분석(같은 질문 + lawRef 재요청은 LOOKUP 을 빼고 요약으로) · 라이브 스모크(옵트인 `LIA_DISCOVERY_LIVE`, 유료 임베딩) | ✅ 단위(`LawDiscoveryTest`·플래너·디스패처·유스케이스)·API 슬라이스·웹 단위·E2E(모의 API). 유사도 하한 제외는 Testcontainers(`PgVectorChunkStoreIntegrationTest`). 하한 값은 클라우드 전체 색인 뒤 조정 |
 | 웹 프론트엔드 (#14) — 화면 계획 [[screen-plan]](S01~S16: 질문 중심 + 법령 상세 허브, 모바일 우선, 법령 맥락 후속 질문, 대응 방안 상황 확인, 4단계 구현) · 기술 스택 [[frontend-stack]](D64: Next.js on Vercel + rewrites, Tailwind·shadcn/ui, OpenAPI 타입 생성) · 시각 디자인 [[visual-design]](방향 A 신뢰·공공형, 화면 시안 S01~S16) | 🟡 화면 계획·스택·시안 확정. 1단계(익명·로그인 흐름) 구현됨. 2단계는 하위 프로젝트로 — ①법령 조회 ✅ → ②자주 찾는 법령 ✅ → ②′쉬운 요약 선계산 ✅ → ③Layer B ✅ → ④법령 발견 ✅ → ⑤상황 확인 → ⑥이력·북마크 → ⑦구독·알림함 |
 
-`./gradlew test --rerun-tasks` 기준 `tests=489 skipped=8 failures=0 errors=0`(2026-10-29) — 통합(실 Postgres/pgvector, Testcontainers) 포함, 전부 통과. 웹 `pnpm vitest run` 161 · Playwright E2E 22(모의 API). skip 8건은 실 임베딩·번역·해석(Layer A·Layer B)·법령 발견 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
+`./gradlew test --rerun-tasks` 기준 `tests=494 skipped=8 failures=0 errors=0`(2026-10-29) — 통합(실 Postgres/pgvector, Testcontainers) 포함, 전부 통과. 웹 `pnpm vitest run` 161 · Playwright E2E 24(12개 × 모바일·데스크톱, 모의 API). skip 8건은 실 임베딩·번역·해석(Layer A·Layer B)·법령 발견 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
 
 > ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 
 ### 구현 순서 (큐)
 
-… Query Planner ✅ · Analysis Engine Layer A ✅ · QueryDispatcher 차원핸들러 ✅ · 최소 수직 슬라이스(REST) ✅(#13) · **배포 자립 스택(compose+CI) ✅**(D59) → **인증·UserProfile(#12)** ①인증 ✅(D60) · ②프로필·동의 ✅(D61) → **③Layer B(프로필→프롬프트)** ✅ · **LawDiscovery(#19)** ✅ · **LookupHandler** 다음 · **웹 UI**(#14) · 클라우드 인프라(D63) 설계 ✅ → 구현·구축.
+… Query Planner ✅ · Analysis Engine Layer A ✅ · QueryDispatcher 차원핸들러 ✅ · 최소 수직 슬라이스(REST) ✅(#13) · **배포 자립 스택(compose+CI) ✅**(D59) → **인증·UserProfile(#12)** ①인증 ✅(D60) · ②프로필·동의 ✅(D61) → **③Layer B(프로필→프롬프트)** ✅ · **LawDiscovery(#19)** ✅ · **웹 UI**(#14) · 클라우드 인프라(D63) 설계 ✅ → 구현·구축.
 
 ---
 

@@ -39,8 +39,8 @@ related: ["components/component-specs.md", "components/dispatch/QueryDispatcher.
 ## 동작 (5단계)
 
 1. **검색어 구성** — 기본은 질문 원문. `profile` 이 있으면 `질문 + "\n" + UserProfile.labelLines()`. 자유 입력·userId 는 절대 넣지 않는다.
-2. **유사도 검색** — `ChunkStore.search(검색어, chunk-fetch, namespace=pending)`. 검색어는 [[ChunkStore]] 가 내부 임베딩한다(공유 임베딩 모델). 유사도가 `min-similarity` 미만인 청크는 버린다. 메타(`lawId`·`efYd`)가 빠진 청크는 건너뛴다.
-3. **법령 단위 묶기** — 청크를 `(lawId, efYd)` 로 묶어 법령당 가장 유사한 청크 1개만 남기고(그 청크가 근거 칩이 된다), 유사도 내림차순으로 정렬한다.
+2. **유사도 검색** — `ChunkStore.search(검색어, chunk-fetch, min-similarity)`. 코드에는 namespace 필터가 없다 — RAGIndexer 가 시행예정(pending) 버전만 색인에 적재하므로 결과적으로 시행예정 색인만 검색된다. 검색어는 [[ChunkStore]] 가 내부 임베딩한다(공유 임베딩 모델). 유사도가 `min-similarity` 미만인 청크는 저장소가 버린다. 메타(`lawId`·`efYd`)가 빠진 청크는 건너뛴다.
+3. **법령 단위 묶기** — 청크를 `lawId` 로 묶어 법령당 가장 유사한 청크 1개만 남기고(그 청크가 근거 칩이 된다), 유사도 내림차순으로 정렬한다. 같은 법령의 다른 시행일본은 하나로 합쳐진다(TRANSITION 이 비시행예정 색인을 지우므로 실무상 드물다).
 4. **정본 확인(fail-closed)** — 각 법령의 정본을 `LawSource.find(lawId, efYd)` 로 조회해 **있고 상태가 `candidate-statuses` 인 것만** 통과시킨다. 정본이 없거나(색인이 낡았을 때) 이미 시행됐거나 철회된 버전은 후보에서 뺀다.
 5. **카드 조립** — 앞에서부터 `max-candidates` 건:
    - **`summary`** — 쉬운 요약 저장본(`LawSummaries.findCurrent`)의 `summary` **첫 문장**(`.`·`?` 뒤가 공백이거나 끝인 곳까지, 최대 120자, 넘으면 120자 + `…`), `summaryReady=true`. 저장본이 없으면 개정 이유(`amendReason`)의 공백 정규화 후 앞 `snippet-chars` 자(넘으면 + `…`), `summaryReady=false`(웹이 "요약 준비 중" 표기). 개정 이유도 없으면 `summary=null`.
@@ -77,9 +77,10 @@ related: ["components/component-specs.md", "components/dispatch/QueryDispatcher.
 
 ## 검증
 
-- **단위**(`LawDiscoveryTest`, Fake `ChunkStore`·`LawSource`·`LawSummaries`): 검색어(질문만 / 프로필 라벨 포함·userId 없음) · 하한 미만 청크 제외 · 법령 단위 묶기(가장 유사한 청크가 근거) · 정본 없음·상태 불허 탈락(fail-closed) · `max-candidates` 상한 · 요약 첫 문장 규칙(마침표 뒤 공백·120자 절단) · 저장본 없음 → 개정 이유 앞부분 + `summaryReady=false` · 둘 다 없음 → `summary=null` · 근거 라벨(조문 제목 유무·요약 청크 → `개정 이유`·`#k` 접미사 제거) · 메타 누락 청크 건너뜀 · 결과 없음 → 빈 목록 · 임베딩 예외 전파.
-- **통합**(Testcontainers pgvector, `skipped="0"` 확인): 실 `ChunkStore` 색인에서 `pending` 청크만 검색·후보 조립 관통.
-- **라이브 스모크**(만들기만, 옵트인 환경변수 — 유료 임베딩): 실제 임베딩으로 질문 → 후보 확인. 기본 test 에서 스킵.
+- **단위**(`LawDiscoveryTest` 12, Fake `ChunkStore`·`LawSource`·`LawSummaries`): 검색어(질문만 / 프로필 라벨 포함·userId 없음) · 법령 단위 묶기(가장 유사한 청크가 근거) · 정본 없음·상태 불허 탈락(fail-closed) · `max-candidates` 상한 · 요약 첫 문장 규칙(마침표 뒤 공백·120자 절단) · 저장본 없음 → 개정 이유 앞부분 + `summaryReady=false` · 둘 다 없음 → `summary=null` · 근거 라벨(조문 제목 유무·요약 청크 → `개정 이유`·`#k` 접미사 제거) · 메타 누락 청크 건너뜀 · 검색 예외 전파(삼키지 않음).
+- **유사도 하한**: `LawDiscovery` 는 검색 호출에 하한을 넘기고, 하한 미만 제외는 실 `ChunkStore` 의 `PgVectorChunkStoreIntegrationTest`(`유사도_하한`, Testcontainers pgvector, `skipped="0"` 확인)가 검증한다. 발견 파이프라인 전체를 관통하는 통합 테스트는 없다.
+- **관련 계층**: 디스패처(`QueryDispatcherTest`)·플래너·유스케이스(`QueryPlannerTest`·`AnalyzeUseCaseTest` — 발견 후보 재요청에서 LOOKUP 제거 포함)·API(`AnalysisControllerTest`·`AnalysisResponseMapperTest`)·웹 단위·Playwright E2E(`discovery-flow`, 모의 API).
+- **라이브 스모크**(만들기만, 옵트인 환경변수 `LIA_DISCOVERY_LIVE` — 유료 임베딩): 실제 임베딩으로 질문 → 후보 확인. 기본 test 에서 스킵.
 
 ## 의존 / 관련
 

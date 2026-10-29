@@ -149,7 +149,7 @@ BASE  /api/v1
 }
 ```
 
-**법령 발견 응답**(D70) — 법령명 없는 질문(Discovery)이면 분석 없이 **후보만** 돌려준다. `resolution` 은 `RESOLVED`, `law`·`answer`·`unmet`·`sources` 는 없고 `discovery` 에만 담긴다:
+**법령 발견 응답**(D70) — 법령명 없는 질문(Discovery)이면 분석 없이 **후보만** 돌려준다. `resolution` 은 `RESOLVED`, `law`·`answer`·`unmet`·`sources`·`disclaimer` 는 없고 `discovery` 에만 담긴다(분석이 아니라 후보 목록이라 면책 문구도 싣지 않는다):
 ```jsonc
 {
   "resolution": "RESOLVED",
@@ -162,8 +162,7 @@ BASE  /api/v1
     ],
     "profileApplied": false,                   // 프로필 라벨이 검색어에 실제로 붙었는지
     "profileBlocked": { "reason": "PROFILE_REQUIRED", "message": "프로필 필요" }  // 선택 — 토글이 켜졌는데 프로필을 못 썼을 때만(PROFILE_REQUIRED·CONSENT_OUTDATED)
-  },
-  "disclaimer": "법률 자문이 아닌 참고용 정보입니다."
+  }
 }
 ```
 - 고르면 클라이언트가 `{ query: <원래 질문>, lawRef }` 로 다시 요청한다 — 분석 차원은 그 재요청에서 같은 질문으로 정해진다.
@@ -212,7 +211,7 @@ GET /api/v1/laws?from=2026-10-25&to=2026-11-24&limit=20&cursor=MjAyNi0xMS0wMXwwM
 - 정렬 `effectiveDate`, `lawId` 오름차순. **키셋 커서** — 마지막 행의 `(effectiveDate, lawId)`를 불투명 문자열로 준다. 클라이언트는 해석하지 않고 그대로 돌려보낸다.
 - `limit` 기본 20, 1~50.
 - `400`: 날짜 형식 오류(`YYYY-MM-DD` 아님·달력에 없음), `from > to`, 잘못된 커서, `limit` 범위 밖. 본문 `{ "error": "bad_request", "message": "…" }`.
-- 분야 필터는 아직 없다(분류 데이터 없음 — 법령 발견 #19와 함께 정한다).
+- 분야 필터는 아직 없다(분류 데이터 없음). 법령 발견 #19(D70)도 분야 필터 없이 들어갔고, 분야 필터는 분류 데이터가 생길 때 정한다.
 
 ### 3.2 `GET /laws/{lawId}` — 시행예정본 목록 (D43)
 

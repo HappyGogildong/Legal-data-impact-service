@@ -27,7 +27,7 @@ Controller·Mapper·DTO    AnalyzeUseCase             QueryPlanner · QueryDispa
 |---|---|
 | `AnalysisController` | `@RestController` — **HTTP 경계만**: `POST /api/v1/analyses` 검증(빈 query→400) → `AnalyzeUseCase` 위임 → `AnalysisResponseMapper`로 응답 매핑 후 200. |
 | `AnalysisResponseMapper` | **표현 매핑** — `AnalysisOutcome` → `AnalysisApiResponse`. 법령 헤더(`law`)는 `LawSource`에서, 다른 시행일(`alternatives`)은 유스케이스 결과에서, 근거(`sources`)는 `CitedSourceResolver`로. `answer`·`unmet` 키는 차원 소문자, 순서는 `QueryType` 선언 순. `unmet` 값은 디스패처의 `Unmet`(사유 코드·설명) 그대로. |
-| `AnalysisApiResponse` | **typed 응답 DTO**(record). 값이 없는 최상위 필드는 생략(`@JsonInclude(NON_NULL)`). 중첩 `LawHeader`·`LawBrief`·`CitedSource`. |
+| `AnalysisApiResponse` | **typed 응답 DTO**(record). 값이 없는 최상위 필드는 생략(`@JsonInclude(NON_NULL)`). 중첩 `LawHeader`·`LawBrief`·`CitedSource`·`Discovery`(`candidates`·`profileApplied`·`profileBlocked`, 값 없으면 생략, D70). |
 | `CitedSourceResolver` | 인용키 → 근거 라벨·원문. 형식 `LAW:{lawId}[@{efYd}][:art:{no} \| :addenda:{no} \| :amend][#{n}]` — 시행일이 없으면 시행중 기준선(`findBaseline`). 조문은 "법령명 제N조(제목)"·본문 + **찾은 법령 버전이 시행예정일 때만** 변경 유형(`changeType`)과, 개정·삭제·이동 조문이면 **현행 원문**(`previousText` — 기준선의 같은 번호, 이동은 옛 번호) — 시행중·과거·철회 버전은 인용키에 날짜가 있어도 둘 다 null, 부칙은 "법령명 부칙 {no}", `:amend`는 "개정문", 접미사가 없으면 "개정 이유". 형식이 다르거나 찾지 못하면 `label=sourceId`, `text=null`. 같은 법령 조회는 요청 안에서 한 번만. |
 | `AnalyzeApiRequest` / `LawRefDto` | 요청 `{query, lawRef?, scope?, profileSearch?}`(`profileSearch` 기본 false, D70). `LawRefDto`→`plan.LawRef` 변환(`explicitRef()`). |
 | `ApiExceptionHandler` | `@RestControllerAdvice` — 검증 실패→400([[service-api-spec]] §4.1: **시스템 오류만 4xx**). |
@@ -40,7 +40,7 @@ Controller·Mapper·DTO    AnalyzeUseCase             QueryPlanner · QueryDispa
 - 세션 쿠키가 있으면 컨트롤러가 CurrentUser.userId 로 유스케이스에 넘긴다(익명은 empty). 응답 unmet 사유에 CONSENT_OUTDATED·DAILY_LIMIT·INSUFFICIENT_GROUNDING 추가(D69).
 - **응답은 해소 4상태·분석 모두 HTTP 200** (4xx/5xx는 시스템 오류 전용, §4.1). 빈 `query` → **400**.
 - **Analyzed** → `{ resolution:"RESOLVED", law:{ref,lawId,title,effectiveDate,lawType,ministry}, alternatives:[LawBrief], answer:{ <차원소문자>: ImpactResult }, unmet:{ <차원소문자>: {reason, message} }, sources:[CitedSource], disclaimer }`. `reason` ∈ `LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`·`PROFILE_REQUIRED`·`NOT_IMPLEMENTED`·`CONSENT_OUTDATED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`.
-- **Discovered**(D70, Discovery 질문) → `{ resolution:"RESOLVED", discovery:{ candidates:[{lawId,title,effectiveDate,ministry,summary,summaryReady,matched:{sourceId,label}}], profileApplied, profileBlocked? }, disclaimer }` — `law`·`answer`·`unmet`·`sources` 없음. `profileBlocked` 는 `Unmet`(`reason`·`message`, `PROFILE_REQUIRED`·`CONSENT_OUTDATED`)이며 토글이 켜졌는데 프로필을 못 쓴 경우에만. LOOKUP 결과는 `unmet` 이 아니라 `discovery` 에만 담긴다.
+- **Discovered**(D70, Discovery 질문) → `{ resolution:"RESOLVED", discovery:{ candidates:[{lawId,title,effectiveDate,ministry,summary,summaryReady,matched:{sourceId,label}}], profileApplied, profileBlocked? } }` — `law`·`answer`·`unmet`·`sources`·`disclaimer` 없음. `profileBlocked` 는 `Unmet`(`reason`·`message`, `PROFILE_REQUIRED`·`CONSENT_OUTDATED`)이며 토글이 켜졌는데 프로필을 못 쓴 경우에만. LOOKUP 결과는 `unmet` 이 아니라 `discovery` 에만 담긴다.
 - **Unresolved** → `{ resolution:<NOT_FOUND_YET|AMBIGUOUS|UNVERIFIED>, message, candidates? }`.
 - **OpenAPI** — springdoc이 `/v3/api-docs`(경로 `/api/**`만)를 만든다. `OpenApiSnapshotTest`가 레포 `api/openapi.json`과 비교해 계약 변경을 드러낸다. 운영은 `SPRINGDOC_API_DOCS_ENABLED=false`.
 

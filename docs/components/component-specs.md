@@ -455,14 +455,14 @@ Layer A(SUMMARY·DIFF) 프롬프트에는 질문이 들어가지 않는다 — �
 
 ### #8 QueryDispatcher / Orchestrator (Spring)
 - 역할: 검증된 `AnalysisQuery`를 **QueryType별 핸들러로 라우팅**·조립. 상세 [[QueryDispatcher]].
-- 입력: `AnalysisQuery`(해소·발견 완료) + 질문 원문 + `Personalization`(개인화 판정, [[ProfileUseCase|PersonalizationGate]]). 출력: `DispatchResult{ primaryType, filled, unmet }`.
+- 입력: `AnalysisQuery`(해소·발견 완료) + 질문 원문 + `profileSearch`(발견 시 프로필 라벨을 검색어에 붙일지, D70) + `Personalization`(개인화 판정, [[ProfileUseCase|PersonalizationGate]]). 출력: `DispatchResult{ primaryType, filled, unmet, discovery? }`.
 - 동작:
   1. `Target.Reference`면 정본·기준선을 1회 조회(미적재면 전 차원 `unmet`).
   2. Layer A(SUMMARY·DIFF) — 차원별 핸들러. SUMMARY 는 유효한 쉬운 요약 저장본이 있으면 그것(D67), 없으면 Analysis Engine(#11) 실시간. DIFF 는 실시간.
   3. Layer B(IMPACT·ACTION) — `PersonalizedHandler` 를 **한 번**(Opus 1회, 결과를 차원별 분할). 게이트 순서: 개인화 불가 사유 → 기준선 미적재 → 하루 한도(D69).
   4. 근거 부족(`InsufficientGroundingException`)은 그 차원만 `unmet(INSUFFICIENT_GROUNDING)` — 부분성공.
   5. `Target.Discovery` → `LawDiscovery`(후보만, D70) — 분석 팬아웃 없음, 결과는 `DispatchResult.discovery`. 상세 [[LawDiscovery]]. 답변 캐시(§3.4)는 후속.
-- 의존: #4(`LawSource`·`LawSummaries`), #11, `DimensionHandler` 레지스트리, `PersonalizationQuota`.
+- 의존: #4(`LawSource`·`LawSummaries`), #11, `DimensionHandler` 레지스트리, `PersonalizationQuota`, [[LawDiscovery]](Discovery 검색, D70).
 
 ### #9 DimensionHandler Registry (Spring)
 - 역할: `DimensionHandler` 구현체 자동 발견(`@Component`) → `QueryType → Handler`.
