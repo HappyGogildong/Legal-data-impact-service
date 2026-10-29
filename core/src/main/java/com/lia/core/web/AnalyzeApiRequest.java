@@ -24,6 +24,6 @@ public record AnalyzeApiRequest(String query, LawRefDto lawRef, java.util.List<S
     /** 명시적 참조가 있으면 도메인 타입으로, 없으면 null(자연어에서 해소). */
     public LawRef explicitRef() { return lawRef == null ? null : lawRef.toDomain(); }
 
-    /** 없으면 끔. */
+    /** 프로필 기준 발견 여부 — null·false 면 끔(D70). */
     public boolean wantsProfileSearch() { return Boolean.TRUE.equals(profileSearch); }
 }

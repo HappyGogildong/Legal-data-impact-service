@@ -55,7 +55,8 @@ public record AnalysisApiResponse(
         return new AnalysisApiResponse("RESOLVED", null, null, null, null, null, null, null, null, discovery);
     }
 
-    /** 법령 발견 결과 — 후보 카드, 프로필 라벨을 붙였는지, 토글을 켰지만 프로필을 못 쓴 사유. */
+    /** 법령 발견 결과 — 후보 카드, 프로필 라벨을 붙였는지, 토글을 켰지만 프로필을 못 쓴 사유(없으면 키 생략). */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Discovery(List<DiscoveredLaw> candidates, boolean profileApplied, Unmet profileBlocked) {}
 
     /** 대상 법령 — 정본 미적재면 title·lawType·ministry 는 null. {@code ref} = "LAW:{lawId}@{efYd}". */

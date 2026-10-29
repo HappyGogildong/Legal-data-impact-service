@@ -154,4 +154,21 @@ class AnalysisResponseMapperTest {
         assertFalse(json.has("answer"));
         assertFalse(json.has("law"));
     }
+
+    @Test
+    @DisplayName("JSON — 프로필 차단 사유가 없으면 discovery.profileBlocked 키를 생략한다")
+    void 발견_직렬화_차단없음() {
+        AnalysisQuery query = new AnalysisQuery(QueryType.LOOKUP, Set.of(QueryType.LOOKUP),
+                new Target.Discovery(new DiscoveryCriteria(List.of(), List.of(), List.of(), false)),
+                "찾기", ArticleScope.CHANGED_ONLY, false, null);
+        DispatchResult result = new DispatchResult(QueryType.LOOKUP, Map.of(), Map.of(),
+                new DispatchResult.Discovery(new DiscoveryResult(List.of(), true), null));
+
+        tools.jackson.databind.JsonNode json = JsonMapper.builder().build().readTree(
+                JsonMapper.builder().build().writeValueAsString(
+                        mapper(true).toBody(new AnalysisOutcome.Analyzed(query, result))));
+
+        assertTrue(json.at("/discovery/profileApplied").asBoolean());
+        assertFalse(json.get("discovery").has("profileBlocked"), json.toString());
+    }
 }
