@@ -40,3 +40,8 @@ export type LawSummary = NonNullable<LawDetail["summary"]>;
 
 export type Discovery = NonNullable<AnalysisResponse["discovery"]>;
 export type DiscoveredLaw = NonNullable<Discovery["candidates"]>[number];
+
+export type Situation = NonNullable<AnalysisResponse["situation"]>;
+export type SituationQuestion = NonNullable<Situation["questions"]>[number];
+export type StepNote = NonNullable<Situation["stepNotes"]>[number];
+export type ActionRevision = components["schemas"]["ActionRevisionApiResponse"];

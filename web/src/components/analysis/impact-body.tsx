@@ -1,4 +1,4 @@
-import type { CitedSource, ImpactResult } from "@/lib/api/types";
+import type { CitedSource, ImpactResult, StepNote } from "@/lib/api/types";
 import { changedArticles, type Dimension } from "@/lib/analysis-view";
 import { ChangedArticles } from "./changed-articles";
 import { CiteChip } from "./cite-chip";
@@ -9,6 +9,8 @@ type ImpactBodyProps = {
   sources: Map<string, CitedSource>;
   selected: string | null;
   onCite: (sourceId: string) => void;
+  /** 대응 단계별 "내 상황 반영" 메모(D71) — index 는 actions 의 0부터 번호. */
+  stepNotes?: StepNote[];
 };
 
 /** 한 차원의 본문 — 요약 문단·주장(+인용 칩)·바뀐 조문·영향·할 일·불확실성. */
@@ -18,6 +20,7 @@ export function ImpactBody({
   sources,
   selected,
   onCite,
+  stepNotes,
 }: ImpactBodyProps) {
   const chips = (ids: string[] | undefined) =>
     (ids ?? []).map((id) => (
@@ -62,21 +65,38 @@ export function ImpactBody({
       )}
       {(result.actions ?? []).length > 0 && (
         <ol className="flex flex-col gap-2">
-          {(result.actions ?? []).map((action, i) => (
-            <li key={i} className="flex gap-2.5">
-              <span className="flex size-[22px] flex-none items-center justify-center rounded-full bg-navy text-xs font-bold text-white">
-                {i + 1}
-              </span>
-              <span>
-                {action.deadline && (
-                  <span className="block text-[11.5px] font-bold text-amend">
-                    {action.deadline}
-                  </span>
-                )}
-                {action.what} {chips(action.basis)}
-              </span>
-            </li>
-          ))}
+          {(result.actions ?? []).map((action, i) => {
+            const note = stepNotes?.find((n) => n.index === i)?.note;
+            return (
+              <li
+                key={i}
+                data-situational={note ? true : undefined}
+                className="flex gap-2.5 data-[situational=true]:rounded-md data-[situational=true]:border data-[situational=true]:border-navy data-[situational=true]:p-1.5"
+              >
+                <span className="flex size-[22px] flex-none items-center justify-center rounded-full bg-navy text-xs font-bold text-white">
+                  {i + 1}
+                </span>
+                <span>
+                  {note && (
+                    <span className="mr-1 rounded-sm bg-chip px-1.5 py-0.5 text-[11px] font-bold text-navy">
+                      내 상황 반영
+                    </span>
+                  )}
+                  {action.deadline && (
+                    <span className="block text-[11.5px] font-bold text-amend">
+                      {action.deadline}
+                    </span>
+                  )}
+                  {action.what} {chips(action.basis)}
+                  {note && (
+                    <span className="block text-[12px] text-muted-foreground">
+                      {note}
+                    </span>
+                  )}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       )}
       {(result.uncertainties ?? []).length > 0 && (

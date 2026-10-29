@@ -2,10 +2,17 @@
 
 import { useState } from "react";
 import { useIsDesktop } from "@/hooks/use-browser";
-import type { AnalysisResponse, LawBrief, Unmet } from "@/lib/api/types";
+import type {
+  ActionRevision,
+  AnalysisResponse,
+  LawBrief,
+  Unmet,
+} from "@/lib/api/types";
 import { presentDimensions, sourceIndex } from "@/lib/analysis-view";
 import type { AskRequest } from "@/lib/ask-store";
+import { readSituation, situationKey } from "@/lib/situation-store";
 import { personalizedQuery } from "@/components/laws/law-actions";
+import { ActionSituation } from "./action-situation";
 import { DimensionCard } from "./dimension-card";
 import { FollowUpBar } from "./follow-up-bar";
 import { LawHeaderView } from "./law-header-view";
@@ -33,11 +40,23 @@ export function ResultView({
   const isDesktop = useIsDesktop();
   const [selected, setSelected] = useState<string | null>(null);
   const law = response.law;
+  const lawKey =
+    law?.lawId && law.effectiveDate
+      ? situationKey(law.lawId, law.effectiveDate)
+      : null;
+  // 상황 확인으로 다시 만든 대응 방안(D71) — 같은 탭에서 이 법령 버전으로 확인한 적이 있으면 이어서 보여 준다
+  const [revision, setRevision] = useState<ActionRevision | undefined>(() =>
+    lawKey ? readSituation(lawKey).revision : undefined,
+  );
   if (!law) return null; // 발견 응답은 AskScreen 이 S04 로 보낸다 — 여기 오는 응답엔 law 가 있다
 
   const { lawId, effectiveDate, title } = law;
   const sources = sourceIndex(response);
+  for (const source of revision?.sources ?? []) {
+    if (source.sourceId) sources.set(source.sourceId, source);
+  }
   const selectedSource = selected ? (sources.get(selected) ?? null) : null;
+  const questions = response.situation?.questions ?? [];
   const pickAlternative = (alternative: LawBrief) => {
     if (alternative.lawId && alternative.effectiveDate) {
       onAsk({
@@ -64,7 +83,11 @@ export function ResultView({
             <DimensionCard
               key={dimension}
               dimension={dimension}
-              result={response.answer?.[dimension]}
+              result={
+                dimension === "action"
+                  ? (revision?.action ?? response.answer?.action)
+                  : response.answer?.[dimension]
+              }
               unmet={response.unmet?.[dimension]}
               sources={sources}
               selected={selected}
@@ -73,8 +96,27 @@ export function ResultView({
                 dimension === "summary" || (isDesktop && dimension === "diff")
               }
               renderUnmetAction={renderUnmetAction}
+              stepNotes={
+                dimension === "action"
+                  ? (revision?.stepNotes ?? response.situation?.stepNotes)
+                  : undefined
+              }
             />
           ))}
+          {response.answer?.action &&
+            questions.length > 0 &&
+            lawId &&
+            effectiveDate && (
+              <ActionSituation
+                law={{ lawId, effectiveDate, title }}
+                questions={questions}
+                sources={sources}
+                selected={selected}
+                onCite={setSelected}
+                onRevised={setRevision}
+                onAsk={onAsk}
+              />
+            )}
           {!hasPersonalized(response) && lawId && effectiveDate && title && (
             <button
               type="button"
@@ -124,8 +166,8 @@ export function ResultView({
 function hasPersonalized(response: AnalysisResponse): boolean {
   return Boolean(
     response.answer?.impact ||
-      response.answer?.action ||
-      response.unmet?.impact ||
-      response.unmet?.action,
+    response.answer?.action ||
+    response.unmet?.impact ||
+    response.unmet?.action,
   );
 }

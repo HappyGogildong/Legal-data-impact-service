@@ -5,7 +5,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import type { CitedSource, ImpactResult, Unmet } from "@/lib/api/types";
+import type {
+  CitedSource,
+  ImpactResult,
+  StepNote,
+  Unmet,
+} from "@/lib/api/types";
 import {
   DIMENSION_TITLES,
   cardStatus,
@@ -25,6 +30,8 @@ type DimensionCardProps = {
   defaultOpen: boolean;
   /** 미충족 안내 아래의 다음 행동(로그인 흐름의 로그인·프로필 버튼). */
   renderUnmetAction?: (unmet: Unmet | undefined) => React.ReactNode;
+  /** 대응 방안 카드의 단계별 "내 상황 반영" 메모(D71). */
+  stepNotes?: StepNote[];
 };
 
 /** 접이식 차원 카드 — 그림자 없이 1px 테두리(visual-design §3). */
@@ -38,6 +45,7 @@ export function DimensionCard(props: DimensionCardProps) {
     onCite,
     defaultOpen,
     renderUnmetAction,
+    stepNotes,
   } = props;
   const status = cardStatus(dimension, result, unmet, sources);
   return (
@@ -74,6 +82,7 @@ export function DimensionCard(props: DimensionCardProps) {
             sources={sources}
             selected={selected}
             onCite={onCite}
+            stepNotes={stepNotes}
           />
         ) : (
           <UnmetCard unmet={unmet}>{renderUnmetAction?.(unmet)}</UnmetCard>
