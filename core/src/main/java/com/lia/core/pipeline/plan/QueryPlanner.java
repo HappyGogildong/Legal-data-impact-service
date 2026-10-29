@@ -66,6 +66,9 @@ public class QueryPlanner {
         // 화면이 로그인·프로필 안내를 띄우게 한다(D69). profileBound 는 "채울 수 있는가"만 뜻한다.
         EnumSet<QueryType> types = draft.types().isEmpty()
                 ? EnumSet.noneOf(QueryType.class) : EnumSet.copyOf(draft.types());
+        // 발견 후보로 다시 묻는 재요청은 같은 질문 + lawRef 라 번역기가 LOOKUP 을 낸다. LOOKUP 은 Discovery 경로
+        // 전용(D70)이라 Reference 에서는 뺀다 — 남기면 디스패처가 NOT_IMPLEMENTED 만 만들어 빈 화면이 된다.
+        types.remove(QueryType.LOOKUP);
         if (types.isEmpty()) {
             // 분류 실패면 기본 차원으로 — 거부하지 않는다.
             types.add(QueryType.SUMMARY);

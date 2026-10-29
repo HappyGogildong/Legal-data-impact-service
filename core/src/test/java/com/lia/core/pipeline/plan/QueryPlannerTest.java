@@ -180,4 +180,49 @@ class QueryPlannerTest {
 
         assertTrue(planned.alternatives().isEmpty());
     }
+
+    // 발견 후보로 다시 묻기 = 같은 질문 + lawRef. 번역기는 질문만 보고 LOOKUP 을 내므로 Reference 경로에서 뺀다(D70).
+    private static final LawRef PINNED = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
+
+    @Test
+    void 명시적_참조면_LOOKUP_을_빼고_빈_집합은_요약으로() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.LOOKUP, Set.of(QueryType.LOOKUP), true, TargetKind.DISCOVERY,
+                null, null, List.of("전세"), List.of(), List.of(), "전세 관련 법 찾기");
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class,
+                plannerFor(draft).plan("전세 관련 바뀌는 법", PINNED, false)).query();
+
+        assertInstanceOf(Target.Reference.class, q.target());
+        assertEquals(Set.of(QueryType.SUMMARY), q.types());
+        assertEquals(QueryType.SUMMARY, q.primaryType());
+    }
+
+    @Test
+    void 명시적_참조에서_LOOKUP_과_IMPACT_는_프로필_없으면_요약을_더한다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.LOOKUP, Set.of(QueryType.LOOKUP, QueryType.IMPACT), true, TargetKind.DISCOVERY,
+                null, null, List.of("전세"), List.of(), List.of(), "전세 영향 법 찾기");
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class,
+                plannerFor(draft).plan("전세 불리한 법", PINNED, false)).query();
+
+        assertEquals(Set.of(QueryType.SUMMARY, QueryType.IMPACT), q.types());
+        assertFalse(q.types().contains(QueryType.LOOKUP));
+        assertTrue(q.types().contains(q.primaryType()));
+    }
+
+    @Test
+    void 명시적_참조에서_LOOKUP_과_IMPACT_는_프로필_있으면_IMPACT_만() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.LOOKUP, Set.of(QueryType.LOOKUP, QueryType.IMPACT), true, TargetKind.DISCOVERY,
+                null, null, List.of("전세"), List.of(), List.of(), "전세 영향 법 찾기");
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class,
+                plannerFor(draft).plan("전세 불리한 법", PINNED, true)).query();
+
+        assertEquals(Set.of(QueryType.IMPACT), q.types());
+        assertEquals(QueryType.IMPACT, q.primaryType());
+        assertTrue(q.profileBound());
+    }
 }

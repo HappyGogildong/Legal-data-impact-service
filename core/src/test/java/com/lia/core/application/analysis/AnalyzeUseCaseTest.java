@@ -251,4 +251,19 @@ class AnalyzeUseCaseTest {
         AnalysisOutcome.Analyzed analyzed = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
         assertTrue(analyzed.result().filled().containsKey(QueryType.SUMMARY));
     }
+
+    @Test
+    void 발견_후보로_다시_묻는_질의는_LOOKUP_없이_요약이_채워진다() {
+        // 재요청 = 원래 발견 질문 + lawRef — 번역기는 질문만 보고 LOOKUP 을 낸다(D70).
+        AnalysisQueryDraft discoveryDraft = new AnalysisQueryDraft(
+                QueryType.LOOKUP, Set.of(QueryType.LOOKUP), true, TargetKind.DISCOVERY,
+                null, null, List.of("전세"), List.of(), List.of(), "찾기");
+        LawRef pinned = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
+
+        AnalysisOutcome out = useCase(discoveryDraft, true).analyze("전세 관련 바뀌는 법", pinned, Optional.empty());
+
+        AnalysisOutcome.Analyzed analyzed = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
+        assertTrue(analyzed.result().filled().containsKey(QueryType.SUMMARY), "빈 S02 가 아니라 요약이 채워진다");
+        assertFalse(analyzed.result().unmet().containsKey(QueryType.LOOKUP), "LOOKUP 은 Reference 에서 unmet 도 아니다");
+    }
 }
