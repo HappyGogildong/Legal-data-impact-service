@@ -14,6 +14,8 @@ import type {
 import type { AskRequest } from "@/lib/ask-store";
 import { unmetCopy } from "@/lib/analysis-view";
 import {
+  clearSituation,
+  questionsIdentity,
   readSituation,
   situationKey,
   writeSituation,
@@ -45,21 +47,29 @@ export function ActionSituation({
   onAsk: (next: AskRequest) => void;
 }) {
   const key = situationKey(law.lawId, law.effectiveDate);
-  const [answers, setAnswers] = useState(() => readSituation(key).answers);
+  // 저장된 상태는 같은 질문 묶음으로 만든 것만 쓴다 — 다시 받아 질문이 바뀌었으면 옛 답은 버린다
+  const identity = questionsIdentity(questions);
+  const [answers, setAnswers] = useState(
+    () => readSituation(key, identity).answers,
+  );
   const [expired, setExpired] = useState(false);
   const lawRef = { lawId: law.lawId, effectiveDate: law.effectiveDate };
 
   const revise = useMutation({
+    // 지금 질문에 대한 답만, 비어 있지 않고 모름이 아닌 것만 보낸다
     mutationFn: () =>
       reviseAction(
         lawRef,
-        Object.entries(answers)
-          .filter(([, answer]) => answer !== UNKNOWN)
-          .map(([questionId, answer]) => ({ questionId, answer })),
+        questions.flatMap((q) => {
+          const value = q.id ? answers[q.id] : undefined;
+          return q.id && value?.trim() && value !== UNKNOWN
+            ? [{ questionId: q.id, answer: value }]
+            : [];
+        }),
       ),
     onSuccess: (revision) => {
       if (revision.unmet) return;
-      writeSituation(key, { answers, revision });
+      writeSituation(key, { answers, revision, identity });
       onRevised(revision);
     },
     onError: (error) => {
@@ -69,8 +79,13 @@ export function ActionSituation({
 
   const answer = (questionId: string, value: string) => {
     const next = { ...answers, [questionId]: value };
+    if (value === "") delete next[questionId]; // 지운 날짜는 답이 없는 것
     setAnswers(next);
-    writeSituation(key, { ...readSituation(key), answers: next });
+    writeSituation(key, {
+      ...readSituation(key, identity),
+      answers: next,
+      identity,
+    });
   };
 
   const unmet = revise.data?.unmet;
@@ -84,7 +99,7 @@ export function ActionSituation({
         <ul className="flex flex-wrap gap-1.5 text-[12px]">
           {confirmed.map((q) => (
             <li key={q.id} className="rounded-sm bg-chip px-1.5 py-0.5">
-              {q.text}: {answers[q.id!]} ✎
+              {q.text}: {answers[q.id!]}
             </li>
           ))}
         </ul>
@@ -105,9 +120,10 @@ export function ActionSituation({
           {law.title && (
             <button
               type="button"
-              onClick={() =>
-                onAsk({ query: personalizedQuery(law.title!), lawRef })
-              }
+              onClick={() => {
+                clearSituation(key); // 새로 받는 질문에 옛 답·재생성 결과를 잇지 않는다
+                onAsk({ query: personalizedQuery(law.title!), lawRef });
+              }}
               className="mt-1 text-[12.5px] font-bold text-navy"
             >
               다시 받기
@@ -131,7 +147,7 @@ export function ActionSituation({
             <PersonalizeAction unmet={unmet} />
           </div>
         )}
-      {revise.isError && !expired && (
+      {revise.isError && !isUnauthorized(revise.error) && (
         <p className="text-[13px] text-removed">잠시 후 다시 시도해 주세요.</p>
       )}
       <SessionExpiredDialog open={expired} onClose={() => setExpired(false)} />

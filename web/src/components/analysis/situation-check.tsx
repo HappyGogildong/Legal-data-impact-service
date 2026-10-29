@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import type { CitedSource, SituationQuestion } from "@/lib/api/types";
 import { CiteChip } from "./cite-chip";
 
@@ -25,6 +26,7 @@ export function SituationCheck({
   selected: string | null;
   onCite: (sourceId: string) => void;
 }) {
+  const idPrefix = useId();
   const answered = questions.some(
     (q) => q.id && answers[q.id] && answers[q.id] !== UNKNOWN,
   );
@@ -36,7 +38,7 @@ export function SituationCheck({
           q.id ? (
             <li key={q.id}>
               <p>
-                {q.text}{" "}
+                <span id={`${idPrefix}-${q.id}`}>{q.text}</span>{" "}
                 {q.basis && (
                   <CiteChip
                     sourceId={q.basis}
@@ -48,6 +50,7 @@ export function SituationCheck({
               </p>
               <AnswerInput
                 question={q}
+                labelId={`${idPrefix}-${q.id}`}
                 value={answers[q.id]}
                 onChange={(answer) => onAnswer(q.id!, answer)}
               />
@@ -72,16 +75,22 @@ export function SituationCheck({
 
 function AnswerInput({
   question,
+  labelId,
   value,
   onChange,
 }: {
   question: SituationQuestion;
+  labelId: string;
   value: string | undefined;
   onChange: (answer: string) => void;
 }) {
   if (question.answerType === "DATE") {
     return (
-      <div className="mt-1 flex items-center gap-2">
+      <div
+        role="group"
+        aria-labelledby={labelId}
+        className="mt-1 flex items-center gap-2"
+      >
         <input
           type="date"
           aria-label={question.text}
@@ -98,7 +107,11 @@ function AnswerInput({
       ? [...(question.options ?? []), UNKNOWN]
       : ["예", "아니오", UNKNOWN];
   return (
-    <div className="mt-1 flex flex-wrap gap-1.5">
+    <div
+      role="group"
+      aria-labelledby={labelId}
+      className="mt-1 flex flex-wrap gap-1.5"
+    >
       {options.map((option) => (
         <Choice
           key={option}

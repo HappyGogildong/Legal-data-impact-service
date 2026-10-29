@@ -1,6 +1,17 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { readSituation, situationKey, writeSituation } from "./situation-store";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  clearSituation,
+  clearSituationMemory,
+  questionsIdentity,
+  readSituation,
+  situationKey,
+  writeSituation,
+} from "./situation-store";
 
+beforeEach(() => {
+  sessionStorage.clear();
+  clearSituationMemory();
+});
 afterEach(() => vi.restoreAllMocks());
 
 describe("situation-store", () => {
@@ -36,5 +47,53 @@ describe("situation-store", () => {
     const key = situationKey("mem", "2026-08-04");
     writeSituation(key, { answers: { q1: "모름" } });
     expect(readSituation(key)).toEqual({ answers: { q1: "모름" } });
+  });
+
+  it("setItem 만 throw 해도(읽기는 됨) 메모리 값을 읽는다", () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("quota");
+    });
+    const key = situationKey("quota", "2026-08-04");
+    writeSituation(key, { answers: { q1: "예" } });
+    expect(readSituation(key)).toEqual({ answers: { q1: "예" } });
+  });
+
+  it("모양이 틀린 JSON 은 빈 상태로", () => {
+    const key = situationKey("bad", "2026-08-04");
+    for (const raw of [
+      "null",
+      "[]",
+      "42",
+      '{"answers":"예"}',
+      '{"answers":{"q1":1}}',
+      '{"answers":{},"revision":"x"}',
+      "{not json",
+    ]) {
+      sessionStorage.setItem(key, raw);
+      expect(readSituation(key)).toEqual({ answers: {} });
+    }
+  });
+
+  it("질문 묶음 식별자가 다르면 빈 상태로 보고, 다음 쓰기가 덮어쓴다", () => {
+    const key = situationKey("001809", "2026-08-04");
+    const old = questionsIdentity([{ id: "q1", text: "옛 질문" }]);
+    const fresh = questionsIdentity([{ id: "q1", text: "새 질문" }]);
+    expect(old).not.toBe(fresh);
+
+    writeSituation(key, { answers: { q1: "예" }, identity: old });
+    expect(readSituation(key, fresh)).toEqual({ answers: {} });
+    expect(readSituation(key, old).answers.q1).toBe("예");
+
+    writeSituation(key, { answers: { q1: "아니오" }, identity: fresh });
+    expect(readSituation(key, old)).toEqual({ answers: {} });
+    expect(readSituation(key, fresh).answers.q1).toBe("아니오");
+  });
+
+  it("clearSituation 은 저장소와 메모리 모두 비운다", () => {
+    const key = situationKey("001809", "2026-08-04");
+    writeSituation(key, { answers: { q1: "예" } });
+    clearSituation(key);
+    expect(readSituation(key)).toEqual({ answers: {} });
+    expect(sessionStorage.getItem(key)).toBeNull();
   });
 });

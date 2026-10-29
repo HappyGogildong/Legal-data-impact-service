@@ -10,7 +10,11 @@ import type {
 } from "@/lib/api/types";
 import { presentDimensions, sourceIndex } from "@/lib/analysis-view";
 import type { AskRequest } from "@/lib/ask-store";
-import { readSituation, situationKey } from "@/lib/situation-store";
+import {
+  questionsIdentity,
+  readSituation,
+  situationKey,
+} from "@/lib/situation-store";
 import { personalizedQuery } from "@/components/laws/law-actions";
 import { ActionSituation } from "./action-situation";
 import { DimensionCard } from "./dimension-card";
@@ -46,7 +50,12 @@ export function ResultView({
       : null;
   // 상황 확인으로 다시 만든 대응 방안(D71) — 같은 탭에서 이 법령 버전으로 확인한 적이 있으면 이어서 보여 준다
   const [revision, setRevision] = useState<ActionRevision | undefined>(() =>
-    lawKey ? readSituation(lawKey).revision : undefined,
+    lawKey
+      ? readSituation(
+          lawKey,
+          questionsIdentity(response.situation?.questions ?? []),
+        ).revision
+      : undefined,
   );
   if (!law) return null; // 발견 응답은 AskScreen 이 S04 로 보낸다 — 여기 오는 응답엔 law 가 있다
 
@@ -98,7 +107,10 @@ export function ResultView({
               renderUnmetAction={renderUnmetAction}
               stepNotes={
                 dimension === "action"
-                  ? (revision?.stepNotes ?? response.situation?.stepNotes)
+                  ? // 재생성본이면 그 메모만 — 기본 응답의 메모는 기본 단계 목록의 번호다
+                    revision
+                    ? (revision.stepNotes ?? [])
+                    : response.situation?.stepNotes
                   : undefined
               }
             />

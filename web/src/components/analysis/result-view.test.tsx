@@ -1,9 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisResponse } from "@/lib/api/types";
-import { situationKey, writeSituation } from "@/lib/situation-store";
+import {
+  clearSituationMemory,
+  questionsIdentity,
+  situationKey,
+  writeSituation,
+} from "@/lib/situation-store";
 import { resolvedResponse } from "@/test/fixtures";
 import { mockViewport } from "@/test/viewport";
 import { ResultView } from "./result-view";
@@ -282,15 +287,54 @@ describe("ResultView — 대응 방안 상황 확인(D71)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("탭 저장소에 revision 이 있으면 대응 방안 카드가 그 action 을 보여 준다(내 영향은 그대로)", async () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    clearSituationMemory();
+  });
+
+  const revisionState = (extra = {}) => ({
+    answers: { q1: "예" },
+    identity: questionsIdentity(withSituation.situation!.questions!),
+    revision: {
+      action: { actions: [{ what: "재생성된 대응 단계" }] },
+      sources: [],
+      stepNotes: [{ index: 0, note: "시행일 이전 계약이라 이전 기준" }],
+      ...extra,
+    },
+  });
+
+  it("다른 질문 묶음으로 저장된 옛 revision 은 보여 주지 않는다", async () => {
     writeSituation(situationKey("001809", "2026-08-04"), {
-      answers: { q1: "예" },
-      revision: {
-        action: { actions: [{ what: "재생성된 대응 단계" }] },
-        sources: [],
-        stepNotes: [{ index: 0, note: "시행일 이전 계약이라 이전 기준" }],
-      },
+      ...revisionState(),
+      identity: questionsIdentity([{ id: "q1", text: "옛 질문" }]),
     });
+    renderWithClient(withSituation);
+
+    await userEvent.click(screen.getByRole("button", { name: "대응 방안" }));
+
+    expect(screen.getByText(/기본 대응 단계/)).toBeInTheDocument();
+    expect(screen.queryByText(/재생성된 대응 단계/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("시행일 이전 계약이라 이전 기준"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("revision 에 stepNotes 가 없으면 기본 응답의 메모를 붙이지 않는다", async () => {
+    writeSituation(
+      situationKey("001809", "2026-08-04"),
+      revisionState({ stepNotes: undefined }),
+    );
+    renderWithClient(withSituation);
+
+    await userEvent.click(screen.getByRole("button", { name: "대응 방안" }));
+
+    expect(screen.getByText(/재생성된 대응 단계/)).toBeInTheDocument();
+    expect(screen.queryByText("내 상황 반영")).not.toBeInTheDocument();
+    expect(screen.queryByText("기본 상황 메모")).not.toBeInTheDocument();
+  });
+
+  it("탭 저장소에 revision 이 있으면 대응 방안 카드가 그 action 을 보여 준다(내 영향은 그대로)", async () => {
+    writeSituation(situationKey("001809", "2026-08-04"), revisionState());
     renderWithClient(withSituation);
 
     await userEvent.click(screen.getByRole("button", { name: /내 영향/ }));

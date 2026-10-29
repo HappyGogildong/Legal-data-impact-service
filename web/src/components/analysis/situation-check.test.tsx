@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { CitedSource, SituationQuestion } from "@/lib/api/types";
@@ -76,7 +76,9 @@ describe("SituationCheck", () => {
 
   it("날짜 질문 — 날짜 입력", async () => {
     const { onAnswer } = renderCheck();
-    const input = screen.getByLabelText("착공 예정일이 언제인가요?");
+    const input = screen.getByLabelText("착공 예정일이 언제인가요?", {
+      selector: "input",
+    });
     await userEvent.type(input, "2027-03-01");
     expect(onAnswer).toHaveBeenLastCalledWith("q2", "2027-03-01");
   });
@@ -113,5 +115,30 @@ describe("SituationCheck", () => {
     expect(button).toBeEnabled();
     await userEvent.click(button);
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it("질문마다 선택 버튼을 묶어 질문 문장으로 이름 붙인다(모름 포함, 날짜도)", () => {
+    renderCheck();
+
+    const yesNo = screen.getByRole("group", {
+      name: /계약을 시행일 이전에 맺었나요/,
+    });
+    expect(
+      [...yesNo.querySelectorAll("button")].map((b) => b.textContent),
+    ).toEqual(["예", "아니오", "모름"]);
+
+    const date = screen.getByRole("group", {
+      name: "착공 예정일이 언제인가요?",
+    });
+    expect(date).toContainElement(
+      screen.getByLabelText("착공 예정일이 언제인가요?", { selector: "input" }),
+    );
+    expect(
+      within(date).getByRole("button", { name: "모름" }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("group", { name: "어떤 유형인가요?" }),
+    ).toBeInTheDocument();
   });
 });
