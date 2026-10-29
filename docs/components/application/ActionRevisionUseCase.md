@@ -19,7 +19,7 @@ ActionRevisionController               ActionRevisionUseCase        PersonalAdmi
 HttpSessionSituationQuestions(포트 구현)
 ```
 
-- **담당**: 재생성 게이트 순서(개인화 → 만료 → 답 검증 → 정본·기준선 → 한도) 조합, 엔진 ACTION 1회 호출, 결과를 `Revised`/`NotRevised` 타입으로 표현.
+- **담당**: 재생성 게이트 순서(개인화 → 만료·묶음 불일치 → 답 검증 → 정본·기준선 → 한도) 조합, 엔진 ACTION 1회 호출, 결과를 `Revised`/`NotRevised` 타입으로 표현.
 - **담당 안 함**: HTTP·세션 저장소(web — 세션은 `SituationQuestions` 포트 뒤에 있어 이 계층은 세션을 모른다) · 프로필 규칙([[ProfileUseCase|PersonalizationGate]]) · 기준선·한도 판정 함수([[QueryDispatcher]] 의 `PersonalAdmission` — 첫 Layer B 와 공유) · 프롬프트·LLM·그라운딩([[AnalysisEngine]]).
 
 ## 구조 (컴포넌트)
@@ -28,7 +28,7 @@ HttpSessionSituationQuestions(포트 구현)
 
 | 클래스 | 역할 |
 |---|---|
-| `ActionRevisionUseCase` | 유스케이스 — `revise(userId, ref, answers, questions)`. 게이트 순서대로 확인한 뒤 엔진을 ACTION 으로 1회 호출. Spring 애노테이션 없음 — 배선은 `PipelineConfig` 의 `@Bean`([[AnalyzeUseCase]] 와 같은 이유). |
+| `ActionRevisionUseCase` | 유스케이스 — `revise(userId, ref, setId, answers, questions)`. 게이트 순서대로 확인한 뒤 엔진을 ACTION 으로 1회 호출. Spring 애노테이션 없음 — 배선은 `PipelineConfig` 의 `@Bean`([[AnalyzeUseCase]] 와 같은 이유). |
 | `RevisionOutcome` (sealed) | 결과 — `Revised`(대응 방안 `ImpactResult` + 단계 설명 `stepNotes` + 근거 집합) \| `NotRevised`(`Unmet` 사유). HTTP 타입 비의존. |
 | `SituationQuestions` (포트) | 질문 보관소 — `save(LawRef, List<SituationQuestion>)` · `find(LawRef) → Optional<List<SituationQuestion>>`. 이 계층은 포트만 안다. |
 | `HttpSessionSituationQuestions` (web 어댑터) | 포트 구현 — HTTP 세션 속성 하나에 법령 버전(`lawId@yyyy-MM-dd`) → 질문 목록. **최근 20개 LRU**, 같은 법령은 덮어쓴다. 세션에는 **질문만**(답 없음), DB 저장 없음. |
@@ -37,24 +37,24 @@ HttpSessionSituationQuestions(포트 구현)
 
 ## Contract
 
-`revise(Optional<UUID> userId, LawRef ref, List<SituationAnswer> answers, SituationQuestions questions) → RevisionOutcome`
+`revise(Optional<UUID> userId, LawRef ref, String setId, List<SituationAnswer> answers, SituationQuestions questions) → RevisionOutcome`
 
-- **전제**: 실제로는 로그인 사용자만 온다 — 익명 요청은 보안 설정(`anyRequest().authenticated()`)이 401 로 끊어 이 계층에 닿지 않고, CSRF 토큰이 없으면 403 이다. 시그니처가 `Optional<UUID>` 인 것은 `PersonalizationGate.check` 를 [[AnalyzeUseCase]] 와 그대로 재사용하기 위해서일 뿐이며, 빈 값이 들어오면 게이트가 `PROFILE_REQUIRED` 로 막는다. 로그인했지만 개인화할 수 없는 사용자(프로필 없음·동의 구버전)는 오류가 아니라 `NotRevised` 로 게이트 사유를 받는다(웹 응답은 200 `{ unmet }`). `answers` 는 `questionId`+`answer` 만 — 질문 문장은 클라이언트가 보내지 않는다(서버가 세션의 질문을 쓴다, 위조 차단).
+- **전제**: 실제로는 로그인 사용자만 온다 — 익명 요청은 보안 설정(`anyRequest().authenticated()`)이 401 로 끊어 이 계층에 닿지 않고, CSRF 토큰이 없으면 403 이다. 시그니처가 `Optional<UUID>` 인 것은 `PersonalizationGate.check` 를 [[AnalyzeUseCase]] 와 그대로 재사용하기 위해서일 뿐이며, 빈 값이 들어오면 게이트가 `PROFILE_REQUIRED` 로 막는다. 로그인했지만 개인화할 수 없는 사용자(프로필 없음·동의 구버전)는 오류가 아니라 `NotRevised` 로 게이트 사유를 받는다(웹 응답은 200 `{ unmet }`). `setId` 는 화면이 받은 질문 묶음 식별자(`SituationQuestionSet.idOf` — 응답 매퍼와 같은 한 함수). `answers` 는 `questionId`+`answer` 만 — 질문 문장은 클라이언트가 보내지 않는다(서버가 세션의 질문을 쓴다, 위조 차단).
 - **게이트 순서** (앞에서 걸리면 뒤는 실행하지 않는다):
   1. 개인화(`PersonalizationGate`) — Blocked 면 그 사유(`PROFILE_REQUIRED`·`CONSENT_OUTDATED`) `NotRevised`.
-  2. 세션 질문 조회 — 그 법령 버전의 질문이 없으면 `SITUATION_EXPIRED`.
+  2. 세션 질문 조회 — 그 법령 버전의 질문이 없거나, 그 목록의 `setId` 가 요청 `setId` 와 다르면(null 포함) `SITUATION_EXPIRED`. 서버는 법령 버전마다 질문 목록 하나만 두고 덮어쓰고 모든 묶음이 `q1..` 을 재사용하므로, 묶음이 다른데 id 만 맞으면 다른 질문의 답이 검증을 통과해 사용자가 말하지 않은 사실이 모델에 간다 — 답 검증 전에 끊는다(한도 차감·추론 없음).
   3. 답 검증 — 모르는 `questionId`·중복·형식 위반·빈 목록·전부 `모름` → `IllegalArgumentException`(web 가 400). 정상 사용으론 일어나지 않으므로 위조로 본다.
   4. 정본 없음 → `LAW_NOT_LOADED` · 개정본인데 기준선 없음 → `BASELINE_NOT_LOADED`.
   5. 하루 한도 `tryConsume` 실패 → `DAILY_LIMIT`.
   6. 엔진(ACTION) 1회 — 근거 부족이면 `INSUFFICIENT_GROUNDING`.
-- **보장**: `Revised` 는 인용 검증을 통과한 대응 방안뿐이다(actions ≥ 1 · 각 `basis` ≥ 1 · 모든 인용 ⊆ 주입 집합). 확인된 사실(`질문: 답`, `모름` 제외)은 모델에게 근거가 아닌 상황 정보로만 간다 — 인용하면 실패.
+- **보장**: `Revised` 는 인용 검증을 통과한 대응 방안뿐이다(actions ≥ 1 · 각 `what` 비지 않음 · 각 `basis` ≥ 1 · 모든 인용 ⊆ 주입 집합). 확인된 사실(`질문: 답`, `모름` 제외)은 모델에게 근거가 아닌 상황 정보로만 간다 — 인용하면 실패.
 - **재생성 한도**: 한 번의 `revise` 는 하루 한도 **1회**를 쓴다(엔진 안 재생성 ≤2 는 한도 추가 차감 없음 — D69 와 같은 규칙). 첫 Layer B 와 같은 한도를 공유한다([[cost-policy]]).
 
 ## Invariants
 
 - **세션엔 질문만, 답은 없다.** 답은 요청 처리 중에만 쓰고 버린다. 프롬프트엔 `질문: 답` 줄과 프로필 라벨만 가고 userId 는 없다. 답 내용은 로그·트레이스에 남기지 않는다. (D69 "개인화 답 저장 안 함" = DB 영구 보존 안 함 — 메모리 세션·탭 저장소는 허용, D71.)
 - **한도 1회·환불 없음.** 호출 직전에 차감하고, 실패해도 돌려주지 않는다(D69).
-- **fail-closed.** 질문이 없거나 만료됐거나 답이 위조·형식 위반이면 모델을 부르지 않는다. 근거 부족이면 기존 대응 방안을 그대로 두고(웹) 새 결과를 만들지 않는다.
+- **fail-closed.** 질문이 없거나 만료됐거나 묶음이 다르거나 답이 위조·형식 위반이면 모델을 부르지 않는다. 근거 부족이면 기존 대응 방안을 그대로 두고(웹) 새 결과를 만들지 않는다.
 - **원문 질문 미사용.** 재생성 프롬프트에는 사용자의 자유 질문 원문을 넣지 않는다.
 
 ## Side Effects
@@ -65,9 +65,10 @@ HttpSessionSituationQuestions(포트 구현)
 
 ## 검증
 
-- `ActionRevisionUseCaseTest`(in-JVM, 가짜 엔진·가짜 한도·가짜 `SituationQuestions`) — **게이트 순서**(개인화 → 만료 → 답 검증 → 정본 없음 `LAW_NOT_LOADED` → 기준선 → 한도 → 엔진; 앞 게이트에서 걸리면 뒤 협력자 무접촉) · 한도 정확히 1회 차감 · 엔진 ACTION 1회 · `모름` 제외된 사실만 전달 · 근거 부족 → `INSUFFICIENT_GROUNDING`.
+- `ActionRevisionUseCaseTest`(in-JVM, 가짜 엔진·가짜 한도·가짜 `SituationQuestions`) — **게이트 순서**(개인화 → 만료·묶음 불일치(답 검증 전, 한도 0·추론 0) → 답 검증 → 정본 없음 `LAW_NOT_LOADED` → 기준선 → 한도 → 엔진; 앞 게이트에서 걸리면 뒤 협력자 무접촉) · 한도 정확히 1회 차감 · 엔진 ACTION 1회 · `모름` 제외된 사실만 전달 · 근거 부족 → `INSUFFICIENT_GROUNDING`.
 - `HttpSessionSituationQuestionsTest` — 법령별 덮어쓰기 · 최근 20개 LRU · 세션에 답이 없음.
-- API 슬라이스(`ActionRevisionControllerTest`) — 200 · unmet 사유별 · 400 · CSRF 없으면 403 · OpenAPI 스냅샷 ([[AnalysisApi]]).
+- `ActionRevisionControllerTest`(컨트롤러 단위, 유스케이스 목) — revised·sources·unmet·`lawRef`·`setId` 누락 예외·위임.
+- `ActionRevisionApiTest`(API 슬라이스) — 익명 401 · CSRF 없으면 403 · 400(답 검증·`setId` 누락) · 200 unmet. OpenAPI 스냅샷 ([[AnalysisApi]]).
 
 ## 의존 / 관련
 
