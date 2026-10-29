@@ -39,6 +39,7 @@ lia:
     max-candidates: 10              # 후보 최대 장수(S04)
     min-similarity: 0.3             # 코사인 유사도 하한 — 클라우드 전체 색인 뒤 실데이터로 조정
     snippet-chars: 80               # 쉬운 요약이 없을 때 개정 이유를 보여 줄 글자 수
+    candidate-statuses: 시행예정      # 후보로 남길 정본 상태(쉼표 구분) — 최근 시행 포함은 별도 하위 프로젝트
 
 spring:
   application:

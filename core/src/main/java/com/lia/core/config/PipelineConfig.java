@@ -172,9 +172,10 @@ public class PipelineConfig {
                                      @Value("${lia.discovery.chunk-fetch}") int chunkFetch,
                                      @Value("${lia.discovery.max-candidates}") int maxCandidates,
                                      @Value("${lia.discovery.min-similarity}") double minSimilarity,
-                                     @Value("${lia.discovery.snippet-chars}") int snippetChars) {
+                                     @Value("${lia.discovery.snippet-chars}") int snippetChars,
+                                     @Value("${lia.discovery.candidate-statuses}") Set<Law.Status> candidateStatuses) {
         return new LawDiscovery(chunkStore, lawSource, lawSummaries, new LawDiscovery.Settings(
-                chunkFetch, maxCandidates, minSimilarity, snippetChars, Set.of(Law.Status.시행예정)));
+                chunkFetch, maxCandidates, minSimilarity, snippetChars, candidateStatuses));
     }
 
     /** 온라인 유스케이스(plan→dispatch). 애노테이션 없는 코어를 여기서 배선(프레임워크 비의존). */
