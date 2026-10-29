@@ -34,7 +34,7 @@ public class ContextBuilder {
             blocks.add(new SourceBlock(law.addendumSourceId(ad), SourceType.ADDENDA, ad.text()));
         }
         // 기준선 — DIFF(대조)와 Layer B(바뀐 점을 알아야 영향을 판단, D69). baseline=null이면 제정(전부 신설, D42) → 스킵
-        boolean needsBaseline = req.dimension() == QueryType.DIFF || req.dimension().isLayerB();
+        boolean needsBaseline = req.dimension() == QueryType.DIFF || req.dimension().isPersonalized();
         if (needsBaseline && req.baseline() != null) {
             Law baseline = req.baseline();
             for (Article a : law.changedArticles()) {

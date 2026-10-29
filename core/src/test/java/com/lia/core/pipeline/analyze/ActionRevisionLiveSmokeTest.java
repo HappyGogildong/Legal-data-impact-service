@@ -39,7 +39,7 @@ class ActionRevisionLiveSmokeTest {
     @Autowired AnalysisEngine engine;
 
     @Test
-    void layerB_상황_질문을_내고_답하면_대응_방안을_다시_만든다() {
+    void 개인화_상황_질문을_내고_답하면_대응_방안을_다시_만든다() {
         Law law = housing();
         UserProfile profile = new UserProfile(null, 34, null, null, null, HousingType.전세, null);
         AnalyzeResponse first = engine.analyze(new AnalyzeRequest(QueryType.IMPACT, law, null,

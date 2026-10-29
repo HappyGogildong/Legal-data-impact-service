@@ -27,10 +27,10 @@ public record AnalyzeRequest(QueryType dimension, Law law, Law baseline, UserPro
     public AnalyzeRequest {
         Objects.requireNonNull(dimension, "dimension은 필수다.");
         Objects.requireNonNull(law, "law는 필수다 — 해소된 정본이 들어와야 한다.");
-        if (dimension.isLayerB() && profile == null) {
+        if (dimension.isPersonalized() && profile == null) {
             throw new IllegalArgumentException("Layer B 요청에는 프로필이 필요하다: " + dimension);
         }
-        if (!dimension.isLayerB() && profile != null) {
+        if (!dimension.isPersonalized() && profile != null) {
             throw new IllegalArgumentException("Layer A 요청에는 프로필을 넣지 않는다: " + dimension);
         }
         situation = situation == null ? List.of() : List.copyOf(situation);

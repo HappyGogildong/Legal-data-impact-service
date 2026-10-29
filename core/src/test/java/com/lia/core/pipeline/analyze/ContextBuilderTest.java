@@ -77,7 +77,7 @@ class ContextBuilderTest {
     }
 
     @Test
-    void LayerB_는_기준선_블록을_넣고_프로필과_질문을_싣되_근거_집합엔_없다() {
+    void 개인화_는_기준선_블록을_넣고_프로필과_질문을_싣되_근거_집합엔_없다() {
         UserProfile profile = new UserProfile(null, 34, null, null, null, null, null);
         AnalysisContext ctx = builder.build(
                 new AnalyzeRequest(QueryType.IMPACT, housing(), baseline(), profile, "내 영향"));

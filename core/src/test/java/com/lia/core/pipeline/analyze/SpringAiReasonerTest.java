@@ -89,7 +89,7 @@ class SpringAiReasonerTest {
     }
 
     @Test
-    void LayerB_메시지에_프로필_라벨과_질문이_CONTEXT_뒤에_붙는다() {
+    void 개인화_메시지에_프로필_라벨과_질문이_CONTEXT_뒤에_붙는다() {
         UserProfile profile = new UserProfile(null, 34, null, null, null, HousingType.전세, Sido.서울특별시);
         AnalysisContext ctx = new AnalysisContext(QueryType.IMPACT, "LAW:A@2027-01-01",
                 List.of(new AnalysisContext.SourceBlock("LAW:A@2027-01-01:art:1", SourceType.ARTICLE, "제1조 본문")),

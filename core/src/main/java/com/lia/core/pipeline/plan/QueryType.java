@@ -8,7 +8,7 @@ public enum QueryType {
     LOOKUP, SUMMARY, DIFF, IMPACT, ACTION;
 
     /** 프로필이 있어야 채울 수 있는 차원(온라인 LLM). */
-    public boolean isLayerB() {
+    public boolean isPersonalized() {
         return this == IMPACT || this == ACTION;
     }
 }
