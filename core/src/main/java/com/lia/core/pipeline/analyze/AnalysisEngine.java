@@ -131,10 +131,11 @@ public class AnalysisEngine {
         return !dimension.isLayerB() || personalizedComplete(r);
     }
 
-    /** 대응 방안 재생성 — 대응 ≥1·각 근거 ≥1·모든 인용이 주입 집합 안(주장은 필수 아님). 상황 사실은 근거 집합 밖. */
+    /** 대응 방안 재생성 — 대응 ≥1·각 {@code what} 이 비어 있지 않고(공백 포함)·각 근거 ≥1·모든 인용이 주입 집합 안(주장은 필수 아님). 상황 사실은 근거 집합 밖. */
     private static boolean actionGrounded(ImpactResult r, Set<String> injectedSourceIds) {
         return r != null && r.actions() != null && !r.actions().isEmpty()
-                && r.actions().stream().allMatch(a -> a.basis() != null && !a.basis().isEmpty())
+                && r.actions().stream().allMatch(a -> a.what() != null && !a.what().isBlank()
+                        && a.basis() != null && !a.basis().isEmpty())
                 && injectedSourceIds.containsAll(citedSourceIds(r));
     }
 

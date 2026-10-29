@@ -243,6 +243,43 @@ class AnalysisEngineTest {
         assertEquals(3, calls[0]);
     }
 
+    /** 대응 방안 재생성 요청을 한 번 보내고, 같은 결과만 내놓는 추론기가 불린 횟수를 돌려준다. */
+    private int actionCallsUntilInsufficient(ImpactResult always) {
+        int[] calls = {0};
+        Reasoner counting = new Reasoner() {
+            public ImpactResult reason(AnalysisContext ctx) { throw new AssertionError(); }
+            public PersonalizedOutput reasonPersonalized(AnalysisContext ctx) {
+                calls[0]++;
+                return new PersonalizedOutput(always, List.of(), List.of());
+            }
+        };
+        AnalysisEngine engine = engine(counting);
+
+        assertThrows(InsufficientGroundingException.class, () -> engine.analyze(new AnalyzeRequest(QueryType.ACTION,
+                housing(), housing(), PROFILE, null, List.of(new ConfirmedFact("q", "예")))));
+        return calls[0];
+    }
+
+    private static ImpactResult actionResult(String what, List<String> basis) {
+        return new ImpactResult("LAW:x", "ACTION", null, List.of(), List.of(),
+                List.of(new ImpactResult.Action(what, null, basis)), null, List.of(), "참고", null);
+    }
+
+    @Test
+    void ACTION_재생성에서_하는_일이_비어_있으면_거절하고_재시도_후_근거_부족() {
+        for (String blank : new String[] {null, "", "   "}) {
+            assertEquals(3, actionCallsUntilInsufficient(actionResult(blank, List.of(HOUSING_ART))),
+                    "what=" + blank);
+        }
+    }
+
+    @Test
+    void ACTION_재생성이_주입_집합_밖_출처를_인용하면_거절하고_재시도_후_근거_부족() {
+        ImpactResult outside = actionResult("갱신 요구", List.of("LAW:999999@2099-01-01:art:1"));
+
+        assertEquals(3, actionCallsUntilInsufficient(outside));
+    }
+
     @Test
     void 상황_사실은_ACTION_요청에만() {
         assertThrows(IllegalArgumentException.class, () -> new AnalyzeRequest(QueryType.IMPACT,
