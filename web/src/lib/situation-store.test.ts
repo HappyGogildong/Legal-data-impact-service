@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  clearAllSituations,
   clearSituation,
   clearSituationMemory,
   readSituation,
@@ -85,6 +86,39 @@ describe("situation-store", () => {
     writeSituation(key, { answers: { q1: "아니오" }, identity: fresh });
     expect(readSituation(key, old)).toEqual({ answers: {} });
     expect(readSituation(key, fresh).answers.q1).toBe("아니오");
+  });
+
+  it("clearAllSituations 는 lia.situation.* 키만 저장소와 메모리에서 모두 지운다", () => {
+    const first = situationKey("001809", "2026-08-04");
+    const second = situationKey("001809", "2027-02-01");
+    writeSituation(first, { answers: { q1: "예" } });
+    writeSituation(second, { answers: { q1: "아니오" } });
+    sessionStorage.setItem("lia.ask", "keep");
+    sessionStorage.setItem("other", "keep");
+
+    clearAllSituations();
+
+    expect(readSituation(first)).toEqual({ answers: {} });
+    expect(readSituation(second)).toEqual({ answers: {} });
+    expect(sessionStorage.getItem(first)).toBeNull();
+    expect(sessionStorage.getItem(second)).toBeNull();
+    expect(sessionStorage.getItem("lia.ask")).toBe("keep");
+    expect(sessionStorage.getItem("other")).toBe("keep");
+  });
+
+  it("clearAllSituations 는 sessionStorage 가 throw 해도 메모리는 비운다", () => {
+    const key = situationKey("mem", "2026-08-04");
+    writeSituation(key, { answers: { q1: "예" } });
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+
+    expect(() => clearAllSituations()).not.toThrow();
+
+    expect(readSituation(key)).toEqual({ answers: {} });
   });
 
   it("clearSituation 은 저장소와 메모리 모두 비운다", () => {

@@ -78,6 +78,24 @@ export function clearSituation(key: string) {
   }
 }
 
+/**
+ * 모든 법령의 저장된 답·재생성 결과를 지운다(로그아웃·계정 삭제) — 같은 탭을 다음 사람이 쓸 수 있으므로
+ * 상황 답(개인 사정)을 남기지 않는다. 다른 키(lia.ask 등)는 건드리지 않는다.
+ */
+export function clearAllSituations() {
+  memory.clear();
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i += 1) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith(PREFIX)) keys.push(key);
+    }
+    keys.forEach((key) => sessionStorage.removeItem(key));
+  } catch {
+    // 저장소를 못 쓰면 메모리는 이미 비웠다
+  }
+}
+
 /** 테스트용 — 메모리 보관분을 비운다. */
 export function clearSituationMemory() {
   memory.clear();

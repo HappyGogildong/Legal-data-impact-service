@@ -20,6 +20,7 @@ import type { Consents, Profile } from "@/lib/api/types";
 import { formatSeoulDateTime } from "@/lib/dates";
 import { reloadTo } from "@/lib/navigation";
 import { clearReturnTo } from "@/lib/return-to";
+import { clearAllSituations } from "@/lib/situation-store";
 import { CONSENTS_KEY, PROFILE_KEY, useRequireSession } from "@/lib/session";
 import { ConfirmDialog } from "./confirm-dialog";
 
@@ -95,8 +96,10 @@ export function MyScreen() {
   // 클라이언트 전환이 아닌 전체 이동 — 캐시를 비우는 순간 세션을 다시 조회해
   // 로그인 화면으로 튕기는 경합이 없고, 프로필·이메일도 메모리에서 사라진다.
   // 남은 돌아올 경로는 다음 로그인(다른 계정일 수 있다)을 가로채지 않게 함께 지운다.
+  // 탭에 둔 상황 답(개인 사정)도 같은 탭의 다음 사람에게 남지 않게 지운다.
   const leaveSignedOut = () => {
     clearReturnTo();
+    clearAllSituations();
     reloadTo("/");
   };
   const logoutMutation = useMutation({
