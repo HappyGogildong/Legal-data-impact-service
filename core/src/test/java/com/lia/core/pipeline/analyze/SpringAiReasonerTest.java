@@ -12,6 +12,7 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
 
+import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.profile.HousingType;
@@ -121,5 +122,55 @@ class SpringAiReasonerTest {
         ImpactResult out = SpringAiReasoner.stampMeta(withMeta("gpt"), QueryType.SUMMARY);
         assertEquals("요약", out.summary());
         assertEquals("면책", out.disclaimer());
+    }
+
+    private static final List<AnalysisContext.SourceBlock> BLOCKS =
+            List.of(new AnalysisContext.SourceBlock("LAW:A@2027-01-01:art:1", SourceType.ARTICLE, "제1조 본문"));
+    private static final UserProfile ADULT = new UserProfile(null, 34, null, null, null, HousingType.전세, null);
+
+    @Test
+    void 첫_개인화_메시지는_상황_질문을_요청한다_기존_지시는_그대로() {
+        String message = SpringAiReasoner.userMessage(
+                new AnalysisContext(QueryType.IMPACT, "LAW:A@2027-01-01", BLOCKS, ADULT, "내 영향"));
+        assertTrue(message.contains("situationQuestions"));
+        assertTrue(message.contains("최대 3개"));
+        assertTrue(message.contains("impacts·actions 를 모두 채운다"), "기존 TASK 문장 유지");
+    }
+
+    @Test
+    void 재생성_메시지는_SITUATION_과_대응_방안만_지시하고_질문원문_userId_없음() {
+        AnalysisContext ctx = new AnalysisContext(QueryType.ACTION, "LAW:A@2027-01-01", BLOCKS, ADULT, null,
+                List.of(new ConfirmedFact("계약을 2026-11-01 이전에 맺었나요?", "예")));
+
+        String message = SpringAiReasoner.userMessage(ctx);
+
+        assertTrue(message.contains("[SITUATION]"));
+        assertTrue(message.contains("- 계약을 2026-11-01 이전에 맺었나요?: 예"));
+        assertTrue(message.contains("situationNote"));
+        assertFalse(message.contains("[QUESTION]"));
+        assertFalse(message.contains("userId"));
+    }
+
+    @Test
+    void LayerA_메시지에는_SITUATION_이_없다() {
+        assertFalse(SpringAiReasoner.userMessage(context()).contains("[SITUATION]"));
+    }
+
+    @Test
+    void 개인화_추론은_상황_질문과_단계_설명을_받고_meta_를_찍는다() {
+        String json = """
+                {"lawRef":"LAW:A@2027-01-01","command":"IMPACT","summary":"요약","claims":[],"impacts":[],
+                 "actions":[{"what":"확인","deadline":null,"basis":["LAW:A@2027-01-01:art:1"],"situationNote":"이유"}],
+                 "uncertainties":[],"disclaimer":"참고용",
+                 "situationQuestions":[{"text":"계약했나요?","basis":"LAW:A@2027-01-01:art:1","answerType":"YES_NO","options":null}]}
+                """;
+        AnalysisContext ctx = new AnalysisContext(QueryType.IMPACT, "LAW:A@2027-01-01", BLOCKS, ADULT, "내 영향");
+
+        PersonalizedOutput out = new SpringAiReasoner(replying(thinking(""), text(json))).reasonPersonalized(ctx);
+
+        assertEquals("B", out.result().meta().layer());
+        assertEquals("q1", out.questions().get(0).id());
+        assertEquals(1, out.stepNotes().size());
+        assertEquals("이유", out.stepNotes().get(0).note());
     }
 }
