@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,10 +50,8 @@ class ActionRevisionLiveSmokeTest {
                 q.id(), q.answerType(), q.basis(), q.text(), q.options()));
         questions.forEach(q -> assertTrue(first.injectedSourceIds().contains(q.basis()),
                 "환각 근거(주입 안 된 source_id): " + q.basis()));
-        if (questions.isEmpty()) {
-            System.out.println("[live] 이 법령·프로필엔 상황 질문이 없다 — 재생성은 건너뛴다");
-            return;
-        }
+        // 질문이 없으면 통과로 둘러대지 않고 skip 으로 보고한다 — 재생성을 실측하지 못했다는 사실이 남는다
+        Assumptions.assumeFalse(questions.isEmpty(), "이 법령·프로필엔 상황 질문이 없다 — 재생성 실측 건너뜀");
 
         SituationQuestion asked = questions.get(0);
         List<ConfirmedFact> facts = ConfirmedFact.confirm(questions,
