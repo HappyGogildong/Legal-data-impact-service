@@ -3,6 +3,7 @@ package com.lia.core.profile;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 자기신고 프로필 속성(D41·D61) — 슬라이스 ③에서 프롬프트 {@code <profile>} 에 그대로 들어갈 값.
@@ -36,5 +37,29 @@ public record UserProfile(
     /** 동의만 하고 아직 입력하지 않은 프로필. */
     public static UserProfile empty() {
         return new UserProfile(null, null, null, null, null, null, null);
+    }
+
+    /**
+     * 프롬프트·검색어용 "항목: 라벨" 줄 — 속성만(userId 없음, D41). 없는 항목은 생략하고 각 줄은 줄바꿈으로 끝난다.
+     * Layer B 프롬프트의 [PROFILE] 블록(D69)과 법령 발견의 프로필 검색어(D70)가 같은 형식을 쓴다.
+     */
+    public String labelLines() {
+        StringBuilder sb = new StringBuilder();
+        if (!purposes.isEmpty()) {
+            sb.append("관심 분야: ")
+              .append(purposes.stream().map(Labeled::label).collect(Collectors.joining(", ")))
+              .append('\n');
+        }
+        if (age != null) sb.append("나이: ").append(age).append('\n');
+        appendLabel(sb, "직업", occupation);
+        appendLabel(sb, "고용 형태", employmentType);
+        appendLabel(sb, "가구", householdType);
+        appendLabel(sb, "주거", housingType);
+        appendLabel(sb, "거주 시도", regionSido);
+        return sb.toString();
+    }
+
+    private static void appendLabel(StringBuilder sb, String name, Labeled value) {
+        if (value != null) sb.append(name).append(": ").append(value.label()).append('\n');
     }
 }
