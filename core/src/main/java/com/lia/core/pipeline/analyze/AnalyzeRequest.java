@@ -1,7 +1,9 @@
 package com.lia.core.pipeline.analyze;
 
+import java.util.List;
 import java.util.Objects;
 
+import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.profile.UserProfile;
@@ -16,8 +18,11 @@ import com.lia.core.profile.UserProfile;
  *
  * @param dimension 분석 차원 · @param law 시행예정 정본 · @param baseline 시행중본(제정이면 null)
  * @param profile 프롬프트에 넣을 프로필 속성(Layer B 만, userId 없음) · @param question 사용자 질문(Layer B 만)
+ *
+ * @param situation 확인된 상황 사실 — 대응 방안 재생성(ACTION)에만(D71). 근거가 아니다
  */
-public record AnalyzeRequest(QueryType dimension, Law law, Law baseline, UserProfile profile, String question) {
+public record AnalyzeRequest(QueryType dimension, Law law, Law baseline, UserProfile profile, String question,
+                             List<ConfirmedFact> situation) {
 
     public AnalyzeRequest {
         Objects.requireNonNull(dimension, "dimension은 필수다.");
@@ -28,10 +33,19 @@ public record AnalyzeRequest(QueryType dimension, Law law, Law baseline, UserPro
         if (!dimension.isLayerB() && profile != null) {
             throw new IllegalArgumentException("Layer A 요청에는 프로필을 넣지 않는다: " + dimension);
         }
+        situation = situation == null ? List.of() : List.copyOf(situation);
+        if (!situation.isEmpty() && dimension != QueryType.ACTION) {
+            throw new IllegalArgumentException("상황 사실은 대응 방안 재생성(ACTION)에만 넣는다: " + dimension);
+        }
+    }
+
+    /** 상황 사실 없는 Layer B 요청. */
+    public AnalyzeRequest(QueryType dimension, Law law, Law baseline, UserProfile profile, String question) {
+        this(dimension, law, baseline, profile, question, List.of());
     }
 
     /** Layer A — 프로필·질문 없음. */
     public AnalyzeRequest(QueryType dimension, Law law, Law baseline) {
-        this(dimension, law, baseline, null, null);
+        this(dimension, law, baseline, null, null, List.of());
     }
 }

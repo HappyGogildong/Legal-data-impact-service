@@ -1,5 +1,7 @@
 package com.lia.core.pipeline.analyze;
 
+import java.util.List;
+
 import com.lia.core.domain.analysis.ImpactResult;
 
 /**
@@ -13,4 +15,12 @@ import com.lia.core.domain.analysis.ImpactResult;
 public interface Reasoner {
 
     ImpactResult reason(AnalysisContext context);
+
+    /**
+     * 개인화(내 영향·대응 방안·재생성) 추론 — 상황 질문·단계 설명까지(D71). 기본은 {@link #reason} 결과만 감싼다
+     * (테스트 가짜 추론이 람다로 남을 수 있게). 실제 구현은 별도 출력 형식으로 받는다.
+     */
+    default PersonalizedOutput reasonPersonalized(AnalysisContext context) {
+        return new PersonalizedOutput(reason(context), List.of(), List.of());
+    }
 }

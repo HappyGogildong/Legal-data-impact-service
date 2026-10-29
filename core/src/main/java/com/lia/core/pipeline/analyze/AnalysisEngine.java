@@ -1,10 +1,16 @@
 package com.lia.core.pipeline.analyze;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.domain.analysis.Situation;
+import com.lia.core.domain.analysis.SituationQuestion;
+import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.eval.FaithfulnessGate;
 import com.lia.core.pipeline.plan.QueryType;
 
@@ -32,6 +38,17 @@ public class AnalysisEngine {
 
         // 조립된 근거로 추론 → 1차 인용검증. 실패 시 재생성(≤N), 끝까지 실패면 근거부족 폴백(환각 미노출).
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            if (req.dimension().isLayerB()) {
+                PersonalizedOutput out = reasoner.reasonPersonalized(ctx);
+                if (grounded(req.dimension(), out.result(), injected)) {
+                    // 재생성(ACTION)은 새 질문을 내지 않는다 — 질문은 첫 응답에서 세션에 보관된 것을 쓴다(D71)
+                    List<SituationQuestion> questions = req.dimension() == QueryType.ACTION
+                            ? List.of() : admissibleQuestions(out.questions(), injected);
+                    return new AnalyzeResponse(out.result(), injected, new Situation(questions,
+                            admissibleStepNotes(out.stepNotes(), out.result().actions().size())));
+                }
+                continue;
+            }
             ImpactResult result = reasoner.reason(ctx);
             if (grounded(req.dimension(), result, injected)) {
                 return new AnalyzeResponse(result, injected);
@@ -39,6 +56,41 @@ public class AnalysisEngine {
         }
         throw new InsufficientGroundingException(
                 "인용 검증 %d회 실패 — 근거 부족(환각 노출 금지)".formatted(maxAttempts));
+    }
+
+    static final int MAX_QUESTIONS = 3;
+
+    /** 화면에 낼 상황 질문 — 형식이 맞고 근거가 주입 집합 안인 것만, 최대 3개, id 를 q1·q2·q3 로 다시 붙인다(D71). */
+    static List<SituationQuestion> admissibleQuestions(List<SituationQuestion> raw, Set<String> injectedSourceIds) {
+        List<SituationQuestion> kept = raw.stream()
+                .filter(q -> isAdmissible(q, injectedSourceIds))
+                .limit(MAX_QUESTIONS)
+                .toList();
+        List<SituationQuestion> renumbered = new ArrayList<>();
+        for (int i = 0; i < kept.size(); i++) renumbered.add(kept.get(i).withId("q" + (i + 1)));
+        return List.copyOf(renumbered);
+    }
+
+    /** 모델이 낸 날것 질문 하나 — 검사 중 예외가 나면 그 질문만 버린다(엔진은 죽지 않는다). */
+    private static boolean isAdmissible(SituationQuestion question, Set<String> injectedSourceIds) {
+        try {
+            return question != null && question.wellFormed() && injectedSourceIds.contains(question.basis());
+        } catch (RuntimeException malformed) {
+            return false;
+        }
+    }
+
+    /** 단계 설명 — 대응 범위 안·비지 않음·한 줄 200자 이내, 같은 단계는 처음 것만. */
+    static List<StepNote> admissibleStepNotes(List<StepNote> raw, int actionCount) {
+        Map<Integer, StepNote> byIndex = new LinkedHashMap<>();
+        for (StepNote n : raw) {
+            if (n == null || n.index() < 0 || n.index() >= actionCount) continue;
+            String note = n.note();
+            if (note == null || note.isBlank() || note.length() > SituationQuestion.MAX_TEXT
+                    || note.indexOf('\n') >= 0) continue;
+            byIndex.putIfAbsent(n.index(), n);
+        }
+        return List.copyOf(byIndex.values());
     }
 
     /**
@@ -74,8 +126,16 @@ public class AnalysisEngine {
      * 모델이 "영향 없음"·"따로 할 일 없음"을 조문 인용과 함께 쓴다.
      */
     static boolean grounded(QueryType dimension, ImpactResult r, Set<String> injectedSourceIds) {
+        if (dimension == QueryType.ACTION) return actionGrounded(r, injectedSourceIds);   // 재생성(D71)
         if (!grounded(r, injectedSourceIds)) return false;
         return !dimension.isLayerB() || personalizedComplete(r);
+    }
+
+    /** 대응 방안 재생성 — 대응 ≥1·각 근거 ≥1·모든 인용이 주입 집합 안(주장은 필수 아님). 상황 사실은 근거 집합 밖. */
+    private static boolean actionGrounded(ImpactResult r, Set<String> injectedSourceIds) {
+        return r != null && r.actions() != null && !r.actions().isEmpty()
+                && r.actions().stream().allMatch(a -> a.basis() != null && !a.basis().isEmpty())
+                && injectedSourceIds.containsAll(citedSourceIds(r));
     }
 
     private static boolean personalizedComplete(ImpactResult r) {
