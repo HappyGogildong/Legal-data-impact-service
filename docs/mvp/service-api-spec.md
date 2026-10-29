@@ -71,6 +71,7 @@ BASE  /api/v1
 | 메서드 | 경로 | 기능 | 인증 |
 |---|---|---|---|
 | `POST` | `/analyses` | **자연어 질의 → 그라운딩된 분석**(F1~F4) | 조건부* |
+| `POST` | `/analyses/action-revisions` | 대응 방안 상황 확인 — 상황 질문 답으로 **대응 방안만 재생성**(D71) | 필요 |
 | `GET` | `/laws` | 곧 시행되는 법령 목록(시행일 범위·커서) — 홈·S06 | — |
 | `GET` | `/laws/{lawId}` | 한 법령의 **시행예정본 목록**(D43) | — |
 | `GET` | `/laws/{lawId}/{efYd}` | 법령 상세 — 개정 이유·시행 규칙·바뀐 조문(현행 대비)·부칙·위임 조항(S05) | — |
@@ -144,6 +145,11 @@ BASE  /api/v1
       "text": "① …(개정)", "previousText": "① …(현행)",   // changeType·previousText 는 찾은 법령 버전이 시행예정일 때만(시행중·과거·철회 버전은 키에 날짜가 있어도 null). previousText: 현행 원문(개정·삭제·이동만, 신설·무변경은 null)
       "changeType": "개정", "effectiveDate": "2026-08-04" }
   ],
+  "situation": {                              // 선택(D71) — 내 영향·대응 방안(Layer B)이 채워지고 상황 질문이 있을 때만. 없으면 생략
+    "questions": [ { "id": "q1", "text": "계약을 2026-11-01 이전에 맺었나요?", "basis": "LAW:001809@2026-08-04:addenda:2",
+                    "answerType": "YES_NO", "options": [] } ],   // 0~3개. answerType: YES_NO | DATE | CHOICE(options 2~4개). 모든 형식에 '모름' 답 허용
+    "stepNotes": [ { "index": 1, "note": "시행일 이전 계약이라 이전 기준이 적용돼요" } ]   // 대응 방안 단계(0부터)별 상황 설명 — 대개 없음
+  },
   // uncertainties 는 차원별 내용이라 각 answer.<차원>(ImpactResult) 안에만 둔다(전역 중복 제거)
   "disclaimer": "법률 자문이 아닌 참고용 정보입니다."
 }
@@ -184,10 +190,46 @@ BASE  /api/v1
 - `CONSENT_OUTDATED` — 개인화 차원(Layer B)인데 프로필 동의가 옛 처리방침 버전이다 → 재동의 안내 (D69)
 - `DAILY_LIMIT` — 오늘 개인화 분석 한도(`lia.personalization.daily-limit`, 기본 20)를 다 썼다 (D69)
 - `INSUFFICIENT_GROUNDING` — 재생성 후에도 인용 검증을 통과하지 못했다(환각 노출 금지). Layer A·B 공통 (D69)
+- `SITUATION_EXPIRED` — `POST /analyses/action-revisions` 전용(§3.0.1): 세션에 그 법령의 상황 질문이 없다(세션 만료·새 로그인·다른 법령) (D71)
+- `situation`(D71) — 질문은 서버가 **HTTP 세션(메모리)에 법령 버전별로 보관**(최근 20개)한다. 클라이언트는 질문 문장을 되돌려 보내지 않고 `questionId`+답만 `POST /analyses/action-revisions` 로 보낸다. 근거가 주입 집합 밖이거나 형식이 깨진 질문은 서버가 버린다(최대 3개).
 - 캐시 키는 `userId`가 아니라 **프로필 속성 해시 + 법령 참조(law.ref) + 차원**(D41). (Layer B 개인화 답은 D69 로 저장하지 않음 — 답변 캐시는 후속)
 - **멀티턴(대화 상태 지속)은 MVP 밖** — 단발 질의만. 멀티턴은 D37 재검토 트리거라 별도 결정 후 도입.
 
 > **멱등성 주의.** `POST`지만 같은 `(query, lawRef, profileHash)`는 캐시로 같은 결과를 준다(Layer B 개인화 답은 D69 로 저장하지 않으므로 답변 캐시 도입 뒤의 동작 — 현재는 매번 생성). 리소스 신규 생성(분석 이력 저장)은 post-MVP — 그때 `GET /analyses/{id}`(이력·공유)로 확장.
+
+### 3.0.1 `POST /analyses/action-revisions` — 대응 방안 상황 확인 (D71)
+
+`POST /analyses` 응답의 `situation.questions` 에 사용자가 답하면 **대응 방안만 다시 생성**한다(영향 등 다른 차원은 그대로). 로그인 세션 필수 — 서버가 userId 로 프로필을 읽고, 세션에 보관된 질문과 답을 맞춰 본다. **CSRF 보호**가 적용된다(`/analyses` 와 달리 예외로 두지 않는다 — 클라이언트는 CSRF 토큰 헤더를 함께 보낸다).
+
+```jsonc
+// POST /api/v1/analyses/action-revisions
+// 요청
+{
+  "lawRef": { "lawId": "001809", "effectiveDate": "2026-08-04" },   // 질문을 받은 그 법령 버전
+  "answers": [ { "questionId": "q1", "answer": "예" },
+               { "questionId": "q2", "answer": "2027-03-01" } ]      // 답: YES_NO 예·아니오·모름 / DATE yyyy-MM-dd·모름 / CHOICE 선택지 하나·모름
+}
+// 응답 200 — 성공
+{
+  "action": { "actions": [ { "what": "…", "deadline": "…", "basis": ["LAW:001809@2026-08-04:art:18"] } ], "uncertainties": ["…"], "disclaimer": "…" },
+  "stepNotes": [ { "index": 0, "note": "시행일 이전 계약이라 이전 기준" } ],   // 상황이 영향을 준 단계 — 웹이 "내 상황 반영"으로 강조
+  "sources": [ /* action 안 인용키의 근거(CitedSource) */ ]
+}
+// 응답 200 — 못 함
+{ "unmet": { "reason": "SITUATION_EXPIRED", "message": "…" } }
+```
+
+**처리 순서**(앞에서 걸리면 뒤는 실행하지 않는다 — [[ActionRevisionUseCase]]):
+1. 개인화 게이트 — 프로필 없음·동의 구버전이면 `unmet` `PROFILE_REQUIRED`·`CONSENT_OUTDATED`.
+2. 세션의 그 법령 질문 조회 — 없으면 `unmet` `SITUATION_EXPIRED`("상황 질문이 만료됐어요" — 웹은 "다시 받기"로 같은 법령 Layer B 를 다시 요청, 한도 1회).
+3. 답 검증 — 모르는 `questionId`·중복·형식 위반·빈 목록·전부 `모름` → **400**(정상 사용으론 불가능하므로 위조로 본다). `모름` 답은 모델에 보내지 않는다.
+4. 정본·기준선 — 없으면 `LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`.
+5. 하루 한도 — 첫 Layer B 와 **같은 한도**를 **호출 직전 1회 차감**, 환불 없음. 초과는 `DAILY_LIMIT`([[cost-policy]]).
+6. 엔진(ACTION, Opus 1회·재생성 ≤2) — 재생성 후에도 근거 부족이면 `INSUFFICIENT_GROUNDING`(웹은 기존 대응 방안을 유지).
+
+- `unmet.reason` 은 `/analyses` 의 코드에 **`SITUATION_EXPIRED`** 가 더해진 집합이다. 재생성 응답의 `unmet` 은 차원 맵이 아니라 단일 `{ reason, message }`.
+- 프라이버시(D41·D69·D71): 세션엔 질문만 있고 답은 없다 — 답은 요청 처리 중에만 쓰고 버린다. DB 저장 없음. 프롬프트엔 `질문: 답` 줄과 프로필 라벨만 가고 userId 는 없다. 답 내용은 로그·트레이스에 남기지 않는다.
+- 자유 입력 사실 추출("내 상황 설명하기")은 다음 단계 — 이번엔 구조화 질문만.
 
 ### 3.1 `GET /laws` — 곧 시행되는 법령 목록 (홈·S06)
 
@@ -379,7 +421,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 
 | 코드 | status | 의미 |
 |---|---|---|
-| 400 | `bad_request` | 스키마 위반·필수 파라미터 누락 |
+| 400 | `bad_request` | 스키마 위반·필수 파라미터 누락 · 상황 재생성의 위조·형식 위반 답(D71) |
 | 401 | `unauthenticated` | 인증 전용 엔드포인트(`/profile`·`/consents`·`/account`)에 세션 없이 접근 |
 | 404 | `not_found` | `lawId`/`efYd` 조합이 저장소에 없음 · 프로필 미생성 |
 | 409 | `consent_required` | 현재 처리방침 버전의 프로필 동의 없이 `PUT /profile` (D61) |
