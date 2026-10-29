@@ -50,6 +50,9 @@ describe("ConsentScreen", () => {
       name: "동의하고 프로필 입력",
     });
     expect(submit).toBeDisabled();
+    expect(
+      screen.getByText("내 영향·대응 방안 분석, 내 관련 법령 찾기"),
+    ).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("checkbox", { name: /만 14세 이상입니다/ }),
     );
