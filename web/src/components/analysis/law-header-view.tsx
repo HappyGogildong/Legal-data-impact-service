@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useId } from "react";
+import { BookmarkToggle } from "@/components/bookmarks/bookmark-toggle";
 import { useToday } from "@/hooks/use-browser";
 import type { LawBrief, LawHeader } from "@/lib/api/types";
 import { dDayLabel, daysUntil } from "@/lib/dates";
@@ -47,6 +48,7 @@ export function LawHeaderView({
             {dDayLabel(days)}
           </span>
         )}
+        {law.lawId && <BookmarkToggle lawId={law.lawId} />}
       </div>
       {meta && <p className="mt-0.5 text-xs text-muted-foreground">{meta}</p>}
       {law.lawId && law.effectiveDate && (

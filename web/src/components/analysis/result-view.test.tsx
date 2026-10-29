@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render as renderUi, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisResponse } from "@/lib/api/types";
 import {
@@ -8,6 +9,7 @@ import {
   situationKey,
   writeSituation,
 } from "@/lib/situation-store";
+import { json, mockApi } from "@/test/api-mock";
 import { resolvedResponse } from "@/test/fixtures";
 import { mockViewport } from "@/test/viewport";
 import { ResultView } from "./result-view";
@@ -18,6 +20,22 @@ vi.mock("next/navigation", () => ({
 }));
 
 const ask = { query: "주택법 바뀌면 뭐가 달라져?" };
+
+// 헤더의 북마크 ☆ 가 세션을 묻는다 — 익명이면 북마크 목록은 부르지 않는다
+beforeEach(() => {
+  mockApi({
+    "GET /api/v1/account": () => json({ error: "unauthenticated" }, 401),
+  });
+});
+
+function render(ui: ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return renderUi(
+    <QueryClientProvider client={client}>{ui}</QueryClientProvider>,
+  );
+}
 
 function renderResult(onAsk = vi.fn()) {
   render(<ResultView response={resolvedResponse} ask={ask} onAsk={onAsk} />);

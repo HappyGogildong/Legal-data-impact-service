@@ -121,6 +121,8 @@ createServer((request, response) => {
       pendingLawCount: 3,
     });
   }
+  if (url.pathname === "/api/v1/bookmarks")
+    return send(response, 200, { items: [] });
   if (url.pathname === "/api/v1/laws/trending") {
     const day = url.searchParams.get("window") === "day";
     const all = [

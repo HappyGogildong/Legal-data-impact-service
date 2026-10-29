@@ -36,6 +36,8 @@ export type SourceText = NonNullable<LawDetail["addenda"]>[number];
 
 export type TrendingPage = components["schemas"]["TrendingPage"];
 export type TrendingItem = NonNullable<TrendingPage["items"]>[number];
+export type BookmarkList = components["schemas"]["BookmarkListResponse"];
+export type BookmarkItem = NonNullable<BookmarkList["items"]>[number];
 export type LawSummary = NonNullable<LawDetail["summary"]>;
 
 export type Discovery = NonNullable<AnalysisResponse["discovery"]>;
