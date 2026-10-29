@@ -90,7 +90,9 @@ describe("ActionSituation", () => {
       answers: [{ questionId: "q1", answer: "예" }],
     });
     expect(onRevised).toHaveBeenCalledWith(REVISION);
-    expect(readSituation(situationKey(law.lawId, law.effectiveDate))).toEqual({
+    expect(
+      readSituation(situationKey(law.lawId, law.effectiveDate), SET_ID),
+    ).toEqual({
       answers: { q1: "예", q2: "모름" },
       revision: REVISION,
       identity: SET_ID,
@@ -116,7 +118,7 @@ describe("ActionSituation", () => {
     });
     expect(onRevised).not.toHaveBeenCalled();
     // 다시 받기는 이 법령 버전의 저장된 상태(옛 답·재생성 결과)를 비운다
-    expect(readSituation(KEY)).toEqual({ answers: {} });
+    expect(readSituation(KEY, SET_ID)).toEqual({ answers: {} });
   });
 
   it("법령 제목이 없어도 다시 받기를 보이고, 제목 없는 개인화 질의로 다시 받는다", async () => {

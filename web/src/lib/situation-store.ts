@@ -7,8 +7,10 @@ import type { ActionRevision } from "@/lib/api/types";
 export type SituationState = {
   answers: Record<string, string>;
   revision?: ActionRevision;
-  identity?: string;
 };
+
+/** 저장하는 상태는 항상 질문 묶음 식별자(setId)를 달고 있다 — 식별자 없는 저장은 만들 수 없다. */
+export type StoredSituation = SituationState & { identity: string };
 
 const PREFIX = "lia.situation.";
 const memory = new Map<string, string>();
@@ -19,7 +21,7 @@ export function situationKey(lawId: string, effectiveDate: string): string {
 
 const EMPTY = (): SituationState => ({ answers: {} });
 
-function isState(value: unknown): value is SituationState {
+function isState(value: unknown): value is StoredSituation {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     return false;
   const { answers, revision, identity } = value as Record<string, unknown>;
@@ -34,11 +36,11 @@ function isState(value: unknown): value is SituationState {
       Array.isArray(revision))
   )
     return false;
-  return identity === undefined || typeof identity === "string";
+  return typeof identity === "string";
 }
 
-/** identity 를 주면 그 질문 묶음으로 만든 상태만 돌려준다 — 다르면 빈 상태. */
-export function readSituation(key: string, identity?: string): SituationState {
+/** identity(질문 묶음 setId)는 필수 — 그 묶음으로 만든 상태만 돌려주고, 다르면 빈 상태. */
+export function readSituation(key: string, identity: string): SituationState {
   let raw: string | null;
   try {
     raw = sessionStorage.getItem(key);
@@ -54,11 +56,11 @@ export function readSituation(key: string, identity?: string): SituationState {
     return EMPTY();
   }
   if (!isState(parsed)) return EMPTY();
-  if (identity !== undefined && parsed.identity !== identity) return EMPTY();
+  if (parsed.identity !== identity) return EMPTY();
   return parsed;
 }
 
-export function writeSituation(key: string, state: SituationState) {
+export function writeSituation(key: string, state: StoredSituation) {
   const raw = JSON.stringify(state);
   memory.set(key, raw);
   try {

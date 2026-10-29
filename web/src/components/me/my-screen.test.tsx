@@ -159,7 +159,10 @@ describe("MyScreen", () => {
 
   it("로그아웃하면 탭에 둔 상황 답(lia.situation.*)을 지운다", async () => {
     const key = situationKey("001809", "2026-08-04");
-    writeSituation(key, { answers: { q1: "예" } });
+    writeSituation(key, {
+      answers: { q1: "예" },
+      identity: "0123456789abcdef",
+    });
     document.cookie = "XSRF-TOKEN=t";
     renderMy({ "POST /logout": () => empty(204) });
     await userEvent.click(
@@ -167,12 +170,15 @@ describe("MyScreen", () => {
     );
     await vi.waitFor(() => expect(reloadTo).toHaveBeenCalledWith("/"));
     expect(sessionStorage.getItem(key)).toBeNull();
-    expect(readSituation(key)).toEqual({ answers: {} });
+    expect(readSituation(key, "0123456789abcdef")).toEqual({ answers: {} });
   });
 
   it("계정 삭제해도 탭에 둔 상황 답을 지운다", async () => {
     const key = situationKey("001809", "2026-08-04");
-    writeSituation(key, { answers: { q1: "예" } });
+    writeSituation(key, {
+      answers: { q1: "예" },
+      identity: "0123456789abcdef",
+    });
     renderMy({ "DELETE /api/v1/account": () => empty(204) });
     await userEvent.click(
       await screen.findByRole("button", { name: "계정 삭제" }),
@@ -182,7 +188,7 @@ describe("MyScreen", () => {
     );
     await vi.waitFor(() => expect(reloadTo).toHaveBeenCalledWith("/"));
     expect(sessionStorage.getItem(key)).toBeNull();
-    expect(readSituation(key)).toEqual({ answers: {} });
+    expect(readSituation(key, "0123456789abcdef")).toEqual({ answers: {} });
   });
 
   it("프로필 삭제 — 확인 후 삭제하면 대화상자가 닫히고 입력으로 바뀐다", async () => {

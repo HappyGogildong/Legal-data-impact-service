@@ -304,7 +304,7 @@ describe("ResultView — 대응 방안 상황 확인(D71)", () => {
 
   const revisionState = (extra = {}) => ({
     answers: { q1: "예" },
-    identity: withSituation.situation!.setId,
+    identity: withSituation.situation!.setId!,
     revision: {
       action: { actions: [{ what: "재생성된 대응 단계" }] },
       sources: [],
@@ -327,6 +327,37 @@ describe("ResultView — 대응 방안 상황 확인(D71)", () => {
     expect(
       screen.queryByText("시행일 이전 계약이라 이전 기준"),
     ).not.toBeInTheDocument();
+  });
+
+  it("질문 묶음(setId) 없는 새 응답은 저장된 옛 revision 을 덮어쓰지 않는다 — 응답 자신의 대응 방안", async () => {
+    writeSituation(situationKey("001809", "2026-08-04"), revisionState());
+    renderWithClient({ ...withSituation, situation: undefined });
+
+    await userEvent.click(screen.getByRole("button", { name: "대응 방안" }));
+
+    expect(screen.getByText(/기본 대응 단계/)).toBeInTheDocument();
+    expect(screen.queryByText(/재생성된 대응 단계/)).not.toBeInTheDocument();
+    expect(screen.queryByText("내 상황 반영")).not.toBeInTheDocument();
+  });
+
+  it("대응 방안 unmet 응답도 저장된 옛 revision 을 되살리지 않는다 — 미충족 안내", async () => {
+    writeSituation(situationKey("001809", "2026-08-04"), revisionState());
+    const { action: _unused, ...answerWithoutAction } = withSituation.answer!;
+    void _unused;
+    renderWithClient({
+      ...withSituation,
+      answer: answerWithoutAction,
+      situation: undefined,
+      unmet: { action: { reason: "DAILY_LIMIT", message: "" } },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /대응 방안/ }));
+
+    expect(
+      await screen.findByText("오늘 개인화 분석 한도를 다 썼어요"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/재생성된 대응 단계/)).not.toBeInTheDocument();
+    expect(screen.queryByText("내 상황 반영")).not.toBeInTheDocument();
   });
 
   it("revision 에 stepNotes 가 없으면 기본 응답의 메모를 붙이지 않는다", async () => {
