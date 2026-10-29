@@ -220,4 +220,21 @@ class LawDiscoveryTest {
         assertFalse(result.profileApplied());
         assertTrue(result.candidates().isEmpty(), "히트 없으면 빈 목록(오류 아님)");
     }
+
+    @Test
+    void 검색_예외는_삼키지_않고_그대로_전파한다() {
+        // 임베딩 API 장애 — 분석의 모델 API 장애와 같은 오류 응답 경로로 흘려보낸다.
+        ChunkStore failing = new ChunkStore() {
+            @Override public void replaceVersion(String lawId, String efYd, List<Chunk> chunks) {}
+            @Override public List<Chunk> search(String query, int topK, double minSimilarity) {
+                throw new IllegalStateException("임베딩 API 장애");
+            }
+        };
+        LawDiscovery broken = new LawDiscovery(failing, laws, law -> Optional.empty(), SETTINGS);
+
+        IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                () -> broken.discover("전세 관련 법", Optional.empty()));
+
+        assertEquals("임베딩 API 장애", thrown.getMessage());
+    }
 }

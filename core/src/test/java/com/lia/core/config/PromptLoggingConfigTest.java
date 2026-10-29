@@ -17,5 +17,7 @@ class PromptLoggingConfigTest {
         assertTrue(yml.contains("log-prompt: false"));
         assertTrue(yml.contains("log-completion: false"));
         assertFalse(yml.contains("log-prompt: true"));
+        assertTrue(yml.contains("log-query-response: false"));   // 벡터 검색어(프로필 라벨 포함 가능)
+        assertFalse(yml.contains("log-query-response: true"));
     }
 }

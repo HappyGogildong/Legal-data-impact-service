@@ -72,6 +72,8 @@ spring:
       # Upstage 벤치 시: base-url/모델 오버라이드 (OpenAI-호환)
       # base-url: https://api.upstage.ai
     vectorstore:
+      observations:
+        log-query-response: false   # 벡터 검색 질의·결과를 로그에 남기지 않는다 — 검색어에 프로필 라벨이 들어갈 수 있다(D41·D70)
       pgvector:                       # ChunkStore (D54·D55) — add/search 시 위 openai 모델로 내부 임베딩
         index-type: HNSW
         distance-type: COSINE_DISTANCE

@@ -113,6 +113,11 @@ describe("DiscoveryView", () => {
         "켜면 프로필 항목이 검색 처리를 위해 외부 서비스로 전송돼요",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("switch", { name: "내 프로필 기준으로 찾기" }),
+    ).toHaveAccessibleDescription(
+      "켜면 프로필 항목이 검색 처리를 위해 외부 서비스로 전송돼요",
+    );
   });
 
   it("프로필을 못 쓴 사유가 오면 개인화 안내를 보여 주고 목록은 그대로", async () => {

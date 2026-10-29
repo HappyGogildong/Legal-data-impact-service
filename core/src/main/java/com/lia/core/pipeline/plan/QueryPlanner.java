@@ -10,7 +10,7 @@ import com.lia.core.pipeline.resolve.SourceAnalyzer;
 
 /**
  * 자연어 → {@link PlanResult}. LLM 번역은 {@link QueryTranslator}에 위임하고, 이후는 <b>결정론</b>:
- * 해소 분기·프로필 게이팅·fail-closed(D46). 실행(dispatch)은 이 범위 밖(AnalysisEngine 후속).
+ * 해소 분기·프로필 게이팅·fail-closed(D46). 실행은 {@code QueryDispatcher} 몫 — 발견 검색도 디스패처가 {@code LawDiscovery} 로 돌린다(D70).
  *
  * <p>스펙: docs/components/QueryPlanner.md.
  */
@@ -48,7 +48,7 @@ public class QueryPlanner {
             return planned(draft, new Target.Reference(ref), profilePresent, alternatives);
         }
 
-        // Discovery — criteria 구성만(검색 실행은 dispatch, 이번 범위 밖)
+        // Discovery — criteria 구성만(검색은 디스패처가 LawDiscovery 로 실행, D70)
         DiscoveryCriteria criteria = new DiscoveryCriteria(
                 draft.keywords(), draft.conditions(), draft.domains(), profilePresent);
         return planned(draft, new Target.Discovery(criteria), profilePresent, List.of());

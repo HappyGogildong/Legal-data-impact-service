@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useId } from "react";
 import { DDayBadge } from "@/components/laws/d-day-badge";
 import type { DiscoveredLaw, Discovery } from "@/lib/api/types";
 import { setDraft, type AskRequest } from "@/lib/ask-store";
@@ -23,6 +24,7 @@ export function DiscoveryView({
   onAsk: (next: AskRequest) => void;
 }) {
   const router = useRouter();
+  const externalNoticeId = useId();
   const candidates = discovery.candidates ?? [];
   const profileSearch = ask.profileSearch ?? false;
   const today = seoulToday();
@@ -43,6 +45,7 @@ export function DiscoveryView({
         <input
           type="checkbox"
           role="switch"
+          aria-describedby={externalNoticeId}
           checked={profileSearch}
           onChange={(event) =>
             onAsk({ query: ask.query, profileSearch: event.target.checked })
@@ -50,7 +53,7 @@ export function DiscoveryView({
         />
         내 프로필 기준으로 찾기
       </label>
-      <p className="text-xs text-muted-foreground">
+      <p id={externalNoticeId} className="text-xs text-muted-foreground">
         켜면 프로필 항목이 검색 처리를 위해 외부 서비스로 전송돼요
       </p>
       {discovery.profileBlocked && (

@@ -19,7 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  * 읽으므로 빈 Testcontainers DB 로는 의미 있는 검증이 안 된다(RagSearchLiveSmokeTest 와 다른 점).
  */
 @SpringBootTest
-@EnabledIfEnvironmentVariable(named = "LIA_DISCOVERY_LIVE", matches = "1")
+@EnabledIfEnvironmentVariable(named = "LIA_DISCOVERY_LIVE", matches = "(?i)(1|true|yes)")
 class LawDiscoveryLiveSmokeTest {
 
     @Autowired LawDiscovery discovery;
