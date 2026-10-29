@@ -24,6 +24,8 @@ import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.application.analysis.AnalyzeUseCase;
 import com.lia.core.auth.CurrentUser;
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.domain.analysis.Situation;
+import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.discover.DiscoveredLaw;
@@ -133,6 +135,72 @@ class AnalysisControllerTest {
         controller.analyze(new AnalyzeApiRequest("전세 관련 법", null, null, true), new MockHttpServletRequest());
 
         verify(useCase).analyze("전세 관련 법", null, Optional.empty(), true);
+    }
+
+    // ── 상황 질문 세션 보관(D71) ──
+
+    private static final LawRef SITUATION_REF = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
+    private static final SituationQuestion QUESTION = new SituationQuestion("q1", "계약을 이미 했나요?",
+            "LAW:001809@2026-08-04:art:18", SituationQuestion.AnswerType.YES_NO, List.of());
+
+    /** ACTION 응답이 채워진 분석 결과 — 질문이 비면 상황 없는 대응 방안. */
+    private static AnalysisOutcome analyzedAction(List<SituationQuestion> questions) {
+        AnalysisQuery q = new AnalysisQuery(QueryType.ACTION, Set.of(QueryType.ACTION),
+                new Target.Reference(SITUATION_REF), "대응", ArticleScope.CHANGED_ONLY, false, null);
+        ImpactResult action = new ImpactResult("LAW:001809@2026-08-04", "ACTION", "대응 방안", List.of(), List.of(),
+                List.of(new ImpactResult.Action("신고한다", null, List.of("LAW:001809@2026-08-04:art:18"))),
+                null, List.of(), "참고용", null);
+        DispatchResult dr = new DispatchResult(QueryType.ACTION,
+                Map.of(QueryType.ACTION, new AnalyzeResponse(action, Set.of("LAW:001809@2026-08-04:art:18"),
+                        new Situation(questions, List.of()))),
+                Map.of());
+        return new AnalysisOutcome.Analyzed(q, dr);
+    }
+
+    @Test
+    void ACTION_응답에_질문이_있으면_세션에_보관한다() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession(true);
+        when(useCase.analyze(any(), any(), any(), anyBoolean())).thenReturn(analyzedAction(List.of(QUESTION)));
+
+        controller.analyze(new AnalyzeApiRequest("주택법 대응", null, null), request);
+
+        assertEquals(Optional.of(List.of(QUESTION)),
+                new HttpSessionSituationQuestions(request.getSession(false)).find(SITUATION_REF));
+    }
+
+    @Test
+    void 조문을_지정해_저장한_질문을_조문_없이_찾는다() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession(true);
+        when(useCase.analyze(any(), any(), any(), anyBoolean())).thenReturn(analyzedAction(List.of(QUESTION)));
+
+        controller.analyze(new AnalyzeApiRequest("주택법 제18조 대응", null, null), request);
+
+        assertTrue(new HttpSessionSituationQuestions(request.getSession(false))
+                .find(new LawRef("001809", LocalDate.of(2026, 8, 4), "18")).isPresent());
+    }
+
+    @Test
+    void 세션이_없으면_저장하지_않고_예외도_없다() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        when(useCase.analyze(any(), any(), any(), anyBoolean())).thenReturn(analyzedAction(List.of(QUESTION)));
+
+        assertDoesNotThrow(() -> controller.analyze(new AnalyzeApiRequest("주택법 대응", null, null), request));
+
+        assertNull(request.getSession(false), "익명 요청에 세션을 새로 만들지 않는다");
+    }
+
+    @Test
+    void 질문이_비면_저장하지_않고_기존_질문을_유지한다() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        HttpSessionSituationQuestions store = new HttpSessionSituationQuestions(request.getSession(true));
+        store.save(SITUATION_REF, List.of(QUESTION));
+        when(useCase.analyze(any(), any(), any(), anyBoolean())).thenReturn(analyzedAction(List.of()));
+
+        controller.analyze(new AnalyzeApiRequest("주택법 대응", null, null), request);
+
+        assertEquals(Optional.of(List.of(QUESTION)), store.find(SITUATION_REF));
     }
 
     @Test

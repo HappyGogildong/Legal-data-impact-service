@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analyses/action-revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["revise"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/consents": {
         parameters: {
             query?: never;
@@ -210,6 +226,16 @@ export interface components {
             deadline?: string;
             what?: string;
         };
+        ActionRevisionApiRequest: {
+            answers?: components["schemas"]["SituationAnswer"][];
+            lawRef?: components["schemas"]["LawRefDto"];
+        };
+        ActionRevisionApiResponse: {
+            action?: components["schemas"]["ImpactResult"];
+            sources?: components["schemas"]["CitedSource"][];
+            stepNotes?: components["schemas"]["StepNote"][];
+            unmet?: components["schemas"]["Unmet"];
+        };
         AnalysisApiResponse: {
             alternatives?: components["schemas"]["LawBrief"][];
             answer?: {
@@ -222,6 +248,7 @@ export interface components {
             message?: string;
             /** @enum {string} */
             resolution?: "RESOLVED" | "NOT_FOUND_YET" | "AMBIGUOUS" | "UNVERIFIED";
+            situation?: components["schemas"]["SituationBody"];
             sources?: components["schemas"]["CitedSource"][];
             unmet?: {
                 [key: string]: components["schemas"]["Unmet"];
@@ -427,10 +454,31 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        SituationAnswer: {
+            answer?: string;
+            questionId?: string;
+        };
+        SituationBody: {
+            questions?: components["schemas"]["SituationQuestion"][];
+            stepNotes?: components["schemas"]["StepNote"][];
+        };
+        SituationQuestion: {
+            /** @enum {string} */
+            answerType?: "YES_NO" | "DATE" | "CHOICE";
+            basis?: string;
+            id?: string;
+            options?: string[];
+            text?: string;
+        };
         SourceText: {
             label?: string;
             sourceId?: string;
             text?: string;
+        };
+        StepNote: {
+            /** Format: int32 */
+            index?: number;
+            note?: string;
         };
         SummaryClaim: {
             citations?: string[];
@@ -455,7 +503,7 @@ export interface components {
         Unmet: {
             message?: string;
             /** @enum {string} */
-            reason?: "LAW_NOT_LOADED" | "BASELINE_NOT_LOADED" | "PROFILE_REQUIRED" | "CONSENT_OUTDATED" | "DAILY_LIMIT" | "INSUFFICIENT_GROUNDING" | "NOT_IMPLEMENTED";
+            reason?: "LAW_NOT_LOADED" | "BASELINE_NOT_LOADED" | "PROFILE_REQUIRED" | "CONSENT_OUTDATED" | "DAILY_LIMIT" | "INSUFFICIENT_GROUNDING" | "NOT_IMPLEMENTED" | "SITUATION_EXPIRED";
         };
         UpcomingVersion: {
             amendKind?: string;
@@ -530,6 +578,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnalysisApiResponse"];
+                };
+            };
+        };
+    };
+    revise: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionRevisionApiRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionRevisionApiResponse"];
                 };
             };
         };

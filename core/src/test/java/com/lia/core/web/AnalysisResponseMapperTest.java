@@ -17,6 +17,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.domain.analysis.Situation;
+import com.lia.core.domain.analysis.SituationQuestion;
+import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
@@ -128,6 +131,65 @@ class AnalysisResponseMapperTest {
         assertFalse(JsonMapper.builder().build().readTree(json).has("message"), "RESOLVED 엔 최상위 message 없음(unmet 값 안의 message는 별개)");
         assertFalse(json.contains("law_ref"));
         assertTrue(json.contains("\"unmet\":{\"impact\":{\"reason\":\"PROFILE_REQUIRED\""), json);
+    }
+
+    /** ACTION 응답만 채워진 분석 결과 — 상황(질문·단계 설명)은 인자로. */
+    private static AnalysisOutcome.Analyzed analyzedAction(Situation situation) {
+        LawRef ref = new LawRef("001809", EF, null);
+        AnalysisQuery query = new AnalysisQuery(QueryType.ACTION, Set.of(QueryType.ACTION),
+                new Target.Reference(ref), "대응", ArticleScope.CHANGED_ONLY, false, null);
+        ImpactResult action = new ImpactResult("LAW:001809@2026-08-04", "ACTION", "대응 방안", List.of(), List.of(),
+                List.of(new ImpactResult.Action("신고한다", null, List.of(CITE))), null, List.of(), "참고용", null);
+        return new AnalysisOutcome.Analyzed(query, new DispatchResult(QueryType.ACTION,
+                Map.of(QueryType.ACTION, new AnalyzeResponse(action, Set.of(CITE), situation)), Map.of()));
+    }
+
+    private static SituationQuestion question(String id, String basis) {
+        return new SituationQuestion(id, "계약을 이미 했나요?", basis, SituationQuestion.AnswerType.YES_NO, List.of());
+    }
+
+    @Test
+    @DisplayName("JSON — ACTION 응답의 situation 은 questions·stepNotes 로 나간다")
+    void 상황_직렬화() {
+        Situation situation = new Situation(List.of(question("q1", CITE)), List.of(new StepNote(0, "이미 계약했다면 해당돼요.")));
+
+        tools.jackson.databind.JsonNode json = JsonMapper.builder().build().readTree(
+                JsonMapper.builder().build().writeValueAsString(mapper(true).toBody(analyzedAction(situation))));
+
+        assertEquals("q1", json.at("/situation/questions/0/id").asString());
+        assertEquals(0, json.at("/situation/stepNotes/0/index").asInt());
+        assertEquals("이미 계약했다면 해당돼요.", json.at("/situation/stepNotes/0/note").asString());
+    }
+
+    @Test
+    @DisplayName("JSON — 상황이 비면 situation 키 없음")
+    void 상황이_비면_키_생략() {
+        tools.jackson.databind.JsonNode json = JsonMapper.builder().build().readTree(
+                JsonMapper.builder().build().writeValueAsString(mapper(true).toBody(analyzedAction(Situation.none()))));
+
+        assertFalse(json.has("situation"), json.toString());
+    }
+
+    @Test
+    @DisplayName("JSON — 단계 설명만 있어도(질문 없음) situation 에는 stepNotes 만, questions 키는 생략")
+    void 질문이_없으면_questions_생략() {
+        tools.jackson.databind.JsonNode json = JsonMapper.builder().build().readTree(
+                JsonMapper.builder().build().writeValueAsString(mapper(true).toBody(
+                        analyzedAction(new Situation(List.of(), List.of(new StepNote(0, "설명")))))));
+
+        assertFalse(json.get("situation").has("questions"), json.toString());
+        assertEquals("설명", json.at("/situation/stepNotes/0/note").asString());
+    }
+
+    @Test
+    @DisplayName("질문 basis 도 sources 에 들어간다(대응 단계 basis 와 중복은 한 번)")
+    void 질문_근거도_sources에() {
+        String other = "LAW:001809@2026-08-04:amend";
+        Situation situation = new Situation(List.of(question("q1", CITE), question("q2", other)), List.of());
+
+        AnalysisApiResponse body = mapper(true).toBody(analyzedAction(situation));
+
+        assertEquals(List.of(CITE, other), body.sources().stream().map(AnalysisApiResponse.CitedSource::sourceId).toList());
     }
 
     @Test

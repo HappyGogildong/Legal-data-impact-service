@@ -64,6 +64,34 @@
         "tags" : [ "analysis-controller" ]
       }
     },
+    "/api/v1/analyses/action-revisions" : {
+      "post" : {
+        "operationId" : "revise",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ActionRevisionApiRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ActionRevisionApiResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "action-revision-controller" ]
+      }
+    },
     "/api/v1/consents" : {
       "get" : {
         "operationId" : "status",
@@ -407,6 +435,43 @@
           }
         }
       },
+      "ActionRevisionApiRequest" : {
+        "type" : "object",
+        "properties" : {
+          "answers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SituationAnswer"
+            }
+          },
+          "lawRef" : {
+            "$ref" : "#/components/schemas/LawRefDto"
+          }
+        }
+      },
+      "ActionRevisionApiResponse" : {
+        "type" : "object",
+        "properties" : {
+          "action" : {
+            "$ref" : "#/components/schemas/ImpactResult"
+          },
+          "sources" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CitedSource"
+            }
+          },
+          "stepNotes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StepNote"
+            }
+          },
+          "unmet" : {
+            "$ref" : "#/components/schemas/Unmet"
+          }
+        }
+      },
       "AnalysisApiResponse" : {
         "type" : "object",
         "properties" : {
@@ -443,6 +508,9 @@
           "resolution" : {
             "type" : "string",
             "enum" : [ "RESOLVED", "NOT_FOUND_YET", "AMBIGUOUS", "UNVERIFIED" ]
+          },
+          "situation" : {
+            "$ref" : "#/components/schemas/SituationBody"
           },
           "sources" : {
             "type" : "array",
@@ -1038,6 +1106,58 @@
           }
         }
       },
+      "SituationAnswer" : {
+        "type" : "object",
+        "properties" : {
+          "answer" : {
+            "type" : "string"
+          },
+          "questionId" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SituationBody" : {
+        "type" : "object",
+        "properties" : {
+          "questions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SituationQuestion"
+            }
+          },
+          "stepNotes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StepNote"
+            }
+          }
+        }
+      },
+      "SituationQuestion" : {
+        "type" : "object",
+        "properties" : {
+          "answerType" : {
+            "type" : "string",
+            "enum" : [ "YES_NO", "DATE", "CHOICE" ]
+          },
+          "basis" : {
+            "type" : "string"
+          },
+          "id" : {
+            "type" : "string"
+          },
+          "options" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "text" : {
+            "type" : "string"
+          }
+        }
+      },
       "SourceText" : {
         "type" : "object",
         "properties" : {
@@ -1048,6 +1168,18 @@
             "type" : "string"
           },
           "text" : {
+            "type" : "string"
+          }
+        }
+      },
+      "StepNote" : {
+        "type" : "object",
+        "properties" : {
+          "index" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "note" : {
             "type" : "string"
           }
         }
@@ -1115,7 +1247,7 @@
           },
           "reason" : {
             "type" : "string",
-            "enum" : [ "LAW_NOT_LOADED", "BASELINE_NOT_LOADED", "PROFILE_REQUIRED", "CONSENT_OUTDATED", "DAILY_LIMIT", "INSUFFICIENT_GROUNDING", "NOT_IMPLEMENTED" ]
+            "enum" : [ "LAW_NOT_LOADED", "BASELINE_NOT_LOADED", "PROFILE_REQUIRED", "CONSENT_OUTDATED", "DAILY_LIMIT", "INSUFFICIENT_GROUNDING", "NOT_IMPLEMENTED", "SITUATION_EXPIRED" ]
           }
         }
       },

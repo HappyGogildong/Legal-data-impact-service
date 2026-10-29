@@ -7,6 +7,8 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.domain.analysis.SituationQuestion;
+import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.pipeline.discover.DiscoveredLaw;
 import com.lia.core.pipeline.dispatch.Unmet;
 
@@ -26,6 +28,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param sources      answer 안 인용키의 근거(인용 칩·근거 패널)
  * @param disclaimer   면책(응답 전역)
  * @param discovery    법령 발견 결과(Discovery 질문만, D70)
+ * @param situation    대응 방안의 상황 질문·단계 설명(D71, 상황이 있을 때만)
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AnalysisApiResponse(
@@ -38,22 +41,28 @@ public record AnalysisApiResponse(
         Map<String, Unmet> unmet,
         List<CitedSource> sources,
         String disclaimer,
-        Discovery discovery) {
+        Discovery discovery,
+        SituationBody situation) {
 
     public static AnalysisApiResponse analyzed(LawHeader law, List<LawBrief> alternatives,
                                                Map<String, ImpactResult> answer, Map<String, Unmet> unmet,
-                                               List<CitedSource> sources, String disclaimer) {
-        return new AnalysisApiResponse("RESOLVED", null, null, law, alternatives, answer, unmet, sources, disclaimer, null);
+                                               List<CitedSource> sources, String disclaimer, SituationBody situation) {
+        return new AnalysisApiResponse("RESOLVED", null, null, law, alternatives, answer, unmet, sources, disclaimer, null,
+                situation);
     }
 
     public static AnalysisApiResponse unresolved(String resolution, String message, List<LawBrief> candidates) {
         return new AnalysisApiResponse(resolution, message, candidates.isEmpty() ? null : candidates,
-                null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null);
     }
 
     public static AnalysisApiResponse discovered(Discovery discovery) {
-        return new AnalysisApiResponse("RESOLVED", null, null, null, null, null, null, null, null, discovery);
+        return new AnalysisApiResponse("RESOLVED", null, null, null, null, null, null, null, null, discovery, null);
     }
+
+    /** 상황 확인(D71) — 상황 질문과 대응 단계 설명. 대응 방안이 채워지고 상황이 있을 때만. */
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public record SituationBody(List<SituationQuestion> questions, List<StepNote> stepNotes) {}
 
     /** 법령 발견 결과 — 후보 카드, 프로필 라벨을 붙였는지, 토글을 켰지만 프로필을 못 쓴 사유(없으면 키 생략). */
     @JsonInclude(JsonInclude.Include.NON_NULL)

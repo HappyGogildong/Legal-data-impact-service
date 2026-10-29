@@ -22,6 +22,7 @@ import com.lia.core.pipeline.resolve.ResolutionResult;
 import com.lia.core.store.LawSource;
 import com.lia.core.web.AnalysisApiResponse.LawBrief;
 import com.lia.core.web.AnalysisApiResponse.LawHeader;
+import com.lia.core.web.AnalysisApiResponse.SituationBody;
 
 /**
  * 도메인 결과({@link AnalysisOutcome}) → 공개 API 응답({@link AnalysisApiResponse}, [[service-api-spec]] §3.0).
@@ -70,9 +71,18 @@ public class AnalysisResponseMapper {
                 a.result().filled().values().stream().findFirst().orElse(null));
         String disclaimer = primary == null ? null : primary.result().disclaimer();
 
+        // 상황 확인(D71) — 대응 방안이 채워졌고 상황이 비지 않을 때만. 질문의 근거도 인용 칩으로 열 수 있어야 한다.
+        AnalyzeResponse action = a.result().filled().get(QueryType.ACTION);
+        SituationBody situation = action == null || action.situation().isEmpty() ? null
+                : new SituationBody(action.situation().questions(), action.situation().stepNotes());
+        Set<String> cited = citations(answer.values());
+        if (situation != null) {
+            situation.questions().forEach(q -> { if (q.basis() != null) cited.add(q.basis()); });
+        }
+
         List<LawBrief> alternatives = a.alternatives().stream().map(AnalysisResponseMapper::brief).toList();
         return AnalysisApiResponse.analyzed(law, alternatives, answer, unmet,
-                sources.resolve(citations(answer.values())), disclaimer);
+                sources.resolve(cited), disclaimer, situation);
     }
 
     private static AnalysisApiResponse unresolved(ResolutionResult r) {
