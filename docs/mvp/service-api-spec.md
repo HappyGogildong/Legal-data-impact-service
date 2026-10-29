@@ -145,7 +145,7 @@ BASE  /api/v1
       "text": "① …(개정)", "previousText": "① …(현행)",   // changeType·previousText 는 찾은 법령 버전이 시행예정일 때만(시행중·과거·철회 버전은 키에 날짜가 있어도 null). previousText: 현행 원문(개정·삭제·이동만, 신설·무변경은 null)
       "changeType": "개정", "effectiveDate": "2026-08-04" }
   ],
-  "situation": {                              // 선택(D71) — 내 영향·대응 방안(Layer B)이 채워지고 상황 질문이 있을 때만. 없으면 생략
+  "situation": {                              // 선택(D71) — 대응 방안(ACTION)이 채워지고 상황 질문이 있을 때만. 없으면 생략
     "questions": [ { "id": "q1", "text": "계약을 2026-11-01 이전에 맺었나요?", "basis": "LAW:001809@2026-08-04:addenda:2",
                     "answerType": "YES_NO", "options": [] } ],   // 0~3개. answerType: YES_NO | DATE | CHOICE(options 2~4개). 모든 형식에 '모름' 답 허용
     "stepNotes": [ { "index": 1, "note": "시행일 이전 계약이라 이전 기준이 적용돼요" } ]   // 대응 방안 단계(0부터)별 상황 설명 — 대개 없음
@@ -191,7 +191,7 @@ BASE  /api/v1
 - `DAILY_LIMIT` — 오늘 개인화 분석 한도(`lia.personalization.daily-limit`, 기본 20)를 다 썼다 (D69)
 - `INSUFFICIENT_GROUNDING` — 재생성 후에도 인용 검증을 통과하지 못했다(환각 노출 금지). Layer A·B 공통 (D69)
 - `SITUATION_EXPIRED` — `POST /analyses/action-revisions` 전용(§3.0.1): 세션에 그 법령의 상황 질문이 없다(세션 만료·새 로그인·다른 법령) (D71)
-- `situation`(D71) — 질문은 서버가 **HTTP 세션(메모리)에 법령 버전별로 보관**(최근 20개)한다. 클라이언트는 질문 문장을 되돌려 보내지 않고 `questionId`+답만 `POST /analyses/action-revisions` 로 보낸다. 근거가 주입 집합 밖이거나 형식이 깨진 질문은 서버가 버린다(최대 3개).
+- `situation`(D71) — 질문은 서버가 **HTTP 세션(메모리)에 법령 버전별로 보관**(최근 20개)한다. 클라이언트는 질문 문장을 되돌려 보내지 않고 `questionId`+답만 `POST /analyses/action-revisions` 로 보낸다. 근거가 주입 집합 밖이거나 형식이 깨진 질문은 서버가 버린다(최대 3개, 질문 문장·단계 설명은 최대 200자 한 줄(줄바꿈 없음), 선택지 최대 40자).
 - 캐시 키는 `userId`가 아니라 **프로필 속성 해시 + 법령 참조(law.ref) + 차원**(D41). (Layer B 개인화 답은 D69 로 저장하지 않음 — 답변 캐시는 후속)
 - **멀티턴(대화 상태 지속)은 MVP 밖** — 단발 질의만. 멀티턴은 D37 재검토 트리거라 별도 결정 후 도입.
 
@@ -199,7 +199,7 @@ BASE  /api/v1
 
 ### 3.0.1 `POST /analyses/action-revisions` — 대응 방안 상황 확인 (D71)
 
-`POST /analyses` 응답의 `situation.questions` 에 사용자가 답하면 **대응 방안만 다시 생성**한다(영향 등 다른 차원은 그대로). 로그인 세션 필수 — 서버가 userId 로 프로필을 읽고, 세션에 보관된 질문과 답을 맞춰 본다. **CSRF 보호**가 적용된다(`/analyses` 와 달리 예외로 두지 않는다 — 클라이언트는 CSRF 토큰 헤더를 함께 보낸다).
+`POST /analyses` 응답의 `situation.questions` 에 사용자가 답하면 **대응 방안만 다시 생성**한다(영향 등 다른 차원은 그대로). 로그인 세션 필수 — 서버가 userId 로 프로필을 읽고, 세션에 보관된 질문과 답을 맞춰 본다. 기존 `anyRequest().authenticated()` 규칙에 걸려 **익명 요청은 401** 이고 유스케이스까지 오지 않는다. **CSRF 보호**가 적용된다(`/analyses` 와 달리 예외로 두지 않는다 — 클라이언트는 CSRF 토큰 헤더를 함께 보내며, 없으면 403). 로그인했지만 개인화할 수 없는 사용자(프로필 없음·동의 구버전)는 오류가 아니라 200 `{ unmet }` 으로 게이트의 사유를 받는다.
 
 ```jsonc
 // POST /api/v1/analyses/action-revisions
@@ -220,7 +220,7 @@ BASE  /api/v1
 ```
 
 **처리 순서**(앞에서 걸리면 뒤는 실행하지 않는다 — [[ActionRevisionUseCase]]):
-1. 개인화 게이트 — 프로필 없음·동의 구버전이면 `unmet` `PROFILE_REQUIRED`·`CONSENT_OUTDATED`.
+1. 개인화 게이트 — 로그인 사용자의 프로필 없음·동의 구버전이면 `unmet` `PROFILE_REQUIRED`·`CONSENT_OUTDATED`(익명은 이미 401 로 끊겼다).
 2. 세션의 그 법령 질문 조회 — 없으면 `unmet` `SITUATION_EXPIRED`("상황 질문이 만료됐어요" — 웹은 "다시 받기"로 같은 법령 Layer B 를 다시 요청, 한도 1회).
 3. 답 검증 — 모르는 `questionId`·중복·형식 위반·빈 목록·전부 `모름` → **400**(정상 사용으론 불가능하므로 위조로 본다). `모름` 답은 모델에 보내지 않는다.
 4. 정본·기준선 — 없으면 `LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`.
@@ -422,7 +422,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 | 코드 | status | 의미 |
 |---|---|---|
 | 400 | `bad_request` | 스키마 위반·필수 파라미터 누락 · 상황 재생성의 위조·형식 위반 답(D71) |
-| 401 | `unauthenticated` | 인증 전용 엔드포인트(`/profile`·`/consents`·`/account`)에 세션 없이 접근 |
+| 401 | `unauthenticated` | 인증 전용 엔드포인트(`/profile`·`/consents`·`/account`·`/analyses/action-revisions`)에 세션 없이 접근 |
 | 404 | `not_found` | `lawId`/`efYd` 조합이 저장소에 없음 · 프로필 미생성 |
 | 409 | `consent_required` | 현재 처리방침 버전의 프로필 동의 없이 `PUT /profile` (D61) |
 | 422 | `insufficient_grounding` | 요청한 **모든** 차원이 인용검증 실패(일부만 실패면 200 + `unmet`) |

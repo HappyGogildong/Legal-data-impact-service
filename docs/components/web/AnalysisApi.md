@@ -49,7 +49,7 @@ Controller·Mapper·DTO    AnalyzeUseCase             QueryPlanner · QueryDispa
 
 ### `POST /api/v1/analyses/action-revisions` (D71, 대응 방안 상황 확인)
 
-- 요청 `{ "lawRef": {lawId, effectiveDate}, "answers": [{ "questionId", "answer" }] }` — 질문 문장은 보내지 않는다(서버가 세션 질문을 쓴다). 로그인 세션·CSRF 토큰 필요(로그인 없으면 401, CSRF 토큰 없으면 403).
+- 요청 `{ "lawRef": {lawId, effectiveDate}, "answers": [{ "questionId", "answer" }] }` — 질문 문장은 보내지 않는다(서버가 세션 질문을 쓴다). 로그인 세션·CSRF 토큰 필요 — 기존 `anyRequest().authenticated()` 규칙에 걸려 로그인 없으면 401(유스케이스에 오지 않음), CSRF 토큰 없으면 403. 로그인했지만 개인화 불가(프로필 없음·동의 구버전)는 200 `{ unmet }`.
 - 응답 200 `{ action?, stepNotes?, sources?, unmet? }` — 성공이면 `action`(재생성된 대응 방안 `ImpactResult`)·`stepNotes[{index,note}]`·`sources`, 못 하면 `unmet: { reason, message }`(단수). `reason` ∈ `PROFILE_REQUIRED`·`CONSENT_OUTDATED`·**`SITUATION_EXPIRED`**(신규, 세션에 그 법령 질문 없음)·`LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`.
 - **400** 은 위조·형식 위반만 — 모르는 `questionId`·중복·답 형식 위반·빈 목록·전부 `모름`(정상 사용으론 불가). 게이트 순서·한도는 [[ActionRevisionUseCase]].
 - **OpenAPI** — springdoc이 `/v3/api-docs`(경로 `/api/**`만)를 만든다. `OpenApiSnapshotTest`가 레포 `api/openapi.json`과 비교해 계약 변경을 드러낸다. 운영은 `SPRINGDOC_API_DOCS_ENABLED=false`.
@@ -65,7 +65,7 @@ Controller·Mapper·DTO    AnalyzeUseCase             QueryPlanner · QueryDispa
 - `AnalysisResponseMapperTest` — Analyzed(법령 헤더·정본 미적재 헤더·alternatives·answer 순서·unmet·sources·disclaimer) · Unresolved(candidates) · JSON 직렬화(camelCase·null 생략).
 - `CitedSourceResolverTest` — 조문(현행 원문 포함)·부칙·개정문·개정 이유·기준선(시행일 없음)·하위 청크(`#n`)·형식 불일치·조문 없음·중복 제거.
 - `AnalysisControllerTest` — 위임·상태(200)·빈 query 예외 · 첫 Layer B 질문의 세션 보관·`situation` 직렬화(D71).
-- `ActionRevisionControllerTest`(API 슬라이스) — 200 · unmet 사유별(`SITUATION_EXPIRED` 포함) · 400 · CSRF 없으면 403 · 로그인 없으면 거부.
+- `ActionRevisionControllerTest`(API 슬라이스) — 200 · unmet 사유별(`SITUATION_EXPIRED` 포함) · 400 · CSRF 없으면 403 · 로그인 없으면 401.
 - `OpenApiSnapshotTest` — `/v3/api-docs` = `api/openapi.json`.
 
 ## 의존 / 관련

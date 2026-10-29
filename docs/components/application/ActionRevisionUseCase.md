@@ -39,7 +39,7 @@ HttpSessionSituationQuestions(포트 구현)
 
 `revise(Optional<UUID> userId, LawRef ref, List<SituationAnswer> answers, SituationQuestions questions) → RevisionOutcome`
 
-- **전제**: 로그인 세션(web 가 인증 필수·CSRF 로 보장). `answers` 는 `questionId`+`answer` 만 — 질문 문장은 클라이언트가 보내지 않는다(서버가 세션의 질문을 쓴다, 위조 차단).
+- **전제**: 실제로는 로그인 사용자만 온다 — 익명 요청은 보안 설정(`anyRequest().authenticated()`)이 401 로 끊어 이 계층에 닿지 않고, CSRF 토큰이 없으면 403 이다. 시그니처가 `Optional<UUID>` 인 것은 `PersonalizationGate.check` 를 [[AnalyzeUseCase]] 와 그대로 재사용하기 위해서일 뿐이며, 빈 값이 들어오면 게이트가 `PROFILE_REQUIRED` 로 막는다. 로그인했지만 개인화할 수 없는 사용자(프로필 없음·동의 구버전)는 오류가 아니라 `NotRevised` 로 게이트 사유를 받는다(웹 응답은 200 `{ unmet }`). `answers` 는 `questionId`+`answer` 만 — 질문 문장은 클라이언트가 보내지 않는다(서버가 세션의 질문을 쓴다, 위조 차단).
 - **게이트 순서** (앞에서 걸리면 뒤는 실행하지 않는다):
   1. 개인화(`PersonalizationGate`) — Blocked 면 그 사유(`PROFILE_REQUIRED`·`CONSENT_OUTDATED`) `NotRevised`.
   2. 세션 질문 조회 — 그 법령 버전의 질문이 없으면 `SITUATION_EXPIRED`.
@@ -65,7 +65,7 @@ HttpSessionSituationQuestions(포트 구현)
 
 ## 검증
 
-- `ActionRevisionUseCaseTest`(in-JVM, 가짜 엔진·가짜 한도·가짜 `SituationQuestions`) — **게이트 순서**(개인화 → 만료 → 답 검증 → 기준선 → 한도 → 엔진; 앞 게이트에서 걸리면 뒤 협력자 무접촉) · 한도 정확히 1회 차감 · 엔진 ACTION 1회 · `모름` 제외된 사실만 전달 · 근거 부족 → `INSUFFICIENT_GROUNDING`.
+- `ActionRevisionUseCaseTest`(in-JVM, 가짜 엔진·가짜 한도·가짜 `SituationQuestions`) — **게이트 순서**(개인화 → 만료 → 답 검증 → 정본 없음 `LAW_NOT_LOADED` → 기준선 → 한도 → 엔진; 앞 게이트에서 걸리면 뒤 협력자 무접촉) · 한도 정확히 1회 차감 · 엔진 ACTION 1회 · `모름` 제외된 사실만 전달 · 근거 부족 → `INSUFFICIENT_GROUNDING`.
 - `HttpSessionSituationQuestionsTest` — 법령별 덮어쓰기 · 최근 20개 LRU · 세션에 답이 없음.
 - API 슬라이스(`ActionRevisionControllerTest`) — 200 · unmet 사유별 · 400 · CSRF 없으면 403 · OpenAPI 스냅샷 ([[AnalysisApi]]).
 

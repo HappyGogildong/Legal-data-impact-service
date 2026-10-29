@@ -172,8 +172,8 @@ Layer B 는 IMPACT·ACTION 을 한 호출로 만든다(요청 dimension=IMPACT).
 
 **(c) 출력 형식 — Layer B 전용 레코드.** `ImpactResult` 는 바꾸지 않는다(그 형식 지시가 Layer A 쉬운 요약·DIFF 와 공유되므로). Layer B 는 `ImpactResult` 의 필드에 아래 두 가지를 더한 별도 레코드로 받고, 받은 뒤 기존 분할 그대로의 `ImpactResult` + 상황 정보로 나눈다.
 
-- `actions[].situationNote` — 상황이 영향을 준 단계의 한 줄 설명(최대 200자). 나뉜 뒤 `stepNotes[{index, note}]` 가 된다.
-- `situationQuestions[]` — `{ text, basis, answerType, options }`. `answerType` ∈ `YES_NO`·`DATE`·`CHOICE`(선택지 2~4개, 각 최대 40자), 질문 문장 최대 200자, 최대 3개. `basis` 가 주입 집합 밖이거나 형식이 깨진 질문은 **그 질문만** 버린다(답 전체 실패 아님). 서버가 남은 질문에 `q1`·`q2`·`q3` 를 다시 붙인다.
+- `actions[].situationNote` — 상황이 영향을 준 단계의 한 줄(줄바꿈 없음) 설명(최대 200자). 나뉜 뒤 `stepNotes[{index, note}]` 가 된다.
+- `situationQuestions[]` — `{ text, basis, answerType, options }`. `answerType` ∈ `YES_NO`·`DATE`·`CHOICE`(선택지 2~4개, 각 최대 40자), 질문 문장은 최대 200자 한 줄(줄바꿈 없음), 최대 3개. `basis` 가 주입 집합 밖이거나 형식이 깨진 질문은 **그 질문만** 버린다(답 전체 실패 아님). 서버가 남은 질문에 `q1`·`q2`·`q3` 를 다시 붙인다.
 
 **SYSTEM 프롬프트와 `PROMPT_VERSION`("0.3")은 바뀌지 않는다** — 바뀌는 것은 Layer B 사용자 메시지의 TASK 뿐이라 Layer A(쉬운 요약 저장본)는 그대로 재사용된다. 상세: [[AnalysisEngine]] · [[ActionRevisionUseCase]].
 
