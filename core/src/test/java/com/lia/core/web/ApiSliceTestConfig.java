@@ -3,6 +3,7 @@ package com.lia.core.web;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.mockito.Mockito;
@@ -14,18 +15,21 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.application.analysis.ActionRevisionUseCase;
+import com.lia.core.application.bookmark.BookmarkUseCase;
 import com.lia.core.application.profile.ProfileUseCase;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.config.SecurityConfig;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
 import com.lia.core.store.DataStatusStore;
+import com.lia.core.store.LawBookmarkStore;
 import com.lia.core.store.LawCatalogStore;
 import com.lia.core.store.LawSource;
 import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawViewStore;
 import com.lia.core.store.TrendingWindow;
 import com.lia.core.testsupport.InMemoryAccountStore;
+import com.lia.core.testsupport.InMemoryLawBookmarkStore;
 import com.lia.core.testsupport.InMemoryUserProfileStore;
 
 /**
@@ -41,7 +45,8 @@ import com.lia.core.testsupport.InMemoryUserProfileStore;
 @EnableWebSecurity
 @Import({SecurityConfig.class, ApiExceptionHandler.class,
         ProfileController.class, ConsentController.class, AccountController.class,
-        DataStatusController.class, LawController.class, LawViewController.class, ActionRevisionController.class})
+        DataStatusController.class, LawController.class, LawViewController.class, ActionRevisionController.class,
+        BookmarkController.class})
 class ApiSliceTestConfig {
 
     static final String POLICY = "v-test";
@@ -154,6 +159,20 @@ class ApiSliceTestConfig {
     @Bean
     ActionRevisionUseCase actionRevisionUseCase() {
         return Mockito.mock(ActionRevisionUseCase.class);
+    }
+
+    /** 북마크 — 001809(시행예정)·000001(시행중)·000002(철회)만 있는 법령, 한도 2. */
+    @Bean
+    InMemoryLawBookmarkStore lawBookmarkStore(InMemoryAccountStore accounts) {
+        return new InMemoryLawBookmarkStore(accounts, 2, Map.of(
+                "001809", new LawBookmarkStore.BookmarkedLaw("001809", "주택법", Law.Status.시행예정, LAW_EFFECTIVE, null),
+                "000001", new LawBookmarkStore.BookmarkedLaw("000001", "근로기준법", Law.Status.시행중, LocalDate.of(2026, 8, 4), null),
+                "000002", new LawBookmarkStore.BookmarkedLaw("000002", "가상법", Law.Status.철회, LocalDate.of(2026, 12, 1), null)));
+    }
+
+    @Bean
+    BookmarkUseCase bookmarkUseCase(InMemoryLawBookmarkStore store) {
+        return new BookmarkUseCase(store);
     }
 
     @Bean

@@ -54,5 +54,6 @@ class OpenApiSnapshotTest {
         assertTrue(current.contains("LawSummary") && current.contains("SummaryClaim"));
         assertTrue(current.contains("/api/v1/laws/trending") && current.contains("TrendingPage"));
         assertTrue(current.contains("AnalysisApiResponse"));
+        assertTrue(current.contains("/api/v1/bookmarks/{lawId}") && current.contains("BookmarkListResponse"));
     }
 }

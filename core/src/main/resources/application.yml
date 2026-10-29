@@ -34,6 +34,8 @@ lia:
     policy-version: ${PRIVACY_POLICY_VERSION:draft-2026-09}   # 동의 시 기록할 처리방침 버전(D61). 실제 처리방침 게시 시 교체
   personalization:
     daily-limit: ${LIA_PERSONALIZATION_DAILY_LIMIT:20}   # 사용자별 하루 Layer B(내 영향·대응 방안) 생성 한도(D69)
+  bookmarks:
+    max-per-user: ${LIA_BOOKMARKS_MAX_PER_USER:100}   # 사용자당 관심 법령 북마크 최대 개수(D72)
   discovery:                        # 법령 발견(LOOKUP, D70)
     chunk-fetch: 40                 # 법령 단위로 묶기 전에 가져올 청크 수
     max-candidates: 10              # 후보 최대 장수(S04)

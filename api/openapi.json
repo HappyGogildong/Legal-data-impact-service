@@ -92,6 +92,60 @@
         "tags" : [ "action-revision-controller" ]
       }
     },
+    "/api/v1/bookmarks" : {
+      "get" : {
+        "operationId" : "list_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BookmarkListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "bookmark-controller" ]
+      }
+    },
+    "/api/v1/bookmarks/{lawId}" : {
+      "delete" : {
+        "operationId" : "remove",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "lawId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "bookmark-controller" ]
+      },
+      "put" : {
+        "operationId" : "add",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "lawId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "bookmark-controller" ]
+      }
+    },
     "/api/v1/consents" : {
       "get" : {
         "operationId" : "status",
@@ -545,6 +599,40 @@
             "type" : "array",
             "items" : {
               "type" : "string"
+            }
+          }
+        }
+      },
+      "BookmarkItem" : {
+        "type" : "object",
+        "properties" : {
+          "bookmarkedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "effectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "lawId" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "시행예정", "시행됨", "철회" ]
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "BookmarkListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BookmarkItem"
             }
           }
         }
