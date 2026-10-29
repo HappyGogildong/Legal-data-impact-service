@@ -88,6 +88,20 @@ class QueryPlannerTest {
     }
 
     @Test
+    void discovery_는_분석_차원이_있어도_LOOKUP_하나로_좁힌다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.IMPACT, Set.of(QueryType.LOOKUP, QueryType.IMPACT, QueryType.ACTION), true,
+                TargetKind.DISCOVERY, null, null, List.of("전세"), List.of(), List.of("주거"), "전세 불리한 법 찾기");
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class,
+                plannerFor(draft).plan("전세 세입자한테 불리해지는 법 있어?", null, true)).query();
+
+        assertEquals(Set.of(QueryType.LOOKUP), q.types(), "분석 차원은 후보를 고른 재요청에서(D70)");
+        assertEquals(QueryType.LOOKUP, q.primaryType());
+        assertFalse(q.profileBound());
+    }
+
+    @Test
     void 프로필_없이_LayerB만_있으면_선계산_요약을_더해_보여준다() {
         AnalysisQueryDraft draft = new AnalysisQueryDraft(
                 QueryType.IMPACT, Set.of(QueryType.IMPACT, QueryType.ACTION), true,

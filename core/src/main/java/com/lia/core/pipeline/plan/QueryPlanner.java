@@ -56,20 +56,24 @@ public class QueryPlanner {
 
     private static PlanResult planned(AnalysisQueryDraft draft, Target target, boolean profilePresent,
                                       List<RawLaw> alternatives) {
+        if (target instanceof Target.Discovery) {
+            // 발견은 후보만 돌려준다(D70) — 분석 차원은 후보를 고른 재요청(explicitRef)에서 같은 질문으로 다시 정한다.
+            AnalysisQuery discovery = new AnalysisQuery(QueryType.LOOKUP, EnumSet.of(QueryType.LOOKUP), target,
+                    draft.intentSummary(), ArticleScope.CHANGED_ONLY, false, AnalysisQuery.Options.defaults());
+            return new PlanResult.Planned(discovery, alternatives);
+        }
         // Layer B 는 프로필이 없어도 빼지 않는다 — 디스패처가 사유(PROFILE_REQUIRED 등)를 unmet 으로 실어
         // 화면이 로그인·프로필 안내를 띄우게 한다(D69). profileBound 는 "채울 수 있는가"만 뜻한다.
         EnumSet<QueryType> types = draft.types().isEmpty()
                 ? EnumSet.noneOf(QueryType.class) : EnumSet.copyOf(draft.types());
         if (types.isEmpty()) {
             // 분류 실패면 기본 차원으로 — 거부하지 않는다.
-            types.add(target instanceof Target.Discovery ? QueryType.LOOKUP : QueryType.SUMMARY);
+            types.add(QueryType.SUMMARY);
         }
 
         // 프로필이 없고 Layer A 차원이 하나도 없으면 SUMMARY 를 더한다 — 선계산이라 비용이 0이고(D67)
         // 익명 첫 질문이 로그인 안내만 남기지 않게 한다. Layer B 차원은 그대로 둬 미충족 카드가 로그인을 이끈다.
-        // 발견(Discovery)은 대상 법령이 없어 요약할 게 없다.
-        if (!profilePresent && target instanceof Target.Reference
-                && types.stream().allMatch(QueryType::isLayerB)) {
+        if (!profilePresent && types.stream().allMatch(QueryType::isLayerB)) {
             types.add(QueryType.SUMMARY);
         }
 
