@@ -1,8 +1,8 @@
 ---
 title: Query Dispatcher — 컴포넌트 설계 · 구현 착수
 status: Draft
-version: 0.2
-date: 2026-09-03
+version: 0.3
+date: 2026-10-29
 tags: [component, pipeline, dispatcher, orchestration]
 related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "components/analyze/AnalysisEngine.md", "components/store/LawStore.md", "architecture/v0.9-nl-query-planner.md"]
 ---
@@ -20,8 +20,9 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 ## Collaborators
 
-- **포트**: `LawSource`(정본·기준선 정확조회, [[LawStore]] 구현) · `DimensionHandlerRegistry`(차원→핸들러).
-- **간접**: `DimensionHandler` 구현체들이 [[AnalysisEngine]]에 추론을 위임.
+- **포트**: `LawSource`(정본·기준선 정확조회, [[LawStore]] 구현) · `DimensionHandlerRegistry`(차원→Layer A 핸들러) · `PersonalizationQuota`(하루 개인화 한도, `PersonalizationUsageStore` 구현).
+- **주입**: `PersonalizedHandler`(Layer B 전담, 레지스트리 밖).
+- **간접**: 핸들러들이 [[AnalysisEngine]]에 추론을 위임. `SummaryHandler` 는 쉬운 요약 저장본(`LawSummaries`, D67)을 먼저 본다.
 - **외부 시스템**: 없음(직접). 정본 읽기는 `LawSource` 뒤로 격리.
 
 ## 구조 (컴포넌트)
@@ -33,24 +34,29 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 | `DimensionHandlerRegistry` | `QueryType → DimensionHandler` 매핑. `@Component` 자동수집, 중복 타입 fail-fast, 구성 후 불변. |
 | `SummaryHandler` | SUMMARY(Layer A) — 정본을 SUMMARY로 위임. 비교 아님 → baseline 미사용. 저장된 쉬운 요약(D67, `LawSummaries`)이 유효하면 그것으로 답하고 추론기를 부르지 않는다 — 없거나 낡았으면 실시간. |
 | `DiffHandler` | DIFF(Layer A) — 정본+기준선을 DIFF로 위임. baseline null이면 제정(D42). |
+| `PersonalizedHandler` | IMPACT·ACTION(Layer B, D69) — `AnalyzeRequest(IMPACT, law, baseline, profile, question)` 로 엔진 **1회**, 결과를 요청된 차원만 분할(IMPACT ← summary·claims·impacts / ACTION ← actions·effectiveInfo, 공통 uncertainties·disclaimer). |
+| `Personalization` (sealed) | 개인화 판정 — `Usable(userId, UserProfile)` \| `Blocked(Reason)`. `anonymous()` = `Blocked(PROFILE_REQUIRED)`. 만드는 쪽은 `PersonalizationGate`([[ProfileUseCase]]). |
+| `PersonalizationQuota` (포트) | `tryConsume(userId)` — 하루 한도 원자 차감, 초과면 false. 구현 `store.PersonalizationUsageStore`(V10). |
+| `Unmet` (record) | 미충족 사유 `{ reason, message }` — `LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`·`PROFILE_REQUIRED`·`CONSENT_OUTDATED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`·`NOT_IMPLEMENTED`. 공개 API 코드와 같다([[AnalysisApi]]). |
 | `DispatchContext` (record) | 핸들러 실행 재료 `{ law, baseline?, query }`. dispatcher가 정본 1회 조회해 조립. |
 | `DispatchResult` (record) | 차원별 결과 묶음 `{ primaryType, filled, unmet }`. `fullySatisfied()`. |
 
-핸들러 5종 전체 계획(§4#10):
+차원별 핸들러(component-specs §4#10):
 
-| 핸들러 | kind | 입력 | 출력 핵심 | 상태 |
+| 핸들러 | 차원 | kind | 입력 | 상태 |
 |---|---|---|---|---|
-| `SummaryHandler` | A | Law + `제개정이유` | summary, claims | ✅ |
-| `DiffHandler` | A | Law(변경조문) + baseline + 개정문·부칙 | claims(현행→개정), 시행일 | ✅ |
-| `LookupHandler` | 발견 | DiscoveryCriteria + (프로필) | 후보 법령 랭킹 | ⬜ LawDiscovery(#19) 후 |
-| `ImpactHandler` | B | Law(변경조문) + LawFacts + **UserProfile** | impacts | ⬜ UserProfile·LawFacts·Layer B 후 |
-| `ActionHandler` | B | Law + 부칙(시행일) + **UserProfile** | actions(deadline, basis) | ⬜ 상동 |
+| `SummaryHandler` | SUMMARY | A | Law + `제개정이유` (저장 요약 우선, D67) | ✅ |
+| `DiffHandler` | DIFF | A | Law(변경조문) + baseline + 개정문·부칙 | ✅ |
+| `PersonalizedHandler` | IMPACT·ACTION | B | Law + baseline + UserProfile 속성 + 질문 | ✅ D69 |
+| `LookupHandler` | LOOKUP | 발견 | DiscoveryCriteria + (프로필) | ⬜ LawDiscovery(#19) 후 |
+
+> **Layer B 를 별도 핸들러로 둔 이유(D69):** 두 차원을 Opus 1회로 함께 만들어야 하고(차원당 핸들러면 2회), 프로필·질문을 Layer A 핸들러 시그니처에 넣으면 구조적으로 그쪽에도 닿게 된다. 그래서 `DimensionHandler` 에는 프로필 인자가 없고(`needsProfile` 제거), 프로필·질문은 `PersonalizedHandler.handle` 인자로만 흐른다.
 
 ## Contract
 
-`dispatch(AnalysisQuery query) → DispatchResult`
+`dispatch(AnalysisQuery query, String question, Personalization personalization) → DispatchResult`
 
-- **전제**: `query`는 생성자 불변식을 통과한 해소·발견 완료 질의(미해소는 여기 오지 않음, fail-closed).
+- **전제**: `query`는 생성자 불변식을 통과한 해소·발견 완료 질의(미해소는 여기 오지 않음, fail-closed). `question` 은 사용자 원문(Layer B 프롬프트에만 쓰인다). `personalization` 은 유스케이스가 세션 userId 로 판정한 값(익명이면 `anonymous()`).
 - **보장**: 요청한 모든 차원(`query.types()`)이 `filled`(성공) 또는 `unmet`(사유 포함) 중 정확히 하나에 담긴다.
 - **정본 조회**: `Target.Reference`면 `LawSource.find(lawId, efYd)`로 정본을, `findBaseline(lawId)`로 기준선을 **1회** 조회(모든 Layer A 핸들러가 공유 → 중복 fetch 제거).
 
@@ -81,19 +87,18 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 ## Side Effects
 
-- 없음(순수 조립) — `LawSource` **읽기**만. 쓰기·캐시·이벤트 없음. (답변 캐시는 측정 후 도입, D48·D51)
+- `LawSource` **읽기** + Layer B 요청 시 **한도 1회 차감**(`PersonalizationQuota` — 핸들러 호출 직전, 실패해도 환불 없음, D69). 그 외 쓰기·캐시·이벤트 없음. (답변 캐시는 측정 후 도입, D48·D51)
 
-## 이번 증분 경계 (의존 착지 후)
+## 남은 경계 (의존 착지 후)
 
-- **ImpactHandler·ActionHandler** — UserProfile(#12)·LawFacts·AnalysisEngine Layer B 필요.
 - **LookupHandler** — LawDiscovery(#19) 필요.
-- **답변 캐싱(D51)** — 병목을 지표로 증명한 뒤(D48). context prompt-caching은 [[AnalysisEngine]] 관심사.
-- **독립 Verification Gate(#12)** — [[AnalysisEngine]]가 1차 인용검증(FaithfulnessGate)을 수행하므로 Layer A만 있는 지금은 중복. 최종 게이트는 Layer B·조립 시점으로 이연.
+- **답변 캐싱(D51)** — 병목을 지표로 증명한 뒤(D48). context prompt-caching은 [[AnalysisEngine]] 관심사. Layer B 개인화 답은 저장하지 않는다(D69).
+- **독립 Verification Gate(#12)** — [[AnalysisEngine]]가 재생성 루프 안에서 인용검증(`grounded`)을 수행하므로 지금은 중복. 필요가 생기면 조립 시점에 도입.
 
 ## 검증
 
 - **Dispatcher 단위**(FakeHandler·Fake `LawSource`): 단일/복수 차원 filled · 미구현 차원 unmet · 정본 미적재 전타입 unmet · Discovery unmet. Layer B(D69): 핸들러 1회 호출·쿼터 1회 소비로 두 차원 filled · `Blocked` 사유면 쿼터·핸들러 무접촉 · `DAILY_LIMIT` · 개정본인데 기준선 없음 → `BASELINE_NOT_LOADED` · 근거 부족 → `INSUFFICIENT_GROUNDING`.
-- **핸들러 단위**: Summary/Diff가 올바른 `AnalyzeRequest(dimension, law, baseline)` 구성해 위임(CapturingEngine).
+- **핸들러 단위**: Summary/Diff가 올바른 `AnalyzeRequest(dimension, law, baseline)` 구성해 위임(CapturingEngine) · Summary 는 유효한 저장본이 있으면 엔진 무호출 · Personalized 는 두 차원 요청에도 엔진 1회·분할.
 - **레지스트리 단위**: 타입 매핑 · 중복타입 실패.
 
 ## 의존 / 관련

@@ -1,8 +1,8 @@
 ---
 title: AnalyzeUseCase — 온라인 분석 유스케이스 (application 계층)
 status: Draft
-version: 0.1
-date: 2026-09-08
+version: 0.2
+date: 2026-10-29
 tags: [component, application, usecase, orchestration]
 related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "components/dispatch/QueryDispatcher.md", "components/web/AnalysisApi.md"]
 ---
@@ -18,15 +18,17 @@ web (HTTP 어댑터)  →  application (유스케이스)  →  pipeline(블록) 
 AnalysisController     AnalyzeUseCase              QueryPlanner · QueryDispatcher · AnalysisEngine
 ```
 
-- **담당**: plan→dispatch 조합, 4상태(미해소)·부분성공(`unmet`)을 결과 타입으로 표현.
-- **담당 안 함**: HTTP·직렬화([[AnalysisApi]] web) · 번역·해소([[QueryPlanner]]) · 라우팅·핸들러([[QueryDispatcher]]) · 프롬프트·LLM([[AnalysisEngine]]).
+- **담당**: 개인화 판정 → plan → dispatch 조합, 4상태(미해소)·부분성공(`unmet`)을 결과 타입으로 표현, 자주 찾는 법령 집계(D66) 1회 기록.
+- **담당 안 함**: HTTP·세션(web — `CurrentUser` 로 userId 만 꺼내 넘긴다) · 프로필 규칙([[ProfileUseCase|PersonalizationGate]]) · 번역·해소([[QueryPlanner]]) · 라우팅·핸들러·한도([[QueryDispatcher]]) · 프롬프트·LLM([[AnalysisEngine]]).
 
 ## 구조 (컴포넌트) — `com.lia.core.application.analysis`
 
 | 클래스 | 역할 |
 |---|---|
-| `AnalyzeUseCase` | 유스케이스 — `analyze(query, explicitRef)`: `plan()` → `switch`(Unresolved 그대로 / Planned → `dispatch()`). **`profilePresent=false` 고정**(#12 미도입 → Layer A). |
-| `AnalysisOutcome` (sealed) | 결과 — `Analyzed(AnalysisQuery, DispatchResult)` \| `Unresolved(ResolutionResult)`. HTTP 타입 비의존. |
+| `AnalyzeUseCase` | 유스케이스 — `analyze(query, explicitRef, userId?)`: `PersonalizationGate.check(userId)` → `plan(query, explicitRef, profilePresent)` → `switch`(Unresolved 그대로 / Planned → `dispatch(query, 질문 원문, personalization)` → 조회 집계). |
+| `AnalysisOutcome` (sealed) | 결과 — `Analyzed(AnalysisQuery, DispatchResult, alternatives)` \| `Unresolved(ResolutionResult)`. `alternatives` = 같은 법령의 다른 시행예정본(D43, 응답의 "다른 시행일 보기"). HTTP 타입 비의존. |
+
+협력자(생성자 주입): `QueryPlanner` · `QueryDispatcher` · `LawViews`(조회 집계 포트, D66) · `PersonalizationGate`(D69).
 
 ## 왜 `@Service`가 아니라 이 형태인가 (설계 결정)
 
@@ -35,20 +37,23 @@ AnalysisController     AnalyzeUseCase              QueryPlanner · QueryDispatch
 
 ## Contract
 
-`analyze(String query, LawRef explicitRef) → AnalysisOutcome`
+`analyze(String query, LawRef explicitRef, Optional<UUID> userId) → AnalysisOutcome`
 - **전제**: `query` 비어있지 않음(web가 선검증).
-- **보장**: `plan()`이 `Unresolved`면 그대로(분석 안 함, fail-closed); `Planned`면 `dispatch()` 결과를 `Analyzed`로. 예외 없음.
+- **보장**: `plan()`이 `Unresolved`면 그대로(분석 안 함, fail-closed); `Planned`면 `dispatch()` 결과를 `Analyzed`로. 예외 없음(근거 부족도 차원별 `unmet`).
 - **`explicitRef`**: 클라이언트가 이미 특정한 정본(브라우징 경로) — 있으면 [[QueryPlanner]]가 **법명 해소를 건너뛴다**. 없으면 자연어에서 해소.
+- **`userId`**: 로그인 세션이 있을 때만(익명 허용). 게이트가 Layer B 가능 여부를 판정하고, 프롬프트에는 프로필 속성만 간다 — userId 는 한도 키로만 쓰인다(D41·D69).
 
 ## Invariants
 - **fail-closed 승계**: 미해소는 분석으로 새지 않는다.
 - **부분성공**: 일부 차원 실패는 전체 실패가 아니라 `unmet`(결과 타입에 담김).
+- **조회 집계는 정본으로 답한 Reference 분석만**: 채운 차원이 하나도 없으면(정본 미적재 등) 세지 않는다.
 
 ## Side Effects
-- 없음(순수 조합) — 하위 블록이 정본 읽기·LLM 호출.
+- 조회 집계 1회(`LawViews.record`, D66) — 실패는 삼키고 로그만(분석 응답을 바꾸지 않는다).
+- 하위 블록이 정본 읽기·LLM 호출·개인화 한도 차감(디스패처).
 
 ## 검증
-- `AnalyzeUseCaseTest`(3, in-JVM 관통) — 실 `QueryPlanner`(FakeTranslator)+`QueryDispatcher`(FakeLawSource·FakeReasoner)로: 해소 NL→Analyzed(SUMMARY) · **explicitRef 주면 해소 생략** · 미해소→Unresolved.
+- `AnalyzeUseCaseTest`(in-JVM 관통) — 실 `QueryPlanner`(FakeTranslator)+`QueryDispatcher`(FakeLawSource·FakeReasoner)로: 해소 NL→Analyzed(SUMMARY) · **explicitRef 주면 해소 생략** · 미해소→Unresolved · 로그인 사용자의 게이트 판정이 디스패처까지(옛 동의 → `CONSENT_OUTDATED`) · 조회 집계(정본 답만 · 기록 실패해도 결과 그대로).
 
 ## 의존 / 관련
-[[QueryPlanner]] · [[QueryDispatcher]] · [[AnalysisApi]](web 어댑터·응답 매핑) · [[component-specs]] §4 #8. 후속: UserProfile(#12)→Layer B · LawDiscovery(#19)→LOOKUP.
+[[QueryPlanner]] · [[QueryDispatcher]] · [[ProfileUseCase]](`PersonalizationGate`) · [[AnalysisApi]](web 어댑터·응답 매핑) · [[TrendingApi]](조회 집계) · [[component-specs]] §4 #8. 후속: LawDiscovery(#19)→LOOKUP.
