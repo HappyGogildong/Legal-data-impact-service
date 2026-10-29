@@ -34,6 +34,11 @@ lia:
     policy-version: ${PRIVACY_POLICY_VERSION:draft-2026-09}   # 동의 시 기록할 처리방침 버전(D61). 실제 처리방침 게시 시 교체
   personalization:
     daily-limit: ${LIA_PERSONALIZATION_DAILY_LIMIT:20}   # 사용자별 하루 Layer B(내 영향·대응 방안) 생성 한도(D69)
+  discovery:                        # 법령 발견(LOOKUP, D70)
+    chunk-fetch: 40                 # 법령 단위로 묶기 전에 가져올 청크 수
+    max-candidates: 10              # 후보 최대 장수(S04)
+    min-similarity: 0.3             # 코사인 유사도 하한 — 클라우드 전체 색인 뒤 실데이터로 조정
+    snippet-chars: 80               # 쉬운 요약이 없을 때 개정 이유를 보여 줄 글자 수
 
 spring:
   application:

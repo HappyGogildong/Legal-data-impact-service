@@ -1,6 +1,7 @@
 package com.lia.core.config;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +18,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.connector.LawConnector;
 import com.lia.core.pipeline.diff.DiffBuilder;
 import com.lia.core.pipeline.embed.Embedder;
@@ -35,11 +37,13 @@ import com.lia.core.pipeline.plan.SpringAiQueryTranslator;
 import com.lia.core.application.analysis.AnalyzeUseCase;
 import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.pipeline.dispatch.PersonalizationQuota;
+import com.lia.core.pipeline.discover.LawDiscovery;
 import com.lia.core.pipeline.dispatch.QueryDispatcher;
 import com.lia.core.pipeline.resolve.ChunkStoreLawSearch;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
 import com.lia.core.store.ChunkStore;
+import com.lia.core.store.LawSource;
 import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
 import com.lia.core.store.LawViews;
@@ -160,6 +164,17 @@ public class PipelineConfig {
     @Bean
     public LawSummaries lawSummaries(LawSummaryStore lawSummaryStore, ContextBuilder contextBuilder) {
         return new GroundedSummaries(lawSummaryStore, contextBuilder);
+    }
+
+    /** 법령 발견(D70) — 시행예정 색인 검색 → 실재 시행예정 후보 카드. LLM 없음. */
+    @Bean
+    public LawDiscovery lawDiscovery(ChunkStore chunkStore, LawSource lawSource, LawSummaries lawSummaries,
+                                     @Value("${lia.discovery.chunk-fetch}") int chunkFetch,
+                                     @Value("${lia.discovery.max-candidates}") int maxCandidates,
+                                     @Value("${lia.discovery.min-similarity}") double minSimilarity,
+                                     @Value("${lia.discovery.snippet-chars}") int snippetChars) {
+        return new LawDiscovery(chunkStore, lawSource, lawSummaries, new LawDiscovery.Settings(
+                chunkFetch, maxCandidates, minSimilarity, snippetChars, Set.of(Law.Status.시행예정)));
     }
 
     /** 온라인 유스케이스(plan→dispatch). 애노테이션 없는 코어를 여기서 배선(프레임워크 비의존). */
