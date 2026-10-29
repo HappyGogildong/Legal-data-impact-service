@@ -170,7 +170,7 @@ class AnalysisControllerTest {
     }
 
     @Test
-    void 조문을_지정해_저장한_질문을_조문_없이_찾는다() {
+    void 조문_없이_저장한_질문을_조문을_지정해_찾는다() {   // 반대 방향(조문 지정 저장 → 조문 없이 찾기)은 HttpSessionSituationQuestionsTest
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession(true);
         when(useCase.analyze(any(), any(), any(), anyBoolean())).thenReturn(analyzedAction(List.of(QUESTION)));

@@ -43,15 +43,27 @@ public class HttpSessionSituationQuestions implements SituationQuestions {
     private Map<String, List<SituationQuestion>> questionsByLaw() {
         Object existing = session.getAttribute(ATTRIBUTE);
         if (existing instanceof Map<?, ?> map) return (Map<String, List<SituationQuestion>>) map;
-        // accessOrder=true — get 도 사용으로 쳐서 가장 오래 안 쓴 법령부터 밀려난다
-        Map<String, List<SituationQuestion>> created = new LinkedHashMap<>(16, 0.75f, true) {
-            @Override
-            protected boolean removeEldestEntry(Map.Entry<String, List<SituationQuestion>> eldest) {
-                return size() > MAX_LAWS;
-            }
-        };
+        Map<String, List<SituationQuestion>> created = new RecentQuestions();
         session.setAttribute(ATTRIBUTE, created);
         return created;
+    }
+
+    /**
+     * 최근 {@value #MAX_LAWS}개 법령만 — accessOrder=true 라 get 도 사용으로 쳐서 가장 오래 안 쓴 것부터 밀려난다.
+     * 중첩(static) 클래스라 어댑터·세션을 붙잡지 않는다 — 세션에 오래 남는 객체가 바깥 객체를 참조하면 안 된다.
+     */
+    private static final class RecentQuestions extends LinkedHashMap<String, List<SituationQuestion>> {
+
+        private static final long serialVersionUID = 1L;
+
+        RecentQuestions() {
+            super(16, 0.75f, true);
+        }
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, List<SituationQuestion>> eldest) {
+            return size() > MAX_LAWS;
+        }
     }
 
     /** 법령 버전 단위 — 조문 번호는 키에 넣지 않는다(조문을 지정한 분석과 지정 없는 재생성이 같은 질문을 본다). */

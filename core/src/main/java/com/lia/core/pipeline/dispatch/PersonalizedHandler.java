@@ -52,8 +52,8 @@ public class PersonalizedHandler {
                 List.of(), null, r.uncertainties(), r.disclaimer(), r.meta());
     }
 
-    /** 대응 방안 — 할 일·시행 정보·불확실성. */
-    private static ImpactResult actionPart(ImpactResult r) {
+    /** 대응 방안 — 할 일·시행 정보·불확실성. 대응 방안 재생성(D71)도 같은 모양을 쓴다. */
+    public static ImpactResult actionPart(ImpactResult r) {
         return new ImpactResult(r.lawRef(), QueryType.ACTION.name(), null, List.of(), List.of(),
                 r.actions(), r.effectiveInfo(), r.uncertainties(), r.disclaimer(), r.meta());
     }

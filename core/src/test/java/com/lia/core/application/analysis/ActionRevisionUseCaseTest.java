@@ -50,6 +50,8 @@ class ActionRevisionUseCaseTest {
         int calls;
         AnalysisContext lastContext;
         boolean ungrounded;
+        /** 모델이 대응 방안 말고 요약·주장·영향도 함께 내놓는 경우. */
+        boolean withExtras;
 
         @Override
         public ImpactResult reason(AnalysisContext context) {
@@ -61,8 +63,12 @@ class ActionRevisionUseCaseTest {
             calls++;
             lastContext = context;
             List<String> basis = ungrounded ? List.of() : List.of(context.injectedSourceIds().iterator().next());
-            return new PersonalizedOutput(new ImpactResult("LAW:001809@2026-08-04", "ACTION", null, List.of(),
-                    List.of(), List.of(new ImpactResult.Action("신고한다", "시행 전", basis)), null,
+            String cited = context.injectedSourceIds().iterator().next();
+            return new PersonalizedOutput(new ImpactResult("LAW:001809@2026-08-04", "ACTION",
+                    withExtras ? "요약" : null,
+                    withExtras ? List.of(new ImpactResult.Claim("주장", List.of(cited), 0.9)) : List.of(),
+                    withExtras ? List.of(new ImpactResult.Impact("비용", "부담", "자세히", List.of(cited))) : List.of(),
+                    List.of(new ImpactResult.Action("신고한다", "시행 전", basis)), null,
                     List.of(), "참고용", null), List.of(), List.of());
         }
     }
@@ -235,6 +241,21 @@ class ActionRevisionUseCaseTest {
         assertEquals(1, quota.consumed);
         assertEquals(QueryType.ACTION, reasoner.lastContext.dimension());
         assertEquals(List.of(new ConfirmedFact("질문 q1", "예")), reasoner.lastContext.situation());
+    }
+
+    @Test
+    void 모델이_요약_주장_영향도_내놓아도_재생성_결과는_대응_방안만_담는다() {
+        saveQuestionQ1();
+        reasoner.withExtras = true;
+
+        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, ANSWER_Q1_YES, questions);
+
+        ImpactResult action = assertInstanceOf(RevisionOutcome.Revised.class, out).response().result();
+        assertEquals("ACTION", action.command());
+        assertNull(action.summary());
+        assertTrue(action.claims().isEmpty(), "첫 분석의 ACTION 과 같은 모양 - 주장 없음");
+        assertTrue(action.impacts().isEmpty(), "영향 없음");
+        assertEquals(1, action.actions().size());
     }
 
     @Test

@@ -100,7 +100,7 @@ public class AnalysisResponseMapper {
     }
 
     /** answer 안 모든 인용키 — 주장·영향의 citations, 대응의 basis(등장 순). */
-    private static Set<String> citations(Collection<ImpactResult> results) {
+    static Set<String> citations(Collection<ImpactResult> results) {
         Set<String> ids = new LinkedHashSet<>();
         for (ImpactResult r : results) {
             if (r.claims() != null) r.claims().forEach(c -> addAll(ids, c.citations()));

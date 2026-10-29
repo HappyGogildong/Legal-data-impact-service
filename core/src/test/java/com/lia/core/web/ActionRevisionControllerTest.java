@@ -78,6 +78,24 @@ class ActionRevisionControllerTest {
     }
 
     @Test
+    @DisplayName("결과가 담은 모든 인용(대응 basis·주장·영향)이 sources 에 있다 — 근거 없는 칩이 생기지 않는다")
+    void 모든_인용이_sources에_있다() {
+        String claimCite = "LAW:001809@2026-08-04:art:19";
+        String impactCite = "LAW:001809@2026-08-04:amend";
+        ImpactResult result = new ImpactResult("LAW:001809@2026-08-04", "ACTION", null,
+                List.of(new ImpactResult.Claim("주장", List.of(claimCite), 0.9)),
+                List.of(new ImpactResult.Impact("비용", "부담", "자세히", List.of(impactCite))),
+                List.of(new ImpactResult.Action("신고한다", null, List.of(CITE))), null, List.of(), "참고용", null);
+        when(useCase.revise(any(), any(), any(), any())).thenReturn(new RevisionOutcome.Revised(
+                new AnalyzeResponse(result, Set.of(CITE, claimCite, impactCite))));
+
+        ActionRevisionApiResponse body = controller.revise(request(), new MockHttpServletRequest()).getBody();
+
+        assertEquals(List.of(CITE, claimCite, impactCite).stream().sorted().toList(),
+                body.sources().stream().map(AnalysisApiResponse.CitedSource::sourceId).sorted().toList());
+    }
+
+    @Test
     @DisplayName("NotRevised — unmet 만(action·stepNotes·sources 없음), 200")
     void 못만들면_unmet만() {
         Unmet unmet = new Unmet(Unmet.Reason.DAILY_LIMIT, "오늘 한도를 다 썼어요.");

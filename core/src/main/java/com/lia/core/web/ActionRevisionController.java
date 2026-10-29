@@ -1,12 +1,10 @@
 package com.lia.core.web;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.List;
 
 import com.lia.core.application.analysis.ActionRevisionUseCase;
 import com.lia.core.application.analysis.RevisionOutcome;
 import com.lia.core.auth.CurrentUser;
-import com.lia.core.domain.analysis.ImpactResult;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,14 +39,9 @@ public class ActionRevisionController {
                 new HttpSessionSituationQuestions(request.getSession()));
         return ResponseEntity.ok(switch (outcome) {
             case RevisionOutcome.Revised r -> ActionRevisionApiResponse.revised(r.response().result(),
-                    r.response().situation().stepNotes(), sources.resolve(basisOf(r.response().result())));
+                    r.response().situation().stepNotes(),
+                    sources.resolve(AnalysisResponseMapper.citations(List.of(r.response().result()))));
             case RevisionOutcome.NotRevised n -> ActionRevisionApiResponse.notRevised(n.unmet());
         });
-    }
-
-    private static Set<String> basisOf(ImpactResult action) {
-        Set<String> ids = new LinkedHashSet<>();
-        if (action.actions() != null) action.actions().forEach(a -> { if (a.basis() != null) ids.addAll(a.basis()); });
-        return ids;
     }
 }

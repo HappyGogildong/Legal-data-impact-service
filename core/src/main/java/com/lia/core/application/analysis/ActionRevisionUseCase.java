@@ -11,8 +11,10 @@ import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.AnalyzeRequest;
+import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.analyze.InsufficientGroundingException;
 import com.lia.core.pipeline.dispatch.PersonalAdmission;
+import com.lia.core.pipeline.dispatch.PersonalizedHandler;
 import com.lia.core.pipeline.dispatch.Personalization;
 import com.lia.core.pipeline.dispatch.PersonalizationQuota;
 import com.lia.core.pipeline.dispatch.Unmet;
@@ -63,8 +65,11 @@ public class ActionRevisionUseCase {
         if (rejected.isPresent()) return notRevised(rejected.get());
 
         try {
-            return new RevisionOutcome.Revised(engine.analyze(new AnalyzeRequest(
-                    QueryType.ACTION, law.get(), baseline, usable.profile(), null, facts)));
+            AnalyzeResponse response = engine.analyze(new AnalyzeRequest(
+                    QueryType.ACTION, law.get(), baseline, usable.profile(), null, facts));
+            // 첫 분석(/analyses)과 같은 대응 방안 모양으로 — 요약·주장·영향은 비운다(PersonalizedHandler 와 한 곳)
+            return new RevisionOutcome.Revised(new AnalyzeResponse(PersonalizedHandler.actionPart(response.result()),
+                    response.injectedSourceIds(), response.situation()));
         } catch (InsufficientGroundingException e) {
             return notRevised(PersonalAdmission.insufficientGrounding(QueryType.ACTION));
         }
