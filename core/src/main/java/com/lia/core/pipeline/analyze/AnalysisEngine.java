@@ -38,7 +38,7 @@ public class AnalysisEngine {
 
         // 조립된 근거로 추론 → 1차 인용검증. 실패 시 재생성(≤N), 끝까지 실패면 근거부족 폴백(환각 미노출).
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
-            if (req.dimension().isLayerB()) {
+            if (req.dimension().isPersonalized()) {
                 PersonalizedOutput out = reasoner.reasonPersonalized(ctx);
                 if (grounded(req.dimension(), out.result(), injected)) {
                     // 재생성(ACTION)은 새 질문을 내지 않는다 — 질문은 첫 응답에서 세션에 보관된 것을 쓴다(D71)
@@ -128,7 +128,7 @@ public class AnalysisEngine {
     static boolean grounded(QueryType dimension, ImpactResult r, Set<String> injectedSourceIds) {
         if (dimension == QueryType.ACTION) return actionGrounded(r, injectedSourceIds);   // 재생성(D71)
         if (!grounded(r, injectedSourceIds)) return false;
-        return !dimension.isLayerB() || personalizedComplete(r);
+        return !dimension.isPersonalized() || personalizedComplete(r);
     }
 
     /** 대응 방안 재생성 — 대응 ≥1·각 {@code what} 이 비어 있지 않고(공백 포함)·각 근거 ≥1·모든 인용이 주입 집합 안(주장은 필수 아님). 상황 사실은 근거 집합 밖. */

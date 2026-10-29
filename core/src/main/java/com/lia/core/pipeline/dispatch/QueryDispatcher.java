@@ -83,10 +83,10 @@ public class QueryDispatcher {
         boolean enactment = law.amendKind() == Law.AmendKind.제정;   // 제정만 baseline이 원래 없음
         DispatchContext ctx = new DispatchContext(law, baseline, query);
 
-        Set<QueryType> layerB = EnumSet.noneOf(QueryType.class);
+        Set<QueryType> personalizedTypes = EnumSet.noneOf(QueryType.class);
         for (QueryType t : query.types()) {
-            if (t.isLayerB()) {
-                layerB.add(t);
+            if (t.isPersonalized()) {
+                personalizedTypes.add(t);
                 continue;
             }
             Optional<DimensionHandler> handler = registry.get(t);
@@ -106,8 +106,8 @@ public class QueryDispatcher {
                 unmet.put(t, PersonalAdmission.insufficientGrounding(t));   // 다른 차원은 그대로 — 부분 성공(D69)
             }
         }
-        if (!layerB.isEmpty()) {
-            dispatchPersonalized(ctx, layerB, question, personalization, filled, unmet);
+        if (!personalizedTypes.isEmpty()) {
+            dispatchPersonalized(ctx, personalizedTypes, question, personalization, filled, unmet);
         }
         return new DispatchResult(query.primaryType(), filled, unmet);
     }

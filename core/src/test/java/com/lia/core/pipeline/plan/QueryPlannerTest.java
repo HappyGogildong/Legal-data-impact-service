@@ -102,7 +102,7 @@ class QueryPlannerTest {
     }
 
     @Test
-    void 프로필_없이_LayerB만_있으면_선계산_요약을_더해_보여준다() {
+    void 프로필_없이_개인화만_있으면_선계산_요약을_더해_보여준다() {
         AnalysisQueryDraft draft = new AnalysisQueryDraft(
                 QueryType.IMPACT, Set.of(QueryType.IMPACT, QueryType.ACTION), true,
                 TargetKind.REFERENCE, "주택법", null, List.of(), List.of(), List.of(), "전세 영향");
@@ -141,7 +141,7 @@ class QueryPlannerTest {
     }
 
     @Test
-    void 프로필이_없어도_LayerB_차원을_유지한다_미충족_안내가_응답에_실리게() {
+    void 프로필이_없어도_개인화_차원을_유지한다_미충족_안내가_응답에_실리게() {
         AnalysisQueryDraft draft = new AnalysisQueryDraft(
                 QueryType.IMPACT, Set.of(QueryType.DIFF, QueryType.IMPACT, QueryType.ACTION), true,
                 TargetKind.REFERENCE, "주택법", null, List.of(), List.of(), List.of(), "전세 영향");

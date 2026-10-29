@@ -142,7 +142,7 @@ class AnalyzeUseCaseTest {
     }
 
     @Test
-    void 로그인_사용자의_게이트_판정이_디스패처까지_간다_옛_동의면_LayerB_는_CONSENT_OUTDATED() {
+    void 로그인_사용자의_게이트_판정이_디스패처까지_간다_옛_동의면_개인화_는_CONSENT_OUTDATED() {
         AnalysisOutcome outcome = useCaseWithGateVersion("v0")
                 .analyze("주택법 내 영향", null, Optional.of(UUID.fromString("00000000-0000-0000-0000-000000000001")));
 

@@ -76,12 +76,12 @@ public class QueryPlanner {
 
         // 프로필이 없고 Layer A 차원이 하나도 없으면 SUMMARY 를 더한다 — 선계산이라 비용이 0이고(D67)
         // 익명 첫 질문이 로그인 안내만 남기지 않게 한다. Layer B 차원은 그대로 둬 미충족 카드가 로그인을 이끈다.
-        if (!profilePresent && types.stream().allMatch(QueryType::isLayerB)) {
+        if (!profilePresent && types.stream().allMatch(QueryType::isPersonalized)) {
             types.add(QueryType.SUMMARY);
         }
 
         QueryType primary = types.contains(draft.primaryType()) ? draft.primaryType() : types.iterator().next();
-        boolean profileBound = profilePresent && types.stream().anyMatch(QueryType::isLayerB);
+        boolean profileBound = profilePresent && types.stream().anyMatch(QueryType::isPersonalized);
 
         AnalysisQuery q = new AnalysisQuery(primary, types, target,
                 draft.intentSummary(), ArticleScope.CHANGED_ONLY, profileBound, AnalysisQuery.Options.defaults());

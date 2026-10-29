@@ -27,7 +27,7 @@ class AnalyzeRequestTest {
     }
 
     @Test
-    void LayerB_는_프로필이_필수다() {
+    void 개인화_는_프로필이_필수다() {
         assertThrows(IllegalArgumentException.class,
                 () -> new AnalyzeRequest(QueryType.IMPACT, LAW, null, null, "내 영향"));
     }
@@ -39,7 +39,7 @@ class AnalyzeRequestTest {
     }
 
     @Test
-    void LayerB_는_프로필과_질문을_싣는다() {
+    void 개인화_는_프로필과_질문을_싣는다() {
         AnalyzeRequest req = new AnalyzeRequest(QueryType.IMPACT, LAW, null, PROFILE, "주택법 내 영향");
         assertSame(PROFILE, req.profile());
         assertEquals("주택법 내 영향", req.question());

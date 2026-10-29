@@ -194,7 +194,7 @@ class QueryDispatcherTest {
     }
 
     @Test
-    void LayerB_두_차원은_핸들러_한_번으로_채우고_한도를_한_번_차감한다() {
+    void 개인화_두_차원은_핸들러_한_번으로_채우고_한도를_한_번_차감한다() {
         QueryDispatcher d = dispatcher(loadedWithBaseline(), handler(QueryType.SUMMARY, resp("S")));
 
         DispatchResult r = d.dispatch(refQuery(Set.of(QueryType.SUMMARY, QueryType.IMPACT, QueryType.ACTION),
@@ -207,7 +207,7 @@ class QueryDispatcherTest {
     }
 
     @Test
-    void 프로필을_못_쓰면_LayerB_는_그_사유로_unmet_한도도_핸들러도_안_건드린다() {
+    void 프로필을_못_쓰면_개인화_는_그_사유로_unmet_한도도_핸들러도_안_건드린다() {
         QueryDispatcher d = dispatcher(loadedWithBaseline(), handler(QueryType.SUMMARY, resp("S")));
 
         DispatchResult r = d.dispatch(refQuery(Set.of(QueryType.SUMMARY, QueryType.IMPACT), QueryType.SUMMARY, false),
@@ -233,7 +233,7 @@ class QueryDispatcherTest {
     }
 
     @Test
-    void 개정본인데_기준선이_없으면_LayerB_는_BASELINE_NOT_LOADED_한도_차감_없음() {
+    void 개정본인데_기준선이_없으면_개인화_는_BASELINE_NOT_LOADED_한도_차감_없음() {
         FakeLawSource src = new FakeLawSource();
         src.versions.put("001809@2026-08-04", law());   // baseline 없음, 일부개정
         QueryDispatcher d = dispatcher(src);
@@ -245,7 +245,7 @@ class QueryDispatcherTest {
     }
 
     @Test
-    void 제정본은_기준선이_없어도_LayerB_가_핸들러에_닿는다() {
+    void 제정본은_기준선이_없어도_개인화_가_핸들러에_닿는다() {
         FakeLawSource src = new FakeLawSource();
         src.versions.put("001809@2026-08-04", law(Law.AmendKind.제정));   // baseline 없음 — 제정이라 정상
         QueryDispatcher d = dispatcher(src);
@@ -260,7 +260,7 @@ class QueryDispatcherTest {
     }
 
     @Test
-    void LayerB_근거부족이면_요청한_차원_모두_INSUFFICIENT_GROUNDING() {
+    void 개인화_근거부족이면_요청한_차원_모두_INSUFFICIENT_GROUNDING() {
         personalized.failure = new InsufficientGroundingException("근거 부족");
         QueryDispatcher d = dispatcher(loadedWithBaseline());
 
@@ -273,7 +273,7 @@ class QueryDispatcherTest {
     }
 
     @Test
-    void 익명이면_LayerB_는_PROFILE_REQUIRED_나머지는_filled() {
+    void 익명이면_개인화_는_PROFILE_REQUIRED_나머지는_filled() {
         QueryDispatcher d = dispatcher(loadedWithBaseline(), handler(QueryType.SUMMARY, resp("S")));
 
         DispatchResult r = dispatchAnonymous(d, refQuery(Set.of(QueryType.SUMMARY, QueryType.IMPACT), QueryType.SUMMARY, false));

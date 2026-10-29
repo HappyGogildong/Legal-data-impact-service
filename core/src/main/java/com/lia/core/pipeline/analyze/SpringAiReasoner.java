@@ -82,7 +82,7 @@ public class SpringAiReasoner implements Reasoner {
 
     /** 차원 → 계층(A: SUMMARY·DIFF 선계산 / B: IMPACT·ACTION 프로필별). */
     private static String layer(QueryType dimension) {
-        return dimension.isLayerB() ? "B" : "A";
+        return dimension.isPersonalized() ? "B" : "A";
     }
 
     /** CONTEXT(source_id별 근거 블록) [+ PROFILE·QUESTION — Layer B 만] + TASK(차원) 조립. 프롬프트 §3. */
@@ -106,7 +106,7 @@ public class SpringAiReasoner implements Reasoner {
               .append("SITUATION 이 영향을 준 단계에는 situationNote 에 그 이유를 한 줄로 쓴다. situationQuestions 는 비운다.");
             return sb.toString();
         }
-        if (ctx.dimension().isLayerB()) {
+        if (ctx.dimension().isPersonalized()) {
             sb.append("\n[PROFILE] (이 사용자의 자기신고 정보 — 근거가 아니므로 인용하지 않는다)\n")
               .append(ctx.profile().labelLines());
             sb.append("\n[QUESTION] ").append(ctx.question() == null ? "" : ctx.question()).append('\n');

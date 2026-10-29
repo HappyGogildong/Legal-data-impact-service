@@ -120,24 +120,24 @@ class AnalysisEngineTest {
 
     private static final String ART = "LAW:A@2027-01-01:art:1";
 
-    private static ImpactResult layerB(List<ImpactResult.Impact> impacts, List<ImpactResult.Action> actions) {
+    private static ImpactResult personalizedResult(List<ImpactResult.Impact> impacts, List<ImpactResult.Action> actions) {
         return new ImpactResult("LAW:A@2027-01-01", "IMPACT", "요약",
                 List.of(new ImpactResult.Claim("주장", List.of(ART), 0.9)),
                 impacts, actions, null, List.of(), "참고용", null);
     }
 
     @Test
-    void LayerB_는_영향과_대응이_모두_있고_항목마다_인용이_있어야_통과() {
+    void 개인화_는_영향과_대응이_모두_있고_항목마다_인용이_있어야_통과() {
         Set<String> injected = Set.of(ART);
-        ImpactResult ok = layerB(
+        ImpactResult ok = personalizedResult(
                 List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of(ART))),
                 List.of(new ImpactResult.Action("확인", null, List.of(ART))));
-        ImpactResult noActions = layerB(
+        ImpactResult noActions = personalizedResult(
                 List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of(ART))), List.of());
-        ImpactResult uncitedImpact = layerB(
+        ImpactResult uncitedImpact = personalizedResult(
                 List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of())),
                 List.of(new ImpactResult.Action("확인", null, List.of(ART))));
-        ImpactResult basislessAction = layerB(
+        ImpactResult basislessAction = personalizedResult(
                 List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of(ART))),
                 List.of(new ImpactResult.Action("확인", null, List.of())));
 
@@ -149,7 +149,7 @@ class AnalysisEngineTest {
 
     @Test
     void 해당_없음도_조문_인용이_있으면_정상_답() {
-        ImpactResult none = layerB(
+        ImpactResult none = personalizedResult(
                 List.of(new ImpactResult.Impact("주거", "영향 없음", "적용 대상이 아님", List.of(ART))),
                 List.of(new ImpactResult.Action("따로 할 일 없음", null, List.of(ART))));
         assertTrue(AnalysisEngine.grounded(QueryType.IMPACT, none, Set.of(ART)));

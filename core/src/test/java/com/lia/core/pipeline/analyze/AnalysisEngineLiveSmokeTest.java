@@ -51,7 +51,7 @@ class AnalysisEngineLiveSmokeTest {
     }
 
     @Test
-    void layerB_실생성이_영향과_대응을_주입_source_id_로만_인용한다() {
+    void 개인화_실생성이_영향과_대응을_주입_source_id_로만_인용한다() {
         UserProfile profile = new UserProfile(null, 34, null, null, null, HousingType.전세, null);
         AnalyzeResponse resp = engine.analyze(new AnalyzeRequest(QueryType.IMPACT, housing(), null,
                 profile, "주택법 바뀌면 전세 사는 나는 뭘 해야 해?"));
