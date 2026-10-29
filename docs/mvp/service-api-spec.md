@@ -35,7 +35,7 @@ related:
 | F4 | **대응 행동** | "그럼 나 뭘 해야 해? 언제까지?" | `ActionPlan` | B | **필요** |
 | F0 | **법령 발견(검색)** | "나한테 영향 있을 법령 찾아줘" | `LOOKUP` | 발견 | 조건부 |
 
-> F0(**`LOOKUP`**, D46)은 특정 법령을 모른 채 *코퍼스에서 찾는* 동작이다 — 나머지 넷과 달리 답변 차원이 아니라 **발견**이며, 프로필/도메인/조건으로 `pending` 네임스페이스를 검색한다. "찾아서 분석해줘"면 발견 후 top-K를 분석으로 팬아웃한다.
+> F0(**`LOOKUP`**, D46)은 특정 법령을 모른 채 *코퍼스에서 찾는* 동작이다 — 나머지 넷과 달리 답변 차원이 아니라 **발견**이며, 질문(토글이 켜지면 프로필 라벨 포함)을 임베딩해 `pending` 네임스페이스를 검색한다. **후보만 반환**하고 자동 분석은 하지 않는다 — 사용자가 고르면 원래 질문 + `lawRef` 로 다시 요청한다(D70).
 >
 > **커맨드 = 내부 분해, 사용자 선택 아님.** 4종은 여전히 `AnalysisCommand`(개방-폐쇄, Layer A/B 구분)로 구현되지만, *사용자가 토글하는 모드*가 아니라 **플래너가 질문에서 골라내는 내부 단위**다. "무엇이 바뀌었는지만 알려줘"는 F2만, 포괄 질문은 넷 다 돌 수 있다. 각 커맨드는 인용 없는 주장을 차단하는 **가드레일**이기도 하다(D08).
 >
@@ -110,15 +110,16 @@ BASE  /api/v1
 {
   "query": "주택법 바뀌면 나 전세 계약 어떻게 돼?",   // ★ 필수 — 자연어
   "lawRef": { "lawId": "001809", "effectiveDate": "2026-08-04" },  // 선택: 검색에서 이미 특정했으면
-  "scope": ["impact", "action"]                       // 선택: 특정 차원만. 없으면 플래너가 질문에서 판단
+  "scope": ["impact", "action"],                      // 선택: 특정 차원만. 없으면 플래너가 질문에서 판단
+  "profileSearch": false                              // 선택(기본 false): 법령 발견에서 프로필 라벨을 검색어에 붙인다(D70) — Discovery 질문일 때만 쓰임
 }
 ```
 
 **처리 순서**(온라인 경로, [[v0.9-nl-query-planner]] §3.2 · [[QueryPlanner]]):
 1. **번역** — `QueryTranslator`(Haiku)가 자연어를 `AnalysisQuery`(타입 집합·엔티티·target)로. `scope`/`lawRef`가 오면 힌트로 병합.
-2. **해소/발견** — target이 `Reference`면 해소(4상태, fail-closed), `Discovery`(LOOKUP)면 `pending` ns 코퍼스 검색.
+2. **해소/발견** — target이 `Reference`면 해소(4상태, fail-closed), `Discovery`(LOOKUP)면 `LawDiscovery` 가 `pending` ns 코퍼스를 검색해 후보를 돌려준다(D70).
 3. **플래닝** — 프로필 유무로 Layer B 차원을 빼지 않는다(D69). 프로필을 못 쓰면 디스패처가 그 차원을 사유(`PROFILE_REQUIRED`·`CONSENT_OUTDATED`)와 함께 `unmet` 으로 표기한다. 단 프로필이 없고 Layer A 차원이 하나도 없으면 `SUMMARY` 를 더해 요약은 보여 준다(선계산본이 있으면 비용 0). 검증된 `AnalysisQuery` 확정.
-4. **디스패치·검증** — 타입별 핸들러(SUMMARY=쉬운 요약 저장본 있으면 그것·없으면 Opus, DIFF=Opus, Layer B=개인화 게이트·하루 한도 통과 시 Opus 1회로 IMPACT·ACTION, D67·D69) → 엔진 내부 인용검증(근거 부족은 그 차원만 `INSUFFICIENT_GROUNDING`). 정본은 저장소 정확 조회(벡터 검색 아님). Discovery+분석 팬아웃은 후속(#19).
+4. **디스패치·검증** — 타입별 핸들러(SUMMARY=쉬운 요약 저장본 있으면 그것·없으면 Opus, DIFF=Opus, Layer B=개인화 게이트·하루 한도 통과 시 Opus 1회로 IMPACT·ACTION, D67·D69) → 엔진 내부 인용검증(근거 부족은 그 차원만 `INSUFFICIENT_GROUNDING`). 정본은 저장소 정확 조회(벡터 검색 아님). Discovery 는 분석 팬아웃 없이 후보만(D70).
 
 **RESOLVED 응답** — 해소되고 분석까지 성공:
 ```jsonc
@@ -147,6 +148,26 @@ BASE  /api/v1
   "disclaimer": "법률 자문이 아닌 참고용 정보입니다."
 }
 ```
+
+**법령 발견 응답**(D70) — 법령명 없는 질문(Discovery)이면 분석 없이 **후보만** 돌려준다. `resolution` 은 `RESOLVED`, `law`·`answer`·`unmet`·`sources` 는 없고 `discovery` 에만 담긴다:
+```jsonc
+{
+  "resolution": "RESOLVED",
+  "discovery": {
+    "candidates": [                            // 최대 10건, 유사도 순. 실재하는 시행예정 법령만(없으면 [])
+      { "lawId": "001809", "title": "주택법", "effectiveDate": "2026-08-04", "ministry": "국토교통부",
+        "summary": "전세 계약을 …",              // 쉬운 요약 저장본(D67) 첫 문장. 없으면 개정 이유 앞부분, 둘 다 없으면 null
+        "summaryReady": true,                  // false = 요약 준비 중(개정 이유 앞부분으로 대체한 경우)
+        "matched": { "sourceId": "LAW:001809@2026-08-04:art:18", "label": "주택법 제18조 사업계획의 통합심의" } }  // 근거 칩 → S05 그 조문
+    ],
+    "profileApplied": false,                   // 프로필 라벨이 검색어에 실제로 붙었는지
+    "profileBlocked": { "reason": "PROFILE_REQUIRED", "message": "프로필 필요" }  // 선택 — 토글이 켜졌는데 프로필을 못 썼을 때만(PROFILE_REQUIRED·CONSENT_OUTDATED)
+  },
+  "disclaimer": "법률 자문이 아닌 참고용 정보입니다."
+}
+```
+- 고르면 클라이언트가 `{ query: <원래 질문>, lawRef }` 로 다시 요청한다 — 분석 차원은 그 재요청에서 같은 질문으로 정해진다.
+- 한도(`DAILY_LIMIT`)·조회 집계(D66)는 적용되지 않는다. Opus 호출도 없다(검색어 임베딩 1회뿐).
 
 **미해소 응답** — 해소가 `RESOLVED`가 아니면 **분석하지 않고** 4상태를 그대로 답으로 돌려준다(아래 예시의 `resolution`/`candidates`/`message`). 대화적으로 "그 법을 못 찾았어요"로 노출된다.
 
@@ -391,7 +412,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 ## 5. Open
 
 - [x] **Query Planner 설계 확정(D46)** — 자연어 → `AnalysisQuery`(타입 DTO) → dispatch. 5 QueryType(LOOKUP 포함), Reference/Discovery target. 상세 [[QueryPlanner]]
-- [ ] LOOKUP 팬아웃 정책 — top-K 자동 분석 vs 후보만 반환 후 사용자 선택
+- [x] LOOKUP 팬아웃 정책 — 후보만 반환(D70). 고르면 원래 질문 + `lawRef` 로 재요청
 - [x] 인증 방식 확정 — 소셜 OAuth2 + 서버 세션 쿠키(D60)
 - [ ] `AMBIGUOUS` 시행일 복수(D43)의 **기본 선택 정책**(가장 이른 시행일 자동 vs 선택 강제)
 - [ ] 부분 성공(`unmet` 차원) 렌더링 규약 — 웹 UX
