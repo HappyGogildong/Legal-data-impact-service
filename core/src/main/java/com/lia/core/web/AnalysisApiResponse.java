@@ -7,6 +7,7 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.pipeline.discover.DiscoveredLaw;
 import com.lia.core.pipeline.dispatch.Unmet;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -24,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param unmet        못 채운 차원 → 사유 코드·설명
  * @param sources      answer 안 인용키의 근거(인용 칩·근거 패널)
  * @param disclaimer   면책(응답 전역)
+ * @param discovery    법령 발견 결과(Discovery 질문만, D70)
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AnalysisApiResponse(
@@ -35,18 +37,26 @@ public record AnalysisApiResponse(
         Map<String, ImpactResult> answer,
         Map<String, Unmet> unmet,
         List<CitedSource> sources,
-        String disclaimer) {
+        String disclaimer,
+        Discovery discovery) {
 
     public static AnalysisApiResponse analyzed(LawHeader law, List<LawBrief> alternatives,
                                                Map<String, ImpactResult> answer, Map<String, Unmet> unmet,
                                                List<CitedSource> sources, String disclaimer) {
-        return new AnalysisApiResponse("RESOLVED", null, null, law, alternatives, answer, unmet, sources, disclaimer);
+        return new AnalysisApiResponse("RESOLVED", null, null, law, alternatives, answer, unmet, sources, disclaimer, null);
     }
 
     public static AnalysisApiResponse unresolved(String resolution, String message, List<LawBrief> candidates) {
         return new AnalysisApiResponse(resolution, message, candidates.isEmpty() ? null : candidates,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
     }
+
+    public static AnalysisApiResponse discovered(Discovery discovery) {
+        return new AnalysisApiResponse("RESOLVED", null, null, null, null, null, null, null, null, discovery);
+    }
+
+    /** 법령 발견 결과 — 후보 카드, 프로필 라벨을 붙였는지, 토글을 켰지만 프로필을 못 쓴 사유. */
+    public record Discovery(List<DiscoveredLaw> candidates, boolean profileApplied, Unmet profileBlocked) {}
 
     /** 대상 법령 — 정본 미적재면 title·lawType·ministry 는 null. {@code ref} = "LAW:{lawId}@{efYd}". */
     public record LawHeader(String ref, String lawId, String title, LocalDate effectiveDate,

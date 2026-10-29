@@ -36,7 +36,8 @@ public class AnalysisController {
             throw new IllegalArgumentException("query는 필수입니다.");
         }
         // 익명 허용 — 세션이 있으면 그 userId 로 개인화(Layer B) 판정(D69). 본문으로 프로필을 받지 않는다.
-        AnalysisOutcome outcome = useCase.analyze(req.query().strip(), req.explicitRef(), CurrentUser.userId(request));
+        AnalysisOutcome outcome = useCase.analyze(req.query().strip(), req.explicitRef(), CurrentUser.userId(request),
+                req.wantsProfileSearch());
         return ResponseEntity.ok(mapper.toBody(outcome)); // 해소 결과·분석 모두 200
     }
 }
