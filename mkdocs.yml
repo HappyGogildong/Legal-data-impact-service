@@ -132,6 +132,7 @@ nav:
           - Law Catalog API (법령 목록·상세): components/web/LawCatalogApi.md
           - Trending API (자주 찾는 법령): components/web/TrendingApi.md
           - Profile API: components/web/ProfileApi.md
+          - Bookmark API: components/web/BookmarkApi.md
           - Consent API: components/web/ConsentApi.md
           - Account API: components/web/AccountApi.md
   - 참조 (Reference):

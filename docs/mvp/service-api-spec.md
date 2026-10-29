@@ -90,6 +90,9 @@ BASE  /api/v1
 | `PUT` · `DELETE` | `/consents/notification-email` | 알림 이메일 수신 동의 / 철회 | 필요 |
 | `GET` | `/account` | 내 계정(provider·가입일) — 로그인 상태 확인 겸용 | 필요 |
 | `DELETE` | `/account` | 계정 삭제(파기, 프로필 포함) | 필요 |
+| `GET` | `/bookmarks` | 내 관심 법령 북마크 목록(보여 줄 버전·상태, D72) | 필요 |
+| `PUT` | `/bookmarks/{lawId}` | 북마크 추가(멱등, 한도 초과 409) | 필요 |
+| `DELETE` | `/bookmarks/{lawId}` | 북마크 해제(멱등) | 필요 |
 
 \* `/analyses`는 익명도 허용하되 **F3·F4(Layer B)는 인증 세션이 있을 때만** 채워진다(없으면 F1·F2까지).
 
@@ -415,6 +418,26 @@ GET /api/v1/laws/trending?window=week&limit=10
 
 ---
 
+### 3.8 관심 법령 북마크 — `/bookmarks` (S14, D72)
+
+로그인 필요(익명 401). 쓰기는 CSRF 필수(403). 북마크 단위는 **법령(lawId)** — 버전이 아니다.
+
+| 요청 | 응답 |
+|---|---|
+| `PUT /bookmarks/{lawId}` | 204(이미 있어도 204) · 저장된 버전이 하나도 없는 법령 404 `not_found` · 한도 초과 409 `bookmark_limit` |
+| `DELETE /bookmarks/{lawId}` | 204(없어도 204) |
+| `GET /bookmarks` | 200 `{ "items": [BookmarkItem] }` — 추가한 시각 최근 순 |
+
+```json
+{ "lawId": "001809", "title": "주택법", "status": "시행예정",
+  "effectiveDate": "2026-11-08", "bookmarkedAt": "2026-10-30T00:12:00Z" }
+```
+
+- `status`·`effectiveDate` 는 **보여 줄 버전**의 것: 시행예정본이 있으면 가장 이른 시행예정본(`시행예정`), 없으면 시행일이 가장 늦은 행(`시행중`·`과거` → `시행됨`, `철회` → `철회`). S05 경로는 `/laws/{lawId}/{effectiveDate}`.
+- 한도는 `lia.bookmarks.max-per-user`(기본 100). 알림은 북마크와 별개(구독 §3.6).
+
+---
+
 ## 4. 공통 규약
 
 ### 4.1 오류 (시스템 오류만 4xx/5xx)
@@ -424,9 +447,9 @@ GET /api/v1/laws/trending?window=week&limit=10
 | 코드 | status | 의미 |
 |---|---|---|
 | 400 | `bad_request` | 스키마 위반·필수 파라미터 누락 · 상황 재생성의 위조·형식 위반 답(D71) |
-| 401 | `unauthenticated` | 인증 전용 엔드포인트(`/profile`·`/consents`·`/account`·`/analyses/action-revisions`)에 세션 없이 접근 |
-| 404 | `not_found` | `lawId`/`efYd` 조합이 저장소에 없음 · 프로필 미생성 |
-| 409 | `consent_required` | 현재 처리방침 버전의 프로필 동의 없이 `PUT /profile` (D61) |
+| 401 | `unauthenticated` | 인증 전용 엔드포인트(`/profile`·`/consents`·`/account`·`/bookmarks`·`/analyses/action-revisions`)에 세션 없이 접근 |
+| 404 | `not_found` | `lawId`/`efYd` 조합이 저장소에 없음 · 프로필 미생성 · 북마크할 법령이 저장소에 없음(`PUT /bookmarks/{lawId}`) |
+| 409 | `consent_required` · `bookmark_limit` | 현재 처리방침 버전의 프로필 동의 없이 `PUT /profile` (D61) · 사용자당 북마크 한도 초과 `PUT /bookmarks/{lawId}` (D72) |
 | 422 | `insufficient_grounding` | 요청한 **모든** 차원이 인용검증 실패(일부만 실패면 200 + `unmet`) |
 | 429 | `rate_limited` | 모델·출처 API 한도 |
 | 503 | `upstream_error` | 모델 API 장애 |
@@ -449,6 +472,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 - 개인정보(프로필)를 **URL·쿼리스트링에 넣지 않는다** — 프로필은 인증 컨텍스트로만 전달.
 - 응답에 `userId` 를 싣지 않는다. 로그·캐시 키에도 원본 `userId` 대신 속성 해시.
 - 프로필 관련 엔드포인트는 HTTPS 전제.
+- 관심 법령 북마크는 법령 ID·추가 시각만 저장하고 계정 삭제 시 함께 지운다(D72). 처리방침 저장 항목(#35)에 추가한다.
 
 ---
 
