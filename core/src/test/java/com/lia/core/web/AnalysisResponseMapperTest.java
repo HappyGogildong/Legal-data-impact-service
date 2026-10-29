@@ -19,6 +19,7 @@ import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.analysis.Situation;
 import com.lia.core.domain.analysis.SituationQuestion;
+import com.lia.core.domain.analysis.SituationQuestionSet;
 import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
@@ -159,6 +160,36 @@ class AnalysisResponseMapperTest {
         assertEquals("q1", json.at("/situation/questions/0/id").asString());
         assertEquals(0, json.at("/situation/stepNotes/0/index").asInt());
         assertEquals("이미 계약했다면 해당돼요.", json.at("/situation/stepNotes/0/note").asString());
+    }
+
+    @Test
+    @DisplayName("situation.setId — 질문 목록에서 결정론적으로 계산하고, 질문이 바뀌면 달라진다")
+    void 상황_setId() {
+        List<SituationQuestion> questions = List.of(question("q1", CITE));
+        Situation situation = new Situation(questions, List.of());
+
+        String first = mapper(true).toBody(analyzedAction(situation)).situation().setId();
+        String again = mapper(true).toBody(analyzedAction(situation)).situation().setId();
+        String changed = mapper(true).toBody(analyzedAction(new Situation(
+                List.of(question("q1", CITE).withId("q2")), List.of()))).situation().setId();
+
+        assertEquals(SituationQuestionSet.idOf(questions), first, "도메인의 한 함수로 계산");
+        assertEquals(first, again);
+        assertNotEquals(first, changed);
+    }
+
+    @Test
+    @DisplayName("JSON — situation.setId 가 나간다(질문 있을 때), 질문 없이 단계 설명만이면 setId 도 생략")
+    void 상황_setId_직렬화() {
+        tools.jackson.databind.JsonNode withQuestions = JsonMapper.builder().build().readTree(
+                JsonMapper.builder().build().writeValueAsString(mapper(true).toBody(analyzedAction(
+                        new Situation(List.of(question("q1", CITE)), List.of())))));
+        tools.jackson.databind.JsonNode notesOnly = JsonMapper.builder().build().readTree(
+                JsonMapper.builder().build().writeValueAsString(mapper(true).toBody(
+                        analyzedAction(new Situation(List.of(), List.of(new StepNote(0, "설명")))))));
+
+        assertTrue(withQuestions.at("/situation/setId").asString().matches("[0-9a-f]{16}"), withQuestions.toString());
+        assertFalse(notesOnly.get("situation").has("setId"), notesOnly.toString());
     }
 
     @Test

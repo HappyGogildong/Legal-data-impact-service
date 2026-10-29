@@ -229,6 +229,7 @@ export interface components {
         ActionRevisionApiRequest: {
             answers?: components["schemas"]["SituationAnswer"][];
             lawRef?: components["schemas"]["LawRefDto"];
+            setId?: string;
         };
         ActionRevisionApiResponse: {
             action?: components["schemas"]["ImpactResult"];
@@ -460,6 +461,7 @@ export interface components {
         };
         SituationBody: {
             questions?: components["schemas"]["SituationQuestion"][];
+            setId?: string;
             stepNotes?: components["schemas"]["StepNote"][];
         };
         SituationQuestion: {

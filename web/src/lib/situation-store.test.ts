@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearSituation,
   clearSituationMemory,
-  questionsIdentity,
   readSituation,
   situationKey,
   writeSituation,
@@ -74,11 +73,10 @@ describe("situation-store", () => {
     }
   });
 
-  it("질문 묶음 식별자가 다르면 빈 상태로 보고, 다음 쓰기가 덮어쓴다", () => {
+  it("질문 묶음 식별자(setId)가 다르면 빈 상태로 보고, 다음 쓰기가 덮어쓴다", () => {
     const key = situationKey("001809", "2026-08-04");
-    const old = questionsIdentity([{ id: "q1", text: "옛 질문" }]);
-    const fresh = questionsIdentity([{ id: "q1", text: "새 질문" }]);
-    expect(old).not.toBe(fresh);
+    const old = "0123456789abcdef";
+    const fresh = "fedcba9876543210";
 
     writeSituation(key, { answers: { q1: "예" }, identity: old });
     expect(readSituation(key, fresh)).toEqual({ answers: {} });

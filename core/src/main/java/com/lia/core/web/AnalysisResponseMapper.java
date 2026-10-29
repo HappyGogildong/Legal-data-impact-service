@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.domain.analysis.SituationQuestionSet;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.dispatch.DispatchResult;
@@ -74,7 +75,9 @@ public class AnalysisResponseMapper {
         // 상황 확인(D71) — 대응 방안이 채워졌고 상황이 비지 않을 때만. 질문의 근거도 인용 칩으로 열 수 있어야 한다.
         AnalyzeResponse action = a.result().filled().get(QueryType.ACTION);
         SituationBody situation = action == null || action.situation().isEmpty() ? null
-                : new SituationBody(action.situation().questions(), action.situation().stepNotes());
+                : new SituationBody(action.situation().questions().isEmpty() ? null
+                        : SituationQuestionSet.idOf(action.situation().questions()),
+                        action.situation().questions(), action.situation().stepNotes());
         Set<String> cited = citations(answer.values());
         if (situation != null) {
             situation.questions().forEach(q -> { if (q.basis() != null) cited.add(q.basis()); });

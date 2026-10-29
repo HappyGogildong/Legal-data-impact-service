@@ -60,9 +60,12 @@ public record AnalysisApiResponse(
         return new AnalysisApiResponse("RESOLVED", null, null, null, null, null, null, null, null, discovery, null);
     }
 
-    /** 상황 확인(D71) — 상황 질문과 대응 단계 설명. 대응 방안이 채워지고 상황이 있을 때만. */
+    /**
+     * 상황 확인(D71) — 상황 질문과 대응 단계 설명. 대응 방안이 채워지고 상황이 있을 때만.
+     * {@code setId} 는 질문 묶음 식별자(질문이 있을 때만) — 재생성 요청이 그대로 돌려보낸다.
+     */
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    public record SituationBody(List<SituationQuestion> questions, List<StepNote> stepNotes) {}
+    public record SituationBody(String setId, List<SituationQuestion> questions, List<StepNote> stepNotes) {}
 
     /** 법령 발견 결과 — 후보 카드, 프로필 라벨을 붙였는지, 토글을 켰지만 프로필을 못 쓴 사유(없으면 키 생략). */
     @JsonInclude(JsonInclude.Include.NON_NULL)

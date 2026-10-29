@@ -15,7 +15,6 @@ import type { AskRequest } from "@/lib/ask-store";
 import { unmetCopy } from "@/lib/analysis-view";
 import {
   clearSituation,
-  questionsIdentity,
   readSituation,
   situationKey,
   writeSituation,
@@ -32,6 +31,7 @@ const UNKNOWN = "모름";
 export function ActionSituation({
   law,
   questions,
+  setId,
   sources,
   selected,
   onCite,
@@ -40,6 +40,8 @@ export function ActionSituation({
 }: {
   law: { lawId: string; effectiveDate: string; title?: string };
   questions: SituationQuestion[];
+  /** 서버가 이 질문 묶음에 붙인 식별자 — 재생성 요청에 돌려보내고, 저장된 답이 이 묶음의 것인지 가른다 */
+  setId: string;
   sources: Map<string, CitedSource>;
   selected: string | null;
   onCite: (sourceId: string) => void;
@@ -47,8 +49,8 @@ export function ActionSituation({
   onAsk: (next: AskRequest) => void;
 }) {
   const key = situationKey(law.lawId, law.effectiveDate);
-  // 저장된 상태는 같은 질문 묶음으로 만든 것만 쓴다 — 다시 받아 질문이 바뀌었으면 옛 답은 버린다
-  const identity = questionsIdentity(questions);
+  // 저장된 상태는 같은 질문 묶음(setId)으로 만든 것만 쓴다 — 다시 받아 질문이 바뀌었으면 옛 답은 버린다
+  const identity = setId;
   const [answers, setAnswers] = useState(
     () => readSituation(key, identity).answers,
   );
@@ -60,6 +62,7 @@ export function ActionSituation({
     mutationFn: () =>
       reviseAction(
         lawRef,
+        setId,
         questions.flatMap((q) => {
           const value = q.id ? answers[q.id] : undefined;
           return q.id && value?.trim() && value !== UNKNOWN

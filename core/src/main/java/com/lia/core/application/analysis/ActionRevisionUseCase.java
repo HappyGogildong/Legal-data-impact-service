@@ -8,6 +8,7 @@ import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.SituationAnswer;
 import com.lia.core.domain.analysis.SituationQuestion;
+import com.lia.core.domain.analysis.SituationQuestionSet;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.AnalyzeRequest;
@@ -23,7 +24,7 @@ import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.store.LawSource;
 
 /**
- * 대응 방안 상황 확인 → 대응 방안만 재생성(D71). 게이트 순서: 개인화 → 세션 질문(없으면 만료) → 답 검증(위조·형식 위반은 400)
+ * 대응 방안 상황 확인 → 대응 방안만 재생성(D71). 게이트 순서: 개인화 → 세션 질문(없거나 요청 setId 와 묶음이 다르면 만료) → 답 검증(위조·형식 위반은 400)
  * → 정본 → 기준선·하루 한도({@link PersonalAdmission}, 디스패처와 같은 규칙) → 엔진(ACTION, Opus 1회).
  * Spring 애노테이션 없음 — {@code PipelineConfig} 의 {@code @Bean} 이 배선한다.
  * 익명은 보안 설정이 401 로 막아 여기까지 오지 않는다 — {@code Optional<UUID>} 는 {@link PersonalizationGate#check} 재사용용.
@@ -44,7 +45,7 @@ public class ActionRevisionUseCase {
         this.engine = engine;
     }
 
-    public RevisionOutcome revise(Optional<UUID> userId, LawRef ref, List<SituationAnswer> answers,
+    public RevisionOutcome revise(Optional<UUID> userId, LawRef ref, String setId, List<SituationAnswer> answers,
                                   SituationQuestions questions) {
         Personalization personalization = gate.check(userId);
         if (personalization instanceof Personalization.Blocked blocked) {
@@ -55,6 +56,10 @@ public class ActionRevisionUseCase {
         Optional<List<SituationQuestion>> stored = questions.find(ref);
         if (stored.isEmpty()) {
             return notRevised(new Unmet(Unmet.Reason.SITUATION_EXPIRED, "상황 질문이 만료됨 — 다시 받아야 한다"));
+        }
+        // 화면이 보여 준 묶음(setId)과 서버가 든 묶음이 다르면 같은 id(q1..)의 답이 다른 질문에 붙는다 — 답 검증 전에 끊는다
+        if (setId == null || !setId.equals(SituationQuestionSet.idOf(stored.get()))) {
+            return notRevised(new Unmet(Unmet.Reason.SITUATION_EXPIRED, "상황 질문 묶음이 바뀜 — 다시 받아야 한다"));
         }
         List<ConfirmedFact> facts = ConfirmedFact.confirm(stored.get(), answers);   // 위조·형식 위반 → 400
 

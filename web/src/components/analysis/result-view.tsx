@@ -10,11 +10,7 @@ import type {
 } from "@/lib/api/types";
 import { presentDimensions, sourceIndex } from "@/lib/analysis-view";
 import type { AskRequest } from "@/lib/ask-store";
-import {
-  questionsIdentity,
-  readSituation,
-  situationKey,
-} from "@/lib/situation-store";
+import { readSituation, situationKey } from "@/lib/situation-store";
 import { personalizedQuery } from "@/components/laws/law-actions";
 import { ActionSituation } from "./action-situation";
 import { DimensionCard } from "./dimension-card";
@@ -51,10 +47,7 @@ export function ResultView({
   // 상황 확인으로 다시 만든 대응 방안(D71) — 같은 탭에서 이 법령 버전으로 확인한 적이 있으면 이어서 보여 준다
   const [revision, setRevision] = useState<ActionRevision | undefined>(() =>
     lawKey
-      ? readSituation(
-          lawKey,
-          questionsIdentity(response.situation?.questions ?? []),
-        ).revision
+      ? readSituation(lawKey, response.situation?.setId).revision
       : undefined,
   );
   if (!law) return null; // 발견 응답은 AskScreen 이 S04 로 보낸다 — 여기 오는 응답엔 law 가 있다
@@ -66,6 +59,7 @@ export function ResultView({
   }
   const selectedSource = selected ? (sources.get(selected) ?? null) : null;
   const questions = response.situation?.questions ?? [];
+  const setId = response.situation?.setId;
   const pickAlternative = (alternative: LawBrief) => {
     if (alternative.lawId && alternative.effectiveDate) {
       onAsk({
@@ -117,11 +111,13 @@ export function ResultView({
           ))}
           {response.answer?.action &&
             questions.length > 0 &&
+            setId &&
             lawId &&
             effectiveDate && (
               <ActionSituation
                 law={{ lawId, effectiveDate, title }}
                 questions={questions}
+                setId={setId}
                 sources={sources}
                 selected={selected}
                 onCite={setSelected}

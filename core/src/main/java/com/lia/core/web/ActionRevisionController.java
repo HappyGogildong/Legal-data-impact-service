@@ -35,7 +35,10 @@ public class ActionRevisionController {
         if (req == null || req.lawRef() == null || req.lawRef().lawId() == null || req.lawRef().effectiveDate() == null) {
             throw new IllegalArgumentException("lawRef(lawId·effectiveDate)는 필수입니다.");
         }
-        RevisionOutcome outcome = useCase.revise(CurrentUser.userId(request), req.lawRef().toDomain(), req.answers(),
+        if (req.setId() == null || req.setId().isBlank()) {
+            throw new IllegalArgumentException("setId(질문 묶음 식별자)는 필수입니다.");
+        }
+        RevisionOutcome outcome = useCase.revise(CurrentUser.userId(request), req.lawRef().toDomain(), req.setId(), req.answers(),
                 new HttpSessionSituationQuestions(request.getSession()));
         return ResponseEntity.ok(switch (outcome) {
             case RevisionOutcome.Revised r -> ActionRevisionApiResponse.revised(r.response().result(),

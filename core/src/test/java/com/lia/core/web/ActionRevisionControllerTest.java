@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
@@ -49,9 +50,10 @@ class ActionRevisionControllerTest {
             new ActionRevisionController(useCase, new CitedSourceResolver(EMPTY));
 
     private static final List<SituationAnswer> ANSWERS = List.of(new SituationAnswer("q1", "예"));
+    private static final String SET_ID = "0123456789abcdef";
 
     private static ActionRevisionApiRequest request() {
-        return new ActionRevisionApiRequest(new AnalyzeApiRequest.LawRefDto("001809", EF, null), ANSWERS);
+        return new ActionRevisionApiRequest(new AnalyzeApiRequest.LawRefDto("001809", EF, null), SET_ID, ANSWERS);
     }
 
     private static RevisionOutcome.Revised revised() {
@@ -65,7 +67,7 @@ class ActionRevisionControllerTest {
     @Test
     @DisplayName("Revised — action·stepNotes·sources, unmet 없음")
     void 재생성되면_action_stepNotes_sources() {
-        when(useCase.revise(any(), any(), any(), any())).thenReturn(revised());
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(revised());
 
         ResponseEntity<ActionRevisionApiResponse> response = controller.revise(request(), new MockHttpServletRequest());
 
@@ -86,7 +88,7 @@ class ActionRevisionControllerTest {
                 List.of(new ImpactResult.Claim("주장", List.of(claimCite), 0.9)),
                 List.of(new ImpactResult.Impact("비용", "부담", "자세히", List.of(impactCite))),
                 List.of(new ImpactResult.Action("신고한다", null, List.of(CITE))), null, List.of(), "참고용", null);
-        when(useCase.revise(any(), any(), any(), any())).thenReturn(new RevisionOutcome.Revised(
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(new RevisionOutcome.Revised(
                 new AnalyzeResponse(result, Set.of(CITE, claimCite, impactCite))));
 
         ActionRevisionApiResponse body = controller.revise(request(), new MockHttpServletRequest()).getBody();
@@ -99,7 +101,7 @@ class ActionRevisionControllerTest {
     @DisplayName("NotRevised — unmet 만(action·stepNotes·sources 없음), 200")
     void 못만들면_unmet만() {
         Unmet unmet = new Unmet(Unmet.Reason.DAILY_LIMIT, "오늘 한도를 다 썼어요.");
-        when(useCase.revise(any(), any(), any(), any())).thenReturn(new RevisionOutcome.NotRevised(unmet));
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(new RevisionOutcome.NotRevised(unmet));
 
         ResponseEntity<ActionRevisionApiResponse> response = controller.revise(request(), new MockHttpServletRequest());
 
@@ -114,10 +116,20 @@ class ActionRevisionControllerTest {
     @DisplayName("lawRef 가 없으면 IllegalArgumentException(400 매핑)")
     void lawRef_없으면_예외() {
         assertThrows(IllegalArgumentException.class,
-                () -> controller.revise(new ActionRevisionApiRequest(null, ANSWERS), new MockHttpServletRequest()));
+                () -> controller.revise(new ActionRevisionApiRequest(null, SET_ID, ANSWERS), new MockHttpServletRequest()));
         assertThrows(IllegalArgumentException.class,
                 () -> controller.revise(new ActionRevisionApiRequest(
-                        new AnalyzeApiRequest.LawRefDto("001809", null, null), ANSWERS), new MockHttpServletRequest()));
+                        new AnalyzeApiRequest.LawRefDto("001809", null, null), SET_ID, ANSWERS), new MockHttpServletRequest()));
+    }
+
+    @Test
+    @DisplayName("setId 가 없거나 비어 있으면 IllegalArgumentException(400 매핑) — 유스케이스를 부르지 않는다")
+    void setId_없으면_예외() {
+        for (String missing : new String[] {null, "", "   "}) {
+            assertThrows(IllegalArgumentException.class, () -> controller.revise(new ActionRevisionApiRequest(
+                    new AnalyzeApiRequest.LawRefDto("001809", EF, null), missing, ANSWERS), new MockHttpServletRequest()));
+        }
+        verifyNoInteractions(useCase);
     }
 
     @Test
@@ -126,11 +138,11 @@ class ActionRevisionControllerTest {
         UUID userId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         MockHttpServletRequest httpRequest = new MockHttpServletRequest();
         httpRequest.getSession(true).setAttribute(CurrentUser.SESSION_KEY, userId);
-        when(useCase.revise(any(), any(), any(), any())).thenReturn(revised());
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(revised());
 
         controller.revise(request(), httpRequest);
 
-        verify(useCase).revise(eq(Optional.of(userId)), eq(new LawRef("001809", EF, null)), eq(ANSWERS),
+        verify(useCase).revise(eq(Optional.of(userId)), eq(new LawRef("001809", EF, null)), eq(SET_ID), eq(ANSWERS),
                 any(HttpSessionSituationQuestions.class));
     }
 }

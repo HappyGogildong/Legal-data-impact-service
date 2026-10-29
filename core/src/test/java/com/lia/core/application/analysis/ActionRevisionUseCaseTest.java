@@ -18,6 +18,7 @@ import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.analysis.SituationAnswer;
 import com.lia.core.domain.analysis.SituationQuestion;
+import com.lia.core.domain.analysis.SituationQuestionSet;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Law;
@@ -36,7 +37,7 @@ import com.lia.core.profile.UserProfileStore;
 import com.lia.core.store.LawSource;
 
 /**
- * ActionRevisionUseCase 단위(D71) — 게이트 순서(개인화 → 세션 질문 → 답 검증 → 정본 → 기준선 → 한도 → 엔진)를
+ * ActionRevisionUseCase 단위(D71) — 게이트 순서(개인화 → 세션 질문·묶음 → 답 검증 → 정본 → 기준선 → 한도 → 엔진)를
  * 실 엔진 + 가짜 추론기·저장소로 본다. 실 LLM·DB·HTTP 세션 없음.
  */
 class ActionRevisionUseCaseTest {
@@ -138,9 +139,12 @@ class ActionRevisionUseCaseTest {
         return new ActionRevisionUseCase(gate(stored), source, quota, engine);
     }
 
+    private static final SituationQuestion Q1 = new SituationQuestion("q1", "질문 q1", ART,
+            SituationQuestion.AnswerType.YES_NO, List.of());
+    private static final String Q1_SET_ID = SituationQuestionSet.idOf(List.of(Q1));
+
     private void saveQuestionQ1() {
-        questions.save(REF, List.of(new SituationQuestion("q1", "질문 q1", ART,
-                SituationQuestion.AnswerType.YES_NO, List.of())));
+        questions.save(REF, List.of(Q1));
     }
 
     private static final List<SituationAnswer> ANSWER_Q1_YES = List.of(new SituationAnswer("q1", "예"));
@@ -149,7 +153,7 @@ class ActionRevisionUseCaseTest {
     void 익명이면_PROFILE_REQUIRED_로_한도와_엔진을_건드리지_않는다() {
         saveQuestionQ1();
 
-        RevisionOutcome out = useCase().revise(Optional.empty(), REF, ANSWER_Q1_YES, questions);
+        RevisionOutcome out = useCase().revise(Optional.empty(), REF, Q1_SET_ID, ANSWER_Q1_YES, questions);
 
         RevisionOutcome.NotRevised notRevised = assertInstanceOf(RevisionOutcome.NotRevised.class, out);
         assertEquals(Unmet.Reason.PROFILE_REQUIRED, notRevised.unmet().reason());
@@ -161,7 +165,7 @@ class ActionRevisionUseCaseTest {
     void 옛_동의면_CONSENT_OUTDATED() {
         saveQuestionQ1();
 
-        RevisionOutcome out = useCase(storedWithPolicy("v0")).revise(Optional.of(USER), REF, ANSWER_Q1_YES, questions);
+        RevisionOutcome out = useCase(storedWithPolicy("v0")).revise(Optional.of(USER), REF, Q1_SET_ID, ANSWER_Q1_YES, questions);
 
         RevisionOutcome.NotRevised notRevised = assertInstanceOf(RevisionOutcome.NotRevised.class, out);
         assertEquals(Unmet.Reason.CONSENT_OUTDATED, notRevised.unmet().reason());
@@ -171,10 +175,38 @@ class ActionRevisionUseCaseTest {
 
     @Test
     void 세션에_질문이_없으면_SITUATION_EXPIRED() {
-        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, ANSWER_Q1_YES, questions);
+        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, Q1_SET_ID, ANSWER_Q1_YES, questions);
 
         RevisionOutcome.NotRevised notRevised = assertInstanceOf(RevisionOutcome.NotRevised.class, out);
         assertEquals(Unmet.Reason.SITUATION_EXPIRED, notRevised.unmet().reason());
+        assertEquals(0, quota.consumed);
+        assertEquals(0, reasoner.calls);
+    }
+
+    @Test
+    void 질문_묶음이_다르면_SITUATION_EXPIRED_이고_답_검증_전에_끝나_한도와_엔진을_쓰지_않는다() {
+        saveQuestionQ1();   // 서버가 들고 있는 묶음 Y
+        String otherSetId = SituationQuestionSet.idOf(List.of(Q1.withId("q2")));   // 화면이 보여 준 묶음 X
+        ActionRevisionUseCase useCase = useCase();
+
+        // 답 q9 는 검증하면 IllegalArgumentException 이지만, 묶음 불일치가 먼저라 만료로 끝난다
+        RevisionOutcome out = useCase.revise(Optional.of(USER), REF, otherSetId,
+                List.of(new SituationAnswer("q9", "예")), questions);
+
+        RevisionOutcome.NotRevised notRevised = assertInstanceOf(RevisionOutcome.NotRevised.class, out);
+        assertEquals(Unmet.Reason.SITUATION_EXPIRED, notRevised.unmet().reason());
+        assertEquals(0, quota.consumed);
+        assertEquals(0, reasoner.calls);
+    }
+
+    @Test
+    void 요청_setId_가_없으면_SITUATION_EXPIRED() {
+        saveQuestionQ1();
+
+        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, null, ANSWER_Q1_YES, questions);
+
+        assertEquals(Unmet.Reason.SITUATION_EXPIRED,
+                assertInstanceOf(RevisionOutcome.NotRevised.class, out).unmet().reason());
         assertEquals(0, quota.consumed);
         assertEquals(0, reasoner.calls);
     }
@@ -185,7 +217,7 @@ class ActionRevisionUseCaseTest {
         ActionRevisionUseCase useCase = useCase();
 
         assertThrows(IllegalArgumentException.class, () -> useCase.revise(
-                Optional.of(USER), REF, List.of(new SituationAnswer("q9", "예")), questions));
+                Optional.of(USER), REF, Q1_SET_ID, List.of(new SituationAnswer("q9", "예")), questions));
 
         assertEquals(0, quota.consumed);
         assertEquals(0, reasoner.calls);
@@ -197,7 +229,7 @@ class ActionRevisionUseCaseTest {
         ActionRevisionUseCase useCase = useCase();
         source.versions.clear();
 
-        RevisionOutcome out = useCase.revise(Optional.of(USER), REF, ANSWER_Q1_YES, questions);
+        RevisionOutcome out = useCase.revise(Optional.of(USER), REF, Q1_SET_ID, ANSWER_Q1_YES, questions);
 
         RevisionOutcome.NotRevised notRevised = assertInstanceOf(RevisionOutcome.NotRevised.class, out);
         assertEquals(Unmet.Reason.LAW_NOT_LOADED, notRevised.unmet().reason());
@@ -211,7 +243,7 @@ class ActionRevisionUseCaseTest {
         ActionRevisionUseCase useCase = useCase();
         source.baseline = null;
 
-        RevisionOutcome out = useCase.revise(Optional.of(USER), REF, ANSWER_Q1_YES, questions);
+        RevisionOutcome out = useCase.revise(Optional.of(USER), REF, Q1_SET_ID, ANSWER_Q1_YES, questions);
 
         RevisionOutcome.NotRevised notRevised = assertInstanceOf(RevisionOutcome.NotRevised.class, out);
         assertEquals(Unmet.Reason.BASELINE_NOT_LOADED, notRevised.unmet().reason());
@@ -224,7 +256,7 @@ class ActionRevisionUseCaseTest {
         saveQuestionQ1();
         quota.allow = false;
 
-        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, ANSWER_Q1_YES, questions);
+        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, Q1_SET_ID, ANSWER_Q1_YES, questions);
 
         RevisionOutcome.NotRevised notRevised = assertInstanceOf(RevisionOutcome.NotRevised.class, out);
         assertEquals(Unmet.Reason.DAILY_LIMIT, notRevised.unmet().reason());
@@ -235,7 +267,7 @@ class ActionRevisionUseCaseTest {
     void 정상이면_한도_1회_차감하고_ACTION_으로_상황_사실을_넘긴다() {
         saveQuestionQ1();
 
-        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, ANSWER_Q1_YES, questions);
+        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, Q1_SET_ID, ANSWER_Q1_YES, questions);
 
         assertInstanceOf(RevisionOutcome.Revised.class, out);
         assertEquals(1, quota.consumed);
@@ -248,7 +280,7 @@ class ActionRevisionUseCaseTest {
         saveQuestionQ1();
         reasoner.withExtras = true;
 
-        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, ANSWER_Q1_YES, questions);
+        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, Q1_SET_ID, ANSWER_Q1_YES, questions);
 
         ImpactResult action = assertInstanceOf(RevisionOutcome.Revised.class, out).response().result();
         assertEquals("ACTION", action.command());
@@ -263,7 +295,7 @@ class ActionRevisionUseCaseTest {
         saveQuestionQ1();
         reasoner.ungrounded = true;
 
-        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, ANSWER_Q1_YES, questions);
+        RevisionOutcome out = useCase().revise(Optional.of(USER), REF, Q1_SET_ID, ANSWER_Q1_YES, questions);
 
         RevisionOutcome.NotRevised notRevised = assertInstanceOf(RevisionOutcome.NotRevised.class, out);
         assertEquals(Unmet.Reason.INSUFFICIENT_GROUNDING, notRevised.unmet().reason());

@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisResponse } from "@/lib/api/types";
 import {
   clearSituationMemory,
-  questionsIdentity,
   situationKey,
   writeSituation,
 } from "@/lib/situation-store";
@@ -245,6 +244,7 @@ describe("ResultView — 대응 방안 상황 확인(D71)", () => {
     },
     unmet: {},
     situation: {
+      setId: "0123456789abcdef",
       questions: [
         {
           id: "q1",
@@ -287,6 +287,16 @@ describe("ResultView — 대응 방안 상황 확인(D71)", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("질문 묶음 식별자(setId)가 없으면 재생성을 보낼 수 없어 상황 확인 블록을 내지 않는다", () => {
+    renderWithClient({
+      ...withSituation,
+      situation: { ...withSituation.situation, setId: undefined },
+    });
+    expect(
+      screen.queryByText("상황을 알려주시면 더 정확해져요"),
+    ).not.toBeInTheDocument();
+  });
+
   beforeEach(() => {
     sessionStorage.clear();
     clearSituationMemory();
@@ -294,7 +304,7 @@ describe("ResultView — 대응 방안 상황 확인(D71)", () => {
 
   const revisionState = (extra = {}) => ({
     answers: { q1: "예" },
-    identity: questionsIdentity(withSituation.situation!.questions!),
+    identity: withSituation.situation!.setId,
     revision: {
       action: { actions: [{ what: "재생성된 대응 단계" }] },
       sources: [],
@@ -306,7 +316,7 @@ describe("ResultView — 대응 방안 상황 확인(D71)", () => {
   it("다른 질문 묶음으로 저장된 옛 revision 은 보여 주지 않는다", async () => {
     writeSituation(situationKey("001809", "2026-08-04"), {
       ...revisionState(),
-      identity: questionsIdentity([{ id: "q1", text: "옛 질문" }]),
+      identity: "fedcba9876543210",
     });
     renderWithClient(withSituation);
 

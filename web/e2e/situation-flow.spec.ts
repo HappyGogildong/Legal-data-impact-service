@@ -3,6 +3,7 @@ import { ARTICLE_18, resolvedResponse } from "../src/test/fixtures";
 
 const ACCOUNT = { provider: "kakao", createdAt: "2026-10-23T05:00:00Z" };
 const QUESTION = "계약을 2026-11-01 이전에 맺었나요?";
+const SET_ID = "0123456789abcdef";
 const STEP_NOTE = "시행일 이전에 맺은 계약이라 이전 기준이 적용돼요";
 
 /** Layer B 응답 — 대응 방안이 채워지고 상황 질문이 함께 온다(D71). */
@@ -26,6 +27,7 @@ const personalizedResponse = {
     },
   },
   situation: {
+    setId: SET_ID,
     questions: [
       {
         id: "q1",
@@ -111,6 +113,7 @@ test("로그인 사용자: 상황 질문에 답하고 '대응 방안 확인하�
         lawId: resolvedResponse.law!.lawId,
         effectiveDate: resolvedResponse.law!.effectiveDate,
       },
+      setId: SET_ID,
       answers: [{ questionId: "q1", answer: "예" }],
     },
   ]);

@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActionRevision, SituationQuestion } from "@/lib/api/types";
 import {
   clearSituationMemory,
-  questionsIdentity,
   readSituation,
   situationKey,
   writeSituation,
@@ -30,6 +29,7 @@ const REVISION: ActionRevision = {
   sources: [],
   stepNotes: [{ index: 0, note: "시행일 이전 계약이라 이전 기준" }],
 };
+const SET_ID = "0123456789abcdef";
 const ROUTE = "POST /api/v1/analyses/action-revisions";
 
 function renderSituation() {
@@ -43,6 +43,7 @@ function renderSituation() {
       <ActionSituation
         law={law}
         questions={questions}
+        setId={SET_ID}
         sources={new Map()}
         selected={null}
         onCite={vi.fn()}
@@ -83,13 +84,14 @@ describe("ActionSituation", () => {
     ).toBeInTheDocument();
     expect(await requests[0].json()).toEqual({
       lawRef,
+      setId: SET_ID,
       answers: [{ questionId: "q1", answer: "예" }],
     });
     expect(onRevised).toHaveBeenCalledWith(REVISION);
     expect(readSituation(situationKey(law.lawId, law.effectiveDate))).toEqual({
       answers: { q1: "예", q2: "모름" },
       revision: REVISION,
-      identity: questionsIdentity(questions),
+      identity: SET_ID,
     });
   });
 
@@ -183,7 +185,7 @@ describe("ActionSituation", () => {
   it("다른 질문 묶음으로 다시 열면 옛 답을 이어받지 않는다", () => {
     writeSituation(KEY, {
       answers: { q1: "예" },
-      identity: questionsIdentity([{ id: "q1", text: "옛 질문" }]),
+      identity: "fedcba9876543210",
     });
     renderSituation();
 
@@ -195,7 +197,7 @@ describe("ActionSituation", () => {
   it("같은 질문 묶음이면 저장된 답을 이어받는다", () => {
     writeSituation(KEY, {
       answers: { q1: "예" },
-      identity: questionsIdentity(questions),
+      identity: SET_ID,
     });
     renderSituation();
 
@@ -228,7 +230,7 @@ describe("ActionSituation", () => {
   it("현재 질문에 없는 id 의 답은 보내지 않는다", async () => {
     writeSituation(KEY, {
       answers: { q1: "예", gone: "예" },
-      identity: questionsIdentity(questions),
+      identity: SET_ID,
     });
     const requests = mockApi({ [ROUTE]: () => json(REVISION) });
     renderSituation();

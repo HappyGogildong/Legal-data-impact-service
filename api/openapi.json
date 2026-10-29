@@ -446,6 +446,9 @@
           },
           "lawRef" : {
             "$ref" : "#/components/schemas/LawRefDto"
+          },
+          "setId" : {
+            "type" : "string"
           }
         }
       },
@@ -1125,6 +1128,9 @@
             "items" : {
               "$ref" : "#/components/schemas/SituationQuestion"
             }
+          },
+          "setId" : {
+            "type" : "string"
           },
           "stepNotes" : {
             "type" : "array",

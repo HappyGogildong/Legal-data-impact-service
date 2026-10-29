@@ -2,7 +2,7 @@ import type { ActionRevision } from "@/lib/api/types";
 
 /**
  * 상황 확인 상태 — 탭 sessionStorage(법령 버전별). 서버엔 질문만 있고 답은 여기에만(D71). 탭을 닫으면 사라진다.
- * identity 는 이 상태가 만들어진 질문 묶음의 식별자 — 다시 받아 질문이 바뀌면 옛 답·재생성 결과를 쓰지 않는다.
+ * identity 는 이 상태가 만들어진 질문 묶음의 식별자(서버가 내려 준 situation.setId) — 다시 받아 질문이 바뀌면 옛 답·재생성 결과를 쓰지 않는다.
  */
 export type SituationState = {
   answers: Record<string, string>;
@@ -15,13 +15,6 @@ const memory = new Map<string, string>();
 
 export function situationKey(lawId: string, effectiveDate: string): string {
   return `${PREFIX}${lawId}@${effectiveDate}`;
-}
-
-/** 질문 묶음의 식별자 — 질문 id 와 문구를 이어 붙인 문자열(같은 묶음이면 같다). */
-export function questionsIdentity(
-  questions: { id?: string; text?: string }[],
-): string {
-  return questions.map((q) => `${q.id ?? ""}:${q.text ?? ""}`).join("\n");
 }
 
 const EMPTY = (): SituationState => ({ answers: {} });

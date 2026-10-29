@@ -35,7 +35,7 @@ class ActionRevisionApiTest {
 
     static final String PATH = "/api/v1/analyses/action-revisions";
     static final String BODY = """
-            {"lawRef":{"lawId":"001809","effectiveDate":"2026-11-01"},"answers":[{"questionId":"q1","answer":"예"}]}
+            {"lawRef":{"lawId":"001809","effectiveDate":"2026-11-01"},"setId":"0123456789abcdef","answers":[{"questionId":"q1","answer":"예"}]}
             """;
 
     @Autowired InMemoryAccountStore accounts;
@@ -76,7 +76,7 @@ class ActionRevisionApiTest {
     @Test
     @DisplayName("로그인 + CSRF → 200, 못 만든 사유는 본문 unmet")
     void 로그인하면_200_unmet() throws Exception {
-        when(useCase.revise(any(), any(), any(), any())).thenReturn(new RevisionOutcome.NotRevised(
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(new RevisionOutcome.NotRevised(
                 new Unmet(Unmet.Reason.DAILY_LIMIT, "오늘 한도를 다 썼어요.")));
 
         mvc.perform(signedIn(body(post(PATH))).with(csrf()))
@@ -86,9 +86,33 @@ class ActionRevisionApiTest {
     }
 
     @Test
+    @DisplayName("질문 묶음 불일치 → 200, 본문 unmet.reason = SITUATION_EXPIRED")
+    void 묶음_불일치는_200_만료() throws Exception {
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(new RevisionOutcome.NotRevised(
+                new Unmet(Unmet.Reason.SITUATION_EXPIRED, "상황 질문이 만료됐어요.")));
+
+        mvc.perform(signedIn(body(post(PATH))).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unmet.reason").value("SITUATION_EXPIRED"));
+    }
+
+    @Test
+    @DisplayName("setId 누락 → 400 (유스케이스는 호출되지 않는다)")
+    void setId_누락은_400() throws Exception {
+        String withoutSetId = """
+                {"lawRef":{"lawId":"001809","effectiveDate":"2026-11-01"},"answers":[{"questionId":"q1","answer":"예"}]}
+                """;
+
+        mvc.perform(signedIn(post(PATH)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(withoutSetId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("bad_request"));
+        Mockito.verifyNoInteractions(useCase);
+    }
+
+    @Test
     @DisplayName("답 검증 실패(IllegalArgumentException) → 400")
     void 답_검증_실패는_400() throws Exception {
-        when(useCase.revise(any(), any(), any(), any())).thenThrow(new IllegalArgumentException("답이 올바르지 않습니다."));
+        when(useCase.revise(any(), any(), any(), any(), any())).thenThrow(new IllegalArgumentException("답이 올바르지 않습니다."));
 
         mvc.perform(signedIn(body(post(PATH))).with(csrf()))
                 .andExpect(status().isBadRequest())
