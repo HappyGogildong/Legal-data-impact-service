@@ -118,3 +118,48 @@ test("로그인 사용자: 상황 질문에 답하고 '대응 방안 확인하�
     },
   ]);
 });
+
+test("상황 질문이 만료되면 '다시 받기'가 캐시를 쓰지 않고 개인화 분석을 다시 부른다", async ({
+  page,
+}) => {
+  let personalizedCalls = 0;
+  await page.route("**/api/v1/analyses", async (route) => {
+    const body = route.request().postDataJSON() as { query: string };
+    const personalized = body.query.includes("내 영향과 대응 방안");
+    if (personalized) personalizedCalls += 1;
+    await route.fulfill({
+      json: personalized
+        ? personalizedResponse
+        : { ...resolvedResponse, unmet: {} },
+    });
+  });
+  await page.route("**/api/v1/analyses/action-revisions", (route) =>
+    route.fulfill({
+      json: { unmet: { reason: "SITUATION_EXPIRED", message: "" } },
+    }),
+  );
+  await page.route("**/api/v1/account", (route) =>
+    route.fulfill({ json: ACCOUNT }),
+  );
+
+  await page.goto("/");
+  await page
+    .getByRole("textbox", { name: "질문" })
+    .fill("주택법 바뀌면 뭐가 달라져?");
+  await page.getByRole("button", { name: "질문 보내기" }).click();
+  await page.getByRole("button", { name: "내 영향·대응 방안 보기" }).click();
+  await page.getByRole("button", { name: "대응 방안", exact: true }).click();
+  await page
+    .getByRole("group", { name: QUESTION })
+    .getByRole("button", { name: "예", exact: true })
+    .click();
+  await page.getByRole("button", { name: "대응 방안 확인하기" }).click();
+  await expect(page.getByText("상황 질문이 만료됐어요")).toBeVisible();
+  expect(personalizedCalls).toBe(1);
+
+  await page.getByRole("button", { name: "다시 받기" }).click();
+
+  await expect.poll(() => personalizedCalls).toBe(2);
+  await page.getByRole("button", { name: "대응 방안", exact: true }).click();
+  await expect(page.getByText("상황을 알려주시면 더 정확해져요")).toBeVisible();
+});

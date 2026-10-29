@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { SessionExpiredDialog } from "@/components/auth/session-expired-dialog";
 import { personalizedQuery } from "@/components/laws/law-actions";
@@ -11,7 +11,7 @@ import type {
   CitedSource,
   SituationQuestion,
 } from "@/lib/api/types";
-import type { AskRequest } from "@/lib/ask-store";
+import { analysisQueryKey, type AskRequest } from "@/lib/ask-store";
 import { unmetCopy } from "@/lib/analysis-view";
 import {
   clearSituation,
@@ -55,6 +55,7 @@ export function ActionSituation({
     () => readSituation(key, identity).answers,
   );
   const [expired, setExpired] = useState(false);
+  const queryClient = useQueryClient();
   const lawRef = { lawId: law.lawId, effectiveDate: law.effectiveDate };
 
   const revise = useMutation({
@@ -120,18 +121,22 @@ export function ActionSituation({
       {unmet?.reason === "SITUATION_EXPIRED" && (
         <div className="text-[13px]">
           <p className="font-bold">상황 질문이 만료됐어요</p>
-          {law.title && (
-            <button
-              type="button"
-              onClick={() => {
-                clearSituation(key); // 새로 받는 질문에 옛 답·재생성 결과를 잇지 않는다
-                onAsk({ query: personalizedQuery(law.title!), lawRef });
-              }}
-              className="mt-1 text-[12.5px] font-bold text-navy"
-            >
-              다시 받기
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              clearSituation(key); // 새로 받는 질문에 옛 답·재생성 결과를 잇지 않는다
+              const next = { query: personalizedQuery(law.title), lawRef };
+              // 주 경로("내 영향·대응 방안 보기")와 같은 질문이라 캐시(staleTime 무한)를 그대로 돌려주면 서버에 질문이
+              // 다시 저장되지 않는다 — 캐시를 비워(활성이면 다시 부른다) 분석을 새로 받는다
+              void queryClient.resetQueries({
+                queryKey: analysisQueryKey(next),
+              });
+              onAsk(next);
+            }}
+            className="mt-1 text-[12.5px] font-bold text-navy"
+          >
+            다시 받기
+          </button>
         </div>
       )}
       {unmet?.reason === "INSUFFICIENT_GROUNDING" && (

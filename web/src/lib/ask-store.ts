@@ -82,6 +82,11 @@ export function askKey(request: AskRequest): string {
   ]);
 }
 
+/** 분석 질의(useQuery)의 캐시 키 — 화면(AskScreen)과 캐시를 비우는 쪽이 같은 키를 쓴다. */
+export function analysisQueryKey(request: AskRequest | null) {
+  return ["analysis", request ? askKey(request) : null] as const;
+}
+
 /** "질문 고치기" — 홈 질문창이 받아 채울 문장. */
 export function setDraft(query: string) {
   writeRaw(DRAFT_KEY, query);

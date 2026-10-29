@@ -32,7 +32,9 @@ const REVISION: ActionRevision = {
 const SET_ID = "0123456789abcdef";
 const ROUTE = "POST /api/v1/analyses/action-revisions";
 
-function renderSituation() {
+function renderSituation(
+  lawProp: { lawId: string; effectiveDate: string; title?: string } = law,
+) {
   const onRevised = vi.fn();
   const onAsk = vi.fn();
   const client = new QueryClient({
@@ -41,7 +43,7 @@ function renderSituation() {
   render(
     <QueryClientProvider client={client}>
       <ActionSituation
-        law={law}
+        law={lawProp}
         questions={questions}
         setId={SET_ID}
         sources={new Map()}
@@ -115,6 +117,24 @@ describe("ActionSituation", () => {
     expect(onRevised).not.toHaveBeenCalled();
     // 다시 받기는 이 법령 버전의 저장된 상태(옛 답·재생성 결과)를 비운다
     expect(readSituation(KEY)).toEqual({ answers: {} });
+  });
+
+  it("법령 제목이 없어도 다시 받기를 보이고, 제목 없는 개인화 질의로 다시 받는다", async () => {
+    mockApi({
+      [ROUTE]: () =>
+        json({ unmet: { reason: "SITUATION_EXPIRED", message: "" } }),
+    });
+    const { onAsk } = renderSituation({ ...lawRef });
+
+    await answerAndSubmit();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "다시 받기" }),
+    );
+
+    expect(onAsk).toHaveBeenCalledWith({
+      query: "내 영향과 대응 방안",
+      lawRef,
+    });
   });
 
   it("INSUFFICIENT_GROUNDING — 다시 만들지 못했다는 안내, onRevised 없음", async () => {
