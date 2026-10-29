@@ -2,7 +2,7 @@
 title: LLM 분석 엔진 — API 호출 프롬프트 정의서
 status: Draft
 version: 0.3
-date: 2026-08-14
+date: 2026-10-29
 tags: [prompt, llm, analysis-engine, spec]
 related:
   - "architecture/v0.9-nl-query-planner.md"
@@ -150,6 +150,32 @@ Spring AI 구조화 출력(constrained decoding)으로 **스키마 강제**. [[c
 | `ACTION` | 4, 부칙, 7 | actions(기한·근거) | B |
 
 Layer B 는 IMPACT·ACTION 을 한 호출로 만든다(요청 dimension=IMPACT). 결과 분할: IMPACT ← summary·claims·impacts·uncertainties·disclaimer, ACTION ← actions·effectiveInfo·uncertainties·disclaimer. 검증은 §6 + 영향·대응 둘 다 ≥ 1·항목마다 인용(D69).
+
+### 5.1 Layer B 상황 확인 (D71)
+
+첫 Layer B 호출이 상황 질문을 함께 내고, 사용자가 답하면 **대응 방안만** 다시 생성한다. 추가 호출은 없다 — 첫 호출의 TASK 에 문장이 붙고, 재생성은 별도 메시지 구조를 쓴다.
+
+**(a) 첫 Layer B TASK 에 덧붙는 문장** (기존 TASK 문장은 그대로 두고 끝에 추가):
+
+> 사용자 상황에 따라 대응이 갈리는 단계가 있으면 그 상황을 묻는 질문을 situationQuestions 에 최대 3개 쓴다 — 각 질문은 예/아니오(answerType YES_NO)·날짜(DATE)·선택지 2~4개(CHOICE, options) 중 하나로 답할 수 있게, 근거 조문 source_id 를 basis 에, PROFILE 로 이미 알 수 있는 것은 묻지 않는다. 상황이 영향을 준 단계에는 situationNote 를 쓴다.
+
+**(b) 재생성(ACTION 만) 메시지 구조** — `[CONTEXT]` → `[PROFILE]` → `[SITUATION]` → `[TASK]`:
+
+| 블록 | 내용 |
+|---|---|
+| `[CONTEXT]` | 첫 Layer B 와 같은 근거 블록(Layer A 블록 + 현행 기준선) |
+| `[PROFILE]` | 닫힌 값 속성 라벨(첫 Layer B 와 같음, 근거 아님) |
+| `[SITUATION]` | 사용자가 확인한 사실 — `- 질문: 답` 줄. **`모름` 답은 제외**. 근거가 아니므로 인용하지 않는다고 명시 |
+| `[TASK]` | 차원=ACTION — 위 근거만으로 사용자가 해야 할 일(actions)만 답한다. actions 의 `basis` 는 CONTEXT 의 source_id 만. 상황이 영향을 준 단계에는 `situationNote` 한 줄. `situationQuestions` 는 비운다 |
+
+`[QUESTION]`(사용자 자유 질문 원문)은 재생성에 넣지 않는다. userId 는 어디에도 없다. 재생성 검증은 actions ≥ 1 · 각 `basis` ≥ 1 · 모든 인용 ⊆ 주입 집합(상황 사실은 근거 집합 밖이라 인용하면 실패, claims 는 필수 아님).
+
+**(c) 출력 형식 — Layer B 전용 레코드.** `ImpactResult` 는 바꾸지 않는다(그 형식 지시가 Layer A 쉬운 요약·DIFF 와 공유되므로). Layer B 는 `ImpactResult` 의 필드에 아래 두 가지를 더한 별도 레코드로 받고, 받은 뒤 기존 분할 그대로의 `ImpactResult` + 상황 정보로 나눈다.
+
+- `actions[].situationNote` — 상황이 영향을 준 단계의 한 줄(줄바꿈 없음) 설명(최대 200자). 나뉜 뒤 `stepNotes[{index, note}]` 가 된다.
+- `situationQuestions[]` — `{ text, basis, answerType, options }`. `answerType` ∈ `YES_NO`·`DATE`·`CHOICE`(선택지 2~4개, 각 최대 40자), 질문 문장은 최대 200자 한 줄(줄바꿈 없음), 최대 3개. `basis` 가 주입 집합 밖이거나 형식이 깨진 질문은 **그 질문만** 버린다(답 전체 실패 아님). 서버가 남은 질문에 `q1`·`q2`·`q3` 를 다시 붙인다.
+
+**SYSTEM 프롬프트와 `PROMPT_VERSION`("0.3")은 바뀌지 않는다** — 바뀌는 것은 Layer B 사용자 메시지의 TASK 뿐이라 Layer A(쉬운 요약 저장본)는 그대로 재사용된다. 상세: [[AnalysisEngine]] · [[ActionRevisionUseCase]].
 
 ---
 

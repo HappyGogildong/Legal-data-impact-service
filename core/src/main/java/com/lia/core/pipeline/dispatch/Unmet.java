@@ -23,6 +23,8 @@ public record Unmet(Reason reason, String message) {
         /** 재생성 후에도 인용 검증을 통과하지 못했다 — 환각을 내보내지 않는다(D69, Layer A·B 공통). */
         INSUFFICIENT_GROUNDING,
         /** 그 차원·경로를 아직 구현하지 않았다(핸들러 없음). */
-        NOT_IMPLEMENTED
+        NOT_IMPLEMENTED,
+        /** 상황 질문이 세션에 없다 — 만료·재시작, 다시 받기(D71). */
+        SITUATION_EXPIRED
     }
 }

@@ -54,7 +54,7 @@ related: ["product/screen-plan.md", "frontend/frontend-stack.md", "adr/decision-
 |---|---|
 | [S01 홈](mockups/S01-home.html) | 익명·로그인/프로필 상태별, 데스크톱 |
 | [S02 분석 결과](mockups/S02-result.html) | 접이식 카드, 근거 조문 시트, 데스크톱 2단 기본·인용 상태 |
-| [S02b 대응 방안 상황 확인](mockups/S02b-action.html) | 구조화 질문, 자유 입력 → "이렇게 이해했어요", 달라진 단계 강조 |
+| [S02b 대응 방안 상황 확인](mockups/S02b-action.html) | 구조화 질문 카드(D71), 달라진 단계 강조 — 자유 입력 → "이렇게 이해했어요"는 다음 단계 |
 | [S03 해소 안내](mockups/S03-resolution.html) | 모호함·미등록·확인 불가 |
 | [S04 법령 발견](mockups/S04-discovery.html) | 후보 카드·프로필 기준 토글·결과 없음 |
 | [S05 법령 상세](mockups/S05-law-detail.html) | 시행일 선택·조문 대비·상태 배너, 데스크톱 |

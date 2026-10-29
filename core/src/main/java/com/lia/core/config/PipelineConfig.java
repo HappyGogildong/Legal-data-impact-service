@@ -34,6 +34,7 @@ import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.pipeline.plan.QueryPlanner;
 import com.lia.core.pipeline.plan.QueryTranslator;
 import com.lia.core.pipeline.plan.SpringAiQueryTranslator;
+import com.lia.core.application.analysis.ActionRevisionUseCase;
 import com.lia.core.application.analysis.AnalyzeUseCase;
 import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.pipeline.dispatch.PersonalizationQuota;
@@ -183,6 +184,14 @@ public class PipelineConfig {
     public AnalyzeUseCase analyzeUseCase(QueryPlanner queryPlanner, QueryDispatcher queryDispatcher, LawViews lawViews,
                                          PersonalizationGate personalizationGate) {
         return new AnalyzeUseCase(queryPlanner, queryDispatcher, lawViews, personalizationGate);
+    }
+
+    /** 대응 방안 상황 확인 → 대응 방안만 재생성(D71). */
+    @Bean
+    public ActionRevisionUseCase actionRevisionUseCase(PersonalizationGate personalizationGate, LawSource lawSource,
+                                                       PersonalizationQuota personalizationQuota,
+                                                       AnalysisEngine analysisEngine) {
+        return new ActionRevisionUseCase(personalizationGate, lawSource, personalizationQuota, analysisEngine);
     }
 
     /** 사용자별 하루 개인화 분석 한도(D69) — Opus 호출 직전 차감. */

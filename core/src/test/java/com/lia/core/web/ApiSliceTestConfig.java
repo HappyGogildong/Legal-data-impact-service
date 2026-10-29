@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -12,6 +13,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import com.lia.core.application.account.AccountUseCase;
+import com.lia.core.application.analysis.ActionRevisionUseCase;
 import com.lia.core.application.profile.ProfileUseCase;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.config.SecurityConfig;
@@ -39,7 +41,7 @@ import com.lia.core.testsupport.InMemoryUserProfileStore;
 @EnableWebSecurity
 @Import({SecurityConfig.class, ApiExceptionHandler.class,
         ProfileController.class, ConsentController.class, AccountController.class,
-        DataStatusController.class, LawController.class, LawViewController.class})
+        DataStatusController.class, LawController.class, LawViewController.class, ActionRevisionController.class})
 class ApiSliceTestConfig {
 
     static final String POLICY = "v-test";
@@ -146,6 +148,17 @@ class ApiSliceTestConfig {
                         List.of(new TrendingItem(1, "001809", "주택법", LAW_EFFECTIVE, 12, null)));
             }
         };
+    }
+
+    /** 대응 방안 재생성 유스케이스는 목 — 슬라이스는 인증·CSRF·상태코드만 본다(응답은 테스트가 정한다). */
+    @Bean
+    ActionRevisionUseCase actionRevisionUseCase() {
+        return Mockito.mock(ActionRevisionUseCase.class);
+    }
+
+    @Bean
+    CitedSourceResolver citedSourceResolver(LawSource lawSource) {
+        return new CitedSourceResolver(lawSource);
     }
 
     @Bean

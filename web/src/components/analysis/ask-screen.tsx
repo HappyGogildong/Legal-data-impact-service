@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useHydrated } from "@/hooks/use-browser";
 import { analyze } from "@/lib/api/analysis";
-import { askKey, setAsk, useAsk, type AskRequest } from "@/lib/ask-store";
+import {
+  analysisQueryKey,
+  askKey,
+  setAsk,
+  useAsk,
+  type AskRequest,
+} from "@/lib/ask-store";
 import { AnalysisProgress } from "./analysis-progress";
 import { DiscoveryView } from "./discovery-view";
 import { ErrorCard } from "./error-card";
@@ -20,7 +26,7 @@ export function AskScreen() {
   const ask = useAsk();
   const key = ask ? askKey(ask) : null;
   const analysis = useQuery({
-    queryKey: ["analysis", key],
+    queryKey: analysisQueryKey(ask),
     // signal 을 넘기지 않는다 — 동기 백엔드·답 캐시 없음이라, 화면을 떠날 때 중단하면 돌아왔을 때 유료 분석이 한 번 더 나간다
     queryFn: () => analyze(ask!),
     enabled: ask !== null,

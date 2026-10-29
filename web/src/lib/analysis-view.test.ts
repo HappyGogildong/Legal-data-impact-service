@@ -105,3 +105,14 @@ describe("unmetCopy — Layer B 사유(D69)", () => {
     ).toBe("근거 부족");
   });
 });
+
+describe("unmetCopy — 상황 확인(D71)", () => {
+  it("상황 질문 만료 문구와 카드 상태", () => {
+    expect(unmetCopy({ reason: "SITUATION_EXPIRED" }).title).toBe(
+      "상황 질문이 만료됐어요",
+    );
+    expect(
+      cardStatus("action", undefined, { reason: "SITUATION_EXPIRED" }, index),
+    ).toBe("만료");
+  });
+});

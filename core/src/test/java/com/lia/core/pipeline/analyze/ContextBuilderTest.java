@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.law.Addendum;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
@@ -85,6 +86,18 @@ class ContextBuilderTest {
         assertSame(profile, ctx.profile());
         assertEquals("내 영향", ctx.question());
         assertTrue(ctx.injectedSourceIds().stream().allMatch(id -> id.startsWith("LAW:")), "근거 집합엔 조문 키만");
+    }
+
+    @Test
+    void ACTION_재생성_요청은_상황_사실을_싣되_근거_집합엔_없다() {
+        UserProfile profile = new UserProfile(null, 34, null, null, null, null, null);
+        List<ConfirmedFact> facts = List.of(new ConfirmedFact("계약을 이전에 맺었나요?", "예"));
+        AnalysisContext ctx = builder.build(
+                new AnalyzeRequest(QueryType.ACTION, housing(), baseline(), profile, null, facts));
+
+        assertEquals(facts, ctx.situation());
+        assertTrue(ctx.injectedSourceIds().stream().noneMatch(id -> id.contains("계약")), "사실 문장은 근거가 아니다");
+        assertTrue(ctx.injectedSourceIds().stream().allMatch(id -> id.startsWith("LAW:")));
     }
 
     @Test

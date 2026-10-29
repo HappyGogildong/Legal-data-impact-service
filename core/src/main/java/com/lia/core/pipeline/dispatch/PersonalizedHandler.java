@@ -18,6 +18,8 @@ import com.lia.core.profile.UserProfile;
  * Layer B(내 영향·대응 방안, D69) — IMPACT·ACTION 을 <b>엔진 1회</b>로 만들고 결과를 차원별로 나눈다.
  * 레지스트리 핸들러(차원당 1회)와 달리 디스패처가 직접 한 번 부른다. 프로필·질문은 이 호출 인자로만 받는다
  * — Layer A 핸들러에는 구조적으로 닿지 않는다. 개인화 답은 저장하지 않는다(캐시 없음).
+ *
+ * <p>상황 질문·단계 설명은 대응 방안(ACTION) 응답에 싣는다(D71) — 내 영향(IMPACT)은 상황 없음.
  */
 @Component
 public class PersonalizedHandler {
@@ -39,7 +41,7 @@ public class PersonalizedHandler {
             out.put(QueryType.IMPACT, new AnalyzeResponse(impactPart(r), response.injectedSourceIds()));
         }
         if (requested.contains(QueryType.ACTION)) {
-            out.put(QueryType.ACTION, new AnalyzeResponse(actionPart(r), response.injectedSourceIds()));
+            out.put(QueryType.ACTION, new AnalyzeResponse(actionPart(r), response.injectedSourceIds(), response.situation()));
         }
         return out;
     }
@@ -50,8 +52,8 @@ public class PersonalizedHandler {
                 List.of(), null, r.uncertainties(), r.disclaimer(), r.meta());
     }
 
-    /** 대응 방안 — 할 일·시행 정보·불확실성. */
-    private static ImpactResult actionPart(ImpactResult r) {
+    /** 대응 방안 — 할 일·시행 정보·불확실성. 대응 방안 재생성(D71)도 같은 모양을 쓴다. */
+    public static ImpactResult actionPart(ImpactResult r) {
         return new ImpactResult(r.lawRef(), QueryType.ACTION.name(), null, List.of(), List.of(),
                 r.actions(), r.effectiveInfo(), r.uncertainties(), r.disclaimer(), r.meta());
     }

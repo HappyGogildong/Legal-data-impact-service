@@ -53,9 +53,9 @@ export function PersonalizeButton({
   );
 }
 
-/** Layer B 요청 질문 — S02·S05 버튼이 같은 문구를 쓴다(플래너가 IMPACT·ACTION 을 고르게). */
-export function personalizedQuery(title: string): string {
-  return `${title} 내 영향과 대응 방안`;
+/** Layer B 요청 질문 — S02·S05 버튼이 같은 문구를 쓴다(플래너가 IMPACT·ACTION 을 고르게). 제목을 모르면 제목 없이(lawRef 가 법령을 가리킨다). */
+export function personalizedQuery(title?: string): string {
+  return title ? `${title} 내 영향과 대응 방안` : "내 영향과 대응 방안";
 }
 
 /** "이 법령에 대해 질문하기" — 법령 맥락을 붙인 질문창(S02 후속 질문과 같은 컴포넌트). */

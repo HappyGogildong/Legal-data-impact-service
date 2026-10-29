@@ -6,6 +6,9 @@ import org.springframework.ai.chat.model.ChatModel;
 
 import com.anthropic.models.messages.OutputConfig;
 
+import java.util.List;
+
+import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.analyze.AnalysisContext.SourceBlock;
 import com.lia.core.pipeline.plan.QueryType;
@@ -59,6 +62,14 @@ public class SpringAiReasoner implements Reasoner {
         return stampMeta(raw, context.dimension());   // meta는 LLM이 아니라 우리가 확정(모델명·버전·계층)
     }
 
+    @Override
+    public PersonalizedOutput reasonPersonalized(AnalysisContext context) {
+        PersonalizedReply raw = chat.prompt().user(userMessage(context)).call().entity(PersonalizedReply.class);
+        if (raw == null) return new PersonalizedOutput(null, List.of(), List.of());   // 엔진 그라운딩이 실패로 처리
+        PersonalizedOutput out = raw.toOutput();
+        return new PersonalizedOutput(stampMeta(out.result(), context.dimension()), out.questions(), out.stepNotes());
+    }
+
     /**
      * {@code meta}를 권위 있는 값으로 덮어쓴다 — LLM은 content만 신뢰하고 메타데이터는 우리가 채운다.
      * (구조화 출력에서 모델이 {@code model:"gpt"} 등 잘못 채우던 것을 교정.)
@@ -83,6 +94,18 @@ public class SpringAiReasoner implements Reasoner {
             sb.append('[').append(b.sourceId()).append(" | ").append(b.type()).append("] ")
               .append(b.text()).append('\n');
         }
+        if (ctx.dimension() == QueryType.ACTION) {   // 상황 확인 후 대응 방안만 재생성(D71)
+            sb.append("\n[PROFILE] (이 사용자의 자기신고 정보 — 근거가 아니므로 인용하지 않는다)\n")
+              .append(ctx.profile().labelLines());
+            sb.append("\n[SITUATION] (사용자가 확인한 상황 — 근거가 아니므로 인용하지 않는다)\n");
+            for (ConfirmedFact fact : ctx.situation()) {
+                sb.append("- ").append(fact.question()).append(": ").append(fact.answer()).append('\n');
+            }
+            sb.append("\n[TASK] 차원=ACTION — 위 근거만으로, PROFILE·SITUATION 의 사용자가 해야 할 일(actions)만 답하라. ")
+              .append("actions 의 basis 는 위 CONTEXT 의 source_id 만 사용한다. ")
+              .append("SITUATION 이 영향을 준 단계에는 situationNote 에 그 이유를 한 줄로 쓴다. situationQuestions 는 비운다.");
+            return sb.toString();
+        }
         if (ctx.dimension().isLayerB()) {
             sb.append("\n[PROFILE] (이 사용자의 자기신고 정보 — 근거가 아니므로 인용하지 않는다)\n")
               .append(ctx.profile().labelLines());
@@ -90,7 +113,10 @@ public class SpringAiReasoner implements Reasoner {
             sb.append("\n[TASK] 차원=IMPACT·ACTION — 위 근거만으로, PROFILE 의 사용자에게 이 개정이 미치는 영향(impacts)과 ")
               .append("해야 할 일(actions)을 QUESTION 에 맞춰 ImpactResult(JSON)로 답하라. impacts·actions 를 모두 채운다 — ")
               .append("해당이 없으면 impacts 에 direction \"영향 없음\", actions 에 \"따로 할 일 없음\"을 적용 대상 조문 인용과 함께 쓴다. ")
-              .append("claims·impacts 의 citations 와 actions 의 basis 는 위 CONTEXT 의 source_id 만 사용한다.");
+              .append("claims·impacts 의 citations 와 actions 의 basis 는 위 CONTEXT 의 source_id 만 사용한다.")
+              .append(" 사용자 상황에 따라 대응이 갈리는 단계가 있으면 그 상황을 묻는 질문을 situationQuestions 에 최대 3개 쓴다 — ")
+              .append("각 질문은 예/아니오(answerType YES_NO)·날짜(DATE)·선택지 2~4개(CHOICE, options) 중 하나로 답할 수 있게, ")
+              .append("근거 조문 source_id 를 basis 에, PROFILE 로 이미 알 수 있는 것은 묻지 않는다. 상황이 영향을 준 단계에는 situationNote 를 쓴다.");
             return sb.toString();
         }
         sb.append("\n[TASK] 차원=").append(ctx.dimension())

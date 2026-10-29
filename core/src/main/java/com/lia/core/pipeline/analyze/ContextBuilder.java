@@ -45,6 +45,6 @@ public class ContextBuilder {
             }
         }
 
-        return new AnalysisContext(req.dimension(), law.ref(), blocks, req.profile(), req.question());
+        return new AnalysisContext(req.dimension(), law.ref(), blocks, req.profile(), req.question(), req.situation());
     }
 }

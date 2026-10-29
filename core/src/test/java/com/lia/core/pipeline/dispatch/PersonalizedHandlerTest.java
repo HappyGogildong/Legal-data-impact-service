@@ -11,11 +11,15 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.domain.analysis.Situation;
+import com.lia.core.domain.analysis.SituationQuestion;
+import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalysisContext;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.analyze.ContextBuilder;
+import com.lia.core.pipeline.analyze.PersonalizedOutput;
 import com.lia.core.pipeline.analyze.Reasoner;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.profile.UserProfile;
@@ -70,6 +74,36 @@ class PersonalizedHandlerTest {
         assertTrue(action.impacts().isEmpty(), "ACTION 에는 영향 없음");
         assertNotNull(action.effectiveInfo());
         assertEquals(List.of("불확실"), action.uncertainties());
+    }
+
+    @Test
+    void 엔진의_상황은_ACTION_응답에만_싣고_IMPACT_는_비어_있다() {
+        // 주입된 첫 source_id 를 근거로 한 상황 질문·단계 설명을 내는 가짜 추론
+        Reasoner situational = new Reasoner() {
+            @Override
+            public ImpactResult reason(AnalysisContext ctx) {
+                return reasoner.reason(ctx);
+            }
+
+            @Override
+            public PersonalizedOutput reasonPersonalized(AnalysisContext ctx) {
+                String cite = ctx.injectedSourceIds().iterator().next();
+                SituationQuestion question = new SituationQuestion("q1", "이미 신고했나요?", cite,
+                        SituationQuestion.AnswerType.YES_NO, List.of());
+                return new PersonalizedOutput(reason(ctx), List.of(question), List.of(new StepNote(0, "n")));
+            }
+        };
+        PersonalizedHandler situationalHandler =
+                new PersonalizedHandler(new AnalysisEngine(new ContextBuilder(), situational, 3));
+
+        Map<QueryType, AnalyzeResponse> out = situationalHandler.handle(ctx(), PROFILE, "내 영향",
+                EnumSet.of(QueryType.IMPACT, QueryType.ACTION));
+
+        Situation situation = out.get(QueryType.ACTION).situation();
+        assertEquals(1, situation.questions().size());
+        assertEquals("이미 신고했나요?", situation.questions().get(0).text());
+        assertEquals(List.of(new StepNote(0, "n")), situation.stepNotes());
+        assertTrue(out.get(QueryType.IMPACT).situation().isEmpty(), "상황은 대응 방안에만(D71)");
     }
 
     @Test

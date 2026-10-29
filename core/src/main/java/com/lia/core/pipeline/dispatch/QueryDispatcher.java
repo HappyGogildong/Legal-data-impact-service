@@ -28,8 +28,8 @@ import com.lia.core.store.LawSource;
  * {@code discovery} 에 담는다(D70 — 한도·LLM 없음).
  *
  * <p><b>Layer B(D69)</b> — IMPACT·ACTION 은 레지스트리가 아니라 {@link PersonalizedHandler}를 한 번 부른다.
- * 순서: 프로필 사용 불가 → 그 사유 · 개정본인데 기준선 없음 → BASELINE_NOT_LOADED · 하루 한도 초과 → DAILY_LIMIT
- * · 그 외 핸들러 1회(한도는 호출 직전 차감, 실패해도 환불 없음).
+ * 순서: 프로필 사용 불가 → 그 사유 · {@link PersonalAdmission}(개정본인데 기준선 없음 → BASELINE_NOT_LOADED ·
+ * 하루 한도 초과 → DAILY_LIMIT) · 그 외 핸들러 1회(한도는 호출 직전 차감, 실패해도 환불 없음).
  */
 @Component
 public class QueryDispatcher {
@@ -74,7 +74,7 @@ public class QueryDispatcher {
         LawRef ref = ((Target.Reference) query.target()).lawRef();
         Optional<Law> lawOpt = laws.find(ref.lawId(), ref.effectiveDate());
         if (lawOpt.isEmpty()) {
-            Unmet reason = new Unmet(Unmet.Reason.LAW_NOT_LOADED, "정본 미적재: " + ref.lawId() + "@" + ref.effectiveDate());
+            Unmet reason = PersonalAdmission.lawNotLoaded(ref.lawId(), ref.effectiveDate());
             for (QueryType t : query.types()) unmet.put(t, reason);
             return new DispatchResult(query.primaryType(), filled, unmet);
         }
@@ -97,17 +97,17 @@ public class QueryDispatcher {
             DimensionHandler h = handler.get();
             // 개정본인데 baseline이 없으면 데이터 이상 — 조용히 '제정'으로 오인하지 않는다(fail-closed).
             if (h.needsBaseline() && baseline == null && !enactment) {
-                unmet.put(t, baselineMissing(law));
+                unmet.put(t, PersonalAdmission.baselineMissing(law));
                 continue;
             }
             try {
                 filled.put(t, h.handle(ctx));
             } catch (InsufficientGroundingException e) {
-                unmet.put(t, insufficientGrounding(t));   // 다른 차원은 그대로 — 부분 성공(D69)
+                unmet.put(t, PersonalAdmission.insufficientGrounding(t));   // 다른 차원은 그대로 — 부분 성공(D69)
             }
         }
         if (!layerB.isEmpty()) {
-            dispatchPersonalized(ctx, layerB, enactment, question, personalization, filled, unmet);
+            dispatchPersonalized(ctx, layerB, question, personalization, filled, unmet);
         }
         return new DispatchResult(query.primaryType(), filled, unmet);
     }
@@ -126,7 +126,7 @@ public class QueryDispatcher {
         return new DispatchResult.Discovery(discovery.discover(question, profile), blocked);
     }
 
-    private void dispatchPersonalized(DispatchContext ctx, Set<QueryType> requested, boolean enactment, String question,
+    private void dispatchPersonalized(DispatchContext ctx, Set<QueryType> requested, String question,
                                       Personalization personalization,
                                       Map<QueryType, AnalyzeResponse> filled, Map<QueryType, Unmet> unmet) {
         if (personalization instanceof Personalization.Blocked blocked) {
@@ -135,29 +135,15 @@ public class QueryDispatcher {
             return;
         }
         Personalization.Usable usable = (Personalization.Usable) personalization;
-        if (ctx.baseline() == null && !enactment) {
-            Unmet reason = baselineMissing(ctx.law());
-            for (QueryType t : requested) unmet.put(t, reason);
-            return;
-        }
-        if (!quota.tryConsume(usable.userId())) {
-            Unmet reason = new Unmet(Unmet.Reason.DAILY_LIMIT, "오늘 개인화 분석 한도 초과");
-            for (QueryType t : requested) unmet.put(t, reason);
+        Optional<Unmet> refused = PersonalAdmission.admit(usable.userId(), ctx.law(), ctx.baseline(), quota);
+        if (refused.isPresent()) {
+            for (QueryType t : requested) unmet.put(t, refused.get());
             return;
         }
         try {
             filled.putAll(personalized.handle(ctx, usable.profile(), question, requested));
         } catch (InsufficientGroundingException e) {
-            for (QueryType t : requested) unmet.put(t, insufficientGrounding(t));
+            for (QueryType t : requested) unmet.put(t, PersonalAdmission.insufficientGrounding(t));
         }
-    }
-
-    private static Unmet baselineMissing(Law law) {
-        return new Unmet(Unmet.Reason.BASELINE_NOT_LOADED,
-                "기준선 미적재 — 개정본(" + law.amendKind() + ")인데 시행중본 없음");
-    }
-
-    private static Unmet insufficientGrounding(QueryType type) {
-        return new Unmet(Unmet.Reason.INSUFFICIENT_GROUNDING, "근거 부족 — 재생성 후에도 인용 검증 실패: " + type);
     }
 }

@@ -1,9 +1,21 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AnalysisResponse } from "@/lib/api/types";
+import {
+  clearSituationMemory,
+  situationKey,
+  writeSituation,
+} from "@/lib/situation-store";
 import { resolvedResponse } from "@/test/fixtures";
 import { mockViewport } from "@/test/viewport";
 import { ResultView } from "./result-view";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/ask",
+}));
 
 const ask = { query: "주택법 바뀌면 뭐가 달라져?" };
 
@@ -219,5 +231,162 @@ describe("ResultView — 데스크톱", () => {
     expect(
       screen.getByRole("region", { name: "법령 정보" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("ResultView — 대응 방안 상황 확인(D71)", () => {
+  const withSituation: AnalysisResponse = {
+    ...resolvedResponse,
+    answer: {
+      ...resolvedResponse.answer,
+      impact: { summary: "내 영향 요약" },
+      action: { actions: [{ what: "기본 대응 단계" }] },
+    },
+    unmet: {},
+    situation: {
+      setId: "0123456789abcdef",
+      questions: [
+        {
+          id: "q1",
+          text: "계약을 시행일 이전에 맺었나요?",
+          answerType: "YES_NO",
+        },
+      ],
+      stepNotes: [{ index: 0, note: "기본 상황 메모" }],
+    },
+  };
+
+  function renderWithClient(response: AnalysisResponse) {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <ResultView response={response} ask={ask} onAsk={vi.fn()} />
+      </QueryClientProvider>,
+    );
+  }
+
+  it("situation.questions 가 있으면 대응 방안 카드 아래에 상황 확인 블록", () => {
+    renderWithClient(withSituation);
+
+    const actionCard = screen.getByRole("button", { name: "대응 방안" });
+    const block = screen.getByRole("heading", {
+      name: "상황을 알려주시면 더 정확해져요",
+    });
+    expect(
+      actionCard.compareDocumentPosition(block) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("situation 이 없으면 상황 확인 블록이 없다", () => {
+    renderWithClient({ ...withSituation, situation: undefined });
+    expect(
+      screen.queryByText("상황을 알려주시면 더 정확해져요"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("질문 묶음 식별자(setId)가 없으면 재생성을 보낼 수 없어 상황 확인 블록을 내지 않는다", () => {
+    renderWithClient({
+      ...withSituation,
+      situation: { ...withSituation.situation, setId: undefined },
+    });
+    expect(
+      screen.queryByText("상황을 알려주시면 더 정확해져요"),
+    ).not.toBeInTheDocument();
+  });
+
+  beforeEach(() => {
+    sessionStorage.clear();
+    clearSituationMemory();
+  });
+
+  const revisionState = (extra = {}) => ({
+    answers: { q1: "예" },
+    identity: withSituation.situation!.setId!,
+    revision: {
+      action: { actions: [{ what: "재생성된 대응 단계" }] },
+      sources: [],
+      stepNotes: [{ index: 0, note: "시행일 이전 계약이라 이전 기준" }],
+      ...extra,
+    },
+  });
+
+  it("다른 질문 묶음으로 저장된 옛 revision 은 보여 주지 않는다", async () => {
+    writeSituation(situationKey("001809", "2026-08-04"), {
+      ...revisionState(),
+      identity: "fedcba9876543210",
+    });
+    renderWithClient(withSituation);
+
+    await userEvent.click(screen.getByRole("button", { name: "대응 방안" }));
+
+    expect(screen.getByText(/기본 대응 단계/)).toBeInTheDocument();
+    expect(screen.queryByText(/재생성된 대응 단계/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("시행일 이전 계약이라 이전 기준"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("질문 묶음(setId) 없는 새 응답은 저장된 옛 revision 을 덮어쓰지 않는다 — 응답 자신의 대응 방안", async () => {
+    writeSituation(situationKey("001809", "2026-08-04"), revisionState());
+    renderWithClient({ ...withSituation, situation: undefined });
+
+    await userEvent.click(screen.getByRole("button", { name: "대응 방안" }));
+
+    expect(screen.getByText(/기본 대응 단계/)).toBeInTheDocument();
+    expect(screen.queryByText(/재생성된 대응 단계/)).not.toBeInTheDocument();
+    expect(screen.queryByText("내 상황 반영")).not.toBeInTheDocument();
+  });
+
+  it("대응 방안 unmet 응답도 저장된 옛 revision 을 되살리지 않는다 — 미충족 안내", async () => {
+    writeSituation(situationKey("001809", "2026-08-04"), revisionState());
+    const { action: _unused, ...answerWithoutAction } = withSituation.answer!;
+    void _unused;
+    renderWithClient({
+      ...withSituation,
+      answer: answerWithoutAction,
+      situation: undefined,
+      unmet: { action: { reason: "DAILY_LIMIT", message: "" } },
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /대응 방안/ }));
+
+    expect(
+      await screen.findByText("오늘 개인화 분석 한도를 다 썼어요"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/재생성된 대응 단계/)).not.toBeInTheDocument();
+    expect(screen.queryByText("내 상황 반영")).not.toBeInTheDocument();
+  });
+
+  it("revision 에 stepNotes 가 없으면 기본 응답의 메모를 붙이지 않는다", async () => {
+    writeSituation(
+      situationKey("001809", "2026-08-04"),
+      revisionState({ stepNotes: undefined }),
+    );
+    renderWithClient(withSituation);
+
+    await userEvent.click(screen.getByRole("button", { name: "대응 방안" }));
+
+    expect(screen.getByText(/재생성된 대응 단계/)).toBeInTheDocument();
+    expect(screen.queryByText("내 상황 반영")).not.toBeInTheDocument();
+    expect(screen.queryByText("기본 상황 메모")).not.toBeInTheDocument();
+  });
+
+  it("탭 저장소에 revision 이 있으면 대응 방안 카드가 그 action 을 보여 준다(내 영향은 그대로)", async () => {
+    writeSituation(situationKey("001809", "2026-08-04"), revisionState());
+    renderWithClient(withSituation);
+
+    await userEvent.click(screen.getByRole("button", { name: /내 영향/ }));
+    await userEvent.click(screen.getByRole("button", { name: "대응 방안" }));
+
+    expect(screen.getByText(/재생성된 대응 단계/)).toBeInTheDocument();
+    expect(screen.queryByText(/기본 대응 단계/)).not.toBeInTheDocument();
+    expect(screen.getByText("내 상황 반영")).toBeInTheDocument();
+    expect(
+      screen.getByText("시행일 이전 계약이라 이전 기준"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("내 영향 요약")).toBeInTheDocument();
   });
 });

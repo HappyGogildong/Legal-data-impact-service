@@ -109,6 +109,11 @@ export function unmetCopy(unmet: Pick<Unmet, "reason"> | undefined): UnmetCopy {
         title: "근거가 부족해 답하지 않았어요",
         body: "조문 근거로 확인할 수 있는 내용만 답해요.",
       };
+    case "SITUATION_EXPIRED":
+      return {
+        title: "상황 질문이 만료됐어요",
+        body: "다시 받으면 상황을 확인할 수 있어요.",
+      };
     case "NOT_IMPLEMENTED":
       return { title: "곧 제공할 기능이에요", body: "" };
     default:
@@ -124,6 +129,7 @@ const UNMET_STATUS: Record<string, string> = {
   CONSENT_OUTDATED: "재동의 필요",
   DAILY_LIMIT: "한도 초과",
   INSUFFICIENT_GROUNDING: "근거 부족",
+  SITUATION_EXPIRED: "만료",
 };
 
 /** 접힌 카드 제목 옆 상태 — 변경점은 조문 수, 미충족은 짧은 사유. 없으면 null. */

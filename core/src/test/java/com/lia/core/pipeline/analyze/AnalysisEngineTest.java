@@ -11,11 +11,15 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.domain.analysis.SituationQuestion;
+import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.plan.QueryType;
+import com.lia.core.profile.UserProfile;
 
 /**
  * AnalysisEngine 단위 — <b>오케스트레이션</b>(조립→추론→인용검증→재생성≤N→폴백)을 FakeReasoner로 검증.
@@ -157,6 +161,129 @@ class AnalysisEngineTest {
                 List.of(new ImpactResult.Claim("주장", List.of(ART), 0.9)),
                 List.of(), List.of(), null, List.of(), "참고용", null);
         assertTrue(AnalysisEngine.grounded(QueryType.SUMMARY, summary, Set.of(ART)));
+    }
+
+    private static final String HOUSING_ART = "LAW:001809@2026-08-04:art:18";
+    private static final UserProfile PROFILE = new UserProfile(null, 34, null, null, null, null, null);
+
+    /** housing 근거만 인용하는 개인화 결과 — 영향·대응 모두 인용 있음. */
+    private static ImpactResult housingPersonalized() {
+        return new ImpactResult("LAW:001809@2026-08-04", "IMPACT", "요약",
+                List.of(new ImpactResult.Claim("주장", List.of(HOUSING_ART), 0.9)),
+                List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of(HOUSING_ART))),
+                List.of(new ImpactResult.Action("확인", null, List.of(HOUSING_ART))),
+                null, List.of(), "참고용", null);
+    }
+
+    /** 개인화 가짜 추론 — reasonPersonalized 를 스크립트한다. */
+    static Reasoner personalized(PersonalizedOutput out) {
+        return new Reasoner() {
+            public ImpactResult reason(AnalysisContext ctx) { throw new AssertionError("개인화는 reasonPersonalized"); }
+            public PersonalizedOutput reasonPersonalized(AnalysisContext ctx) { return out; }
+        };
+    }
+
+    @Test
+    void 개인화_는_근거_안의_형식_맞는_질문만_최대_3개_q1부터_다시_번호() {
+        List<SituationQuestion> raw = List.of(
+                new SituationQuestion("f", "  ", HOUSING_ART, SituationQuestion.AnswerType.YES_NO, List.of()),
+                q("a", HOUSING_ART), q("b", "LAW:없는:art:1"), q("c", HOUSING_ART), q("d", HOUSING_ART), q("e", HOUSING_ART));
+        AnalysisEngine engine = engine(personalized(new PersonalizedOutput(housingPersonalized(), raw, List.of())));
+
+        AnalyzeResponse r = engine.analyze(new AnalyzeRequest(QueryType.IMPACT, housing(), housing(), PROFILE, "내 영향"));
+
+        assertEquals(List.of("q1", "q2", "q3"), r.situation().questions().stream().map(SituationQuestion::id).toList());
+        assertEquals(List.of("질문 a", "질문 c", "질문 d"), r.situation().questions().stream().map(SituationQuestion::text).toList(),
+                "빈 문장·근거 밖 질문은 버리고 순서 유지, 최대 3");
+    }
+
+    static SituationQuestion q(String id, String basis) {
+        return new SituationQuestion(id, "질문 " + id, basis, SituationQuestion.AnswerType.YES_NO, List.of());
+    }
+
+    @Test
+    void 단계_설명은_대응_범위_안_비지_않은_것만() {
+        assertEquals(List.of(new StepNote(0, "이유")),
+                AnalysisEngine.admissibleStepNotes(List.of(
+                        new StepNote(0, "이유"), new StepNote(0, "중복"), new StepNote(5, "범위 밖"),
+                        new StepNote(1, " "), new StepNote(1, "가".repeat(201))), 2));
+    }
+
+    @Test
+    void ACTION_재생성은_claims_없이도_대응과_근거가_있으면_통과() {
+        ImpactResult actionOnly = new ImpactResult("LAW:x", "ACTION", null, List.of(), List.of(),
+                List.of(new ImpactResult.Action("갱신 요구", "2027-01", List.of(HOUSING_ART))), null, List.of(), "참고", null);
+        AnalysisEngine engine = engine(personalized(
+                new PersonalizedOutput(actionOnly, List.of(q("x", HOUSING_ART)), List.of(new StepNote(0, "시행일 이전 계약")))));
+
+        AnalyzeResponse r = engine.analyze(new AnalyzeRequest(QueryType.ACTION, housing(), housing(), PROFILE,
+                null, List.of(new ConfirmedFact("계약을 이전에 맺었나요?", "예"))));
+
+        assertEquals(1, r.result().actions().size());
+        assertEquals(List.of(new StepNote(0, "시행일 이전 계약")), r.situation().stepNotes());
+        assertTrue(r.situation().questions().isEmpty(), "재생성은 새 질문을 내지 않는다");
+    }
+
+    @Test
+    void ACTION_재생성에서_근거_없는_대응이면_재시도_후_근거_부족() {
+        ImpactResult noBasis = new ImpactResult("LAW:x", "ACTION", null, List.of(), List.of(),
+                List.of(new ImpactResult.Action("갱신 요구", null, List.of())), null, List.of(), "참고", null);
+        int[] calls = {0};
+        Reasoner counting = new Reasoner() {
+            public ImpactResult reason(AnalysisContext ctx) { throw new AssertionError(); }
+            public PersonalizedOutput reasonPersonalized(AnalysisContext ctx) {
+                calls[0]++;
+                return new PersonalizedOutput(noBasis, List.of(), List.of());
+            }
+        };
+        AnalysisEngine engine = engine(counting);
+
+        assertThrows(InsufficientGroundingException.class, () -> engine.analyze(new AnalyzeRequest(QueryType.ACTION,
+                housing(), housing(), PROFILE, null, List.of(new ConfirmedFact("q", "예")))));
+        assertEquals(3, calls[0]);
+    }
+
+    /** 대응 방안 재생성 요청을 한 번 보내고, 같은 결과만 내놓는 추론기가 불린 횟수를 돌려준다. */
+    private int actionCallsUntilInsufficient(ImpactResult always) {
+        int[] calls = {0};
+        Reasoner counting = new Reasoner() {
+            public ImpactResult reason(AnalysisContext ctx) { throw new AssertionError(); }
+            public PersonalizedOutput reasonPersonalized(AnalysisContext ctx) {
+                calls[0]++;
+                return new PersonalizedOutput(always, List.of(), List.of());
+            }
+        };
+        AnalysisEngine engine = engine(counting);
+
+        assertThrows(InsufficientGroundingException.class, () -> engine.analyze(new AnalyzeRequest(QueryType.ACTION,
+                housing(), housing(), PROFILE, null, List.of(new ConfirmedFact("q", "예")))));
+        return calls[0];
+    }
+
+    private static ImpactResult actionResult(String what, List<String> basis) {
+        return new ImpactResult("LAW:x", "ACTION", null, List.of(), List.of(),
+                List.of(new ImpactResult.Action(what, null, basis)), null, List.of(), "참고", null);
+    }
+
+    @Test
+    void ACTION_재생성에서_하는_일이_비어_있으면_거절하고_재시도_후_근거_부족() {
+        for (String blank : new String[] {null, "", "   "}) {
+            assertEquals(3, actionCallsUntilInsufficient(actionResult(blank, List.of(HOUSING_ART))),
+                    "what=" + blank);
+        }
+    }
+
+    @Test
+    void ACTION_재생성이_주입_집합_밖_출처를_인용하면_거절하고_재시도_후_근거_부족() {
+        ImpactResult outside = actionResult("갱신 요구", List.of("LAW:999999@2099-01-01:art:1"));
+
+        assertEquals(3, actionCallsUntilInsufficient(outside));
+    }
+
+    @Test
+    void 상황_사실은_ACTION_요청에만() {
+        assertThrows(IllegalArgumentException.class, () -> new AnalyzeRequest(QueryType.IMPACT,
+                housing(), null, PROFILE, "질문", List.of(new ConfirmedFact("q", "예"))));
     }
 
     // --- fixtures --------------------------------------------------------

@@ -27,7 +27,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 ## 입력 / 출력
 | | 타입 | 설명 |
 |---|---|---|
-| 입력 | `AnalyzeRequest{ dimension(QueryType), law, baseline?, profile?, question? }` | `law`=시행예정 정본, `baseline`=시행중본(제정이면 null). 조문은 **변경분만**(실측 137→6). `profile`·`question` 은 Layer B 만. 프롬프트 버전·max_tokens 는 설정값(요청 필드 아님) |
+| 입력 | `AnalyzeRequest{ dimension(QueryType), law, baseline?, profile?, question?, situation }` | `law`=시행예정 정본, `baseline`=시행중본(제정이면 null). 조문은 **변경분만**(실측 137→6). `profile`·`question` 은 Layer B 만. `situation`(확인된 사실 `질문: 답` 목록, 기본 빈 목록)은 상황 재생성(`ACTION`)일 때만 채울 수 있다 — 다른 차원에 넣으면 생성자가 거부(D71). 프롬프트 버전·max_tokens 는 설정값(요청 필드 아님) |
 | 출력 | `AnalyzeResponse{ result: ImpactResult, injectedSourceIds[] }` | 끝까지 인용 검증 실패면 `InsufficientGroundingException`(디스패처가 차원별 unmet 으로) |
 
 ## 동작 (명시적 워크플로)
@@ -38,6 +38,8 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 4. 산출: `ImpactResult` + `injectedSourceIds`. 쉬운 요약(SUMMARY)은 배치가 이 엔진으로 미리 만들어 `law_summaries` 에 저장하고(D67, [[IngestJob]] SUMMARIZE), 읽을 때 `GroundedSummaries` 가 같은 `grounded` 규칙으로 지금의 근거 집합에 다시 대 본다. **(후속)** `LawFacts`·답변 캐시(D51).
 
 - **Layer B 입력·검증(D69):** `AnalyzeRequest` 에 `profile`·`question`(Layer B 일 때만 non-null). `ContextBuilder` 는 Layer B 에도 현행 기준선 블록을 넣는다. 검증은 Layer A 규칙 + 영향·대응 둘 다 ≥ 1·항목마다 인용. 프로필은 근거 집합 밖이라 인용하면 실패.
+- **Layer B 상황 질문·단계 설명(D71):** 첫 Layer B 는 `Reasoner.reasonPersonalized` 로 **Layer B 전용 출력 레코드**(`PersonalizedReply` — `ImpactResult` 필드 + `actions[].situationNote` + `situationQuestions[]`)를 받아 `PersonalizedOutput`(`ImpactResult` 그대로 + 질문 + 단계 설명)으로 나눈다. `ImpactResult`·SYSTEM·`PROMPT_VERSION` 은 바뀌지 않는다([[analysis-prompt-spec]] §5.1). 기존 D69 그라운딩은 그대로 하고, 거기에 두 필터를 더한다 — **질문 필터**: `basis` 가 주입 집합 밖이거나 형식이 깨진 질문(문장 비었음·200자 초과 또는 줄바꿈 포함·`CHOICE` 선택지가 2~4개가 아님·선택지 40자 초과)은 **그 질문만** 버리고(답 전체 실패 아님), 최대 3개만 남기고 `q1`·`q2`·`q3` 를 다시 붙인다. **단계 설명 필터**: 범위 밖 단계 번호·빈 문장·200자 초과 또는 줄바꿈 포함 설명은 버리고, 같은 단계는 처음 것만 남긴다.
+- **ACTION 재생성 그라운딩(D71):** `AnalyzeRequest.dimension == ACTION`(상황 확인 후 대응 방안만)이면 `ContextBuilder` 가 같은 근거 블록 + `situation` 을 `[SITUATION]` 으로 붙이고, 검증은 actions ≥ 1 · 각 `what` 비어 있지 않음(공백 포함) · 각 `basis` ≥ 1 · 모든 인용 ⊆ 주입 집합(claims·impacts 필수 아님). 상황 사실은 근거 집합 밖이라 인용하면 실패 → 재생성 ≤2 → `InsufficientGroundingException`. 재생성은 새 질문을 내지 않는다(질문은 첫 응답에서 세션에 보관된 것을 쓴다). 한도 차감은 엔진이 아니라 호출자([[ActionRevisionUseCase]])가 호출 직전에 1회 한다.
 
 ## 2계층
 - **Layer A**(프로필 무관, SUMMARY·DIFF): 지금은 SUMMARY 만 오프라인 선계산(D67) — 모든 사용자가 재사용(비용 레버, D07). DIFF 는 요청 시 생성. `LawFacts` 는 후속.
@@ -59,7 +61,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 ## 도메인 타입 (`domain/analysis`)
 - `ImpactResult`(§4) + `Claim`·`Impact`·`Action`·`EffectiveInfo`·`Meta`. **LLM 출력이라 record는 관대**(필드 생략 허용), **불변식(인용 존재성)은 `FaithfulnessGate`가 강제**(record 아님). `affected_profiles`는 제거(D57).
-- `AnalyzeRequest{dimension, law, baseline?, profile?, question?}` — **우리 판정 타입이라 생성자가 `dimension·law` 비-null 과 `profile ≠ null ⇔ Layer B` 를 강제**(ContextBuilder는 assembly layer라 방어 안 함). Layer A 용 3인자 생성자가 있다. `AnalyzeResponse{result, injectedSourceIds}`.
+- `AnalyzeRequest{dimension, law, baseline?, profile?, question?, situation}` — **우리 판정 타입이라 생성자가 `dimension·law` 비-null 과 `profile ≠ null ⇔ Layer B` 를 강제**(ContextBuilder는 assembly layer라 방어 안 함). Layer A 용 3인자 생성자가 있다. `AnalyzeResponse{result, injectedSourceIds, situation}` — `situation`(`Situation{questions, stepNotes}`)은 첫 Layer B 에서만 채워지고 그 외엔 `Situation.none()`(D71). 상황 타입(`SituationQuestion`·`SituationAnswer`·`ConfirmedFact`·`StepNote`·`Situation`)은 `domain/analysis`.
 - `AnalysisContext`·`SourceBlock`은 **불변**(`List.copyOf`). `SourceBlock.type`은 문자열이 아니라 **`SourceType` enum**(ARTICLE·AMEND·ADDENDA·BASELINE — 오타 컴파일 차단, 프롬프트/필터 안전). *baseline은 엄밀히 role이나 MVP에선 type로 둠(role 분리 후속).*
 
 ## source_id 생성 권위 (리뷰 반영)
@@ -81,6 +83,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 - Opus 호출은 Spring AI **`gen_ai.*`** 내장 계측(토큰·모델·지연). 별도 `lia.*` 스팬 없음(임베딩 교훈 동일). 재생성 횟수는 필요 시 카운터로.
 
 ## 검증
+- **상황 확인(D71):** 질문 필터(근거 밖·형식 깨짐 제거, 최대 3, id 재부여) · 단계 설명 필터 · ACTION 재생성 그라운딩(actions ≥ 1·what 비지 않음·basis ≥ 1·상황 사실 인용 시 실패) · Layer B 출력 분할(`PersonalizedReply` → `ImpactResult` + 질문 + 단계 설명) · Layer A 메시지에 `[SITUATION]` 없음.
 - **단위(무비용):** `ContextBuilder`(차원별 블록·`source_id` 형식·baseline 대응) · `FaithfulnessGate`(유효/환각 인용 — 기존 테스트) · `AnalysisEngine` **오케스트레이션**(`FakeReasoner`로 "첫 응답 환각→재생성→정상" 재생성 루프, N회 초과 시 폴백, `injectedSourceIds` 반환).
 - **게이트 라이브 스모크(수동):** `SpringAiReasoner` 실 Opus — `LIA_ANALYZE_LIVE=1` 옵트인(비용). SUMMARY/DIFF 실 생성이 스키마·인용 존재성을 만족하는지 실측.
 

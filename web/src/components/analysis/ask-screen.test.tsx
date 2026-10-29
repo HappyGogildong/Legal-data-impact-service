@@ -2,9 +2,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AnalysisResponse } from "@/lib/api/types";
 import { setAsk } from "@/lib/ask-store";
+import { clearSituationMemory } from "@/lib/situation-store";
 import { json as apiJson, mockApi } from "@/test/api-mock";
 import {
+  ARTICLE_18,
   ambiguousResponse,
   notFoundResponse,
   resolvedResponse,
@@ -38,6 +41,8 @@ function renderScreen() {
 beforeEach(() => {
   router.push.mockReset();
   router.replace.mockReset();
+  sessionStorage.clear();
+  clearSituationMemory();
 });
 
 describe("AskScreen", () => {
@@ -189,5 +194,53 @@ describe("AskScreen", () => {
     expect(
       await screen.findByRole("button", { name: "로그인하기" }),
     ).toBeInTheDocument();
+  });
+
+  it("상황 질문 만료 → '다시 받기'는 캐시된 같은 분석을 돌려주지 않고 분석을 다시 부른다", async () => {
+    const personalized: AnalysisResponse = {
+      ...resolvedResponse,
+      answer: {
+        ...resolvedResponse.answer,
+        action: { actions: [{ what: "점검 요청", basis: [ARTICLE_18] }] },
+      },
+      unmet: {},
+      situation: {
+        setId: "0123456789abcdef",
+        questions: [
+          {
+            id: "q1",
+            text: "계약을 시행일 이전에 맺었나요?",
+            answerType: "YES_NO",
+          },
+        ],
+      },
+    };
+    setAsk({
+      query: "주택법 내 영향과 대응 방안",
+      lawRef: { lawId: "001809", effectiveDate: "2026-08-04" },
+    });
+    const requests = mockApi({
+      "POST /api/v1/analyses": () => apiJson(personalized),
+      "POST /api/v1/analyses/action-revisions": () =>
+        apiJson({ unmet: { reason: "SITUATION_EXPIRED", message: "" } }),
+    });
+    renderScreen();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "대응 방안" }),
+    );
+    await userEvent.click(screen.getAllByRole("button", { name: "예" })[0]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "대응 방안 확인하기" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "다시 받기" }),
+    );
+
+    await vi.waitFor(() =>
+      expect(
+        requests.filter((r) => new URL(r.url).pathname === "/api/v1/analyses"),
+      ).toHaveLength(2),
+    );
   });
 });
