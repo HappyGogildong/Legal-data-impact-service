@@ -22,7 +22,7 @@ class ChunkStoreLawSearchTest {
         final List<Chunk> hits;
         FakeChunkStore(List<Chunk> hits) { this.hits = hits; }
         @Override public void replaceVersion(String lawId, String efYd, List<Chunk> chunks) {}
-        @Override public List<Chunk> search(String query, int topK) { return hits.stream().limit(topK).toList(); }
+        @Override public List<Chunk> search(String query, int topK, double minSimilarity) { return hits.stream().limit(topK).toList(); }
     }
 
     private static Chunk chunk(String lawId, String title, String efYd) {

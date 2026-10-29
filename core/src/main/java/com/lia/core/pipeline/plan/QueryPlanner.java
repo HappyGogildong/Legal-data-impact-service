@@ -10,7 +10,7 @@ import com.lia.core.pipeline.resolve.SourceAnalyzer;
 
 /**
  * 자연어 → {@link PlanResult}. LLM 번역은 {@link QueryTranslator}에 위임하고, 이후는 <b>결정론</b>:
- * 해소 분기·프로필 게이팅·fail-closed(D46). 실행(dispatch)은 이 범위 밖(AnalysisEngine 후속).
+ * 해소 분기·프로필 게이팅·fail-closed(D46). 실행은 {@code QueryDispatcher} 몫 — 발견 검색도 디스패처가 {@code LawDiscovery} 로 돌린다(D70).
  *
  * <p>스펙: docs/components/QueryPlanner.md.
  */
@@ -48,7 +48,7 @@ public class QueryPlanner {
             return planned(draft, new Target.Reference(ref), profilePresent, alternatives);
         }
 
-        // Discovery — criteria 구성만(검색 실행은 dispatch, 이번 범위 밖)
+        // Discovery — criteria 구성만(검색은 디스패처가 LawDiscovery 로 실행, D70)
         DiscoveryCriteria criteria = new DiscoveryCriteria(
                 draft.keywords(), draft.conditions(), draft.domains(), profilePresent);
         return planned(draft, new Target.Discovery(criteria), profilePresent, List.of());
@@ -56,20 +56,27 @@ public class QueryPlanner {
 
     private static PlanResult planned(AnalysisQueryDraft draft, Target target, boolean profilePresent,
                                       List<RawLaw> alternatives) {
+        if (target instanceof Target.Discovery) {
+            // 발견은 후보만 돌려준다(D70) — 분석 차원은 후보를 고른 재요청(explicitRef)에서 같은 질문으로 다시 정한다.
+            AnalysisQuery discovery = new AnalysisQuery(QueryType.LOOKUP, EnumSet.of(QueryType.LOOKUP), target,
+                    draft.intentSummary(), ArticleScope.CHANGED_ONLY, false, AnalysisQuery.Options.defaults());
+            return new PlanResult.Planned(discovery, alternatives);
+        }
         // Layer B 는 프로필이 없어도 빼지 않는다 — 디스패처가 사유(PROFILE_REQUIRED 등)를 unmet 으로 실어
         // 화면이 로그인·프로필 안내를 띄우게 한다(D69). profileBound 는 "채울 수 있는가"만 뜻한다.
         EnumSet<QueryType> types = draft.types().isEmpty()
                 ? EnumSet.noneOf(QueryType.class) : EnumSet.copyOf(draft.types());
+        // 발견 후보로 다시 묻는 재요청은 같은 질문 + lawRef 라 번역기가 LOOKUP 을 낸다. LOOKUP 은 Discovery 경로
+        // 전용(D70)이라 Reference 에서는 뺀다 — 남기면 디스패처가 NOT_IMPLEMENTED 만 만들어 빈 화면이 된다.
+        types.remove(QueryType.LOOKUP);
         if (types.isEmpty()) {
             // 분류 실패면 기본 차원으로 — 거부하지 않는다.
-            types.add(target instanceof Target.Discovery ? QueryType.LOOKUP : QueryType.SUMMARY);
+            types.add(QueryType.SUMMARY);
         }
 
         // 프로필이 없고 Layer A 차원이 하나도 없으면 SUMMARY 를 더한다 — 선계산이라 비용이 0이고(D67)
         // 익명 첫 질문이 로그인 안내만 남기지 않게 한다. Layer B 차원은 그대로 둬 미충족 카드가 로그인을 이끈다.
-        // 발견(Discovery)은 대상 법령이 없어 요약할 게 없다.
-        if (!profilePresent && target instanceof Target.Reference
-                && types.stream().allMatch(QueryType::isLayerB)) {
+        if (!profilePresent && types.stream().allMatch(QueryType::isLayerB)) {
             types.add(QueryType.SUMMARY);
         }
 

@@ -46,8 +46,17 @@ public class AnalyzeUseCase {
         this.gate = gate;
     }
 
-    /** 자연어 질의 → 분석 결과. 미해소는 분석으로 새지 않는다(fail-closed, plan 게이트가 강제). */
+    /** 자연어 질의 → 분석 결과(프로필 기준 찾기 꺼짐). */
     public AnalysisOutcome analyze(String query, LawRef explicitRef, Optional<UUID> userId) {
+        return analyze(query, explicitRef, userId, false);
+    }
+
+    /**
+     * 자연어 질의 → 분석 결과. 미해소는 분석으로 새지 않는다(fail-closed, plan 게이트가 강제).
+     *
+     * @param profileSearch 법령 발견에서 프로필 라벨을 검색어에 붙일지(D70 — 프로필을 쓸 수 있을 때만 적용)
+     */
+    public AnalysisOutcome analyze(String query, LawRef explicitRef, Optional<UUID> userId, boolean profileSearch) {
         Personalization personalization = gate.check(userId);
         boolean profilePresent = personalization instanceof Personalization.Usable;
         PlanResult plan = planner.plan(query, explicitRef, profilePresent);
@@ -55,7 +64,7 @@ public class AnalyzeUseCase {
             case PlanResult.Unresolved u -> new AnalysisOutcome.Unresolved(u.resolution());
             case PlanResult.Planned p -> {
                 AnalysisOutcome.Analyzed analyzed = new AnalysisOutcome.Analyzed(
-                        p.query(), dispatcher.dispatch(p.query(), query, personalization), p.alternatives());
+                        p.query(), dispatcher.dispatch(p.query(), query, personalization, profileSearch), p.alternatives());
                 countView(analyzed);
                 yield analyzed;
             }

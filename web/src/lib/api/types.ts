@@ -37,3 +37,6 @@ export type SourceText = NonNullable<LawDetail["addenda"]>[number];
 export type TrendingPage = components["schemas"]["TrendingPage"];
 export type TrendingItem = NonNullable<TrendingPage["items"]>[number];
 export type LawSummary = NonNullable<LawDetail["summary"]>;
+
+export type Discovery = NonNullable<AnalysisResponse["discovery"]>;
+export type DiscoveredLaw = NonNullable<Discovery["candidates"]>[number];

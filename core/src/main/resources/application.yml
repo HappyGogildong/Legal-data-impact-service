@@ -34,6 +34,12 @@ lia:
     policy-version: ${PRIVACY_POLICY_VERSION:draft-2026-09}   # 동의 시 기록할 처리방침 버전(D61). 실제 처리방침 게시 시 교체
   personalization:
     daily-limit: ${LIA_PERSONALIZATION_DAILY_LIMIT:20}   # 사용자별 하루 Layer B(내 영향·대응 방안) 생성 한도(D69)
+  discovery:                        # 법령 발견(LOOKUP, D70)
+    chunk-fetch: 40                 # 법령 단위로 묶기 전에 가져올 청크 수
+    max-candidates: 10              # 후보 최대 장수(S04)
+    min-similarity: 0.3             # 코사인 유사도 하한 — 클라우드 전체 색인 뒤 실데이터로 조정
+    snippet-chars: 80               # 쉬운 요약이 없을 때 개정 이유를 보여 줄 글자 수
+    candidate-statuses: 시행예정      # 후보로 남길 정본 상태(쉼표 구분) — 최근 시행 포함은 별도 하위 프로젝트
 
 spring:
   application:
@@ -66,6 +72,8 @@ spring:
       # Upstage 벤치 시: base-url/모델 오버라이드 (OpenAI-호환)
       # base-url: https://api.upstage.ai
     vectorstore:
+      observations:
+        log-query-response: false   # 벡터 검색 질의·결과를 로그에 남기지 않는다 — 검색어에 프로필 라벨이 들어갈 수 있다(D41·D70)
       pgvector:                       # ChunkStore (D54·D55) — add/search 시 위 openai 모델로 내부 임베딩
         index-type: HNSW
         distance-type: COSINE_DISTANCE

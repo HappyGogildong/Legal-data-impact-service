@@ -13,6 +13,7 @@ import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.connector.RawLaw;
+import com.lia.core.pipeline.dispatch.DispatchResult;
 import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
@@ -46,6 +47,12 @@ public class AnalysisResponseMapper {
     }
 
     private AnalysisApiResponse analyzed(AnalysisOutcome.Analyzed a) {
+        DispatchResult.Discovery found = a.result().discovery();
+        if (found != null) {
+            return AnalysisApiResponse.discovered(new AnalysisApiResponse.Discovery(
+                    found.found().candidates(), found.found().profileApplied(), found.profileBlocked()));
+        }
+
         LawHeader law = a.query().target() instanceof Target.Reference ref ? header(ref.lawRef()) : null;
 
         // 차원 키는 QueryType 선언 순(summary·diff·impact·action) — 화면의 카드 순서와 같게

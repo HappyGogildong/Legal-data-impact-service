@@ -19,6 +19,8 @@ import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.analyze.InsufficientGroundingException;
+import com.lia.core.pipeline.discover.DiscoveryResult;
+import com.lia.core.pipeline.discover.LawDiscovery;
 import com.lia.core.pipeline.plan.AnalysisQuery;
 import com.lia.core.pipeline.plan.ArticleScope;
 import com.lia.core.pipeline.plan.DiscoveryCriteria;
@@ -113,6 +115,20 @@ class QueryDispatcherTest {
         }
     }
 
+    /** 호출을 기록하는 발견 — 색인 대신 고정 결과. */
+    static final class RecordingDiscovery extends LawDiscovery {
+        int calls;
+        Optional<UserProfile> lastProfile;
+        RecordingDiscovery() { super(null, null, null, new LawDiscovery.Settings(40, 10, 0.3, 80, Set.of(Law.Status.시행예정))); }
+        @Override
+        public DiscoveryResult discover(String question, Optional<UserProfile> profile) {
+            calls++;
+            lastProfile = profile;
+            return new DiscoveryResult(List.of(), profile.isPresent());
+        }
+    }
+
+    final RecordingDiscovery discovery = new RecordingDiscovery();
     final CountingPersonalized personalized = new CountingPersonalized();
     final FakeQuota quota = new FakeQuota();
 
@@ -121,7 +137,7 @@ class QueryDispatcherTest {
             new UserProfile(null, 34, null, null, null, null, null));
 
     private QueryDispatcher dispatcher(FakeLawSource src, DimensionHandler... hs) {
-        return new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(hs)), personalized, quota);
+        return new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(hs)), personalized, quota, discovery);
     }
 
     private static DispatchResult dispatchAnonymous(QueryDispatcher d, AnalysisQuery q) {
@@ -301,17 +317,50 @@ class QueryDispatcherTest {
         assertTrue(r.fullySatisfied(), "제정본은 baseline null이 정상 → 진행");
     }
 
-    @Test
-    void Discovery_타겟은_현재_전부_unmet() {
-        QueryDispatcher d = dispatcher(loaded(), handler(QueryType.SUMMARY, resp("S")));
-        AnalysisQuery q = new AnalysisQuery(QueryType.LOOKUP, Set.of(QueryType.LOOKUP),
+    private static AnalysisQuery discoveryQuery() {
+        return new AnalysisQuery(QueryType.LOOKUP, Set.of(QueryType.LOOKUP),
                 new Target.Discovery(new DiscoveryCriteria(List.of("전세"), List.of(), List.of(), false)),
                 "찾아줘", ArticleScope.CHANGED_ONLY, false, null);
+    }
 
-        DispatchResult r = dispatchAnonymous(d, q);
+    @Test
+    void Discovery_는_발견을_한_번_부르고_결과를_discovery_에_담는다_한도_무접촉() {
+        DispatchResult r = dispatcher(loaded()).dispatch(discoveryQuery(), "전세 관련 법", USABLE, false);
 
+        assertEquals(1, discovery.calls);
+        assertEquals(Optional.empty(), discovery.lastProfile, "토글 꺼짐 — 프로필 안 씀");
+        assertNotNull(r.discovery());
+        assertNull(r.discovery().profileBlocked());
         assertTrue(r.filled().isEmpty());
-        assertEquals(Unmet.Reason.NOT_IMPLEMENTED, r.unmet().get(QueryType.LOOKUP).reason());
+        assertTrue(r.unmet().isEmpty(), "LOOKUP 은 unmet 이 아니라 discovery 로");
+        assertEquals(0, quota.consumed);
+    }
+
+    @Test
+    void 토글을_켜고_프로필을_쓸_수_있으면_프로필로_찾는다() {
+        DispatchResult r = dispatcher(loaded()).dispatch(discoveryQuery(), "전세 관련 법", USABLE, true);
+
+        assertEquals(Optional.of(((Personalization.Usable) USABLE).profile()), discovery.lastProfile);
+        assertTrue(r.discovery().found().profileApplied());
+        assertNull(r.discovery().profileBlocked());
+    }
+
+    @Test
+    void 토글을_켰지만_프로필을_못_쓰면_질문만으로_찾고_사유를_싣는다() {
+        DispatchResult r = dispatcher(loaded()).dispatch(discoveryQuery(), "전세 관련 법",
+                Personalization.anonymous(), true);
+
+        assertEquals(Optional.empty(), discovery.lastProfile);
+        assertEquals(Unmet.Reason.PROFILE_REQUIRED, r.discovery().profileBlocked().reason());
+    }
+
+    @Test
+    void Reference_경로에는_discovery_가_없다() {
+        DispatchResult r = dispatchAnonymous(dispatcher(loaded(), handler(QueryType.SUMMARY, resp("S"))),
+                refQuery(Set.of(QueryType.SUMMARY), QueryType.SUMMARY, false));
+
+        assertNull(r.discovery());
+        assertEquals(0, discovery.calls);
     }
 
     @Test

@@ -24,6 +24,8 @@ import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.ContextBuilder;
 import com.lia.core.pipeline.analyze.Reasoner;
 import com.lia.core.pipeline.connector.RawLaw;
+import com.lia.core.pipeline.discover.DiscoveryResult;
+import com.lia.core.pipeline.discover.LawDiscovery;
 import com.lia.core.pipeline.dispatch.DiffHandler;
 import com.lia.core.pipeline.dispatch.DimensionHandlerRegistry;
 import com.lia.core.pipeline.dispatch.PersonalizedHandler;
@@ -52,6 +54,15 @@ import com.lia.core.store.LawSource;
 class AnalyzeUseCaseTest {
 
     final List<String> recorded = new ArrayList<>();
+
+    /** 발견 경로를 쓰지 않는 테스트용 — 호출되면 빈 결과. */
+    static final LawDiscovery NO_DISCOVERY = new LawDiscovery(null, null, null,
+            new LawDiscovery.Settings(40, 10, 0.3, 80, Set.of(Law.Status.시행예정))) {
+        @Override
+        public DiscoveryResult discover(String question, Optional<UserProfile> profile) {
+            return new DiscoveryResult(List.of(), profile.isPresent());
+        }
+    };
 
     /** "주택법"만 해소되는 Fake 코퍼스(QueryPlannerTest와 동일 패턴). */
     static class FakeLookup implements LawLookup {
@@ -98,7 +109,7 @@ class AnalyzeUseCaseTest {
         AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
         DimensionHandlerRegistry registry =
                 new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder()), new DiffHandler(engine)));
-        return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry, new PersonalizedHandler(null), userId -> false),
+        return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry, new PersonalizedHandler(null), userId -> false, NO_DISCOVERY),
                 (lawId, efYd) -> { recorded.add(lawId + "@" + efYd); return true; }, anonymousGate());
     }
 
@@ -126,7 +137,7 @@ class AnalyzeUseCaseTest {
         OffsetDateTime now = OffsetDateTime.parse("2026-10-28T00:00:00Z");
         StoredProfile stored = new StoredProfile(new UserProfile(null, 34, null, null, null, null, null),
                 storedPolicyVersion, now, now);
-        return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry, new PersonalizedHandler(null), userId -> true),
+        return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry, new PersonalizedHandler(null), userId -> true, NO_DISCOVERY),
                 (lawId, efYd) -> true, gate(stored, "v1"));
     }
 
@@ -194,6 +205,19 @@ class AnalyzeUseCaseTest {
     }
 
     @Test
+    void 발견_질의는_조회로_세지_않는다() {
+        AnalysisQueryDraft discoveryDraft = new AnalysisQueryDraft(
+                QueryType.LOOKUP, Set.of(QueryType.LOOKUP), true, TargetKind.DISCOVERY,
+                null, null, List.of("전세"), List.of(), List.of(), "찾기");
+
+        AnalysisOutcome out = useCase(discoveryDraft, true).analyze("전세 관련 바뀌는 법", null, Optional.empty(), false);
+
+        AnalysisOutcome.Analyzed analyzed = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
+        assertNotNull(analyzed.result().discovery());
+        assertEquals(List.of(), recorded, "발견은 법령을 연 게 아니라 조회 집계 0회(D66)");
+    }
+
+    @Test
     void 정본이_없거나_미해소면_세지_않는다() {
         AnalysisQueryDraft reference = new AnalysisQueryDraft(
                 QueryType.SUMMARY, Set.of(QueryType.SUMMARY), true, TargetKind.REFERENCE,
@@ -219,12 +243,27 @@ class AnalyzeUseCaseTest {
         AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
         AnalyzeUseCase failing = new AnalyzeUseCase(planner,
                 new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder()))),
-                        new PersonalizedHandler(null), userId -> false),
+                        new PersonalizedHandler(null), userId -> false, NO_DISCOVERY),
                 (lawId, efYd) -> { throw new IllegalStateException("DB 끊김"); }, anonymousGate());
 
         AnalysisOutcome out = failing.analyze("주택법 뭐가 바뀌어?", null, Optional.empty());
 
         AnalysisOutcome.Analyzed analyzed = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
         assertTrue(analyzed.result().filled().containsKey(QueryType.SUMMARY));
+    }
+
+    @Test
+    void 발견_후보로_다시_묻는_질의는_LOOKUP_없이_요약이_채워진다() {
+        // 재요청 = 원래 발견 질문 + lawRef — 번역기는 질문만 보고 LOOKUP 을 낸다(D70).
+        AnalysisQueryDraft discoveryDraft = new AnalysisQueryDraft(
+                QueryType.LOOKUP, Set.of(QueryType.LOOKUP), true, TargetKind.DISCOVERY,
+                null, null, List.of("전세"), List.of(), List.of(), "찾기");
+        LawRef pinned = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
+
+        AnalysisOutcome out = useCase(discoveryDraft, true).analyze("전세 관련 바뀌는 법", pinned, Optional.empty());
+
+        AnalysisOutcome.Analyzed analyzed = assertInstanceOf(AnalysisOutcome.Analyzed.class, out);
+        assertTrue(analyzed.result().filled().containsKey(QueryType.SUMMARY), "빈 S02 가 아니라 요약이 채워진다");
+        assertFalse(analyzed.result().unmet().containsKey(QueryType.LOOKUP), "LOOKUP 은 Reference 에서 unmet 도 아니다");
     }
 }

@@ -431,6 +431,9 @@
           "disclaimer" : {
             "type" : "string"
           },
+          "discovery" : {
+            "$ref" : "#/components/schemas/Discovery"
+          },
           "law" : {
             "$ref" : "#/components/schemas/LawHeader"
           },
@@ -460,6 +463,9 @@
         "properties" : {
           "lawRef" : {
             "$ref" : "#/components/schemas/LawRefDto"
+          },
+          "profileSearch" : {
+            "type" : "boolean"
           },
           "query" : {
             "type" : "string"
@@ -559,6 +565,50 @@
           "pendingLawCount" : {
             "type" : "integer",
             "format" : "int32"
+          }
+        }
+      },
+      "DiscoveredLaw" : {
+        "type" : "object",
+        "properties" : {
+          "effectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "lawId" : {
+            "type" : "string"
+          },
+          "matched" : {
+            "$ref" : "#/components/schemas/MatchedSource"
+          },
+          "ministry" : {
+            "type" : "string"
+          },
+          "summary" : {
+            "type" : "string"
+          },
+          "summaryReady" : {
+            "type" : "boolean"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Discovery" : {
+        "type" : "object",
+        "properties" : {
+          "candidates" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DiscoveredLaw"
+            }
+          },
+          "profileApplied" : {
+            "type" : "boolean"
+          },
+          "profileBlocked" : {
+            "$ref" : "#/components/schemas/Unmet"
           }
         }
       },
@@ -860,6 +910,17 @@
             }
           },
           "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "MatchedSource" : {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "sourceId" : {
             "type" : "string"
           }
         }

@@ -21,10 +21,13 @@ import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.connector.RawLaw;
+import com.lia.core.pipeline.discover.DiscoveredLaw;
+import com.lia.core.pipeline.discover.DiscoveryResult;
 import com.lia.core.pipeline.dispatch.DispatchResult;
 import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.AnalysisQuery;
 import com.lia.core.pipeline.plan.ArticleScope;
+import com.lia.core.pipeline.plan.DiscoveryCriteria;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.plan.Target;
@@ -125,5 +128,47 @@ class AnalysisResponseMapperTest {
         assertFalse(JsonMapper.builder().build().readTree(json).has("message"), "RESOLVED 엔 최상위 message 없음(unmet 값 안의 message는 별개)");
         assertFalse(json.contains("law_ref"));
         assertTrue(json.contains("\"unmet\":{\"impact\":{\"reason\":\"PROFILE_REQUIRED\""), json);
+    }
+
+    @Test
+    @DisplayName("JSON — 발견 응답은 discovery 만(answer·law 키 없음), 카드는 matched 근거를 가진다")
+    void 발견_직렬화() {
+        AnalysisQuery query = new AnalysisQuery(QueryType.LOOKUP, Set.of(QueryType.LOOKUP),
+                new Target.Discovery(new DiscoveryCriteria(List.of(), List.of(), List.of(), false)),
+                "찾기", ArticleScope.CHANGED_ONLY, false, null);
+        DiscoveredLaw card = new DiscoveredLaw("001809", "주택법", EF, "국토교통부", "거주 의무가 바뀌어요.", true,
+                new DiscoveredLaw.MatchedSource("LAW:001809@2026-08-04:art:46", "제46조"));
+        DispatchResult result = new DispatchResult(QueryType.LOOKUP, Map.of(), Map.of(),
+                new DispatchResult.Discovery(new DiscoveryResult(List.of(card), false),
+                        new Unmet(Unmet.Reason.PROFILE_REQUIRED, "프로필 기준으로 찾을 수 없음")));
+
+        tools.jackson.databind.JsonNode json = JsonMapper.builder().build().readTree(
+                JsonMapper.builder().build().writeValueAsString(
+                        mapper(true).toBody(new AnalysisOutcome.Analyzed(query, result))));
+
+        assertEquals("RESOLVED", json.get("resolution").asString());
+        assertEquals("제46조", json.at("/discovery/candidates/0/matched/label").asString());
+        assertTrue(json.at("/discovery/candidates/0/summaryReady").asBoolean());
+        assertFalse(json.at("/discovery/profileApplied").asBoolean());
+        assertEquals("PROFILE_REQUIRED", json.at("/discovery/profileBlocked/reason").asString());
+        assertFalse(json.has("answer"));
+        assertFalse(json.has("law"));
+    }
+
+    @Test
+    @DisplayName("JSON — 프로필 차단 사유가 없으면 discovery.profileBlocked 키를 생략한다")
+    void 발견_직렬화_차단없음() {
+        AnalysisQuery query = new AnalysisQuery(QueryType.LOOKUP, Set.of(QueryType.LOOKUP),
+                new Target.Discovery(new DiscoveryCriteria(List.of(), List.of(), List.of(), false)),
+                "찾기", ArticleScope.CHANGED_ONLY, false, null);
+        DispatchResult result = new DispatchResult(QueryType.LOOKUP, Map.of(), Map.of(),
+                new DispatchResult.Discovery(new DiscoveryResult(List.of(), true), null));
+
+        tools.jackson.databind.JsonNode json = JsonMapper.builder().build().readTree(
+                JsonMapper.builder().build().writeValueAsString(
+                        mapper(true).toBody(new AnalysisOutcome.Analyzed(query, result))));
+
+        assertTrue(json.at("/discovery/profileApplied").asBoolean());
+        assertFalse(json.get("discovery").has("profileBlocked"), json.toString());
     }
 }

@@ -217,6 +217,7 @@ export interface components {
             };
             candidates?: components["schemas"]["LawBrief"][];
             disclaimer?: string;
+            discovery?: components["schemas"]["Discovery"];
             law?: components["schemas"]["LawHeader"];
             message?: string;
             /** @enum {string} */
@@ -228,6 +229,7 @@ export interface components {
         };
         AnalyzeApiRequest: {
             lawRef?: components["schemas"]["LawRefDto"];
+            profileSearch?: boolean;
             query?: string;
             scope?: string[];
         };
@@ -264,6 +266,21 @@ export interface components {
             lawsUpdatedAt?: string;
             /** Format: int32 */
             pendingLawCount?: number;
+        };
+        DiscoveredLaw: {
+            /** Format: date */
+            effectiveDate?: string;
+            lawId?: string;
+            matched?: components["schemas"]["MatchedSource"];
+            ministry?: string;
+            summary?: string;
+            summaryReady?: boolean;
+            title?: string;
+        };
+        Discovery: {
+            candidates?: components["schemas"]["DiscoveredLaw"][];
+            profileApplied?: boolean;
+            profileBlocked?: components["schemas"]["Unmet"];
         };
         EffectiveInfo: {
             /** Format: date */
@@ -364,6 +381,10 @@ export interface components {
             lawId?: string;
             pending?: components["schemas"]["UpcomingVersion"][];
             title?: string;
+        };
+        MatchedSource: {
+            label?: string;
+            sourceId?: string;
         };
         Meta: {
             layer?: string;

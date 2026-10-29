@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -68,5 +69,20 @@ class UserProfileTest {
     @DisplayName("시도는 정확히 17개")
     void 시도_17개() {
         assertEquals(17, Sido.values().length);
+    }
+
+    @Test
+    @DisplayName("라벨 줄 — 있는 항목만 정해진 순서로, 각 줄은 줄바꿈으로 끝남")
+    void 라벨_줄은_있는_항목만_정해진_순서로() {
+        UserProfile profile = new UserProfile(Set.of(Purpose.생활주거), 34, null, null, null,
+                HousingType.전세, Sido.서울특별시);
+
+        assertEquals("관심 분야: 생활·주거\n나이: 34\n주거: 전세\n거주 시도: 서울특별시\n", profile.labelLines());
+    }
+
+    @Test
+    @DisplayName("빈 프로필의 라벨 줄은 빈 문자열")
+    void 빈_프로필의_라벨_줄은_빈_문자열() {
+        assertEquals("", UserProfile.empty().labelLines());
     }
 }

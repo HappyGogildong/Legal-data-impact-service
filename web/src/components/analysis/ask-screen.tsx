@@ -7,12 +7,13 @@ import { useHydrated } from "@/hooks/use-browser";
 import { analyze } from "@/lib/api/analysis";
 import { askKey, setAsk, useAsk, type AskRequest } from "@/lib/ask-store";
 import { AnalysisProgress } from "./analysis-progress";
+import { DiscoveryView } from "./discovery-view";
 import { ErrorCard } from "./error-card";
 import { PersonalizeAction } from "./personalize-action";
 import { ResolutionView } from "./resolution-view";
 import { ResultView } from "./result-view";
 
-/** /ask — 탭에 저장된 질문을 분석해 S02(해소 성공)·S03(해소 실패)·오류로 가른다. 질문이 없으면 홈으로. */
+/** /ask — 탭에 저장된 질문을 분석해 S02(해소 성공)·S03(해소 실패)·S04(법령 발견)·오류로 가른다. 질문이 없으면 홈으로. */
 export function AskScreen() {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -56,6 +57,11 @@ export function AskScreen() {
         query={ask.query}
         onPick={(lawRef) => reask({ query: ask.query, lawRef })}
       />
+    );
+  }
+  if (response.discovery) {
+    return (
+      <DiscoveryView discovery={response.discovery} ask={ask} onAsk={reask} />
     );
   }
   return (

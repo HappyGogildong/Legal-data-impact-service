@@ -55,6 +55,11 @@ export default function InfoPage() {
           <b>수집하지 않는 항목</b> — 이름·생년월일·주민등록번호·연락처·상세
           주소·소득.
         </p>
+        <p>
+          <b>처리 위탁</b> — Anthropic(질문·법령 분석, 내 영향 분석 시 프로필
+          항목), OpenAI(질문의 검색용 임베딩, &quot;내 프로필 기준으로
+          찾기&quot;를 켠 경우 프로필 항목 포함).
+        </p>
         <p className="text-xs text-muted-foreground">
           전문과 이전 버전은 법무 검토(#35)를 마치면 이곳에 싣습니다.
         </p>

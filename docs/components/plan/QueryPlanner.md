@@ -28,15 +28,15 @@ Target 2형: **`Reference`**(해소된 1건) · **`Discovery`**(코퍼스 검색
 | S2 | "주택법 제18조 뭐가 바뀌었어?" | DIFF / {DIFF} | Reference(art:18) | 해소 → 해당 조문 diff | 조문 대비 |
 | S3 | "주택법이 대체 무슨 법이야?" | SUMMARY / {SUMMARY} | Reference | 해소 → 선계산 요약 | 요약 카드 |
 | S4 | "나한테 영향 있을 시행예정 법령 찾아줘" | LOOKUP / {LOOKUP} | Discovery(프로필) | 코퍼스 검색 | 후보 랭킹 |
-| S5 | "나한테 영향 있을 법령 찾아서 분석해줘" | LOOKUP / {LOOKUP,IMPACT,ACTION} | Discovery(프로필) | 검색 → top-K 분석(팬아웃) | 후보+차원 |
+| S5 | "나한테 영향 있을 법령 찾아서 분석해줘" | LOOKUP / {LOOKUP,IMPACT,ACTION} | Discovery(프로필) | 검색 → 후보만(분석은 고른 뒤 재요청, D70) | 후보(고른 뒤 분석) |
 | S6 | "요즘 주거 관련 뭐 바뀌는 거 없어?" | LOOKUP / {LOOKUP} | Discovery(도메인=주거) | 검색(도메인/키워드) | 후보 |
-| S7 | "전세 세입자한테 불리해지는 법 있어?" | LOOKUP / {LOOKUP,IMPACT} | Discovery(조건=전세) | 검색 → 영향 판정 | 후보+영향 |
+| S7 | "전세 세입자한테 불리해지는 법 있어?" | LOOKUP / {LOOKUP,IMPACT} | Discovery(조건=전세) | 검색 → 후보만(영향 판정은 고른 뒤 재요청, D70) | 후보(고른 뒤 분석) |
 | S8 | "가상의무슨법 바뀌면 어떻게 돼?" | IMPACT / {…} | Reference(해소 실패) | 해소 → NOT_FOUND_YET | 4상태 안내 |
 | S9 | "오늘 점심 뭐 먹지" | (저신뢰) | — | UNVERIFIED/비법령 | "확인 안 됨" |
 
 **Reference (S1~3,S8):** 번역이 법령 지목(`lawName`/`articleNo`) → `SourceAnalyzer.resolve`. `RESOLVED`→분석 dispatch, `AMBIGUOUS`(시행예정본 복수 D43)→시행일 선택, `NOT_FOUND_YET`/`UNVERIFIED`→**fail-closed(분석 안 함)**.
 
-**Discovery/LOOKUP (S4~7):** 특정 법령 없음 → `LawDiscovery`가 `pending` ns + 프로필/도메인/조건으로 코퍼스 검색 → 실재 후보 랭킹. 분석 타입 동반 시 top-K 팬아웃. 프로필 기반인데 프로필 없으면 키워드/도메인으로 강등하거나 프로필 유도. 검색은 실재 법령만 반환(fail-closed).
+**Discovery/LOOKUP (S4~7):** 특정 법령 없음 → 플래너는 `types={LOOKUP}`·`primaryType=LOOKUP` 으로 좁힌다(D70). 분석 차원은 후보를 고른 재요청에서 같은 질문으로 다시 정한다. 팬아웃 없음. 검색은 [[LawDiscovery]] 가 맡아 실재 시행예정 법령만 후보로 돌려준다(fail-closed).
 
 **자유도 보존:** 번역기는 타입 **집합**을 느슨하게 추출한다(주 1 + 집합). 안 떨어지는 질의는 best-effort(기본 SUMMARY/LOOKUP), dispatcher가 온 집합을 처리 — 분류 실패로 거부하지 않는다.
 
@@ -70,13 +70,13 @@ AnalysisQuery {
 - **`QueryPlanner`** — `plan(query, explicitLawRef?, profilePresent) → PlanResult`:
   1. `translate` → draft.
   2. **`!draft.isLawQuery` → `Unresolved(UNVERIFIED)`** — 오프토픽(S9) 조기 거부(fail-closed).
-  3. REFERENCE(또는 explicitLawRef): `SourceAnalyzer.resolve` → `RESOLVED`→`Planned`(Reference) / `AMBIGUOUS`·`NOT_FOUND_YET`·`UNVERIFIED`→`Unresolved`.
-  4. DISCOVERY: `DiscoveryCriteria` 구성 → `Planned`(검색 실행은 dispatch라 이번 범위 밖).
+  3. REFERENCE(또는 explicitLawRef): `SourceAnalyzer.resolve` → `RESOLVED`→`Planned`(Reference) / `AMBIGUOUS`·`NOT_FOUND_YET`·`UNVERIFIED`→`Unresolved`. Reference 의 `types` 에서는 `LOOKUP` 을 뺀다(D70) — 발견 후보로 다시 묻는 요청은 원래 질문 + `lawRef` 라 번역기가 `LOOKUP` 을 내기 쉽고, Reference 에는 LOOKUP 핸들러가 없다. 비면 `SUMMARY`.
+  4. DISCOVERY: `DiscoveryCriteria` 구성, `types`·`primaryType` 을 `LOOKUP` 으로 좁혀(D70) → `Planned`(검색 실행은 dispatch).
   5. **프로필 게이팅**: 프로필 유무로 Layer B(`IMPACT`·`ACTION`) 차원을 빼지 않는다(D69) — 프로필을 못 쓰는 사유는 디스패처가 `unmet` 으로 표기한다. 단 프로필이 없고 Layer A 차원이 하나도 없으면(Reference) `SUMMARY` 를 더해 요약은 보여 준다(선계산본이 있으면 비용 0, 주 차원은 그대로). 타입이 비면 기본 `SUMMARY`(Reference)/`LOOKUP`(Discovery) — **분류 실패로 거부하지 않는다**(best-effort, 자유도 보존).
 
 ### 후속 (AnalysisEngine 랜딩 시)
 
-- **`QueryDispatcher`** — `AnalysisQuery`를 QueryType별 핸들러로 라우팅·조립. `types`+`Target` 결정론. Discovery+분석은 top-K 팬아웃.
+- **`QueryDispatcher`** — `AnalysisQuery`를 QueryType별 핸들러로 라우팅·조립. `types`+`Target` 결정론. Discovery 는 `LawDiscovery` 1회(후보만, D70).
 - **`DimensionHandler`** (interface) + 구현 — 실제 RAG/LLM/검색 실행. Embedder·ChunkStore·AnalysisEngine·LawDiscovery 의존.
 
 ## 3.1 타입 (`pipeline/plan`)
@@ -102,7 +102,7 @@ AnalysisQuery {
 
 ## 5. 의존 / 관련
 
-- 의존: `ChatClient`(Anthropic Haiku), `SourceAnalyzer`(Reference 해소), `LawDiscovery`(Discovery 검색, 후속), `LawLookup`.
+- 의존: `ChatClient`(Anthropic Haiku), `SourceAnalyzer`(Reference 해소), [[LawDiscovery]](Discovery 검색, D70), `LawLookup`.
 - 소비: `QueryDispatcher` → 차원 핸들러(AnalysisEngine 본체).
 - D37 격리: 멀티턴·위임추적(동적 깊이) 도입 시 이 컴포넌트가 에이전트 삽입점.
 

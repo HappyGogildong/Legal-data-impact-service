@@ -1,7 +1,5 @@
 package com.lia.core.pipeline.analyze;
 
-import java.util.stream.Collectors;
-
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
@@ -11,8 +9,6 @@ import com.anthropic.models.messages.OutputConfig;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.pipeline.analyze.AnalysisContext.SourceBlock;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.Labeled;
-import com.lia.core.profile.UserProfile;
 
 /**
  * {@link Reasoner}의 Spring AI 구현 — 조립된 context → Opus 5.5 → 구조화 {@link ImpactResult}(§3·§4).
@@ -89,7 +85,7 @@ public class SpringAiReasoner implements Reasoner {
         }
         if (ctx.dimension().isLayerB()) {
             sb.append("\n[PROFILE] (이 사용자의 자기신고 정보 — 근거가 아니므로 인용하지 않는다)\n")
-              .append(profileLines(ctx.profile()));
+              .append(ctx.profile().labelLines());
             sb.append("\n[QUESTION] ").append(ctx.question() == null ? "" : ctx.question()).append('\n');
             sb.append("\n[TASK] 차원=IMPACT·ACTION — 위 근거만으로, PROFILE 의 사용자에게 이 개정이 미치는 영향(impacts)과 ")
               .append("해야 할 일(actions)을 QUESTION 에 맞춰 ImpactResult(JSON)로 답하라. impacts·actions 를 모두 채운다 — ")
@@ -101,26 +97,5 @@ public class SpringAiReasoner implements Reasoner {
           .append(" — 위 근거만으로 분석해 ImpactResult(JSON)로 답하라. ")
           .append("claims/impacts의 citations는 위 CONTEXT의 source_id만 사용한다.");
         return sb.toString();
-    }
-
-    /** 프로필 속성 → "항목: 라벨" 줄. 없는 항목은 생략(D41 — 속성만, userId 없음). */
-    private static String profileLines(UserProfile p) {
-        StringBuilder sb = new StringBuilder();
-        if (!p.purposes().isEmpty()) {
-            sb.append("관심 분야: ")
-              .append(p.purposes().stream().map(Labeled::label).collect(Collectors.joining(", ")))
-              .append('\n');
-        }
-        if (p.age() != null) sb.append("나이: ").append(p.age()).append('\n');
-        appendLabel(sb, "직업", p.occupation());
-        appendLabel(sb, "고용 형태", p.employmentType());
-        appendLabel(sb, "가구", p.householdType());
-        appendLabel(sb, "주거", p.housingType());
-        appendLabel(sb, "거주 시도", p.regionSido());
-        return sb.toString();
-    }
-
-    private static void appendLabel(StringBuilder sb, String name, Labeled value) {
-        if (value != null) sb.append(name).append(": ").append(value.label()).append('\n');
     }
 }
