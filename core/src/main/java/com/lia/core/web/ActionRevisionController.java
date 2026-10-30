@@ -1,11 +1,17 @@
 package com.lia.core.web;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import com.lia.core.application.analysis.ActionRevisionUseCase;
 import com.lia.core.application.analysis.RevisionOutcome;
 import com.lia.core.auth.CurrentUser;
+import com.lia.core.domain.analysis.SituationAnswer;
+import com.lia.core.domain.analysis.SituationQuestion;
+import com.lia.core.pipeline.plan.LawRef;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,11 +46,28 @@ public class ActionRevisionController {
         }
         RevisionOutcome outcome = useCase.revise(CurrentUser.userId(request), req.lawRef().toDomain(), req.setId(), req.answers(),
                 new HttpSessionSituationQuestions(request.getSession()));
-        return ResponseEntity.ok(switch (outcome) {
+        ActionRevisionApiResponse body = switch (outcome) {
             case RevisionOutcome.Revised r -> ActionRevisionApiResponse.revised(r.response().result(),
                     r.response().situation().stepNotes(),
                     sources.resolve(AnalysisResponseMapper.citations(List.of(r.response().result()))));
             case RevisionOutcome.NotRevised n -> ActionRevisionApiResponse.notRevised(n.unmet());
-        });
+        };
+        if (outcome instanceof RevisionOutcome.Revised && req.analysisId() != null) {
+            attachToRecentAnalysis(req, body, request.getSession());
+        }
+        return ResponseEntity.ok(body);
+    }
+
+    /** 재생성본과 실제로 쓴 답(질문 문장과 짝)을 그 분석 결과에 붙인다(D73) — 이력 저장이 함께 담는다. 답 내용은 로그에 남기지 않는다. */
+    private static void attachToRecentAnalysis(ActionRevisionApiRequest req, ActionRevisionApiResponse body, HttpSession session) {
+        LawRef lawRef = req.lawRef().toDomain();
+        Map<String, String> questionTexts = new HttpSessionSituationQuestions(session).find(lawRef).orElse(List.of()).stream()
+                .collect(Collectors.toMap(SituationQuestion::id, SituationQuestion::text, (a, b) -> a));
+        List<HttpSessionRecentAnalyses.AnsweredQuestion> answered = (req.answers() == null ? List.<SituationAnswer>of() : req.answers())
+                .stream()
+                .filter(answer -> questionTexts.containsKey(answer.questionId()))
+                .map(answer -> new HttpSessionRecentAnalyses.AnsweredQuestion(questionTexts.get(answer.questionId()), answer.answer()))
+                .toList();
+        new HttpSessionRecentAnalyses(session).attachRevision(req.analysisId(), lawRef, body, answered);
     }
 }

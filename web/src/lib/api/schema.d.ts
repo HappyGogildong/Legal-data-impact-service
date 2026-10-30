@@ -259,6 +259,7 @@ export interface components {
             what?: string;
         };
         ActionRevisionApiRequest: {
+            analysisId?: string;
             answers?: components["schemas"]["SituationAnswer"][];
             lawRef?: components["schemas"]["LawRefDto"];
             setId?: string;
@@ -271,6 +272,7 @@ export interface components {
         };
         AnalysisApiResponse: {
             alternatives?: components["schemas"]["LawBrief"][];
+            analysisId?: string;
             answer?: {
                 [key: string]: components["schemas"]["ImpactResult"];
             };

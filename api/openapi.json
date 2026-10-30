@@ -492,6 +492,9 @@
       "ActionRevisionApiRequest" : {
         "type" : "object",
         "properties" : {
+          "analysisId" : {
+            "type" : "string"
+          },
           "answers" : {
             "type" : "array",
             "items" : {
@@ -537,6 +540,9 @@
             "items" : {
               "$ref" : "#/components/schemas/LawBrief"
             }
+          },
+          "analysisId" : {
+            "type" : "string"
           },
           "answer" : {
             "type" : "object",
