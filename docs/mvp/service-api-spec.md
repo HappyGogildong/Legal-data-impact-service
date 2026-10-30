@@ -93,6 +93,10 @@ BASE  /api/v1
 | `GET` | `/bookmarks` | 내 관심 법령 북마크 목록(보여 줄 버전·상태, D72) | 필요 |
 | `PUT` | `/bookmarks/{lawId}` | 북마크 추가(멱등, 한도 초과 409) | 필요 |
 | `DELETE` | `/bookmarks/{lawId}` | 북마크 해제(멱등) | 필요 |
+| `POST` | `/history` | 이력 저장 — 서버가 보관한 분석 결과(`analysisId`)의 스냅샷(D73) | 필요 |
+| `GET` | `/history` | 내 이력 목록(법령 갱신됨 표시) | 필요 |
+| `GET` | `/history/{id}` | 이력 상세 — 저장 당시 결과·다시 분석할 버전 | 필요 |
+| `DELETE` | `/history/{id}` | 이력 삭제(멱등) | 필요 |
 
 \* `/analyses`는 익명도 허용하되 **F3·F4(Layer B)는 인증 세션이 있을 때만** 채워진다(없으면 F1·F2까지).
 
@@ -195,11 +199,12 @@ BASE  /api/v1
 - `DAILY_LIMIT` — 오늘 개인화 분석 한도(`lia.personalization.daily-limit`, 기본 20)를 다 썼다 (D69)
 - `INSUFFICIENT_GROUNDING` — 재생성 후에도 인용 검증을 통과하지 못했다(환각 노출 금지). Layer A·B 공통 (D69)
 - `SITUATION_EXPIRED` — `POST /analyses/action-revisions` 전용(§3.0.1): 세션에 그 법령의 상황 질문이 없거나(세션 만료·새 로그인·다른 법령), 요청 `setId` 가 세션의 질문 묶음과 다르다(다른 탭·후속 질문이 같은 법령 질문을 덮어씀) (D71)
+- `analysisId` — 로그인 사용자의 법령이 정해진 분석에만. 이력 저장(§3.9)·대응 방안 재생성(§3.0.1)이 돌려보낸다. 서버가 최근 20개를 세션에 보관(D73).
 - `situation`(D71) — 질문은 서버가 **HTTP 세션(메모리)에 법령 버전별로 보관**(최근 20개)한다. 클라이언트는 질문 문장을 되돌려 보내지 않고 `setId`(화면이 받은 질문 묶음 식별자)와 `questionId`+답만 `POST /analyses/action-revisions` 로 보낸다. 근거가 주입 집합 밖이거나 형식이 깨진 질문은 서버가 버린다(최대 3개, 질문 문장·단계 설명은 최대 200자 한 줄(줄바꿈 없음), 선택지 최대 40자).
 - 캐시 키는 `userId`가 아니라 **프로필 속성 해시 + 법령 참조(law.ref) + 차원**(D41). (Layer B 개인화 답은 D69 로 저장하지 않음 — 답변 캐시는 후속)
 - **멀티턴(대화 상태 지속)은 MVP 밖** — 단발 질의만. 멀티턴은 D37 재검토 트리거라 별도 결정 후 도입.
 
-> **멱등성 주의.** `POST`지만 같은 `(query, lawRef, profileHash)`는 캐시로 같은 결과를 준다(Layer B 개인화 답은 D69 로 저장하지 않으므로 답변 캐시 도입 뒤의 동작 — 현재는 매번 생성). 리소스 신규 생성(분석 이력 저장)은 post-MVP — 그때 `GET /analyses/{id}`(이력·공유)로 확장.
+> **멱등성 주의.** `POST`지만 같은 `(query, lawRef, profileHash)`는 캐시로 같은 결과를 준다(Layer B 개인화 답은 D69 로 저장하지 않으므로 답변 캐시 도입 뒤의 동작 — 현재는 매번 생성). 분석 이력 저장은 `POST /analyses` 가 아니라 별도 `/history`(§3.9, D73)가 맡는다 — 분석 응답의 `analysisId` 로 서버가 세션에 보관한 결과를 저장한다.
 
 ### 3.0.1 `POST /analyses/action-revisions` — 대응 방안 상황 확인 (D71)
 
@@ -224,6 +229,8 @@ BASE  /api/v1
 { "unmet": { "reason": "SITUATION_EXPIRED", "message": "…" } }
 ```
 
+- `analysisId`(선택) — 분석 응답의 값. 재생성이 성공하고 같은 법령이면 서버가 그 결과에 재생성본·답을 붙여 이력 저장에 쓴다(D73).
+
 **처리 순서**(앞에서 걸리면 뒤는 실행하지 않는다 — [[ActionRevisionUseCase]]):
 1. 개인화 게이트 — 로그인 사용자의 프로필 없음·동의 구버전이면 `unmet` `PROFILE_REQUIRED`·`CONSENT_OUTDATED`(익명은 이미 401 로 끊겼다).
 2. 세션의 그 법령 질문 조회 — 없거나 그 목록의 `setId` 가 요청 `setId` 와 다르면(답 검증 전에 끊는다 — 한도 차감·추론 없음) `unmet` `SITUATION_EXPIRED`("상황 질문이 만료됐어요" — 웹은 "다시 받기"로 같은 법령 Layer B 를 다시 요청, 한도 1회).
@@ -233,7 +240,7 @@ BASE  /api/v1
 6. 엔진(ACTION, Opus 1회·재생성 ≤2) — 재생성 후에도 근거 부족이면 `INSUFFICIENT_GROUNDING`(웹은 기존 대응 방안을 유지).
 
 - `unmet.reason` 은 `/analyses` 의 코드에 **`SITUATION_EXPIRED`** 가 더해진 집합이다. 재생성 응답의 `unmet` 은 차원 맵이 아니라 단일 `{ reason, message }`.
-- 프라이버시(D41·D69·D71): 세션엔 질문만 있고 답은 없다 — 답은 요청 처리 중에만 쓰고 버린다. DB 저장 없음. 프롬프트엔 `질문: 답` 줄과 프로필 라벨만 가고 userId 는 없다. 답 내용은 로그·트레이스에 남기지 않는다.
+- 프라이버시(D41·D69·D71): 세션엔 질문만 있고 답은 없다 — 답은 요청 처리 중에만 쓰고 버린다. DB 저장 없음. 단 요청에 `analysisId` 가 있고 같은 법령이며 재생성이 성공하면, 서버가 이력 저장용으로 재생성본과 실제로 쓴 답을 그 분석 항목에 붙여 **HTTP 세션(메모리)** 에 둔다(D73) — 로그아웃·세션 만료 때 사라지고, DB 에는 사용자가 "이력에 저장"을 누를 때만 들어간다. 프롬프트엔 `질문: 답` 줄과 프로필 라벨만 가고 userId 는 없다. 답 내용은 로그·트레이스에 남기지 않는다.
 - 자유 입력 사실 추출("내 상황 설명하기")은 다음 단계 — 이번엔 구조화 질문만.
 
 ### 3.1 `GET /laws` — 곧 시행되는 법령 목록 (홈·S06)
@@ -436,6 +443,28 @@ GET /api/v1/laws/trending?window=week&limit=10
 - `status`·`effectiveDate` 는 **보여 줄 버전**의 것: 시행예정본이 있으면 가장 이른 시행예정본(`시행예정`), 없으면 시행일이 가장 늦은 행(`시행중`·`과거` → `시행됨`, `철회` → `철회`). S05 경로는 `/laws/{lawId}/{effectiveDate}`.
 - 한도는 `lia.bookmarks.max-per-user`(기본 100, 환경 변수 `LIA_BOOKMARKS_MAX_PER_USER`). 초과 시 409 `bookmark_limit`, 메시지는 "북마크는 최대 {N}개까지 저장할 수 있어요.". 알림은 북마크와 별개(구독 §3.6).
 
+### 3.9 질의·분석 이력 — `/history` (S13, D73)
+
+로그인 필요(익명 401). 쓰기는 CSRF 필수(403). **명시적 저장만** — 서버가 세션에 보관한 분석 결과로 스냅샷을 만든다.
+
+| 요청 | 응답 |
+|---|---|
+| `POST /history` `{ "analysisId": "…" }` | 201 `{ "id": 12 }`(같은 analysisId 를 이미 저장했으면 200 같은 본문) · `analysisId` 없음·빈 값 400 · 세션에 결과 없음 409 `analysis_expired`("저장할 결과가 만료됐어요. 다시 분석한 뒤 저장해 주세요.") · 한도 초과 409 `history_limit` |
+| `GET /history` | 200 `{ "items": [HistoryItem] }` — 저장 최근 순 |
+| `GET /history/{id}` | 200 `HistoryDetail` · 없거나 남의 기록 404 `not_found` |
+| `DELETE /history/{id}` | 204(멱등, 남의 기록은 지우지 않음) |
+
+```json
+// HistoryItem
+{ "id": 12, "query": "주택법 바뀌면 전세 계약 어떻게 돼?", "lawId": "001809", "lawTitle": "주택법",
+  "effectiveDate": "2026-11-08", "savedAt": "2026-10-30T00:12:00Z", "lawUpdated": false }
+// HistoryDetail = HistoryItem + body(분석 응답 §3.0) + revision(재생성 응답 §3.0.1, 있으면) + answers + latestEffectiveDate(있으면)
+```
+
+- `lawUpdated` — 저장한 버전의 지금 revision·상태가 저장 당시와 다르거나 그 버전이 없어짐.
+- `latestEffectiveDate` — 그 법령의 가장 이른 시행예정본(다시 분석할 버전). 없으면 생략.
+- 한도 `lia.history.max-per-user`(기본 100, `LIA_HISTORY_MAX_PER_USER`), 메시지 "이력은 최대 {N}개까지 저장할 수 있어요."
+
 ---
 
 ## 4. 공통 규약
@@ -447,9 +476,9 @@ GET /api/v1/laws/trending?window=week&limit=10
 | 코드 | status | 의미 |
 |---|---|---|
 | 400 | `bad_request` | 스키마 위반·필수 파라미터 누락 · 상황 재생성의 위조·형식 위반 답(D71) |
-| 401 | `unauthenticated` | 인증 전용 엔드포인트(`/profile`·`/consents`·`/account`·`/bookmarks`·`/analyses/action-revisions`)에 세션 없이 접근 |
-| 404 | `not_found` | `lawId`/`efYd` 조합이 저장소에 없음 · 프로필 미생성 · 북마크할 법령이 저장소에 없음(`PUT /bookmarks/{lawId}`) |
-| 409 | `consent_required` · `bookmark_limit` | 현재 처리방침 버전의 프로필 동의 없이 `PUT /profile` (D61) · 사용자당 북마크 한도 초과 `PUT /bookmarks/{lawId}` (D72) |
+| 401 | `unauthenticated` | 인증 전용 엔드포인트(`/profile`·`/consents`·`/account`·`/bookmarks`·`/history`·`/analyses/action-revisions`)에 세션 없이 접근 |
+| 404 | `not_found` | `lawId`/`efYd` 조합이 저장소에 없음 · 프로필 미생성 · 북마크할 법령이 저장소에 없음(`PUT /bookmarks/{lawId}`) · 이력이 없거나 남의 기록(`GET /history/{id}`) |
+| 409 | `consent_required` · `bookmark_limit` · `analysis_expired` · `history_limit` | 현재 처리방침 버전의 프로필 동의 없이 `PUT /profile` (D61) · 사용자당 북마크 한도 초과 `PUT /bookmarks/{lawId}` (D72) · 저장할 분석 결과가 세션에 없음 `POST /history` (D73) · 이력 한도 초과 `POST /history` (D73) |
 | 422 | `insufficient_grounding` | 요청한 **모든** 차원이 인용검증 실패(일부만 실패면 200 + `unmet`) |
 | 429 | `rate_limited` | 모델·출처 API 한도 |
 | 503 | `upstream_error` | 모델 API 장애 |
@@ -473,6 +502,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 - 응답에 `userId` 를 싣지 않는다. 로그·캐시 키에도 원본 `userId` 대신 속성 해시.
 - 프로필 관련 엔드포인트는 HTTPS 전제.
 - 관심 법령 북마크는 법령 ID·추가 시각만 저장하고 계정 삭제 시 함께 지운다(D72). 처리방침 저장 항목(#35)에 추가한다.
+- 이력은 사용자가 저장을 누를 때만 질문·결과·상황 답 스냅샷을 저장하고, 언제든 지울 수 있으며 계정 삭제 시 함께 지운다(D73). 처리방침 저장 항목(#35)에 추가한다.
 
 ---
 
