@@ -1,12 +1,21 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LawDetail } from "@/lib/api/types";
-import { empty, mockApi } from "@/test/api-mock";
+import { empty, json, mockApi } from "@/test/api-mock";
 import { LawDetailView } from "./law-detail-view";
 
 const router = { push: vi.fn(), replace: vi.fn() };
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+  usePathname: () => "/laws/001809/2026-11-03",
+}));
+
+// 북마크 ☆ 가 세션을 묻는다 — 익명이면 북마크 목록은 부르지 않는다
+const ANONYMOUS_ACCOUNT = {
+  "GET /api/v1/account": () => json({ error: "unauthenticated" }, 401),
+};
 
 const DETAIL: LawDetail = {
   lawId: "001809",
@@ -52,20 +61,28 @@ function renderDetail(
   detail: LawDetail = DETAIL,
   upcoming = [{ effectiveDate: "2026-11-03" }],
 ) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   render(
-    <LawDetailView
-      detail={detail}
-      upcoming={upcoming}
-      today="2026-10-25"
-      lawsUpdatedAt="2026-10-22T19:12:31Z"
-    />,
+    <QueryClientProvider client={client}>
+      <LawDetailView
+        detail={detail}
+        upcoming={upcoming}
+        today="2026-10-25"
+        lawsUpdatedAt="2026-10-22T19:12:31Z"
+      />
+    </QueryClientProvider>,
   );
 }
 
 beforeEach(() => {
   router.push.mockReset();
   sessionStorage.clear();
-  mockApi({ "POST /api/v1/laws/001809/2026-11-03/views": () => empty(204) });
+  mockApi({
+    ...ANONYMOUS_ACCOUNT,
+    "POST /api/v1/laws/001809/2026-11-03/views": () => empty(204),
+  });
 });
 afterEach(() => {
   window.location.hash = "";
@@ -208,7 +225,7 @@ describe("LawDetailView", () => {
   });
 
   it("철회된 버전 — 상태 배너, 요약 버튼·질문창·현행 대비 없음", async () => {
-    const requests = mockApi({});
+    const requests = mockApi({ ...ANONYMOUS_ACCOUNT });
     renderDetail({ ...DETAIL, status: "철회" }, []);
 
     expect(screen.getByRole("status")).toHaveTextContent(
@@ -226,7 +243,16 @@ describe("LawDetailView", () => {
     expect(screen.queryByText("현행")).not.toBeInTheDocument();
     expect(screen.getByText("① 통합심의한다.")).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(requests).toHaveLength(0);
+    expect(
+      requests.filter((request) => request.url.includes("/views")),
+    ).toHaveLength(0);
+  });
+
+  it("철회된 버전에도 북마크 버튼이 있다", async () => {
+    renderDetail({ ...DETAIL, status: "철회" }, []);
+    expect(
+      await screen.findByRole("button", { name: "북마크" }),
+    ).toBeInTheDocument();
   });
 
   it("원문 주소가 http(s)가 아니면 링크를 두지 않는다", () => {

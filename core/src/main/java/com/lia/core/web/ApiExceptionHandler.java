@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.lia.core.application.account.AccountNotFoundException;
+import com.lia.core.application.bookmark.BookmarkLimitException;
+import com.lia.core.application.bookmark.UnknownLawException;
 import com.lia.core.application.profile.ConsentRequiredException;
 
 /**
@@ -50,5 +52,19 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> lawNotFound(LawNotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("error", "not_found", "message", e.getMessage()));
+    }
+
+    /** 북마크할 법령이 저장소에 없음 — 404(D72). */
+    @ExceptionHandler(UnknownLawException.class)
+    public ResponseEntity<Map<String, Object>> unknownLaw(UnknownLawException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "not_found", "message", e.getMessage()));
+    }
+
+    /** 사용자당 북마크 한도 초과 — 409(D72 ④). 메시지(한도 숫자 포함)는 화면에 그대로 나간다. */
+    @ExceptionHandler(BookmarkLimitException.class)
+    public ResponseEntity<Map<String, Object>> bookmarkLimit(BookmarkLimitException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "bookmark_limit", "message", e.getMessage()));
     }
 }

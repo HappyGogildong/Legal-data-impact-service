@@ -305,6 +305,12 @@ export function MyScreen() {
         aria-label="바로가기"
         className="rounded-lg border border-border bg-card px-3.5 text-sm"
       >
+        <Link
+          href="/me/bookmarks"
+          className="flex justify-between border-b border-border py-3"
+        >
+          북마크 <span aria-hidden>›</span>
+        </Link>
         <Link href="/info" className="flex justify-between py-3">
           안내 · 처리방침 <span aria-hidden>›</span>
         </Link>

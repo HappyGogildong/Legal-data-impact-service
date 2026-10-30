@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ChangedArticles } from "@/components/analysis/changed-articles";
+import { BookmarkToggle } from "@/components/bookmarks/bookmark-toggle";
 import {
   Collapsible,
   CollapsibleContent,
@@ -65,6 +66,7 @@ export function LawDetailView({
           {pending && detail.effectiveDate && (
             <DDayBadge effectiveDate={detail.effectiveDate} today={today} />
           )}
+          {lawId && <BookmarkToggle lawId={lawId} />}
         </div>
         {meta && <p className="mt-0.5 text-xs text-muted-foreground">{meta}</p>}
         {detail.effectiveDate && (

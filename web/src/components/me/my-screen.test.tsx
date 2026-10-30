@@ -71,6 +71,10 @@ describe("MyScreen", () => {
     expect(await screen.findByText("7개 중 4개 입력")).toBeInTheDocument();
     expect(screen.getByText("2026-09 버전 · 2026-10-23")).toBeInTheDocument();
     expect(screen.getByText("최신")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /북마크/ })).toHaveAttribute(
+      "href",
+      "/me/bookmarks",
+    );
   });
 
   it("익명이면 돌아올 경로를 두고 로그인으로", async () => {
