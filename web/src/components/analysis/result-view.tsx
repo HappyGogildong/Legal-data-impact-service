@@ -1,24 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useIsDesktop } from "@/hooks/use-browser";
 import type {
   ActionRevision,
   AnalysisResponse,
   LawBrief,
   Unmet,
 } from "@/lib/api/types";
-import { presentDimensions, sourceIndex } from "@/lib/analysis-view";
 import type { AskRequest } from "@/lib/ask-store";
 import { readSituation, situationKey } from "@/lib/situation-store";
 import { personalizedQuery } from "@/components/laws/law-actions";
 import { ActionSituation } from "./action-situation";
-import { DimensionCard } from "./dimension-card";
 import { FollowUpBar } from "./follow-up-bar";
 import { LawHeaderView } from "./law-header-view";
-import { LawInfoPanel } from "./law-info-panel";
-import { SourcePanel } from "./source-panel";
-import { SourceSheet } from "./source-sheet";
+import { ResultBody } from "./result-body";
 
 type ResultViewProps = {
   response: AnalysisResponse;
@@ -28,8 +23,7 @@ type ResultViewProps = {
 };
 
 /**
- * S02 분석 결과 — 모바일 한 열(접이식 카드·아래 시트), 데스크톱 2단(본문 + 오른쪽 법령 정보/근거 패널).
- * 인용을 고르면 패널·시트가 근거로 바뀌고 그 인용이 뒷받침하는 문장을 옅게 강조한다(visual-design §3).
+ * S02 분석 결과 — 실시간 요소(상황 질문·보기 버튼·후속 질문)를 ResultBody 위에 얹는다.
  */
 export function ResultView({
   response,
@@ -37,8 +31,6 @@ export function ResultView({
   onAsk,
   renderUnmetAction,
 }: ResultViewProps) {
-  const isDesktop = useIsDesktop();
-  const [selected, setSelected] = useState<string | null>(null);
   const law = response.law;
   const lawKey =
     law?.lawId && law.effectiveDate
@@ -53,11 +45,6 @@ export function ResultView({
   if (!law) return null; // 발견 응답은 AskScreen 이 S04 로 보낸다 — 여기 오는 응답엔 law 가 있다
 
   const { lawId, effectiveDate, title } = law;
-  const sources = sourceIndex(response);
-  for (const source of revision?.sources ?? []) {
-    if (source.sourceId) sources.set(source.sourceId, source);
-  }
-  const selectedSource = selected ? (sources.get(selected) ?? null) : null;
   const questions = response.situation?.questions ?? [];
   const pickAlternative = (alternative: LawBrief) => {
     if (alternative.lawId && alternative.effectiveDate) {
@@ -70,44 +57,21 @@ export function ResultView({
       });
     }
   };
-  const followUp = <FollowUpBar law={law} onAsk={onAsk} />;
 
   return (
-    <div className="mx-auto max-w-[1120px] px-4 py-4 lg:py-6">
-      <LawHeaderView
-        law={law}
-        alternatives={response.alternatives ?? []}
-        onPickAlternative={pickAlternative}
-      />
-      <div className="mt-2.5 lg:grid lg:grid-cols-[1.7fr_1fr] lg:items-start lg:gap-4">
-        <div className="flex flex-col gap-2.5">
-          {presentDimensions(response).map((dimension) => (
-            <DimensionCard
-              key={dimension}
-              dimension={dimension}
-              result={
-                dimension === "action"
-                  ? (revision?.action ?? response.answer?.action)
-                  : response.answer?.[dimension]
-              }
-              unmet={response.unmet?.[dimension]}
-              sources={sources}
-              selected={selected}
-              onCite={setSelected}
-              defaultOpen={
-                dimension === "summary" || (isDesktop && dimension === "diff")
-              }
-              renderUnmetAction={renderUnmetAction}
-              stepNotes={
-                dimension === "action"
-                  ? // 재생성본이면 그 메모만 — 기본 응답의 메모는 기본 단계 목록의 번호다
-                    revision
-                    ? (revision.stepNotes ?? [])
-                    : response.situation?.stepNotes
-                  : undefined
-              }
-            />
-          ))}
+    <ResultBody
+      response={response}
+      revision={revision}
+      header={
+        <LawHeaderView
+          law={law}
+          alternatives={response.alternatives ?? []}
+          onPickAlternative={pickAlternative}
+        />
+      }
+      renderUnmetAction={renderUnmetAction}
+      afterCards={({ sources, selected, onCite }) => (
+        <>
           {response.answer?.action &&
             questions.length > 0 &&
             setId &&
@@ -119,7 +83,7 @@ export function ResultView({
                 setId={setId}
                 sources={sources}
                 selected={selected}
-                onCite={setSelected}
+                onCite={onCite}
                 onRevised={setRevision}
                 onAsk={onAsk}
               />
@@ -138,34 +102,10 @@ export function ResultView({
               내 영향·대응 방안 보기
             </button>
           )}
-          {response.disclaimer && (
-            <p className="text-[11px] text-muted-foreground">
-              {response.disclaimer}
-            </p>
-          )}
-          {!isDesktop && followUp}
-        </div>
-        {isDesktop && (
-          <aside className="sticky top-4 flex max-h-[calc(100dvh-2rem)] flex-col gap-2.5 overflow-y-auto">
-            {selectedSource ? (
-              <SourcePanel
-                source={selectedSource}
-                onClose={() => setSelected(null)}
-              />
-            ) : (
-              <LawInfoPanel law={law} />
-            )}
-            {followUp}
-          </aside>
-        )}
-      </div>
-      {!isDesktop && (
-        <SourceSheet
-          source={selectedSource}
-          onClose={() => setSelected(null)}
-        />
+        </>
       )}
-    </div>
+      footer={<FollowUpBar law={law} onAsk={onAsk} />}
+    />
   );
 }
 
