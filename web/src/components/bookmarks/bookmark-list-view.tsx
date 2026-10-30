@@ -36,6 +36,8 @@ export function BookmarkListView() {
   const [message, setMessage] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
 
+  // 해제를 누른 행의 "되돌리기" 에 포커스를 옮기려고 — 해제한 버튼이 사라지면 포커스가 <body> 로 떨어진다
+  const focusRestoreFor = useRef<string | null>(null);
   const removedRef = useRef<ReadonlySet<string>>(removed);
   useEffect(() => {
     removedRef.current = removed;
@@ -66,7 +68,10 @@ export function BookmarkListView() {
   const remove = useMutation({
     mutationFn: removeBookmark,
     onMutate: () => setMessage(null),
-    onSuccess: (_, lawId) => setRemoved((prev) => new Set(prev).add(lawId)),
+    onSuccess: (_, lawId) => {
+      focusRestoreFor.current = lawId;
+      setRemoved((prev) => new Set(prev).add(lawId));
+    },
     onError: fail,
   });
   const restore = useMutation({
@@ -115,11 +120,21 @@ export function BookmarkListView() {
                 key={item.lawId}
                 className="flex items-center justify-between gap-2 py-3"
               >
-                <span className="text-muted-foreground">
+                <span role="status" className="text-muted-foreground">
                   북마크를 해제했어요
+                </span>
+                <span id={`bookmark-removed-${item.lawId}`} className="sr-only">
+                  {item.title}
                 </span>
                 <button
                   type="button"
+                  ref={(button) => {
+                    if (button && focusRestoreFor.current === item.lawId) {
+                      focusRestoreFor.current = null;
+                      button.focus();
+                    }
+                  }}
+                  aria-describedby={`bookmark-removed-${item.lawId}`}
                   onClick={() => restore.mutate(item.lawId)}
                   disabled={restore.isPending}
                   className="text-[12.5px] font-bold text-navy"

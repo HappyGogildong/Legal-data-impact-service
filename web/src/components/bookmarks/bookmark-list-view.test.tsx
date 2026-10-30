@@ -94,6 +94,22 @@ describe("BookmarkListView", () => {
     expect(requests.some((request) => request.method === "PUT")).toBe(true);
   });
 
+  it("해제 안내는 role=status 로 낭독되고, 되돌리기 버튼이 포커스를 받아 법령명을 설명으로 갖는다", async () => {
+    renderList({
+      "DELETE /api/v1/bookmarks/000001": () => empty(204),
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "주택법 북마크 해제" }),
+    );
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "북마크를 해제했어요",
+    );
+    const undo = screen.getByRole("button", { name: "되돌리기" });
+    expect(undo).toHaveFocus();
+    expect(undo).toHaveAccessibleDescription("주택법");
+  });
+
   it("해제 실패면 행을 그대로 두고 안내", async () => {
     renderList({
       "DELETE /api/v1/bookmarks/000001": () => json({ error: "x" }, 500),
