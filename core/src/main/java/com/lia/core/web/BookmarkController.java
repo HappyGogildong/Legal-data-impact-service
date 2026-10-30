@@ -1,11 +1,13 @@
 package com.lia.core.web;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lia.core.application.bookmark.BookmarkUseCase;
@@ -34,6 +36,7 @@ public class BookmarkController {
 
     /** 멱등 추가 — 이미 있어도 204. */
     @PutMapping("/{lawId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> add(@PathVariable String lawId, HttpServletRequest request) {
         bookmarks.add(CurrentUser.require(request), lawId);
         return ResponseEntity.noContent().build();
@@ -41,6 +44,7 @@ public class BookmarkController {
 
     /** 멱등 해제 — 없어도 204. */
     @DeleteMapping("/{lawId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> remove(@PathVariable String lawId, HttpServletRequest request) {
         bookmarks.remove(CurrentUser.require(request), lawId);
         return ResponseEntity.noContent().build();

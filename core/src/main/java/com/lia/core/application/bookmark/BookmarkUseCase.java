@@ -27,11 +27,14 @@ public class BookmarkUseCase {
      * @throws AccountNotFoundException 세션이 가리키는 계정이 없음 — web 이 401 로 매핑
      */
     public void add(UUID userId, String lawId) {
-        switch (store.add(userId, lawId)) {
+        var result = store.add(userId, lawId);
+        // switch 문은 enum 완전성 검사를 받지 않는다 — default 로 새 결과가 조용히 성공 처리되는 걸 막는다.
+        switch (result) {
             case ADDED, ALREADY -> { }
             case LAW_NOT_FOUND -> throw new UnknownLawException(lawId);
             case LIMIT -> throw new BookmarkLimitException(store.maxPerUser());
             case ACCOUNT_NOT_FOUND -> throw new AccountNotFoundException();
+            default -> throw new IllegalStateException("모르는 결과: " + result);
         }
     }
 
