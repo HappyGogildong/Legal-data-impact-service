@@ -45,4 +45,31 @@ describe("InfoPage", () => {
     expect(screen.getByText(/Anthropic/)).toBeInTheDocument();
     expect(screen.getByText(/OpenAI/)).toBeInTheDocument();
   });
+
+  it("처리방침 요약 — 수집하는 항목에 북마크·이력", () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          lawsUpdatedAt: "2026-10-22T19:12:31Z",
+          pendingLawCount: 912,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <InfoPage />
+      </QueryClientProvider>,
+    );
+
+    const sentence =
+      "직접 저장한 관심 법령 북마크와 이력(질문·결과·내 영향·대응 방안·상황 답) — 이력·북마크 화면에서 언제든 지울 수 있고 계정을 삭제하면 함께 지워져요.";
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === "P" &&
+          (element.textContent ?? "").replace(/\s+/g, " ").includes(sentence),
+      ),
+    ).toBeInTheDocument();
+  });
 });

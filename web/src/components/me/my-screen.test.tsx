@@ -75,6 +75,10 @@ describe("MyScreen", () => {
       "href",
       "/me/bookmarks",
     );
+    expect(screen.getByRole("link", { name: /^이력/ })).toHaveAttribute(
+      "href",
+      "/me/history",
+    );
   });
 
   it("익명이면 돌아올 경로를 두고 로그인으로", async () => {
