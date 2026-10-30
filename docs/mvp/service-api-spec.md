@@ -434,7 +434,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 ```
 
 - `status`·`effectiveDate` 는 **보여 줄 버전**의 것: 시행예정본이 있으면 가장 이른 시행예정본(`시행예정`), 없으면 시행일이 가장 늦은 행(`시행중`·`과거` → `시행됨`, `철회` → `철회`). S05 경로는 `/laws/{lawId}/{effectiveDate}`.
-- 한도는 `lia.bookmarks.max-per-user`(기본 100). 알림은 북마크와 별개(구독 §3.6).
+- 한도는 `lia.bookmarks.max-per-user`(기본 100, 환경 변수 `LIA_BOOKMARKS_MAX_PER_USER`). 초과 시 409 `bookmark_limit`, 메시지는 "북마크는 최대 {N}개까지 저장할 수 있어요.". 알림은 북마크와 별개(구독 §3.6).
 
 ---
 

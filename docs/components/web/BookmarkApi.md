@@ -13,12 +13,12 @@ related: ["components/web/ProfileApi.md", "components/web/LawCatalogApi.md", "co
 
 ## Responsibility
 - **담당**: `/api/v1/bookmarks` 요청 파싱 → 세션 `userId`로 `BookmarkUseCase` 위임 → 결과를 응답·상태코드로 변환, 목록의 상태 라벨 접기(`BookmarkListResponse`).
-- **담당 안 함**: 한도·존재 판단 순서(`BookmarkUseCase`) · 영속·보여 줄 버전 SQL(`LawBookmarkStore`) · 인증/세션([[Auth]]) · 알림(구독, 북마크와 별개).
+- **담당 안 함**: 추가 순서·잠금·트랜잭션·한도 판단·보여 줄 버전 SQL(`LawBookmarkStore`) · 결과 enum → 예외 변환(`BookmarkUseCase`) · 인증/세션([[Auth]]) · 알림(구독, 북마크와 별개).
 
 ## Collaborators
 - [[Auth]] — `CurrentUser`로 세션 `userId`. 없으면 401.
-- `BookmarkUseCase` — add / remove / list.
-- `LawBookmarkStore` — `law_bookmarks` 읽기·쓰기, 계정 행 잠금, 법령 존재 확인.
+- `BookmarkUseCase` — add / remove / list. 저장소의 추가 결과(enum)를 예외로 바꾼다.
+- `LawBookmarkStore` — `law_bookmarks` 읽기·쓰기, 계정 행 잠금, 법령 존재 확인, 한도 판단, 한 트랜잭션.
 
 ## HTTP Contract — `com.lia.core.web`
 | 메서드 | 경로 | 동작 | 응답 |
@@ -46,16 +46,16 @@ related: ["components/web/ProfileApi.md", "components/web/LawCatalogApi.md", "co
 ## 구조 (컴포넌트)
 | 클래스 | 역할 |
 |---|---|
-| `BookmarkController` | `@RestController` `/api/v1/bookmarks` — PUT/DELETE/GET. HTTP만. 결과(enum) → 예외·상태코드. |
-| `BookmarkUseCase` | 추가 순서·한도 판단, 결과 enum 반환. 트랜잭션 경계. |
-| `LawBookmarkStore` | `law_bookmarks`(user_id, law_id, created_at) 저장소. 계정 행 `FOR UPDATE`, 법령 존재, 개수, 삽입, 삭제, 목록(보여 줄 버전 조인). |
+| `BookmarkController` | `@RestController` `/api/v1/bookmarks` — PUT/DELETE/GET. HTTP 경계만: 세션 `userId` → `BookmarkUseCase` 위임, PUT·DELETE 는 `@ResponseStatus(NO_CONTENT)`. |
+| `BookmarkUseCase` | 저장소의 추가 결과 enum(`AddResult`) → 예외(`UnknownLawException`·`BookmarkLimitException`·`AccountNotFoundException`). 모르는 결과는 `IllegalStateException`. 규칙은 갖지 않는다. |
+| `LawBookmarkStore` | `law_bookmarks`(user_id, law_id, created_at) 저장소. **추가 순서·계정 행 `FOR UPDATE` 잠금·트랜잭션·한도 판단**, 삭제, 목록(보여 줄 버전 조인). |
 | `BookmarkListResponse` | 저장소 행(법령 상태 원문) → `BookmarkItem` 응답. 상태 라벨 접기. |
 
 계층: `BookmarkController` → `BookmarkUseCase` → `LawBookmarkStore`.
 
 ## 규칙
 
-### 추가 순서 (`BookmarkUseCase.add`, 한 트랜잭션)
+### 추가 순서 (`LawBookmarkStore.add`, 한 트랜잭션)
 1. 계정 행 `FOR UPDATE` — 같은 사용자의 동시 추가를 직렬화해 한도를 넘지 않게 한다. 계정 없음 → `ACCOUNT_NOT_FOUND` → **401**(삭제된 계정의 세션).
 2. 이미 북마크함 → `ALREADY`(멱등, 204).
 3. 법령 행이 하나도 없음 → `LAW_NOT_FOUND` → **404** `not_found`.
@@ -91,9 +91,9 @@ related: ["components/web/ProfileApi.md", "components/web/LawCatalogApi.md", "co
 
 ## 검증
 테스트는 계층별로 귀속한다.
-- `LawBookmarkStoreIntegrationTest` — 저장소 규칙(실제 DB): 삽입·중복 무시·삭제·개수, 보여 줄 버전 선택(가장 이른 시행예정본 vs 최신 시행일 행, 철회), 계정 삭제 cascade, 최근 순 정렬.
-- `BookmarkUseCaseTest` — 결과 → 예외 매핑(가짜 store): `ADDED`·`ALREADY`·`LAW_NOT_FOUND`·`LIMIT`·`ACCOUNT_NOT_FOUND` 순서와 한도 경계.
-- `BookmarkApiTest` — HTTP·인증·CSRF(MockMvc, 실제 `SecurityConfig` + 실제 컨트롤러): 익명 401 · CSRF 없는 쓰기 403 · PUT 204·멱등 204 · 없는 법령 404 · 한도 409 · DELETE 멱등 204 · GET 최근 순·상태 라벨.
+- `LawBookmarkStoreIntegrationTest` — 추가 순서·잠금(실제 DB)·보여 줄 버전 선택.
+- `BookmarkUseCaseTest` — 결과 enum → 예외 변환.
+- `BookmarkApiTest` — HTTP·인증·CSRF·상태 라벨.
 
 ## 의존 / 관련
 - [[Auth]](세션 userId) · [[ProfileApi]](동일 web 패턴·ApiExceptionHandler 재사용) · [[LawCatalogApi]](S05 경로 `/laws/{lawId}/{efYd}`)
