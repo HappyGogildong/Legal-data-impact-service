@@ -5,6 +5,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -16,6 +17,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.application.analysis.ActionRevisionUseCase;
 import com.lia.core.application.bookmark.BookmarkUseCase;
+import com.lia.core.application.history.HistoryUseCase;
 import com.lia.core.application.profile.ProfileUseCase;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.config.SecurityConfig;
@@ -29,8 +31,12 @@ import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawViewStore;
 import com.lia.core.store.TrendingWindow;
 import com.lia.core.testsupport.InMemoryAccountStore;
+import com.lia.core.testsupport.InMemoryAnalysisHistoryStore;
 import com.lia.core.testsupport.InMemoryLawBookmarkStore;
 import com.lia.core.testsupport.InMemoryUserProfileStore;
+
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 웹 슬라이스 공용 컨텍스트 — 실제 SecurityConfig + 실제 컨트롤러 + 인메모리 store.
@@ -46,7 +52,7 @@ import com.lia.core.testsupport.InMemoryUserProfileStore;
 @Import({SecurityConfig.class, ApiExceptionHandler.class,
         ProfileController.class, ConsentController.class, AccountController.class,
         DataStatusController.class, LawController.class, LawViewController.class, ActionRevisionController.class,
-        BookmarkController.class})
+        BookmarkController.class, HistoryController.class})
 class ApiSliceTestConfig {
 
     static final String POLICY = "v-test";
@@ -173,6 +179,23 @@ class ApiSliceTestConfig {
     @Bean
     BookmarkUseCase bookmarkUseCase(InMemoryLawBookmarkStore store) {
         return new BookmarkUseCase(store);
+    }
+
+    /** 이력 — 주택법 2026-11-01 만 저장 가능, 한도 2. */
+    @Bean
+    InMemoryAnalysisHistoryStore analysisHistoryStore(InMemoryAccountStore accounts) {
+        return new InMemoryAnalysisHistoryStore(accounts, 2, Set.of("001809@" + LAW_EFFECTIVE));
+    }
+
+    @Bean
+    HistoryUseCase historyUseCase(InMemoryAnalysisHistoryStore store) {
+        return new HistoryUseCase(store);
+    }
+
+    /** HistoryController 가 스냅샷을 직렬화한다 — 실제 앱은 Boot 가 만든 것을 쓴다. */
+    @Bean
+    ObjectMapper objectMapper() {
+        return JsonMapper.builder().build();
     }
 
     @Bean

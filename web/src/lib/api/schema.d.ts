@@ -14,7 +14,7 @@ export interface paths {
         get: operations["get_2"];
         put?: never;
         post?: never;
-        delete: operations["delete_1"];
+        delete: operations["delete_2"];
         options?: never;
         head?: never;
         patch?: never;
@@ -59,7 +59,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_1"];
+        get: operations["list_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -148,7 +148,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/laws": {
+    "/api/v1/history": {
         parameters: {
             query?: never;
             header?: never;
@@ -156,6 +156,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["list"];
+        put?: never;
+        post: operations["save"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/history/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["detail_1"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/laws": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -295,6 +327,10 @@ export interface components {
             query?: string;
             scope?: string[];
         };
+        AnsweredQuestion: {
+            answer?: string;
+            question?: string;
+        };
         BookmarkItem: {
             /** Format: date-time */
             bookmarkedAt?: string;
@@ -362,6 +398,45 @@ export interface components {
             effectiveDate?: string;
             enforcement?: string;
             status?: string;
+        };
+        HistoryDetailResponse: {
+            answers?: components["schemas"]["AnsweredQuestion"][];
+            body?: components["schemas"]["AnalysisApiResponse"];
+            /** Format: date */
+            effectiveDate?: string;
+            /** Format: int64 */
+            id?: number;
+            /** Format: date */
+            latestEffectiveDate?: string;
+            lawId?: string;
+            lawTitle?: string;
+            lawUpdated?: boolean;
+            query?: string;
+            revision?: components["schemas"]["ActionRevisionApiResponse"];
+            /** Format: date-time */
+            savedAt?: string;
+        };
+        HistoryItem: {
+            /** Format: date */
+            effectiveDate?: string;
+            /** Format: int64 */
+            id?: number;
+            lawId?: string;
+            lawTitle?: string;
+            lawUpdated?: boolean;
+            query?: string;
+            /** Format: date-time */
+            savedAt?: string;
+        };
+        HistoryListResponse: {
+            items?: components["schemas"]["HistoryItem"][];
+        };
+        HistorySaveRequest: {
+            analysisId?: string;
+        };
+        HistorySavedResponse: {
+            /** Format: int64 */
+            id?: number;
         };
         Impact: {
             aspect?: string;
@@ -589,7 +664,7 @@ export interface operations {
             };
         };
     };
-    delete_1: {
+    delete_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -655,7 +730,7 @@ export interface operations {
             };
         };
     };
-    list_1: {
+    list_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -818,6 +893,92 @@ export interface operations {
         };
     };
     list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryListResponse"];
+                };
+            };
+        };
+    };
+    save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HistorySaveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistorySavedResponse"];
+                };
+            };
+        };
+    };
+    detail_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryDetailResponse"];
+                };
+            };
+        };
+    };
+    delete_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_1: {
         parameters: {
             query?: {
                 from?: string;

@@ -11,7 +11,7 @@
   "paths" : {
     "/api/v1/account" : {
       "delete" : {
-        "operationId" : "delete_1",
+        "operationId" : "delete_2",
         "responses" : {
           "200" : {
             "description" : "OK"
@@ -94,7 +94,7 @@
     },
     "/api/v1/bookmarks" : {
       "get" : {
-        "operationId" : "list_1",
+        "operationId" : "list_2",
         "responses" : {
           "200" : {
             "content" : {
@@ -237,9 +237,98 @@
         "tags" : [ "data-status-controller" ]
       }
     },
-    "/api/v1/laws" : {
+    "/api/v1/history" : {
       "get" : {
         "operationId" : "list",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HistoryListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "history-controller" ]
+      },
+      "post" : {
+        "operationId" : "save",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/HistorySaveRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HistorySavedResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "history-controller" ]
+      }
+    },
+    "/api/v1/history/{id}" : {
+      "delete" : {
+        "operationId" : "delete_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "history-controller" ]
+      },
+      "get" : {
+        "operationId" : "detail_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HistoryDetailResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "history-controller" ]
+      }
+    },
+    "/api/v1/laws" : {
+      "get" : {
+        "operationId" : "list_1",
         "parameters" : [ {
           "in" : "query",
           "name" : "from",
@@ -609,6 +698,17 @@
           }
         }
       },
+      "AnsweredQuestion" : {
+        "type" : "object",
+        "properties" : {
+          "answer" : {
+            "type" : "string"
+          },
+          "question" : {
+            "type" : "string"
+          }
+        }
+      },
       "BookmarkItem" : {
         "type" : "object",
         "properties" : {
@@ -789,6 +889,108 @@
           },
           "status" : {
             "type" : "string"
+          }
+        }
+      },
+      "HistoryDetailResponse" : {
+        "type" : "object",
+        "properties" : {
+          "answers" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AnsweredQuestion"
+            }
+          },
+          "body" : {
+            "$ref" : "#/components/schemas/AnalysisApiResponse"
+          },
+          "effectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "latestEffectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "lawId" : {
+            "type" : "string"
+          },
+          "lawTitle" : {
+            "type" : "string"
+          },
+          "lawUpdated" : {
+            "type" : "boolean"
+          },
+          "query" : {
+            "type" : "string"
+          },
+          "revision" : {
+            "$ref" : "#/components/schemas/ActionRevisionApiResponse"
+          },
+          "savedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "HistoryItem" : {
+        "type" : "object",
+        "properties" : {
+          "effectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "lawId" : {
+            "type" : "string"
+          },
+          "lawTitle" : {
+            "type" : "string"
+          },
+          "lawUpdated" : {
+            "type" : "boolean"
+          },
+          "query" : {
+            "type" : "string"
+          },
+          "savedAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        }
+      },
+      "HistoryListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/HistoryItem"
+            }
+          }
+        }
+      },
+      "HistorySaveRequest" : {
+        "type" : "object",
+        "properties" : {
+          "analysisId" : {
+            "type" : "string"
+          }
+        }
+      },
+      "HistorySavedResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
           }
         }
       },
