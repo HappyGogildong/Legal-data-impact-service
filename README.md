@@ -12,12 +12,16 @@
 ![PostgreSQL + pgvector](https://img.shields.io/badge/PostgreSQL-pgvector-336791)
 ![Next.js](https://img.shields.io/badge/Next.js-web-000000)
 
-<!-- TODO: 질문 → 근거 달린 답 흐름 GIF 1장 (web S02·S05 화면) -->
-
-> **Q.** 2026년 8월 4일 시행되는 주택법 개정, 전세 세입자한테 뭐가 바뀌어?
->
-> **A.** 사용검사 전 **현장점검을 요청할 권리**가 새로 생깁니다. 시행 이후 사용검사 신청 건부터 적용됩니다.
-> — *근거: 주택법 제49조 · 부칙 제3조*
+<table>
+  <tr>
+    <td align="center"><img src="docs/assets/readme/lia-ask-to-answer.gif" width="300" alt="질문하면 쉬운 요약과 바뀐 조문을 조문 근거와 함께 보여 주는 화면"></td>
+    <td align="center"><img src="docs/assets/readme/lia-personalized-action.gif" width="300" alt="내 상황을 답하면 영향과 대응 방안이 개인화되는 화면"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>질문 → 근거 달린 답</b><br/>요약·바뀐 조문(현행 ↔ 개정)·시행 규칙.<br/>모든 문장에 조문 근거, 불확실한 부분은 따로 표시</td>
+    <td align="center"><b>내 상황 → 대응 방안</b><br/>추가 질문에 답하면 영향과 할 일이<br/>내 상황에 맞춰 다시 계산된다</td>
+  </tr>
+</table>
 
 ---
 
