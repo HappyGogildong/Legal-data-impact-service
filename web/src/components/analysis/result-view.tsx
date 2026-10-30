@@ -9,6 +9,7 @@ import type {
 } from "@/lib/api/types";
 import type { AskRequest } from "@/lib/ask-store";
 import { readSituation, situationKey } from "@/lib/situation-store";
+import { SaveHistoryButton } from "@/components/history/save-history-button";
 import { personalizedQuery } from "@/components/laws/law-actions";
 import { ActionSituation } from "./action-situation";
 import { FollowUpBar } from "./follow-up-bar";
@@ -86,6 +87,7 @@ export function ResultView({
                 onCite={onCite}
                 onRevised={setRevision}
                 onAsk={onAsk}
+                analysisId={response.analysisId}
               />
             )}
           {!hasPersonalized(response) && lawId && effectiveDate && title && (
@@ -102,6 +104,7 @@ export function ResultView({
               내 영향·대응 방안 보기
             </button>
           )}
+          <SaveHistoryButton analysisId={response.analysisId} />
         </>
       )}
       footer={<FollowUpBar law={law} onAsk={onAsk} />}

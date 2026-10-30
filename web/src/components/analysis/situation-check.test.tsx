@@ -53,7 +53,9 @@ describe("SituationCheck", () => {
       screen.getByRole("heading", { name: "상황을 알려주시면 더 정확해져요" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("답은 이 법령 판단에만 쓰고 저장하지 않아요"),
+      screen.getByText(
+        "답은 이 법령 판단에만 써요. 이력에 저장할 때만 함께 남아요.",
+      ),
     ).toBeInTheDocument();
   });
 

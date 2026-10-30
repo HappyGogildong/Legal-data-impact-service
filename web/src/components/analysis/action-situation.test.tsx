@@ -34,6 +34,7 @@ const ROUTE = "POST /api/v1/analyses/action-revisions";
 
 function renderSituation(
   lawProp: { lawId: string; effectiveDate: string; title?: string } = law,
+  analysisId?: string,
 ) {
   const onRevised = vi.fn();
   const onAsk = vi.fn();
@@ -51,6 +52,7 @@ function renderSituation(
         onCite={vi.fn()}
         onRevised={onRevised}
         onAsk={onAsk}
+        analysisId={analysisId}
       />
     </QueryClientProvider>,
   );
@@ -96,6 +98,21 @@ describe("ActionSituation", () => {
       answers: { q1: "예", q2: "모름" },
       revision: REVISION,
       identity: SET_ID,
+    });
+  });
+
+  it("analysisId 를 받으면 재생성 요청에 함께 보낸다(D73)", async () => {
+    const requests = mockApi({ [ROUTE]: () => json(REVISION) });
+    renderSituation(law, "a-1");
+
+    await answerAndSubmit();
+
+    await screen.findByText(/계약을 시행일 이전에 맺었나요\?: 예/);
+    expect(await requests[0].json()).toEqual({
+      lawRef,
+      setId: SET_ID,
+      answers: [{ questionId: "q1", answer: "예" }],
+      analysisId: "a-1",
     });
   });
 

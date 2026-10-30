@@ -37,6 +37,7 @@ export function ActionSituation({
   onCite,
   onRevised,
   onAsk,
+  analysisId,
 }: {
   law: { lawId: string; effectiveDate: string; title?: string };
   questions: SituationQuestion[];
@@ -47,6 +48,8 @@ export function ActionSituation({
   onCite: (sourceId: string) => void;
   onRevised: (revision: ActionRevision) => void;
   onAsk: (next: AskRequest) => void;
+  /** 이력 저장용 — 재생성 요청에 함께 보낸다(D73) */
+  analysisId?: string;
 }) {
   const key = situationKey(law.lawId, law.effectiveDate);
   // 저장된 상태는 같은 질문 묶음(setId)으로 만든 것만 쓴다 — 다시 받아 질문이 바뀌었으면 옛 답은 버린다
@@ -70,6 +73,7 @@ export function ActionSituation({
             ? [{ questionId: q.id, answer: value }]
             : [];
         }),
+        analysisId,
       ),
     onSuccess: (revision) => {
       if (revision.unmet) return;

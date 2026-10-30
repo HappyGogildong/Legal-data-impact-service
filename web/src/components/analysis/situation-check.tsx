@@ -67,7 +67,7 @@ export function SituationCheck({
         대응 방안 확인하기
       </button>
       <p className="mt-1 text-xs text-muted-foreground">
-        답은 이 법령 판단에만 쓰고 저장하지 않아요
+        답은 이 법령 판단에만 써요. 이력에 저장할 때만 함께 남아요.
       </p>
     </section>
   );
