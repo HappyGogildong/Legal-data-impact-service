@@ -11,6 +11,7 @@ import type { AskRequest } from "@/lib/ask-store";
 import { readSituation, situationKey } from "@/lib/situation-store";
 import { SaveHistoryButton } from "@/components/history/save-history-button";
 import { personalizedQuery } from "@/components/laws/law-actions";
+import { SubscribeButton } from "@/components/subscriptions/subscribe-button";
 import { ActionSituation } from "./action-situation";
 import { FollowUpBar } from "./follow-up-bar";
 import { LawHeaderView } from "./law-header-view";
@@ -109,10 +110,13 @@ export function ResultView({
               내 영향·대응 방안 보기
             </button>
           )}
-          <SaveHistoryButton
-            key={`${response.analysisId ?? "none"}:${revisionCount}`}
-            analysisId={response.analysisId}
-          />
+          <div className="flex flex-wrap items-start gap-2">
+            <SaveHistoryButton
+              key={`${response.analysisId ?? "none"}:${revisionCount}`}
+              analysisId={response.analysisId}
+            />
+            {lawId && <SubscribeButton lawId={lawId} />}
+          </div>
         </>
       )}
       footer={<FollowUpBar law={law} onAsk={onAsk} />}
