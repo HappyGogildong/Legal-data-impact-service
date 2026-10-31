@@ -1,5 +1,8 @@
 package com.lia.core.web;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -53,10 +56,12 @@ public class AnalysisController {
      */
     private static AnalysisApiResponse rememberForHistory(String query, AnalysisOutcome outcome, AnalysisApiResponse body,
                                                           HttpServletRequest request) {
-        if (CurrentUser.userId(request).isEmpty()) return body;
+        Optional<UUID> userId = CurrentUser.userId(request);
+        if (userId.isEmpty()) return body;
         if (!(outcome instanceof AnalysisOutcome.Analyzed a) || a.result().discovery() != null) return body;
         if (!(a.query().target() instanceof Target.Reference ref) || body.law() == null) return body;
-        String analysisId = new HttpSessionRecentAnalyses(request.getSession(false)).remember(query, ref.lawRef(), body);
+        String analysisId = new HttpSessionRecentAnalyses(request.getSession(false))
+                .remember(userId.get(), query, ref.lawRef(), body);
         return body.withAnalysisId(analysisId);
     }
 

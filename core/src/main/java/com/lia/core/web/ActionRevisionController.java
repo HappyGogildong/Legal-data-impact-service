@@ -2,6 +2,7 @@ package com.lia.core.web;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.lia.core.application.analysis.ActionRevisionUseCase;
@@ -53,13 +54,17 @@ public class ActionRevisionController {
             case RevisionOutcome.NotRevised n -> ActionRevisionApiResponse.notRevised(n.unmet());
         };
         if (outcome instanceof RevisionOutcome.Revised && req.analysisId() != null) {
-            attachToRecentAnalysis(req, body, request.getSession());
+            CurrentUser.userId(request).ifPresent(userId -> attachToRecentAnalysis(req, userId, body, request.getSession()));
         }
         return ResponseEntity.ok(body);
     }
 
-    /** 재생성본과 실제로 쓴 답(질문 문장과 짝)을 그 분석 결과에 붙인다(D73) — 이력 저장이 함께 담는다. 답 내용은 로그에 남기지 않는다. */
-    private static void attachToRecentAnalysis(ActionRevisionApiRequest req, ActionRevisionApiResponse body, HttpSession session) {
+    /**
+     * 재생성본과 실제로 쓴 답(질문 문장과 짝)을 그 사용자의 분석 결과에 붙인다(D73) — 이력 저장이 함께 담는다.
+     * 같은 법령이고 요청의 질문 묶음(setId)이 그 분석의 것과 같을 때만 붙는다. 답 내용은 로그에 남기지 않는다.
+     */
+    private static void attachToRecentAnalysis(ActionRevisionApiRequest req, UUID userId, ActionRevisionApiResponse body,
+                                               HttpSession session) {
         LawRef lawRef = req.lawRef().toDomain();
         Map<String, String> questionTexts = new HttpSessionSituationQuestions(session).find(lawRef).orElse(List.of()).stream()
                 .collect(Collectors.toMap(SituationQuestion::id, SituationQuestion::text, (a, b) -> a));
@@ -68,6 +73,6 @@ public class ActionRevisionController {
                 .filter(answer -> questionTexts.containsKey(answer.questionId()))
                 .map(answer -> new HttpSessionRecentAnalyses.AnsweredQuestion(questionTexts.get(answer.questionId()), answer.answer()))
                 .toList();
-        new HttpSessionRecentAnalyses(session).attachRevision(req.analysisId(), lawRef, body, answered);
+        new HttpSessionRecentAnalyses(session).attachRevision(req.analysisId(), userId, lawRef, req.setId(), body, answered);
     }
 }

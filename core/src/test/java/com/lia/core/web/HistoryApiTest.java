@@ -43,6 +43,7 @@ import com.lia.core.testsupport.InMemoryAccountStore;
 class HistoryApiTest {
 
     static final LawRef HOUSING = new LawRef("001809", ApiSliceTestConfig.LAW_EFFECTIVE, null);
+    static final String SET_ID = "set-1";
 
     @Autowired InMemoryAccountStore accounts;
     @Autowired HistoryUseCase history;
@@ -65,8 +66,13 @@ class HistoryApiTest {
         AnalysisApiResponse body = AnalysisApiResponse.analyzed(
                 new AnalysisApiResponse.LawHeader("LAW:" + ref.lawId() + "@" + ref.effectiveDate(), ref.lawId(), "주택법",
                         ref.effectiveDate(), "법률", "국토교통부"),
-                List.of(), Map.of(), Map.of(), List.of(), "참고용", null);
-        return new HttpSessionRecentAnalyses(target).remember("주택법 바뀌면?", ref, body);
+                List.of(), Map.of(), Map.of(), List.of(), "참고용",
+                new AnalysisApiResponse.SituationBody(SET_ID, List.of(), List.of()));
+        return new HttpSessionRecentAnalyses(target).remember(userIdOf(target), "주택법 바뀌면?", ref, body);
+    }
+
+    private static UUID userIdOf(MockHttpSession target) {
+        return (UUID) target.getAttribute(CurrentUser.SESSION_KEY);
     }
 
     private MockHttpServletRequestBuilder signedIn(MockHttpServletRequestBuilder request, MockHttpSession target) {
@@ -127,7 +133,7 @@ class HistoryApiTest {
         ImpactResult revisedAction = new ImpactResult("LAW:001809@2026-11-01", "ACTION", "대응",
                 List.of(), List.of(), List.of(new ImpactResult.Action("신고한다", "시행 전", List.of())),
                 null, List.of(), "참고용", null);
-        new HttpSessionRecentAnalyses(session).attachRevision(analysisId, HOUSING,
+        new HttpSessionRecentAnalyses(session).attachRevision(analysisId, userIdOf(session), HOUSING, SET_ID,
                 ActionRevisionApiResponse.revised(revisedAction, List.of(), List.of()),
                 List.of(new HttpSessionRecentAnalyses.AnsweredQuestion("계약했나요?", "예")));
 
@@ -161,8 +167,8 @@ class HistoryApiTest {
                         List.of(new SituationQuestion("q1", "계약했나요?", "제18조", SituationQuestion.AnswerType.YES_NO, List.of())),
                         List.of(new StepNote(0, "계약 여부에 따라 달라요"))));
         HttpSessionRecentAnalyses recent = new HttpSessionRecentAnalyses(session);
-        String analysisId = recent.remember("주택법 바뀌면?", HOUSING, body);
-        recent.attachRevision(analysisId, HOUSING,
+        String analysisId = recent.remember(userIdOf(session), "주택법 바뀌면?", HOUSING, body);
+        recent.attachRevision(analysisId, userIdOf(session), HOUSING, "set-1",
                 ActionRevisionApiResponse.revised(revisedAction, List.of(new StepNote(0, "신고하세요")), List.of()),
                 List.of(new HttpSessionRecentAnalyses.AnsweredQuestion("계약했나요?", "예")));
 
@@ -201,6 +207,19 @@ class HistoryApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unreadable").doesNotExist())
                 .andExpect(jsonPath("$.body.law.lawId").value("001809"));
+    }
+
+    @Test
+    @DisplayName("다른 계정으로 로그인한 같은 세션이 앞 사용자의 analysisId 로 저장하려 하면 409 analysis_expired")
+    void 다른_사용자의_세션_항목은_저장할_수_없다() throws Exception {
+        String analysisId = remember(session, HOUSING);
+        MockHttpSession sameBrowserOtherAccount = signedInSession();
+        sameBrowserOtherAccount.setAttribute(HttpSessionRecentAnalyses.ATTRIBUTE,
+                session.getAttribute(HttpSessionRecentAnalyses.ATTRIBUTE));
+
+        mvc.perform(save(analysisId, sameBrowserOtherAccount))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("analysis_expired"));
     }
 
     @Test

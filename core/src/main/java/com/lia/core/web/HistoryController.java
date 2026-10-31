@@ -56,7 +56,7 @@ public class HistoryController {
         }
         UUID userId = CurrentUser.require(request);
         HttpSessionRecentAnalyses.Entry entry = new HttpSessionRecentAnalyses(request.getSession(false))
-                .find(body.analysisId()).orElseThrow(AnalysisExpiredException::new);
+                .find(body.analysisId(), userId).orElseThrow(AnalysisExpiredException::new);
         String snapshot = HistorySnapshots.write(HistorySnapshots.snapshot(entry.body(), entry.revision(), entry.answers()));
         String title = entry.body().law() != null && entry.body().law().title() != null
                 ? entry.body().law().title() : "법령 " + entry.lawRef().lawId();

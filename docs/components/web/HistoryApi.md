@@ -60,8 +60,9 @@ related: ["components/web/BookmarkApi.md", "components/web/AnalysisApi.md", "com
 - 서버가 분석 결과를 **HTTP 세션(메모리)** 에 보관한다 — DB 아님. 상황 질문(D71)과 같은 방식.
 - **최근 20개**, 접근 순 LRU. 가득 차면 가장 오래 쓰지 않은 항목부터 버린다.
 - **로그인 사용자의 법령이 정해진 분석만** 담는다: `CurrentUser.userId(request)` 존재 + `AnalysisOutcome.Analyzed` + `Target.Reference` + 응답 `law` 있음 + 법령 발견 응답 아님. 그 밖의 분석 응답엔 `analysisId` 키가 없다.
+- **사용자에 묶는다** — 항목에 만든 사용자의 `userId` 를 둔다. 로그아웃 없이 같은 브라우저에서 다른 계정으로 로그인하면 세션 속성이 남으므로(Spring 기본 `changeSessionId`), 저장·재생성 연결은 `userId` 가 다른 항목을 없는 것처럼 다룬다(저장은 409 `analysis_expired`).
 - 항목 = 질문 원문 + 응답(`AnalysisApiResponse`, 화면에 보낸 그대로) + 재생성본(`ActionRevisionApiResponse`, 없으면 null) + 실제로 쓴 상황 답(`question`·`answer`).
-- **재생성 연결** — `POST /analyses/action-revisions` 요청의 선택 필드 `analysisId` 가 있고, **재생성이 성공하고 같은 법령(`lawId`·`effectiveDate`)** 일 때만 그 항목의 재생성본·답을 덮어 쓴다. 실패(`unmet`)·다른 법령이면 붙이지 않는다.
+- **재생성 연결** — `POST /analyses/action-revisions` 요청의 선택 필드 `analysisId` 가 있고, **재생성이 성공하고 같은 법령(`lawId`·`effectiveDate`)이며 요청의 질문 묶음 `setId` 가 그 분석 응답의 `situation.setId` 와 같을 때** 만 그 항목의 재생성본·답을 덮어 쓴다(그 사용자의 항목일 때). 실패(`unmet`)·다른 법령·다른 질문 묶음이면 붙이지 않는다 — 다른 탭·후속 질문이 같은 법령 질문을 덮어쓴 뒤의 답이 엉뚱한 분석에 붙지 않게. 세션 질문 목록에 없는 `questionId` 의 답은 답 목록에서 빠진다.
 - 재생성을 연결하지 않고 저장하면 상세 응답에 `revision` 키가 없고(없으면 생략) `answers` 는 빈 목록이다.
 
 ## 스냅샷 버전·관대한 읽기·읽기 실패 시 `unreadable`
@@ -119,8 +120,8 @@ related: ["components/web/BookmarkApi.md", "components/web/AnalysisApi.md", "com
 
 ## 검증
 테스트는 계층별로 귀속한다.
-- `HttpSessionRecentAnalysesTest` — 최근 20개 LRU·로그인/법령 분석만 보관·재생성 연결 조건.
-- `AnalysisControllerTest` · `ActionRevisionControllerTest` — 분석 응답의 `analysisId`, 재생성 요청의 `analysisId` 연결.
+- `HttpSessionRecentAnalysesTest` — 최근 20개 LRU·사용자 묶기·재생성 연결 조건(같은 법령·같은 `setId`).
+- `AnalysisControllerTest` · `ActionRevisionControllerTest` — 로그인/법령 분석만 보관(익명·발견·미해소엔 `analysisId` 없음), 재생성 요청의 `analysisId` 연결(모르는 `questionId`·다른 `setId`).
 - `AnalysisHistoryStoreIntegrationTest` — 저장 순서·잠금(실제 DB)·멱등·한도·revision 읽기·`lawUpdated`·`latestEffectiveDate`.
 - `HistorySnapshotsTest` — 버전·관대한 읽기(알 수 없는 필드·모르는 enum·primitive null)·고정 파일 `snapshot-v1.json`.
 - `HistoryUseCaseTest` — 결과 enum → 예외 변환.

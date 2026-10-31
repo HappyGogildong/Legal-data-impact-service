@@ -22,9 +22,13 @@ public class HttpSessionRecentAnalyses {
     /** 재생성에 실제로 쓴 상황 답 — 질문 문장과 짝지어 둔다(질문 id 는 다음 분석에서 다시 쓰인다). */
     public record AnsweredQuestion(String question, String answer) {}
 
-    /** @param revision 대응 방안 재생성본 — 없으면 null */
-    public record Entry(String query, LawRef lawRef, AnalysisApiResponse body, ActionRevisionApiResponse revision,
-                        List<AnsweredQuestion> answers) {}
+    /**
+     * @param userId   이 항목을 만든 로그인 사용자 — 로그아웃 없이 같은 브라우저에서 다른 계정으로 로그인해도(세션 속성이 남는다)
+     *                 다른 사용자의 항목은 없는 것처럼 다룬다
+     * @param revision 대응 방안 재생성본 — 없으면 null
+     */
+    public record Entry(UUID userId, String query, LawRef lawRef, AnalysisApiResponse body,
+                        ActionRevisionApiResponse revision, List<AnsweredQuestion> answers) {}
 
     private final HttpSession session;
 
@@ -33,28 +37,38 @@ public class HttpSessionRecentAnalyses {
     }
 
     /** 새 analysisId 로 보관하고 그 id 를 돌려준다. */
-    public String remember(String query, LawRef lawRef, AnalysisApiResponse body) {
+    public String remember(UUID userId, String query, LawRef lawRef, AnalysisApiResponse body) {
         String analysisId = UUID.randomUUID().toString();
         synchronized (session) {
-            entries().put(analysisId, new Entry(query, lawRef, body, null, List.of()));
+            entries().put(analysisId, new Entry(userId, query, lawRef, body, null, List.of()));
         }
         return analysisId;
     }
 
-    public Optional<Entry> find(String analysisId) {
+    /** 그 사용자의 항목만 — 다른 사용자의 것이면 없는 것처럼. */
+    public Optional<Entry> find(String analysisId, UUID userId) {
         synchronized (session) {
-            return Optional.ofNullable(entries().get(analysisId));
+            return Optional.ofNullable(entries().get(analysisId)).filter(entry -> entry.userId().equals(userId));
         }
     }
 
-    /** 같은 법령 버전(조문 무시)일 때만 재생성본·답을 덮어 쓴다. 없거나 다르면 그대로. */
-    public void attachRevision(String analysisId, LawRef lawRef, ActionRevisionApiResponse revision,
-                               List<AnsweredQuestion> answers) {
+    /**
+     * 재생성본·답을 덮어 쓴다 — 그 사용자의 항목이고, 같은 법령 버전(조문 무시)이며, 요청의 질문 묶음({@code setId})이
+     * 그 분석 응답의 것과 같을 때만. 아니면 그대로(재생성은 이미 성공했으니 오류는 아니다).
+     */
+    public void attachRevision(String analysisId, UUID userId, LawRef lawRef, String setId,
+                               ActionRevisionApiResponse revision, List<AnsweredQuestion> answers) {
         synchronized (session) {
             Entry entry = entries().get(analysisId);
-            if (entry == null || !sameLawVersion(entry.lawRef(), lawRef)) return;
-            entries().put(analysisId, new Entry(entry.query(), entry.lawRef(), entry.body(), revision, List.copyOf(answers)));
+            if (entry == null || !entry.userId().equals(userId) || !sameLawVersion(entry.lawRef(), lawRef)
+                    || !sameQuestionSet(entry.body(), setId)) return;
+            entries().put(analysisId, new Entry(entry.userId(), entry.query(), entry.lawRef(), entry.body(), revision,
+                    List.copyOf(answers)));
         }
+    }
+
+    private static boolean sameQuestionSet(AnalysisApiResponse body, String setId) {
+        return setId != null && body.situation() != null && setId.equals(body.situation().setId());
     }
 
     private static boolean sameLawVersion(LawRef a, LawRef b) {

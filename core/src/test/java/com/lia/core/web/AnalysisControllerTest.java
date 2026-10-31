@@ -219,8 +219,12 @@ class AnalysisControllerTest {
         AnalysisApiResponse body = controller.analyze(new AnalyzeApiRequest(" 주택법 대응 ", null, null), request).getBody();
 
         assertNotNull(body.analysisId());
+        UUID userId = CurrentUser.userId(request).orElseThrow();
         HttpSessionRecentAnalyses.Entry entry =
-                new HttpSessionRecentAnalyses(request.getSession(false)).find(body.analysisId()).orElseThrow();
+                new HttpSessionRecentAnalyses(request.getSession(false)).find(body.analysisId(), userId).orElseThrow();
+        assertEquals(userId, entry.userId());
+        assertTrue(new HttpSessionRecentAnalyses(request.getSession(false)).find(body.analysisId(), UUID.randomUUID()).isEmpty(),
+                "다른 사용자에겐 보이지 않는다");
         assertEquals("주택법 대응", entry.query());
         assertEquals(SITUATION_REF, entry.lawRef());
         assertNull(entry.body().analysisId(), "보관본에는 id 를 넣지 않는다");
@@ -233,6 +237,22 @@ class AnalysisControllerTest {
         when(useCase.analyze(any(), any(), any(), anyBoolean())).thenReturn(analyzedAction(List.of(QUESTION)));
 
         assertNull(controller.analyze(new AnalyzeApiRequest("주택법 대응", null, null), request).getBody().analysisId());
+    }
+
+    @Test
+    void 로그인_사용자의_발견_응답엔_analysisId_가_없다() {
+        AnalysisQuery q = new AnalysisQuery(QueryType.LOOKUP, Set.of(QueryType.LOOKUP),
+                new Target.Discovery(new DiscoveryCriteria(List.of(), List.of(), List.of(), false)),
+                "찾기", ArticleScope.CHANGED_ONLY, false, null);
+        DispatchResult dr = new DispatchResult(QueryType.LOOKUP, Map.of(), Map.of(),
+                new DispatchResult.Discovery(new DiscoveryResult(List.of(), false), null));
+        when(useCase.analyze(any(), any(), any(), anyBoolean())).thenReturn(new AnalysisOutcome.Analyzed(q, dr));
+        MockHttpServletRequest request = signedInRequest();
+
+        AnalysisApiResponse body = controller.analyze(new AnalyzeApiRequest("전세 관련 법", null, null, true), request).getBody();
+
+        assertNull(body.analysisId());
+        assertNull(request.getSession(false).getAttribute(HttpSessionRecentAnalyses.ATTRIBUTE), "보관도 하지 않는다");
     }
 
     @Test

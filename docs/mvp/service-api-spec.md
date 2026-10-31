@@ -229,7 +229,7 @@ BASE  /api/v1
 { "unmet": { "reason": "SITUATION_EXPIRED", "message": "…" } }
 ```
 
-- `analysisId`(선택) — 분석 응답의 값. 재생성이 성공하고 같은 법령이면 서버가 그 결과에 재생성본·답을 붙여 이력 저장에 쓴다(D73).
+- `analysisId`(선택) — 분석 응답의 값. 재생성이 성공하고 같은 법령이며 `setId` 가 그 분석의 질문 묶음과 같으면 서버가 그 사용자의 결과에 재생성본·답을 붙여 이력 저장에 쓴다(D73).
 
 **처리 순서**(앞에서 걸리면 뒤는 실행하지 않는다 — [[ActionRevisionUseCase]]):
 1. 개인화 게이트 — 로그인 사용자의 프로필 없음·동의 구버전이면 `unmet` `PROFILE_REQUIRED`·`CONSENT_OUTDATED`(익명은 이미 401 로 끊겼다).

@@ -163,10 +163,19 @@ class ActionRevisionControllerTest {
     /** 로그인 세션에 상황 질문과 보관된 분석을 미리 둔다. 분석 id 를 돌려준다. */
     private static String rememberAnalysis(MockHttpServletRequest httpRequest) {
         HttpSession session = httpRequest.getSession(true);
-        session.setAttribute(CurrentUser.SESSION_KEY, UUID.randomUUID());
+        UUID userId = UUID.randomUUID();
+        session.setAttribute(CurrentUser.SESSION_KEY, userId);
         new HttpSessionSituationQuestions(session).save(REF, List.of(QUESTION));
-        return new HttpSessionRecentAnalyses(session)
-                .remember("q", REF, AnalysisApiResponse.unresolved("NOT_FOUND_YET", "x", List.of()));
+        AnalysisApiResponse body = AnalysisApiResponse.analyzed(
+                new AnalysisApiResponse.LawHeader("LAW:001809@2026-08-04", "001809", "주택법", EF, "법률", "국토교통부"),
+                List.of(), java.util.Map.of(), java.util.Map.of(), List.of(), "참고용",
+                new AnalysisApiResponse.SituationBody(SET_ID, List.of(QUESTION), List.of()));
+        return new HttpSessionRecentAnalyses(session).remember(userId, "q", REF, body);
+    }
+
+    private static HttpSessionRecentAnalyses.Entry rememberedEntry(MockHttpServletRequest httpRequest, String analysisId) {
+        return new HttpSessionRecentAnalyses(httpRequest.getSession(false))
+                .find(analysisId, CurrentUser.userId(httpRequest).orElseThrow()).orElseThrow();
     }
 
     @Test
@@ -179,10 +188,42 @@ class ActionRevisionControllerTest {
         ResponseEntity<ActionRevisionApiResponse> response =
                 controller.revise(requestWithAnalysisId(analysisId), httpRequest);
 
-        HttpSessionRecentAnalyses.Entry entry =
-                new HttpSessionRecentAnalyses(httpRequest.getSession(false)).find(analysisId).orElseThrow();
+        HttpSessionRecentAnalyses.Entry entry = rememberedEntry(httpRequest, analysisId);
         assertEquals(response.getBody(), entry.revision());
         assertEquals(List.of(new HttpSessionRecentAnalyses.AnsweredQuestion("계약을 이미 했나요?", "예")), entry.answers());
+    }
+
+    @Test
+    @DisplayName("세션에 없는 questionId 의 답은 보관 항목의 답에서 빠진다")
+    void 모르는_questionId_는_답에서_빠진다() {
+        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+        String analysisId = rememberAnalysis(httpRequest);
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(revised());
+        ActionRevisionApiRequest withUnknownQuestion = new ActionRevisionApiRequest(
+                new AnalyzeApiRequest.LawRefDto("001809", EF, null), SET_ID,
+                List.of(new SituationAnswer("q1", "예"), new SituationAnswer("q9", "아니오")), analysisId);
+
+        controller.revise(withUnknownQuestion, httpRequest);
+
+        assertEquals(List.of(new HttpSessionRecentAnalyses.AnsweredQuestion("계약을 이미 했나요?", "예")),
+                rememberedEntry(httpRequest, analysisId).answers());
+    }
+
+    @Test
+    @DisplayName("요청의 setId 가 그 분석의 질문 묶음과 다르면 재생성이 성공해도 붙이지 않는다")
+    void setId_가_다르면_붙이지_않는다() {
+        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+        String analysisId = rememberAnalysis(httpRequest);
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(revised());
+        ActionRevisionApiRequest otherSet = new ActionRevisionApiRequest(
+                new AnalyzeApiRequest.LawRefDto("001809", EF, null), "ffffffffffffffff", ANSWERS, analysisId);
+
+        ResponseEntity<ActionRevisionApiResponse> response = controller.revise(otherSet, httpRequest);
+
+        assertEquals(200, response.getStatusCode().value());
+        HttpSessionRecentAnalyses.Entry entry = rememberedEntry(httpRequest, analysisId);
+        assertNull(entry.revision());
+        assertTrue(entry.answers().isEmpty());
     }
 
     @Test
@@ -195,8 +236,7 @@ class ActionRevisionControllerTest {
 
         controller.revise(requestWithAnalysisId(analysisId), httpRequest);
 
-        HttpSessionRecentAnalyses.Entry entry =
-                new HttpSessionRecentAnalyses(httpRequest.getSession(false)).find(analysisId).orElseThrow();
+        HttpSessionRecentAnalyses.Entry entry = rememberedEntry(httpRequest, analysisId);
         assertNull(entry.revision());
         assertTrue(entry.answers().isEmpty());
     }
