@@ -42,6 +42,12 @@ export type HistoryList = components["schemas"]["HistoryListResponse"];
 export type HistoryItem = NonNullable<HistoryList["items"]>[number];
 export type HistoryDetail = components["schemas"]["HistoryDetailResponse"];
 export type AnsweredQuestion = NonNullable<HistoryDetail["answers"]>[number];
+export type SubscriptionList =
+  components["schemas"]["SubscriptionListResponse"];
+export type SubscriptionItem = NonNullable<SubscriptionList["items"]>[number];
+export type NotificationList =
+  components["schemas"]["NotificationListResponse"];
+export type NotificationItem = NonNullable<NotificationList["items"]>[number];
 export type LawSummary = NonNullable<LawDetail["summary"]>;
 
 export type Discovery = NonNullable<AnalysisResponse["discovery"]>;

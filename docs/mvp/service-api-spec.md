@@ -78,10 +78,11 @@ BASE  /api/v1
 | `GET` | `/laws/trending` | S5 자주 찾는 법령 순위(일·주·월) | — |
 | `POST` | `/laws/{lawId}/{efYd}/views` | S05 상세 조회 신호(횟수 집계, CSRF 예외) | — |
 | `GET` | `/data-status` | 법령 정보 마지막 갱신 시각·수록 시행예정 법령 수(화면 S15·S05) | — |
-| `POST` | `/subscriptions` | S6 알림 구독 생성 | 필요 |
-| `GET` | `/subscriptions` | 내 구독 목록 | 필요 |
-| `DELETE` | `/subscriptions/{id}` | 구독 해지 | 필요 |
-| `GET` | `/notifications` | 인앱 알림함(읽음 처리 포함) | 필요 |
+| `PUT` | `/subscriptions/{lawId}` | 법령 구독·알림 시점 변경(D74) | 필요 |
+| `DELETE` | `/subscriptions/{lawId}` | 구독 해지(멱등) | 필요 |
+| `GET` | `/subscriptions` | 내 구독 목록(다음 시행일) | 필요 |
+| `GET` | `/notifications` | 인앱 알림함(최근 50개·읽지 않은 수) | 필요 |
+| `POST` | `/notifications/{id}/read` · `/notifications/read-all` | 읽음 처리 | 필요 |
 | `GET` | `/profile` | S3 내 프로필 조회 | 필요 |
 | `PUT` | `/profile` | S3 프로필 속성 수정(현재 버전 동의 필요, 없으면 409) | 필요 |
 | `DELETE` | `/profile` | S3 프로필 파기(= 프로필 동의 철회) | 필요 |
@@ -389,25 +390,29 @@ GET /api/v1/laws/trending?window=week&limit=10
 
 ---
 
-### 3.6 알림 구독 — `/subscriptions` · `/notifications` (S6)
+### 3.6 법령 구독·알림함 — `/subscriptions` · `/notifications` (S11·S12, D74)
 
-시행 임박을 미리 알려준다. **정확히 한 번·신뢰 전송의 내부 로직은 [[concurrency-and-reliability]] §3**(Outbox), 여기선 API만.
+로그인 필요(익명 401). 쓰기는 CSRF 필수(403). 구독 단위는 **법령(lawId)** — 그 법령의 모든 시행예정본에 알림. 알림은 매일 배치 `notify` 가 만든다(LLM 없음).
 
-```jsonc
-// POST /api/v1/subscriptions   (인증 필요)
-{ "type": "law", "lawRef": { "lawId": "001809", "effectiveDate": "2026-08-04" },
-  "notifyBefore": 7 }                 // 시행 D-7 에 알림
-// 또는 프로필 기반:
-{ "type": "impact", "notifyBefore": 7 }   // 내 프로필에 영향 있는 법 시행 임박 시
+| 요청 | 응답 |
+|---|---|
+| `PUT /subscriptions/{lawId}` `{ "notifyBefore": 7 }` | 204(없으면 만들고 있으면 시점 변경) · 없는 법령 404 `not_found` · `notifyBefore` 가 0·1·7·30 이 아니거나 없음 400 · 한도 409 `subscription_limit` |
+| `DELETE /subscriptions/{lawId}` | 204(멱등) |
+| `GET /subscriptions` | 200 `{ "items": [SubscriptionItem] }` — 다음 시행일 가까운 순, 없는 것은 뒤 |
+| `GET /notifications` | 200 `{ "items": [NotificationItem], "unreadCount": 3 }` — 최근 50개 |
+| `POST /notifications/{id}/read` · `POST /notifications/read-all` | 204(남의 알림은 건드리지 않음) |
+
+```json
+// SubscriptionItem — nextEffectiveDate: 가장 이른 시행예정본(없으면 생략)
+{ "lawId": "001809", "title": "주택법", "notifyBefore": 7, "createdAt": "2026-10-31T00:00:00Z", "nextEffectiveDate": "2026-11-09" }
+// NotificationItem
+{ "id": 12, "lawId": "001809", "title": "주택법", "effectiveDate": "2026-11-09", "notifyBefore": 7, "createdAt": "2026-11-02T19:00:00Z", "read": false }
 ```
-```jsonc
-// GET /api/v1/subscriptions → [{ id, type, lawRef?, notifyBefore, createdAt }]
-// DELETE /api/v1/subscriptions/{id} → 204
-// GET /api/v1/notifications → [{ id, lawRef, message, effectiveDate, read, sentAt }]
-```
 
-> **⚠️ 연락처를 수집하지 않는다(D41·D49).** 이메일·전화 미수집이므로 외부 발송이 불가하다. **MVP 채널은 인앱 알림함** — 로그인 시 표시, PII 불필요. 외부 채널(이메일·푸시)은 **명시적 별도 동의 opt-in**으로만(post-MVP). 이것이 D41 최소수집을 유지하면서 알림을 제공하는 방식이다.
-> **정확히 한 번.** dedup 키 `(subscriptionId, lawRef, eventType)`로 중복 통지를 막는다 — Outbox 패턴([[concurrency-and-reliability]] §3).
+- **알림 생성**: 구독 법령의 시행예정 버전(그날 시행으로 바뀐 버전 포함) 중 `시행일 − notifyBefore ≤ 오늘(서울) ≤ 시행일` → `INSERT … ON CONFLICT DO NOTHING`. 배치가 하루 빠져도 다음 실행에서 한 번.
+- **정확히 한 번**: `UNIQUE(user_id, law_id, effective_date, notify_before)` — 이 테이블이 Outbox 역할([[concurrency-and-reliability]] §3).
+- **채널은 인앱 알림함만**(D49). 이메일(동의한 경우)은 ⑦c, 내 프로필 관련 구독(`type: impact`)은 ⑦b.
+- 한도 `lia.subscriptions.max-per-user`(기본 100, `LIA_SUBSCRIPTIONS_MAX_PER_USER`), 메시지 "구독은 최대 {N}개까지 할 수 있어요."
 
 ---
 
@@ -477,9 +482,9 @@ GET /api/v1/laws/trending?window=week&limit=10
 | 코드 | status | 의미 |
 |---|---|---|
 | 400 | `bad_request` | 스키마 위반·필수 파라미터 누락 · 상황 재생성의 위조·형식 위반 답(D71) |
-| 401 | `unauthenticated` | 인증 전용 엔드포인트(`/profile`·`/consents`·`/account`·`/bookmarks`·`/history`·`/analyses/action-revisions`)에 세션 없이 접근 |
-| 404 | `not_found` | `lawId`/`efYd` 조합이 저장소에 없음 · 프로필 미생성 · 북마크할 법령이 저장소에 없음(`PUT /bookmarks/{lawId}`) · 이력이 없거나 남의 기록(`GET /history/{id}`) |
-| 409 | `consent_required` · `bookmark_limit` · `analysis_expired` · `history_limit` | 현재 처리방침 버전의 프로필 동의 없이 `PUT /profile` (D61) · 사용자당 북마크 한도 초과 `PUT /bookmarks/{lawId}` (D72) · 저장할 분석 결과가 세션에 없음 `POST /history` (D73) · 이력 한도 초과 `POST /history` (D73) |
+| 401 | `unauthenticated` | 인증 전용 엔드포인트(`/profile`·`/consents`·`/account`·`/bookmarks`·`/history`·`/subscriptions`·`/notifications`·`/analyses/action-revisions`)에 세션 없이 접근 |
+| 404 | `not_found` | `lawId`/`efYd` 조합이 저장소에 없음 · 프로필 미생성 · 북마크할 법령이 저장소에 없음(`PUT /bookmarks/{lawId}`) · 이력이 없거나 남의 기록(`GET /history/{id}`) · 구독할 법령이 저장소에 없음(`PUT /subscriptions/{lawId}`) |
+| 409 | `consent_required` · `bookmark_limit` · `analysis_expired` · `history_limit` · `subscription_limit` | 현재 처리방침 버전의 프로필 동의 없이 `PUT /profile` (D61) · 사용자당 북마크 한도 초과 `PUT /bookmarks/{lawId}` (D72) · 저장할 분석 결과가 세션에 없음 `POST /history` (D73) · 이력 한도 초과 `POST /history` (D73) · 구독 한도 초과 `PUT /subscriptions/{lawId}` (D74) |
 | 422 | `insufficient_grounding` | 요청한 **모든** 차원이 인용검증 실패(일부만 실패면 200 + `unmet`) |
 | 429 | `rate_limited` | 모델·출처 API 한도 |
 | 503 | `upstream_error` | 모델 API 장애 |
@@ -504,6 +509,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 - 프로필 관련 엔드포인트는 HTTPS 전제.
 - 관심 법령 북마크는 법령 ID·추가 시각만 저장하고 계정 삭제 시 함께 지운다(D72). 처리방침 저장 항목(#35)에 추가한다.
 - 이력은 사용자가 저장을 누를 때만 질문·결과·상황 답 스냅샷을 저장하고, 언제든 지울 수 있으며 계정 삭제 시 함께 지운다(D73). 처리방침 저장 항목(#35)에 추가한다.
+- 구독한 법령과 알림 기록을 저장하고, 해지·계정 삭제 시 지운다(D74). 처리방침 저장 항목(#35)에 추가한다.
 
 ---
 

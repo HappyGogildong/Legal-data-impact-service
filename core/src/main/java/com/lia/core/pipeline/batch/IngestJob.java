@@ -2,7 +2,9 @@ package com.lia.core.pipeline.batch;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -34,7 +36,7 @@ import com.lia.core.store.PendingVersion;
 
 /**
  * 배치 실행 한 번(D62) — 정리(열린 실행 닫기·중단된 작업 복구·DONE 정리) → 명령별 작업 등록(탐색 등) →
- * 워커 풀로 큐 소진 → 기록. 완료·실패는 이번 실행이 소유한 작업에만 반영된다({@link TaskQueue}).
+ * 워커 풀로 큐 소진 → 기록. run 은 끝으로 구독 알림을 만든다 — 그날 시행 전환된 버전도 포함하고, 이 단계의 실패는 실행 결과를 바꾸지 않고 {@code notify.failed} 로만 남긴다(D74). 완료·실패는 이번 실행이 소유한 작업에만 반영된다({@link TaskQueue}).
  *
  * <p>소진: 워커가 {@link TaskQueue#claim}으로 작업을 가져가 종류별 {@link TaskHandler}에 맡긴다. 같은 법령의
  * 작업이 동시에 돌지 않도록 처리 중 법령 집합을 들고 가져가기에서 제외하며, "가져가기 + 집합 등록"은 직렬로 한다.
@@ -48,11 +50,14 @@ public class IngestJob {
     /** 소진을 끝낼 때(워커 실패 포함) 남은 워커를 기다리는 최대 시간 — 실행 기록·잠금 해제 뒤에 워커가 남지 않게. */
     private static final Duration WORKER_TERMINATION_TIMEOUT = Duration.ofSeconds(30);
 
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+
     private final TaskQueue queue;
     private final IngestRunStore runs;
     private final Discoverer discoverer;
     private final LawStore lawStore;
     private final LawSummaries summaries;
+    private final DueNotifications dueNotifications;
     private final Map<TaskKind, TaskHandler> handlers = new EnumMap<>(TaskKind.class);
     private final int workers;
     private final boolean indexEnabled;
@@ -69,16 +74,18 @@ public class IngestJob {
      * @param summaryEnabled true 일 때만 run 이 SUMMARIZE(유료 Opus)를 처리 — 다른 수동 명령은 처리하지 않고 summarize 명령만(D67).
      *                       summarize 명령은 모든 시행예정본에 SUMMARIZE 를 등록해 요약이 없거나 낡은 것을 채운다
      * @param summaries      {@code summarize --dry-run}이 요약이 필요한 시행예정본 수를 셀 때 쓴다(핸들러와 같은 유효 기준)
+     * @param dueNotifications 구독 알림 생성(D74) — run 끝 단계와 notify 명령이 부른다
      */
     public IngestJob(TaskQueue queue, IngestRunStore runs, Discoverer discoverer, LawStore lawStore,
-                     LawSummaries summaries, List<TaskHandler> handlers, int workers, boolean indexEnabled,
-                     boolean summaryEnabled, Duration idlePoll,
+                     LawSummaries summaries, DueNotifications dueNotifications, List<TaskHandler> handlers,
+                     int workers, boolean indexEnabled, boolean summaryEnabled, Duration idlePoll,
                      Duration doneRetention, Clock clock, ObservationRegistry observations) {
         this.queue = queue;
         this.runs = runs;
         this.discoverer = discoverer;
         this.lawStore = lawStore;
         this.summaries = summaries;
+        this.dueNotifications = dueNotifications;
         handlers.forEach(h -> this.handlers.put(h.kind(), h));
         for (TaskKind kind : TaskKind.values()) {
             if (!this.handlers.containsKey(kind)) {
@@ -147,6 +154,11 @@ public class IngestJob {
                 }
                 case REQUEUE_DEAD -> counts.put("requeued", queue.requeueDead());
                 case INDEX -> { }   // 등록 없음 — 쌓여 있는 INDEX 만 소진
+                case NOTIFY -> {   // 구독 알림만 — 등록·소진 없음, LLM 없음(D74)
+                    if (command.dryRun()) counts.put("planned.notified", dueNotifications.countDue(todaySeoul()));
+                    else counts.put("notified", dueNotifications.createDue(todaySeoul()));
+                    return finish(runId, RunOutcome.SUCCESS, null, counts);
+                }
                 case SUMMARIZE -> {   // 모든 시행예정본에 등록 — 요약이 없거나 낡은 것을 채운다(유효한 요약은 핸들러가 건너뜀)
                     if (command.dryRun()) {   // 대상 수만 — 등록·소진(유료 호출) 없음
                         counts.put("planned.SUMMARIZE", countSummaryTargets());
@@ -167,6 +179,14 @@ public class IngestJob {
             counts.put("dead", drained[2]);
             counts.put("deferred.INDEX", queue.countReady(TaskKind.INDEX));   // 색인 지연 — 미룬 것은 결과에 넣지 않는다
             counts.put("deferred.SUMMARIZE", queue.countReady(TaskKind.SUMMARIZE));
+            if (command.type() == JobCommand.Type.RUN) {   // 끝 단계 — 오늘 동기화된 시행예정본과 그날 시행 전환된 버전까지 보고 알린다(D74)
+                try {
+                    counts.put("notified", dueNotifications.createDue(todaySeoul()));
+                } catch (RuntimeException e) {   // 수집은 이미 끝났다 — 알림 실패로 실행을 FAILED 로 만들지 않고 다음 실행이 보충한다
+                    log.warn("[batch] 구독 알림 생성 실패", e);
+                    counts.put("notify.failed", 1);
+                }
+            }
             return finish(runId, outcome(drained[1], drained[2], listComplete, kinds), listComplete, counts);
         } catch (RuntimeException | Error e) {
             log.error("[batch] 실행 {} 실패", runId, e);
@@ -177,6 +197,11 @@ public class IngestJob {
             }
             throw e;
         }
+    }
+
+    /** 서울 오늘 — 알림 시점 판정 기준(D74). */
+    private LocalDate todaySeoul() {
+        return LocalDate.ofInstant(clock.instant(), SEOUL);
     }
 
     /** 요약이 필요한 시행예정본 수 — 시행예정 정본이 있고 유효한 요약이 없는 것(SummarizeHandler 의 건너뜀 기준과 같다). */

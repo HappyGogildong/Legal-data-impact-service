@@ -38,6 +38,8 @@ lia:
     max-per-user: ${LIA_BOOKMARKS_MAX_PER_USER:100}   # 사용자당 관심 법령 북마크 최대 개수(D72)
   history:
     max-per-user: ${LIA_HISTORY_MAX_PER_USER:100}   # 사용자당 질의·분석 이력 최대 개수(D73)
+  subscriptions:
+    max-per-user: ${LIA_SUBSCRIPTIONS_MAX_PER_USER:100}   # 사용자당 법령 구독 최대 개수(D74)
   discovery:                        # 법령 발견(LOOKUP, D70)
     chunk-fetch: 40                 # 법령 단위로 묶기 전에 가져올 청크 수
     max-candidates: 10              # 후보 최대 장수(S04)

@@ -260,6 +260,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["readAllNotifications"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["readNotification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profile": {
         parameters: {
             query?: never;
@@ -271,6 +319,38 @@ export interface paths {
         put: operations["update"];
         post?: never;
         delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listSubscriptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subscriptions/{lawId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["putSubscription"];
+        post?: never;
+        delete: operations["deleteSubscription"];
         options?: never;
         head?: never;
         patch?: never;
@@ -547,6 +627,24 @@ export interface components {
             consentedAt?: string;
             email?: string;
         };
+        NotificationItem: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date */
+            effectiveDate?: string;
+            /** Format: int64 */
+            id?: number;
+            lawId?: string;
+            /** Format: int32 */
+            notifyBefore?: number;
+            read?: boolean;
+            title?: string;
+        };
+        NotificationListResponse: {
+            items?: components["schemas"]["NotificationItem"][];
+            /** Format: int32 */
+            unreadCount?: number;
+        };
         ProfileApiRequest: {
             /** Format: int32 */
             age?: number;
@@ -604,6 +702,23 @@ export interface components {
             /** Format: int32 */
             index?: number;
             note?: string;
+        };
+        SubscriptionItem: {
+            /** Format: date-time */
+            createdAt?: string;
+            lawId?: string;
+            /** Format: date */
+            nextEffectiveDate?: string;
+            /** Format: int32 */
+            notifyBefore?: number;
+            title?: string;
+        };
+        SubscriptionListResponse: {
+            items?: components["schemas"]["SubscriptionItem"][];
+        };
+        SubscriptionRequest: {
+            /** Format: int32 */
+            notifyBefore?: number;
         };
         SummaryClaim: {
             citations?: string[];
@@ -1093,6 +1208,64 @@ export interface operations {
             };
         };
     };
+    listNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationListResponse"];
+                };
+            };
+        };
+    };
+    readAllNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    readNotification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get: {
         parameters: {
             query?: never;
@@ -1148,6 +1321,70 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listSubscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionListResponse"];
+                };
+            };
+        };
+    };
+    putSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lawId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lawId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };

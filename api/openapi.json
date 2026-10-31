@@ -493,6 +493,55 @@
         "tags" : [ "law-view-controller" ]
       }
     },
+    "/api/v1/notifications" : {
+      "get" : {
+        "operationId" : "listNotifications",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotificationListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "notification-controller" ]
+      }
+    },
+    "/api/v1/notifications/read-all" : {
+      "post" : {
+        "operationId" : "readAllNotifications",
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "notification-controller" ]
+      }
+    },
+    "/api/v1/notifications/{id}/read" : {
+      "post" : {
+        "operationId" : "readNotification",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "notification-controller" ]
+      }
+    },
     "/api/v1/profile" : {
       "delete" : {
         "operationId" : "delete",
@@ -544,6 +593,70 @@
           }
         },
         "tags" : [ "profile-controller" ]
+      }
+    },
+    "/api/v1/subscriptions" : {
+      "get" : {
+        "operationId" : "listSubscriptions",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubscriptionListResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "subscription-controller" ]
+      }
+    },
+    "/api/v1/subscriptions/{lawId}" : {
+      "delete" : {
+        "operationId" : "deleteSubscription",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "lawId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "subscription-controller" ]
+      },
+      "put" : {
+        "operationId" : "putSubscription",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "lawId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SubscriptionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "subscription-controller" ]
       }
     }
   },
@@ -1321,6 +1434,51 @@
           }
         }
       },
+      "NotificationItem" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "effectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "lawId" : {
+            "type" : "string"
+          },
+          "notifyBefore" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "read" : {
+            "type" : "boolean"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "NotificationListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NotificationItem"
+            }
+          },
+          "unreadCount" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
       "ProfileApiRequest" : {
         "type" : "object",
         "properties" : {
@@ -1486,6 +1644,49 @@
           },
           "note" : {
             "type" : "string"
+          }
+        }
+      },
+      "SubscriptionItem" : {
+        "type" : "object",
+        "properties" : {
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "lawId" : {
+            "type" : "string"
+          },
+          "nextEffectiveDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "notifyBefore" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SubscriptionListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SubscriptionItem"
+            }
+          }
+        }
+      },
+      "SubscriptionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "notifyBefore" : {
+            "type" : "integer",
+            "format" : "int32"
           }
         }
       },

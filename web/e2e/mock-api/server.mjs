@@ -123,6 +123,10 @@ createServer((request, response) => {
   }
   if (url.pathname === "/api/v1/bookmarks")
     return send(response, 200, { items: [] });
+  if (url.pathname === "/api/v1/subscriptions")
+    return send(response, 200, { items: [] });
+  if (url.pathname === "/api/v1/notifications")
+    return send(response, 200, { items: [], unreadCount: 0 });
   if (url.pathname === "/api/v1/laws/trending") {
     const day = url.searchParams.get("window") === "day";
     const all = [

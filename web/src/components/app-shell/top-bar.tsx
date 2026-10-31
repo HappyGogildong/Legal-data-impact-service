@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { UnreadBadge } from "@/components/notifications/unread-badge";
 import { QuestionBox } from "@/components/question/question-box";
 import { NAV_ITEMS, isActive } from "./nav-items";
 
@@ -36,6 +37,7 @@ export function TopBar({ pathname }: { pathname: string | null }) {
               className="opacity-90 hover:opacity-100 aria-[current=page]:font-bold aria-[current=page]:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               {item.label}
+              {item.href === "/notifications" && <UnreadBadge />}
             </Link>
           ))}
         </nav>

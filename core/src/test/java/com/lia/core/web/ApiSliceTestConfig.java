@@ -18,7 +18,9 @@ import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.application.analysis.ActionRevisionUseCase;
 import com.lia.core.application.bookmark.BookmarkUseCase;
 import com.lia.core.application.history.HistoryUseCase;
+import com.lia.core.application.notification.NotificationUseCase;
 import com.lia.core.application.profile.ProfileUseCase;
+import com.lia.core.application.subscription.SubscriptionUseCase;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.config.SecurityConfig;
 import com.lia.core.domain.analysis.ImpactResult;
@@ -33,6 +35,8 @@ import com.lia.core.store.TrendingWindow;
 import com.lia.core.testsupport.InMemoryAccountStore;
 import com.lia.core.testsupport.InMemoryAnalysisHistoryStore;
 import com.lia.core.testsupport.InMemoryLawBookmarkStore;
+import com.lia.core.testsupport.InMemoryLawSubscriptionStore;
+import com.lia.core.testsupport.InMemoryNotificationStore;
 import com.lia.core.testsupport.InMemoryUserProfileStore;
 
 
@@ -50,7 +54,7 @@ import com.lia.core.testsupport.InMemoryUserProfileStore;
 @Import({SecurityConfig.class, ApiExceptionHandler.class,
         ProfileController.class, ConsentController.class, AccountController.class,
         DataStatusController.class, LawController.class, LawViewController.class, ActionRevisionController.class,
-        BookmarkController.class, HistoryController.class})
+        BookmarkController.class, HistoryController.class, SubscriptionController.class, NotificationController.class})
 class ApiSliceTestConfig {
 
     static final String POLICY = "v-test";
@@ -188,6 +192,30 @@ class ApiSliceTestConfig {
     @Bean
     HistoryUseCase historyUseCase(InMemoryAnalysisHistoryStore store) {
         return new HistoryUseCase(store);
+    }
+
+    /** 구독 — 001809(다음 시행일 있음)·000001(없음)만, 한도 2. */
+    @Bean
+    InMemoryLawSubscriptionStore lawSubscriptionStore(InMemoryAccountStore accounts) {
+        return new InMemoryLawSubscriptionStore(accounts, 2, Map.of(
+                "001809", new InMemoryLawSubscriptionStore.KnownLaw("주택법", LAW_EFFECTIVE),
+                "000001", new InMemoryLawSubscriptionStore.KnownLaw("근로기준법", null),
+                "000002", new InMemoryLawSubscriptionStore.KnownLaw("가상법", null)));
+    }
+
+    @Bean
+    SubscriptionUseCase subscriptionUseCase(InMemoryLawSubscriptionStore store) {
+        return new SubscriptionUseCase(store);
+    }
+
+    @Bean
+    InMemoryNotificationStore notificationStore() {
+        return new InMemoryNotificationStore();
+    }
+
+    @Bean
+    NotificationUseCase notificationUseCase(InMemoryNotificationStore store) {
+        return new NotificationUseCase(store);
     }
 
     @Bean

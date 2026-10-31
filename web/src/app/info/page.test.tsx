@@ -72,4 +72,31 @@ describe("InfoPage", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("처리방침 요약 — 수집하는 항목에 구독·알림 기록", () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          lawsUpdatedAt: "2026-10-22T19:12:31Z",
+          pendingLawCount: 912,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <InfoPage />
+      </QueryClientProvider>,
+    );
+
+    const sentence =
+      "구독한 법령과 알림 기록도 저장해요 — 구독 관리·알림함에서 지울 수 있고 계정을 삭제하면 함께 지워져요.";
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === "P" &&
+          (element.textContent ?? "").replace(/\s+/g, " ").includes(sentence),
+      ),
+    ).toBeInTheDocument();
+  });
 });

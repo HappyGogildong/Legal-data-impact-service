@@ -10,15 +10,19 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.application.bookmark.BookmarkUseCase;
 import com.lia.core.application.history.HistoryUseCase;
+import com.lia.core.application.notification.NotificationUseCase;
 import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.application.profile.ProfileUseCase;
+import com.lia.core.application.subscription.SubscriptionUseCase;
 import com.lia.core.auth.AccountStore;
 import com.lia.core.profile.UserProfileStore;
 import com.lia.core.store.AnalysisHistoryStore;
 import com.lia.core.store.LawBookmarkStore;
+import com.lia.core.store.LawSubscriptionStore;
+import com.lia.core.store.NotificationStore;
 
 /**
- * 사용자(계정·프로필·북마크·이력) 유스케이스 배선 — application 코어는 Spring 애노테이션 없이 두고 여기서 {@code @Bean} 으로 잇는다
+ * 사용자(계정·프로필·북마크·이력·구독·알림) 유스케이스 배선 — application 코어는 Spring 애노테이션 없이 두고 여기서 {@code @Bean} 으로 잇는다
  * ({@link PipelineConfig} 의 AnalyzeUseCase 와 같은 방식).
  */
 @Configuration
@@ -58,8 +62,30 @@ public class UserConfig {
         return new AnalysisHistoryStore(jdbcClient, new TransactionTemplate(transactionManager), maxPerUser);
     }
 
+    /** 구독 알림 저장소(D74) — 웹 알림함과 배치 notify 단계가 함께 쓴다. */
+    @Bean
+    public NotificationStore notificationStore(JdbcClient jdbcClient) {
+        return new NotificationStore(jdbcClient);
+    }
+
     @Bean
     public HistoryUseCase historyUseCase(AnalysisHistoryStore store) {
         return new HistoryUseCase(store);
+    }
+
+    @Bean
+    public LawSubscriptionStore lawSubscriptionStore(JdbcClient jdbcClient, PlatformTransactionManager transactionManager,
+            @Value("${lia.subscriptions.max-per-user}") int maxPerUser) {
+        return new LawSubscriptionStore(jdbcClient, new TransactionTemplate(transactionManager), maxPerUser);
+    }
+
+    @Bean
+    public SubscriptionUseCase subscriptionUseCase(LawSubscriptionStore store) {
+        return new SubscriptionUseCase(store);
+    }
+
+    @Bean
+    public NotificationUseCase notificationUseCase(NotificationStore store) {
+        return new NotificationUseCase(store);
     }
 }

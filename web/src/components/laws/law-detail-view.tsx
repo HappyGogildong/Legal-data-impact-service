@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChangedArticles } from "@/components/analysis/changed-articles";
 import { BookmarkToggle } from "@/components/bookmarks/bookmark-toggle";
+import { SubscribeButton } from "@/components/subscriptions/subscribe-button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -68,6 +69,11 @@ export function LawDetailView({
           )}
           {lawId && <BookmarkToggle lawId={lawId} />}
         </div>
+        {lawId && (
+          <div className="mt-2">
+            <SubscribeButton lawId={lawId} />
+          </div>
+        )}
         {meta && <p className="mt-0.5 text-xs text-muted-foreground">{meta}</p>}
         {detail.effectiveDate && (
           <p className="mt-0.5 text-xs text-muted-foreground">

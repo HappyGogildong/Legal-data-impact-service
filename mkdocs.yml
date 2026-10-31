@@ -134,6 +134,7 @@ nav:
           - Profile API: components/web/ProfileApi.md
           - Bookmark API: components/web/BookmarkApi.md
           - History API: components/web/HistoryApi.md
+          - Subscription API: components/web/SubscriptionApi.md
           - Consent API: components/web/ConsentApi.md
           - Account API: components/web/AccountApi.md
   - 참조 (Reference):
