@@ -56,7 +56,10 @@ public class AnalysisHistoryStore {
         return maxPerUser;
     }
 
-    /** 순서: 계정 잠금 → 같은 analysis_id 있음(멱등, 한도와 무관) → 그 버전 행 없음 → 한도 → 저장 당시 revision·상태와 함께 삽입. */
+    /**
+     * 순서: 계정 잠금 → 같은 analysis_id 있음(그 기록의 스냅샷만 지금 결과로 바꾸고 ALREADY — 한도와 무관, id·저장 당시
+     * 법령 revision·상태·저장 시각은 그대로) → 그 버전 행 없음 → 한도 → 저장 당시 revision·상태와 함께 삽입.
+     */
     public SaveResult save(UUID userId, NewEntry entry) {
         return transactions.execute(tx -> {
             boolean accountExists = jdbc.sql("SELECT 1 FROM accounts WHERE user_id = :userId FOR UPDATE")
@@ -64,7 +67,11 @@ public class AnalysisHistoryStore {
             if (!accountExists) return new SaveResult(SaveStatus.ACCOUNT_NOT_FOUND, null);
             Optional<Long> existing = jdbc.sql("SELECT id FROM analysis_history WHERE user_id = :userId AND analysis_id = :analysisId")
                     .param("userId", userId).param("analysisId", entry.analysisId()).query(Long.class).optional();
-            if (existing.isPresent()) return new SaveResult(SaveStatus.ALREADY, existing.get());
+            if (existing.isPresent()) {
+                jdbc.sql("UPDATE analysis_history SET snapshot = CAST(:snapshot AS jsonb) WHERE id = :id")
+                        .param("snapshot", entry.snapshotJson()).param("id", existing.get()).update();
+                return new SaveResult(SaveStatus.ALREADY, existing.get());
+            }
             Optional<String[]> version = jdbc.sql("""
                     SELECT revision, status FROM law_versions WHERE law_id = :lawId AND effective_date = :efYd
                     """)

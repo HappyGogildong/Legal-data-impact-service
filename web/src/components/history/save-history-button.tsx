@@ -1,12 +1,12 @@
 "use client";
 
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { SessionExpiredDialog } from "@/components/auth/session-expired-dialog";
 import { ApiError, isUnauthorized } from "@/lib/api/errors";
-import { saveHistory } from "@/lib/api/history";
+import { HISTORY_KEY, saveHistory } from "@/lib/api/history";
 import { setReturnTo } from "@/lib/return-to";
 import { useSession } from "@/lib/session";
 
@@ -19,12 +19,15 @@ export function SaveHistoryButton({ analysisId }: { analysisId?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const session = useSession();
+  const queryClient = useQueryClient();
   const signedIn = session.isSuccess && session.data !== null;
   const [message, setMessage] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
   const save = useMutation({
     mutationFn: (id: string) => saveHistory(id),
     onMutate: () => setMessage(null),
+    // 목록·상세 캐시를 갱신 — 다시 저장하면 같은 기록의 스냅샷이 바뀐다
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: HISTORY_KEY }),
     onError: (error) => {
       if (isUnauthorized(error)) setExpired(true);
       else

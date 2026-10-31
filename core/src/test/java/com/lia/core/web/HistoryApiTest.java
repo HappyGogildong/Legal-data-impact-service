@@ -113,6 +113,30 @@ class HistoryApiTest {
     }
 
     @Test
+    @DisplayName("저장 뒤 대응 방안을 재생성하고 다시 저장하면 200 같은 id, 상세가 재생성본·답으로 바뀐다")
+    void 다시_저장하면_스냅샷_갱신() throws Exception {
+        String analysisId = remember(session, HOUSING);
+        long id = saveAndGetId(analysisId, session);
+        mvc.perform(signedIn(get("/api/v1/history/" + id), session))
+                .andExpect(jsonPath("$.revision").doesNotExist())
+                .andExpect(jsonPath("$.answers.length()").value(0));
+
+        ImpactResult revisedAction = new ImpactResult("LAW:001809@2026-11-01", "ACTION", "대응",
+                List.of(), List.of(), List.of(new ImpactResult.Action("신고한다", "시행 전", List.of())),
+                null, List.of(), "참고용", null);
+        new HttpSessionRecentAnalyses(session).attachRevision(analysisId, HOUSING,
+                ActionRevisionApiResponse.revised(revisedAction, List.of(), List.of()),
+                List.of(new HttpSessionRecentAnalyses.AnsweredQuestion("계약했나요?", "예")));
+
+        MvcResult again = mvc.perform(save(analysisId, session)).andExpect(status().isOk()).andReturn();
+        assertEquals(id, savedId(again));
+        mvc.perform(signedIn(get("/api/v1/history"), session)).andExpect(jsonPath("$.items.length()").value(1));
+        mvc.perform(signedIn(get("/api/v1/history/" + id), session))
+                .andExpect(jsonPath("$.revision.action.actions[0].what").value("신고한다"))
+                .andExpect(jsonPath("$.answers[0].answer").value("예"));
+    }
+
+    @Test
     @DisplayName("결과·상황 질문·재생성본·답이 채워진 스냅샷도 상세에서 그대로 복원된다(Jackson 왕복)")
     void 풍부한_스냅샷_왕복() throws Exception {
         ImpactResult summary = new ImpactResult("LAW:001809@2026-11-01", "SUMMARY", "절차가 짧아져요.",

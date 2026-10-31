@@ -95,6 +95,40 @@ class AnalysisHistoryStoreIntegrationTest {
     }
 
     @Test
+    void 같은_analysisId_를_다른_스냅샷으로_다시_저장하면_그_기록의_스냅샷만_바뀐다() {
+        AnalysisHistoryStore store = store(10);
+        long id = store.save(userId, entry("a-1")).id();
+        HistoryRow before = store.find(userId, id).orElseThrow().row();
+        jdbc.sql("UPDATE law_versions SET revision = 'rev-2'").update(); // 저장 당시 기준은 그대로여야 한다 → 갱신됨으로 보임
+
+        NewEntry replaced = new NewEntry("a-1", "q", "001809", EFFECTIVE, "주택법",
+                "{\"body\":{\"resolution\":\"RESOLVED\"},\"revision\":{\"revised\":true},\"answers\":[{\"question\":\"계약했나요?\",\"answer\":\"예\"}]}");
+        SaveResult again = store.save(userId, replaced);
+
+        assertEquals(SaveStatus.ALREADY, again.status());
+        assertEquals(id, again.id());
+        HistoryEntry found = store.find(userId, id).orElseThrow();
+        assertTrue(found.snapshotJson().contains("계약했나요?"), "스냅샷이 지금 결과로 바뀐다");
+        assertTrue(found.snapshotJson().contains("\"revised\": true") || found.snapshotJson().contains("\"revised\":true"));
+        assertEquals(1, store.list(userId).size());
+        assertEquals(before.savedAt(), found.row().savedAt(), "저장 시각 그대로");
+        assertTrue(found.row().lawUpdated(), "저장 당시 revision 은 갱신하지 않는다");
+        assertEquals("rev-1", jdbc.sql("SELECT law_revision FROM analysis_history WHERE id = :id").param("id", id)
+                .query(String.class).single());
+    }
+
+    @Test
+    void 한도에_닿아도_이미_저장한_분석을_다시_저장하면_스냅샷이_바뀐다() {
+        AnalysisHistoryStore store = store(1);
+        long id = store.save(userId, entry("a-1")).id();
+
+        SaveResult again = store.save(userId, new NewEntry("a-1", "q", "001809", EFFECTIVE, "주택법", "{\"answers\":[\"새로\"]}"));
+
+        assertEquals(SaveStatus.ALREADY, again.status());
+        assertTrue(store.find(userId, id).orElseThrow().snapshotJson().contains("새로"));
+    }
+
+    @Test
     void 한도에_닿으면_새_저장은_거부하고_이미_저장한_것은_ALREADY() {
         AnalysisHistoryStore store = store(2);
         store.save(userId, entry("a-1"));

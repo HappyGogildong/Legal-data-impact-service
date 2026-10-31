@@ -449,7 +449,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 
 | 요청 | 응답 |
 |---|---|
-| `POST /history` `{ "analysisId": "…" }` | 201 `{ "id": 12 }`(같은 analysisId 를 이미 저장했으면 200 같은 본문) · `analysisId` 없음·빈 값 400 · 세션에 결과 없음 409 `analysis_expired`("저장할 결과가 만료됐어요. 다시 분석한 뒤 저장해 주세요.") · 한도 초과 409 `history_limit` |
+| `POST /history` `{ "analysisId": "…" }` | 201 `{ "id": 12 }`(같은 analysisId 를 이미 저장했으면 200 같은 id — 스냅샷을 지금 결과로 바꾼다) · `analysisId` 없음·빈 값 400 · 세션에 결과 없음 409 `analysis_expired`("저장할 결과가 만료됐어요. 다시 분석한 뒤 저장해 주세요.") · 한도 초과 409 `history_limit` |
 | `GET /history` | 200 `{ "items": [HistoryItem] }` — 저장 최근 순 |
 | `GET /history/{id}` | 200 `HistoryDetail` · 없거나 남의 기록 404 `not_found` |
 | `DELETE /history/{id}` | 204(멱등, 남의 기록은 지우지 않음) |

@@ -392,6 +392,39 @@ describe("ResultView — 대응 방안 상황 확인(D71)", () => {
     expect(screen.queryByText("기본 상황 메모")).not.toBeInTheDocument();
   });
 
+  it("이력에 저장한 뒤 상황 답으로 대응 방안을 다시 만들면 '이력에 저장' 이 다시 나온다(D73)", async () => {
+    mockApi({
+      "GET /api/v1/account": () =>
+        json({ provider: "kakao", createdAt: "2026-10-23T05:00:00Z" }),
+      "POST /api/v1/history": () => json({ id: 7 }, 201),
+      "POST /api/v1/analyses/action-revisions": () =>
+        json({
+          action: { actions: [{ what: "재생성된 대응 단계" }] },
+          sources: [],
+          stepNotes: [],
+        }),
+    });
+    renderWithClient({ ...withSituation, analysisId: "a-1" });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "이력에 저장" }),
+    );
+    expect(await screen.findByText(/저장했어요/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "이력에 저장" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "예" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "대응 방안 확인하기" }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "이력에 저장" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/저장했어요/)).not.toBeInTheDocument();
+  });
+
   it("탭 저장소에 revision 이 있으면 대응 방안 카드가 그 action 을 보여 준다(내 영향은 그대로)", async () => {
     writeSituation(situationKey("001809", "2026-08-04"), revisionState());
     renderWithClient(withSituation);

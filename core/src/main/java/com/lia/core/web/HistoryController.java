@@ -46,7 +46,7 @@ public class HistoryController {
         this.json = json;
     }
 
-    /** 새로 저장하면 201, 같은 분석을 이미 저장했으면 200 — 본문은 같다. */
+    /** 새로 저장하면 201, 같은 분석을 이미 저장했으면 200(같은 id) — 그 기록의 스냅샷을 지금 결과로 바꾼다. */
     @PostMapping
     public ResponseEntity<HistorySavedResponse> save(@RequestBody HistorySaveRequest body, HttpServletRequest request) {
         if (body == null || body.analysisId() == null || body.analysisId().isBlank()) {

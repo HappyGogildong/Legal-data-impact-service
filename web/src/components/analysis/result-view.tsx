@@ -43,6 +43,8 @@ export function ResultView({
   const [revision, setRevision] = useState<ActionRevision | undefined>(() =>
     lawKey && setId ? readSituation(lawKey, setId).revision : undefined,
   );
+  // 재생성 횟수 — 이력 저장 버튼의 key 로 써서, 재생성하면 "저장했어요" 에서 저장 상태로 돌아가게(D73: 다시 누르면 같은 기록을 갱신).
+  const [revisionCount, setRevisionCount] = useState(0);
   if (!law) return null; // 발견 응답은 AskScreen 이 S04 로 보낸다 — 여기 오는 응답엔 law 가 있다
 
   const { lawId, effectiveDate, title } = law;
@@ -85,7 +87,10 @@ export function ResultView({
                 sources={sources}
                 selected={selected}
                 onCite={onCite}
-                onRevised={setRevision}
+                onRevised={(revised) => {
+                  setRevision(revised);
+                  setRevisionCount((count) => count + 1);
+                }}
                 onAsk={onAsk}
                 analysisId={response.analysisId}
               />
@@ -104,7 +109,10 @@ export function ResultView({
               내 영향·대응 방안 보기
             </button>
           )}
-          <SaveHistoryButton analysisId={response.analysisId} />
+          <SaveHistoryButton
+            key={`${response.analysisId ?? "none"}:${revisionCount}`}
+            analysisId={response.analysisId}
+          />
         </>
       )}
       footer={<FollowUpBar law={law} onAsk={onAsk} />}

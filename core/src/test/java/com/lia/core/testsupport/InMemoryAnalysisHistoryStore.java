@@ -37,6 +37,8 @@ public class InMemoryAnalysisHistoryStore extends AnalysisHistoryStore {
         if (accounts.find(userId).isEmpty()) return new SaveResult(SaveStatus.ACCOUNT_NOT_FOUND, null);
         for (Stored stored : byId.values()) {
             if (stored.userId().equals(userId) && stored.analysisId().equals(entry.analysisId())) {
+                // 같은 분석을 다시 저장하면 그 기록의 스냅샷만 지금 결과로 바꾼다(id·행은 그대로)
+                byId.put(stored.row().id(), new Stored(userId, stored.analysisId(), stored.row(), entry.snapshotJson()));
                 return new SaveResult(SaveStatus.ALREADY, stored.row().id());
             }
         }

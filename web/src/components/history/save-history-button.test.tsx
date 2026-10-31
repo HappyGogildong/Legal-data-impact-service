@@ -17,13 +17,11 @@ const ACCOUNT = { provider: "kakao", createdAt: "2026-10-23T05:00:00Z" };
 function renderButton(
   analysisId: string | undefined,
   routes: Parameters<typeof mockApi>[0],
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
 ) {
   const requests = mockApi({
     "GET /api/v1/account": () => json(ACCOUNT),
     ...routes,
-  });
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
   });
   render(
     <QueryClientProvider client={client}>
@@ -56,6 +54,24 @@ describe("SaveHistoryButton", () => {
       .find((request) => request.method === "POST")!
       .json();
     expect(body).toEqual({ analysisId: "a-1" });
+  });
+
+  it("저장하면 이력 목록·상세 캐시를 갱신한다", async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    renderButton(
+      "a-1",
+      { "POST /api/v1/history": () => json({ id: 7 }, 200) },
+      client,
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "이력에 저장" }),
+    );
+
+    await screen.findByText(/저장했어요/);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["history"] });
   });
 
   it("409 면 서버 메시지를 보여 준다", async () => {

@@ -24,7 +24,7 @@ related: ["components/web/BookmarkApi.md", "components/web/AnalysisApi.md", "com
 ## HTTP Contract — `com.lia.core.web`
 | 메서드 | 경로 | 동작 | 응답 |
 |---|---|---|---|
-| `POST` | `/api/v1/history` | 이력 저장 — 본문 `{ "analysisId": "…" }` 뿐 | 201 `{ "id": 12 }`(새로 저장) / 200 같은 본문(같은 `analysisId` 를 이미 저장) / **400**(`analysisId` 없음·빈 값) / **409** `analysis_expired` / **409** `history_limit` |
+| `POST` | `/api/v1/history` | 이력 저장 — 본문 `{ "analysisId": "…" }` 뿐 | 201 `{ "id": 12 }`(새로 저장) / 200 같은 id(같은 `analysisId` 를 이미 저장 — 스냅샷을 지금 결과로 바꾼다) / **400**(`analysisId` 없음·빈 값) / **409** `analysis_expired` / **409** `history_limit` |
 | `GET` | `/api/v1/history` | 내 이력 목록 — 저장 최근 순 | 200 `{ "items": [HistoryItem] }` |
 | `GET` | `/api/v1/history/{id}` | 이력 상세 | 200 `HistoryDetail` / **404** `not_found`(없거나 남의 기록) |
 | `DELETE` | `/api/v1/history/{id}` | 이력 삭제. 멱등, 남의 것은 지우지 않는다 | 204(없어도 204) |
@@ -77,12 +77,12 @@ related: ["components/web/BookmarkApi.md", "components/web/AnalysisApi.md", "com
 
 ### 저장 순서 (`AnalysisHistoryStore`, 한 트랜잭션)
 1. 계정 행 `FOR UPDATE` — 같은 사용자의 동시 저장을 직렬화해 한도를 넘지 않게 한다. 계정 없음 → **401**(삭제된 계정의 세션).
-2. 같은 `analysis_id` 가 이미 있음 → 그 `id` 로 `ALREADY`(멱등, 200).
+2. 같은 `analysis_id` 가 이미 있음 → 그 행의 `snapshot` 만 지금 결과로 바꾸고(`UPDATE … SET snapshot`) 그 `id` 로 `ALREADY`(200). 한도와 무관하고, `law_revision`·`law_status`·`created_at` 은 그대로라 저장 당시 법령 기준("법령 갱신됨" 판정·배너 날짜)이 유지된다. 저장 → 대응 방안 재생성 → 다시 저장하면 이력에 재생성본·답이 들어간다.
 3. 그 법령 버전 `(law_id, effective_date)` 의 행이 없음(만료) → **409** `analysis_expired`. 저장 당시 revision 을 읽을 수 없어 "갱신됨" 판정의 기준이 없기 때문이다.
 4. 현재 개수 ≥ 한도 → **409** `history_limit`.
 5. 삽입(저장 당시 `revision`·`status` 함께 기록) → `SAVED`(201).
 
-멱등 확인이 한도 확인보다 앞이다 — 한도에 찬 사용자가 이미 저장한 분석을 다시 눌러도 오류가 아니다. 세션에 그 `analysisId` 가 없으면 저장소를 부르기 전에 `analysis_expired` 로 끝낸다.
+기존 기록 확인이 한도 확인보다 앞이다 — 한도에 찬 사용자가 이미 저장한 분석을 다시 눌러도 오류가 아니고 그 기록이 갱신된다. 세션에 그 `analysisId` 가 없으면 저장소를 부르기 전에 `analysis_expired` 로 끝낸다.
 
 ### 법령 갱신됨 (`lawUpdated`, D73 ⑤)
 저장한 버전 `(law_id, effective_date)` 의 **지금** `revision`·`status` 가 저장 당시와 다르거나 그 행이 없으면 `true`. 내용 변경·시행·철회를 한 규칙으로 본다.
