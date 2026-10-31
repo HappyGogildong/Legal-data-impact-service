@@ -92,7 +92,9 @@ test("로그인 사용자: 상황 질문에 답하고 '대응 방안 확인하�
   await page.getByRole("button", { name: "대응 방안", exact: true }).click();
   await expect(page.getByText("상황을 알려주시면 더 정확해져요")).toBeVisible();
   await expect(
-    page.getByText("답은 이 법령 판단에만 쓰고 저장하지 않아요"),
+    page.getByText(
+      "답은 이 법령 판단에만 써요. 이력에 저장할 때만 함께 남아요.",
+    ),
   ).toBeVisible();
   await expect(page.getByText(STEP_NOTE)).toHaveCount(0);
 

@@ -1,5 +1,8 @@
 package com.lia.core.web;
 
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -43,7 +46,23 @@ public class AnalysisController {
         AnalysisOutcome outcome = useCase.analyze(req.query().strip(), req.explicitRef(), CurrentUser.userId(request),
                 req.wantsProfileSearch());
         rememberSituationQuestions(outcome, request);
-        return ResponseEntity.ok(mapper.toBody(outcome)); // 해소 결과·분석 모두 200
+        AnalysisApiResponse body = mapper.toBody(outcome);
+        return ResponseEntity.ok(rememberForHistory(req.query().strip(), outcome, body, request)); // 해소 결과·분석 모두 200
+    }
+
+    /**
+     * 로그인 사용자의 법령이 정해진 분석이면 결과를 세션에 잠시 두고 analysisId 를 붙인다(D73) — 이력 저장은 이 id 만 보낸다.
+     * 익명·미해소·발견 응답엔 붙이지 않는다.
+     */
+    private static AnalysisApiResponse rememberForHistory(String query, AnalysisOutcome outcome, AnalysisApiResponse body,
+                                                          HttpServletRequest request) {
+        Optional<UUID> userId = CurrentUser.userId(request);
+        if (userId.isEmpty()) return body;
+        if (!(outcome instanceof AnalysisOutcome.Analyzed a) || a.result().discovery() != null) return body;
+        if (!(a.query().target() instanceof Target.Reference ref) || body.law() == null) return body;
+        String analysisId = new HttpSessionRecentAnalyses(request.getSession(false))
+                .remember(userId.get(), query, ref.lawRef(), body);
+        return body.withAnalysisId(analysisId);
     }
 
     /** 대응 방안과 함께 나온 상황 질문을 세션(메모리)에 둔다 — 재생성 요청은 questionId 만 보낸다(D71). 질문이 없으면 기존 것 유지. */

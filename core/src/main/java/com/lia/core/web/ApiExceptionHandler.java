@@ -11,6 +11,9 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import com.lia.core.application.account.AccountNotFoundException;
 import com.lia.core.application.bookmark.BookmarkLimitException;
 import com.lia.core.application.bookmark.UnknownLawException;
+import com.lia.core.application.history.AnalysisExpiredException;
+import com.lia.core.application.history.HistoryLimitException;
+import com.lia.core.application.history.HistoryNotFoundException;
 import com.lia.core.application.profile.ConsentRequiredException;
 
 /**
@@ -66,5 +69,26 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> bookmarkLimit(BookmarkLimitException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("error", "bookmark_limit", "message", e.getMessage()));
+    }
+
+    /** 저장할 분석 결과가 세션에 없음 — 409(D73). 메시지는 화면에 그대로. */
+    @ExceptionHandler(AnalysisExpiredException.class)
+    public ResponseEntity<Map<String, Object>> analysisExpired(AnalysisExpiredException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "analysis_expired", "message", e.getMessage()));
+    }
+
+    /** 사용자당 이력 한도 초과 — 409(D73 ⑥). */
+    @ExceptionHandler(HistoryLimitException.class)
+    public ResponseEntity<Map<String, Object>> historyLimit(HistoryLimitException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "history_limit", "message", e.getMessage()));
+    }
+
+    /** 이력이 없거나 남의 기록 — 404(존재를 숨긴다). */
+    @ExceptionHandler(HistoryNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> historyNotFound(HistoryNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "not_found", "message", e.getMessage()));
     }
 }

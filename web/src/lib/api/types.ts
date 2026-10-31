@@ -38,6 +38,10 @@ export type TrendingPage = components["schemas"]["TrendingPage"];
 export type TrendingItem = NonNullable<TrendingPage["items"]>[number];
 export type BookmarkList = components["schemas"]["BookmarkListResponse"];
 export type BookmarkItem = NonNullable<BookmarkList["items"]>[number];
+export type HistoryList = components["schemas"]["HistoryListResponse"];
+export type HistoryItem = NonNullable<HistoryList["items"]>[number];
+export type HistoryDetail = components["schemas"]["HistoryDetailResponse"];
+export type AnsweredQuestion = NonNullable<HistoryDetail["answers"]>[number];
 export type LawSummary = NonNullable<LawDetail["summary"]>;
 
 export type Discovery = NonNullable<AnalysisResponse["discovery"]>;

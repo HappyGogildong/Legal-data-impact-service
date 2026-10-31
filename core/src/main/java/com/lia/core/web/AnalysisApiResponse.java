@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param disclaimer   면책(응답 전역)
  * @param discovery    법령 발견 결과(Discovery 질문만, D70)
  * @param situation    대응 방안의 상황 질문·단계 설명(D71, 상황이 있을 때만)
+ * @param analysisId   이력 저장용 — 로그인 사용자의 법령이 정해진 분석에만(D73)
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AnalysisApiResponse(
@@ -42,22 +43,29 @@ public record AnalysisApiResponse(
         List<CitedSource> sources,
         String disclaimer,
         Discovery discovery,
-        SituationBody situation) {
+        SituationBody situation,
+        String analysisId) {
 
     public static AnalysisApiResponse analyzed(LawHeader law, List<LawBrief> alternatives,
                                                Map<String, ImpactResult> answer, Map<String, Unmet> unmet,
                                                List<CitedSource> sources, String disclaimer, SituationBody situation) {
         return new AnalysisApiResponse("RESOLVED", null, null, law, alternatives, answer, unmet, sources, disclaimer, null,
-                situation);
+                situation, null);
     }
 
     public static AnalysisApiResponse unresolved(String resolution, String message, List<LawBrief> candidates) {
         return new AnalysisApiResponse(resolution, message, candidates.isEmpty() ? null : candidates,
-                null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null);
     }
 
     public static AnalysisApiResponse discovered(Discovery discovery) {
-        return new AnalysisApiResponse("RESOLVED", null, null, null, null, null, null, null, null, discovery, null);
+        return new AnalysisApiResponse("RESOLVED", null, null, null, null, null, null, null, null, discovery, null, null);
+    }
+
+    /** 세션에 보관한 결과의 id 를 붙인 사본(D73). */
+    public AnalysisApiResponse withAnalysisId(String analysisId) {
+        return new AnalysisApiResponse(resolution, message, candidates, law, alternatives, answer, unmet, sources,
+                disclaimer, discovery, situation, analysisId);
     }
 
     /**

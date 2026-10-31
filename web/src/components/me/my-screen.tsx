@@ -306,6 +306,12 @@ export function MyScreen() {
         className="rounded-lg border border-border bg-card px-3.5 text-sm"
       >
         <Link
+          href="/me/history"
+          className="flex justify-between border-b border-border py-3"
+        >
+          이력 <span aria-hidden>›</span>
+        </Link>
+        <Link
           href="/me/bookmarks"
           className="flex justify-between border-b border-border py-3"
         >

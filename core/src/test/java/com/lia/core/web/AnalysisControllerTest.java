@@ -203,6 +203,66 @@ class AnalysisControllerTest {
         assertEquals(Optional.of(List.of(QUESTION)), store.find(SITUATION_REF));
     }
 
+    // ── 최근 분석 세션 보관(D73) ──
+
+    private static MockHttpServletRequest signedInRequest() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession(true).setAttribute(CurrentUser.SESSION_KEY, UUID.randomUUID());
+        return request;
+    }
+
+    @Test
+    void 로그인_사용자의_법령_분석이면_analysisId_를_붙이고_세션에_보관한다() {
+        MockHttpServletRequest request = signedInRequest();
+        when(useCase.analyze(any(), any(), any(), anyBoolean())).thenReturn(analyzedAction(List.of(QUESTION)));
+
+        AnalysisApiResponse body = controller.analyze(new AnalyzeApiRequest(" 주택법 대응 ", null, null), request).getBody();
+
+        assertNotNull(body.analysisId());
+        UUID userId = CurrentUser.userId(request).orElseThrow();
+        HttpSessionRecentAnalyses.Entry entry =
+                new HttpSessionRecentAnalyses(request.getSession(false)).find(body.analysisId(), userId).orElseThrow();
+        assertEquals(userId, entry.userId());
+        assertTrue(new HttpSessionRecentAnalyses(request.getSession(false)).find(body.analysisId(), UUID.randomUUID()).isEmpty(),
+                "다른 사용자에겐 보이지 않는다");
+        assertEquals("주택법 대응", entry.query());
+        assertEquals(SITUATION_REF, entry.lawRef());
+        assertNull(entry.body().analysisId(), "보관본에는 id 를 넣지 않는다");
+    }
+
+    @Test
+    void 익명이면_analysisId_가_없다() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession(true);   // 세션은 있지만 로그인 아님
+        when(useCase.analyze(any(), any(), any(), anyBoolean())).thenReturn(analyzedAction(List.of(QUESTION)));
+
+        assertNull(controller.analyze(new AnalyzeApiRequest("주택법 대응", null, null), request).getBody().analysisId());
+    }
+
+    @Test
+    void 로그인_사용자의_발견_응답엔_analysisId_가_없다() {
+        AnalysisQuery q = new AnalysisQuery(QueryType.LOOKUP, Set.of(QueryType.LOOKUP),
+                new Target.Discovery(new DiscoveryCriteria(List.of(), List.of(), List.of(), false)),
+                "찾기", ArticleScope.CHANGED_ONLY, false, null);
+        DispatchResult dr = new DispatchResult(QueryType.LOOKUP, Map.of(), Map.of(),
+                new DispatchResult.Discovery(new DiscoveryResult(List.of(), false), null));
+        when(useCase.analyze(any(), any(), any(), anyBoolean())).thenReturn(new AnalysisOutcome.Analyzed(q, dr));
+        MockHttpServletRequest request = signedInRequest();
+
+        AnalysisApiResponse body = controller.analyze(new AnalyzeApiRequest("전세 관련 법", null, null, true), request).getBody();
+
+        assertNull(body.analysisId());
+        assertNull(request.getSession(false).getAttribute(HttpSessionRecentAnalyses.ATTRIBUTE), "보관도 하지 않는다");
+    }
+
+    @Test
+    void 미해소_응답엔_analysisId_가_없다() {
+        when(useCase.analyze(any(), any(), any(), anyBoolean()))
+                .thenReturn(new AnalysisOutcome.Unresolved(ResolutionResult.notFoundYet("x")));
+
+        assertNull(controller.analyze(new AnalyzeApiRequest("없는 법", null, null), signedInRequest()).getBody().analysisId());
+    }
+
     @Test
     void 발견이면_RESOLVED_와_discovery_만() {
         AnalysisQuery q = new AnalysisQuery(QueryType.LOOKUP, Set.of(QueryType.LOOKUP),

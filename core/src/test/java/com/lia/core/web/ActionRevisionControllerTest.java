@@ -3,6 +3,7 @@ package com.lia.core.web;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -21,12 +22,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
+import jakarta.servlet.http.HttpSession;
+
 import com.lia.core.application.analysis.ActionRevisionUseCase;
 import com.lia.core.application.analysis.RevisionOutcome;
 import com.lia.core.auth.CurrentUser;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.analysis.Situation;
 import com.lia.core.domain.analysis.SituationAnswer;
+import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
@@ -53,7 +57,11 @@ class ActionRevisionControllerTest {
     private static final String SET_ID = "0123456789abcdef";
 
     private static ActionRevisionApiRequest request() {
-        return new ActionRevisionApiRequest(new AnalyzeApiRequest.LawRefDto("001809", EF, null), SET_ID, ANSWERS);
+        return requestWithAnalysisId(null);
+    }
+
+    private static ActionRevisionApiRequest requestWithAnalysisId(String analysisId) {
+        return new ActionRevisionApiRequest(new AnalyzeApiRequest.LawRefDto("001809", EF, null), SET_ID, ANSWERS, analysisId);
     }
 
     private static RevisionOutcome.Revised revised() {
@@ -116,10 +124,10 @@ class ActionRevisionControllerTest {
     @DisplayName("lawRef 가 없으면 IllegalArgumentException(400 매핑)")
     void lawRef_없으면_예외() {
         assertThrows(IllegalArgumentException.class,
-                () -> controller.revise(new ActionRevisionApiRequest(null, SET_ID, ANSWERS), new MockHttpServletRequest()));
+                () -> controller.revise(new ActionRevisionApiRequest(null, SET_ID, ANSWERS, null), new MockHttpServletRequest()));
         assertThrows(IllegalArgumentException.class,
                 () -> controller.revise(new ActionRevisionApiRequest(
-                        new AnalyzeApiRequest.LawRefDto("001809", null, null), SET_ID, ANSWERS), new MockHttpServletRequest()));
+                        new AnalyzeApiRequest.LawRefDto("001809", null, null), SET_ID, ANSWERS, null), new MockHttpServletRequest()));
     }
 
     @Test
@@ -127,7 +135,7 @@ class ActionRevisionControllerTest {
     void setId_없으면_예외() {
         for (String missing : new String[] {null, "", "   "}) {
             assertThrows(IllegalArgumentException.class, () -> controller.revise(new ActionRevisionApiRequest(
-                    new AnalyzeApiRequest.LawRefDto("001809", EF, null), missing, ANSWERS), new MockHttpServletRequest()));
+                    new AnalyzeApiRequest.LawRefDto("001809", EF, null), missing, ANSWERS, null), new MockHttpServletRequest()));
         }
         verifyNoInteractions(useCase);
     }
@@ -144,5 +152,92 @@ class ActionRevisionControllerTest {
 
         verify(useCase).revise(eq(Optional.of(userId)), eq(new LawRef("001809", EF, null)), eq(SET_ID), eq(ANSWERS),
                 any(HttpSessionSituationQuestions.class));
+    }
+
+    // ── 최근 분석에 재생성본 연결(D73) ──
+
+    private static final LawRef REF = new LawRef("001809", EF, null);
+    private static final SituationQuestion QUESTION = new SituationQuestion("q1", "계약을 이미 했나요?",
+            CITE, SituationQuestion.AnswerType.YES_NO, List.of());
+
+    /** 로그인 세션에 상황 질문과 보관된 분석을 미리 둔다. 분석 id 를 돌려준다. */
+    private static String rememberAnalysis(MockHttpServletRequest httpRequest) {
+        HttpSession session = httpRequest.getSession(true);
+        UUID userId = UUID.randomUUID();
+        session.setAttribute(CurrentUser.SESSION_KEY, userId);
+        new HttpSessionSituationQuestions(session).save(REF, List.of(QUESTION));
+        AnalysisApiResponse body = AnalysisApiResponse.analyzed(
+                new AnalysisApiResponse.LawHeader("LAW:001809@2026-08-04", "001809", "주택법", EF, "법률", "국토교통부"),
+                List.of(), java.util.Map.of(), java.util.Map.of(), List.of(), "참고용",
+                new AnalysisApiResponse.SituationBody(SET_ID, List.of(QUESTION), List.of()));
+        return new HttpSessionRecentAnalyses(session).remember(userId, "q", REF, body);
+    }
+
+    private static HttpSessionRecentAnalyses.Entry rememberedEntry(MockHttpServletRequest httpRequest, String analysisId) {
+        return new HttpSessionRecentAnalyses(httpRequest.getSession(false))
+                .find(analysisId, CurrentUser.userId(httpRequest).orElseThrow()).orElseThrow();
+    }
+
+    @Test
+    @DisplayName("재생성 성공 + analysisId + 같은 법령 — 보관 항목에 재생성본과 (질문 문장, 답) 짝을 붙인다")
+    void 성공하면_보관한_분석에_재생성본과_답을_붙인다() {
+        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+        String analysisId = rememberAnalysis(httpRequest);
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(revised());
+
+        ResponseEntity<ActionRevisionApiResponse> response =
+                controller.revise(requestWithAnalysisId(analysisId), httpRequest);
+
+        HttpSessionRecentAnalyses.Entry entry = rememberedEntry(httpRequest, analysisId);
+        assertEquals(response.getBody(), entry.revision());
+        assertEquals(List.of(new HttpSessionRecentAnalyses.AnsweredQuestion("계약을 이미 했나요?", "예")), entry.answers());
+    }
+
+    @Test
+    @DisplayName("세션에 없는 questionId 의 답은 보관 항목의 답에서 빠진다")
+    void 모르는_questionId_는_답에서_빠진다() {
+        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+        String analysisId = rememberAnalysis(httpRequest);
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(revised());
+        ActionRevisionApiRequest withUnknownQuestion = new ActionRevisionApiRequest(
+                new AnalyzeApiRequest.LawRefDto("001809", EF, null), SET_ID,
+                List.of(new SituationAnswer("q1", "예"), new SituationAnswer("q9", "아니오")), analysisId);
+
+        controller.revise(withUnknownQuestion, httpRequest);
+
+        assertEquals(List.of(new HttpSessionRecentAnalyses.AnsweredQuestion("계약을 이미 했나요?", "예")),
+                rememberedEntry(httpRequest, analysisId).answers());
+    }
+
+    @Test
+    @DisplayName("요청의 setId 가 그 분석의 질문 묶음과 다르면 재생성이 성공해도 붙이지 않는다")
+    void setId_가_다르면_붙이지_않는다() {
+        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+        String analysisId = rememberAnalysis(httpRequest);
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(revised());
+        ActionRevisionApiRequest otherSet = new ActionRevisionApiRequest(
+                new AnalyzeApiRequest.LawRefDto("001809", EF, null), "ffffffffffffffff", ANSWERS, analysisId);
+
+        ResponseEntity<ActionRevisionApiResponse> response = controller.revise(otherSet, httpRequest);
+
+        assertEquals(200, response.getStatusCode().value());
+        HttpSessionRecentAnalyses.Entry entry = rememberedEntry(httpRequest, analysisId);
+        assertNull(entry.revision());
+        assertTrue(entry.answers().isEmpty());
+    }
+
+    @Test
+    @DisplayName("재생성 미충족(NotRevised) — 보관 항목의 revision 은 null 로 남는다")
+    void 미충족이면_붙이지_않는다() {
+        MockHttpServletRequest httpRequest = new MockHttpServletRequest();
+        String analysisId = rememberAnalysis(httpRequest);
+        when(useCase.revise(any(), any(), any(), any(), any())).thenReturn(
+                new RevisionOutcome.NotRevised(new Unmet(Unmet.Reason.DAILY_LIMIT, "오늘 한도를 다 썼어요.")));
+
+        controller.revise(requestWithAnalysisId(analysisId), httpRequest);
+
+        HttpSessionRecentAnalyses.Entry entry = rememberedEntry(httpRequest, analysisId);
+        assertNull(entry.revision());
+        assertTrue(entry.answers().isEmpty());
     }
 }

@@ -1,0 +1,97 @@
+{
+  "version" : 1,
+  "body" : {
+    "resolution" : "RESOLVED",
+    "law" : {
+      "ref" : "LAW:001809@2026-11-01",
+      "lawId" : "001809",
+      "title" : "주택법",
+      "effectiveDate" : "2026-11-01",
+      "lawType" : "법률",
+      "ministry" : "국토교통부"
+    },
+    "alternatives" : [ {
+      "lawId" : "001809",
+      "title" : "주택법",
+      "effectiveDate" : "2027-02-01"
+    } ],
+    "answer" : {
+      "summary" : {
+        "lawRef" : "LAW:001809@2026-11-01",
+        "command" : "SUMMARY",
+        "summary" : "절차가 짧아져요.",
+        "claims" : [ {
+          "statement" : "통합심의가 넓어진다",
+          "citations" : [ "LAW:001809@2026-11-01:art:18" ],
+          "confidence" : 0.9
+        } ],
+        "impacts" : [ ],
+        "actions" : [ ],
+        "effectiveInfo" : {
+          "status" : "시행예정",
+          "effectiveDate" : "2026-11-01",
+          "enforcement" : null
+        },
+        "uncertainties" : [ "시행령 위임 내용은 확정되지 않았어요." ],
+        "disclaimer" : "참고용",
+        "meta" : null
+      }
+    },
+    "unmet" : {
+      "action" : {
+        "reason" : "PROFILE_REQUIRED",
+        "message" : "프로필 필요"
+      }
+    },
+    "sources" : [ {
+      "sourceId" : "LAW:001809@2026-11-01:art:18",
+      "label" : "제18조",
+      "text" : "원문",
+      "previousText" : "이전 원문",
+      "changeType" : "개정",
+      "effectiveDate" : "2026-11-01"
+    } ],
+    "disclaimer" : "참고용",
+    "situation" : {
+      "setId" : "set-1",
+      "questions" : [ {
+        "id" : "q1",
+        "text" : "계약했나요?",
+        "basis" : "제18조",
+        "answerType" : "YES_NO",
+        "options" : [ ]
+      } ],
+      "stepNotes" : [ {
+        "index" : 0,
+        "note" : "계약 여부에 따라 달라요"
+      } ]
+    }
+  },
+  "revision" : {
+    "action" : {
+      "lawRef" : "LAW:001809@2026-11-01",
+      "command" : "ACTION",
+      "summary" : "대응",
+      "claims" : [ ],
+      "impacts" : [ ],
+      "actions" : [ {
+        "what" : "신고한다",
+        "deadline" : "시행 전",
+        "basis" : [ "LAW:001809@2026-11-01:art:18" ]
+      } ],
+      "effectiveInfo" : null,
+      "uncertainties" : [ ],
+      "disclaimer" : "참고용",
+      "meta" : null
+    },
+    "stepNotes" : [ {
+      "index" : 0,
+      "note" : "신고하세요"
+    } ],
+    "sources" : [ ]
+  },
+  "answers" : [ {
+    "question" : "계약했나요?",
+    "answer" : "예"
+  } ]
+}

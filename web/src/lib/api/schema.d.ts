@@ -148,6 +148,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listHistory"];
+        put?: never;
+        post: operations["saveHistory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/history/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["historyDetail"];
+        put?: never;
+        post?: never;
+        delete: operations["deleteHistory"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/laws": {
         parameters: {
             query?: never;
@@ -259,6 +291,7 @@ export interface components {
             what?: string;
         };
         ActionRevisionApiRequest: {
+            analysisId?: string;
             answers?: components["schemas"]["SituationAnswer"][];
             lawRef?: components["schemas"]["LawRefDto"];
             setId?: string;
@@ -271,6 +304,7 @@ export interface components {
         };
         AnalysisApiResponse: {
             alternatives?: components["schemas"]["LawBrief"][];
+            analysisId?: string;
             answer?: {
                 [key: string]: components["schemas"]["ImpactResult"];
             };
@@ -292,6 +326,10 @@ export interface components {
             profileSearch?: boolean;
             query?: string;
             scope?: string[];
+        };
+        AnsweredQuestion: {
+            answer?: string;
+            question?: string;
         };
         BookmarkItem: {
             /** Format: date-time */
@@ -360,6 +398,46 @@ export interface components {
             effectiveDate?: string;
             enforcement?: string;
             status?: string;
+        };
+        HistoryDetailResponse: {
+            answers?: components["schemas"]["AnsweredQuestion"][];
+            body?: components["schemas"]["AnalysisApiResponse"];
+            /** Format: date */
+            effectiveDate?: string;
+            /** Format: int64 */
+            id?: number;
+            /** Format: date */
+            latestEffectiveDate?: string;
+            lawId?: string;
+            lawTitle?: string;
+            lawUpdated?: boolean;
+            query?: string;
+            revision?: components["schemas"]["ActionRevisionApiResponse"];
+            /** Format: date-time */
+            savedAt?: string;
+            unreadable?: boolean;
+        };
+        HistoryItem: {
+            /** Format: date */
+            effectiveDate?: string;
+            /** Format: int64 */
+            id?: number;
+            lawId?: string;
+            lawTitle?: string;
+            lawUpdated?: boolean;
+            query?: string;
+            /** Format: date-time */
+            savedAt?: string;
+        };
+        HistoryListResponse: {
+            items?: components["schemas"]["HistoryItem"][];
+        };
+        HistorySaveRequest: {
+            analysisId?: string;
+        };
+        HistorySavedResponse: {
+            /** Format: int64 */
+            id?: number;
         };
         Impact: {
             aspect?: string;
@@ -812,6 +890,92 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DataStatus"];
                 };
+            };
+        };
+    };
+    listHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryListResponse"];
+                };
+            };
+        };
+    };
+    saveHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HistorySaveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistorySavedResponse"];
+                };
+            };
+        };
+    };
+    historyDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryDetailResponse"];
+                };
+            };
+        };
+    };
+    deleteHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
