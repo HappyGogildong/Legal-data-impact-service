@@ -55,8 +55,9 @@ curl -X POST localhost:8080/api/v1/analyses -H "Content-Type: application/json" 
 법령 수집·RAG 색인은 같은 이미지를 **`batch` 프로파일로 띄워 한 번 돌고 종료**하는 잡이다([[IngestJob]]). 웹 서버 없이 실행되고, 온라인 `core`와 자원이 분리된다. compose에는 `ingest` 서비스(`profiles: [batch]` — 평소 `up`에는 안 뜸)로 둔다.
 
 ```bash
-# 수동 실행 — 명령은 run · run --full · run --dry-run · sync <lawId> <efYd> [mst] · index · summarize [--dry-run] · reindex-all · requeue-dead
+# 수동 실행 — 명령은 run · run --full · run --dry-run · sync <lawId> <efYd> [mst] · index · summarize [--dry-run] · reindex-all · requeue-dead · notify [--dry-run]
 docker compose run --rm ingest run
+# 구독 알림 생성(D74) — 매일 run 이 끝 단계로 함께 돈다. 단독: docker compose run --rm ingest notify
 
 # 정기 실행에서 임베딩(색인)만 끄기 — 수집·시행 전환·철회는 계속, INDEX 는 큐에 쌓임
 #   compose ingest 서비스 environment 에 LIA_BATCH_INDEX_ENABLED: "false" (cron 줄은 그대로)
