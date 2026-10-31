@@ -15,6 +15,7 @@ import com.lia.core.application.history.AnalysisExpiredException;
 import com.lia.core.application.history.HistoryLimitException;
 import com.lia.core.application.history.HistoryNotFoundException;
 import com.lia.core.application.profile.ConsentRequiredException;
+import com.lia.core.application.subscription.SubscriptionLimitException;
 
 /**
  * API 오류 매핑([[service-api-spec]] §4.1 — <b>시스템 오류만 4xx/5xx</b>).
@@ -90,5 +91,12 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> historyNotFound(HistoryNotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("error", "not_found", "message", e.getMessage()));
+    }
+
+    /** 사용자당 구독 한도 초과 — 409(D74 ⑥). 메시지는 화면에 그대로. */
+    @ExceptionHandler(SubscriptionLimitException.class)
+    public ResponseEntity<Map<String, Object>> subscriptionLimit(SubscriptionLimitException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "subscription_limit", "message", e.getMessage()));
     }
 }
