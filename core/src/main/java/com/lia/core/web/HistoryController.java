@@ -29,6 +29,7 @@ import com.lia.core.web.HistoryApiDtos.HistorySaveRequest;
 import com.lia.core.web.HistoryApiDtos.HistorySavedResponse;
 import com.lia.core.web.HistoryApiDtos.HistorySnapshot;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import tools.jackson.core.JacksonException;
 
@@ -50,6 +51,7 @@ public class HistoryController {
 
     /** 새로 저장하면 201, 같은 분석을 이미 저장했으면 200(같은 id) — 그 기록의 스냅샷을 지금 결과로 바꾼다. */
     @PostMapping
+    @Operation(operationId = "saveHistory")
     public ResponseEntity<HistorySavedResponse> save(@RequestBody HistorySaveRequest body, HttpServletRequest request) {
         if (body == null || body.analysisId() == null || body.analysisId().isBlank()) {
             throw new IllegalArgumentException("analysisId는 필수입니다.");
@@ -67,12 +69,14 @@ public class HistoryController {
     }
 
     @GetMapping
+    @Operation(operationId = "listHistory")
     public HistoryListResponse list(HttpServletRequest request) {
         return new HistoryListResponse(history.list(CurrentUser.require(request)).stream().map(HistoryItem::from).toList());
     }
 
     /** 스냅샷을 읽지 못하면 500 이 아니라 메타데이터만 + {@code unreadable: true} — 화면이 삭제만 남긴다. */
     @GetMapping("/{id}")
+    @Operation(operationId = "historyDetail")
     public HistoryDetailResponse detail(@PathVariable long id, HttpServletRequest request) {
         HistoryEntry entry = history.find(CurrentUser.require(request), id);
         HistoryItem item = HistoryItem.from(entry.row());
@@ -91,6 +95,7 @@ public class HistoryController {
 
     /** 멱등 — 없거나 남의 것이어도 204. */
     @DeleteMapping("/{id}")
+    @Operation(operationId = "deleteHistory")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> delete(@PathVariable long id, HttpServletRequest request) {
         history.delete(CurrentUser.require(request), id);

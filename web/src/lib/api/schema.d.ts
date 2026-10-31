@@ -14,7 +14,7 @@ export interface paths {
         get: operations["get_2"];
         put?: never;
         post?: never;
-        delete: operations["delete_2"];
+        delete: operations["delete_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -59,7 +59,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_2"];
+        get: operations["list_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -155,9 +155,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list"];
+        get: operations["listHistory"];
         put?: never;
-        post: operations["save"];
+        post: operations["saveHistory"];
         delete?: never;
         options?: never;
         head?: never;
@@ -171,10 +171,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["detail_1"];
+        get: operations["historyDetail"];
         put?: never;
         post?: never;
-        delete: operations["delete_1"];
+        delete: operations["deleteHistory"];
         options?: never;
         head?: never;
         patch?: never;
@@ -187,7 +187,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_1"];
+        get: operations["list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -665,7 +665,7 @@ export interface operations {
             };
         };
     };
-    delete_2: {
+    delete_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -731,7 +731,7 @@ export interface operations {
             };
         };
     };
-    list_2: {
+    list_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -893,7 +893,7 @@ export interface operations {
             };
         };
     };
-    list: {
+    listHistory: {
         parameters: {
             query?: never;
             header?: never;
@@ -913,7 +913,7 @@ export interface operations {
             };
         };
     };
-    save: {
+    saveHistory: {
         parameters: {
             query?: never;
             header?: never;
@@ -937,7 +937,7 @@ export interface operations {
             };
         };
     };
-    detail_1: {
+    historyDetail: {
         parameters: {
             query?: never;
             header?: never;
@@ -959,7 +959,7 @@ export interface operations {
             };
         };
     };
-    delete_1: {
+    deleteHistory: {
         parameters: {
             query?: never;
             header?: never;
@@ -979,7 +979,7 @@ export interface operations {
             };
         };
     };
-    list_1: {
+    list: {
         parameters: {
             query?: {
                 from?: string;

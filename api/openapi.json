@@ -11,7 +11,7 @@
   "paths" : {
     "/api/v1/account" : {
       "delete" : {
-        "operationId" : "delete_2",
+        "operationId" : "delete_1",
         "responses" : {
           "200" : {
             "description" : "OK"
@@ -94,7 +94,7 @@
     },
     "/api/v1/bookmarks" : {
       "get" : {
-        "operationId" : "list_2",
+        "operationId" : "list_1",
         "responses" : {
           "200" : {
             "content" : {
@@ -239,7 +239,7 @@
     },
     "/api/v1/history" : {
       "get" : {
-        "operationId" : "list",
+        "operationId" : "listHistory",
         "responses" : {
           "200" : {
             "content" : {
@@ -255,7 +255,7 @@
         "tags" : [ "history-controller" ]
       },
       "post" : {
-        "operationId" : "save",
+        "operationId" : "saveHistory",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -283,7 +283,7 @@
     },
     "/api/v1/history/{id}" : {
       "delete" : {
-        "operationId" : "delete_1",
+        "operationId" : "deleteHistory",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -301,7 +301,7 @@
         "tags" : [ "history-controller" ]
       },
       "get" : {
-        "operationId" : "detail_1",
+        "operationId" : "historyDetail",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -328,7 +328,7 @@
     },
     "/api/v1/laws" : {
       "get" : {
-        "operationId" : "list_1",
+        "operationId" : "list",
         "parameters" : [ {
           "in" : "query",
           "name" : "from",
