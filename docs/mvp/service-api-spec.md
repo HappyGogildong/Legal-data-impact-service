@@ -409,7 +409,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 { "id": 12, "lawId": "001809", "title": "주택법", "effectiveDate": "2026-11-09", "notifyBefore": 7, "createdAt": "2026-11-02T19:00:00Z", "read": false }
 ```
 
-- **알림 생성**: 구독 법령의 시행예정 버전 중 `시행일 − notifyBefore ≤ 오늘(서울) ≤ 시행일` → `INSERT … ON CONFLICT DO NOTHING`. 배치가 하루 빠져도 다음 실행에서 한 번.
+- **알림 생성**: 구독 법령의 시행예정 버전(그날 시행으로 바뀐 버전 포함) 중 `시행일 − notifyBefore ≤ 오늘(서울) ≤ 시행일` → `INSERT … ON CONFLICT DO NOTHING`. 배치가 하루 빠져도 다음 실행에서 한 번.
 - **정확히 한 번**: `UNIQUE(user_id, law_id, effective_date, notify_before)` — 이 테이블이 Outbox 역할([[concurrency-and-reliability]] §3).
 - **채널은 인앱 알림함만**(D49). 이메일(동의한 경우)은 ⑦c, 내 프로필 관련 구독(`type: impact`)은 ⑦b.
 - 한도 `lia.subscriptions.max-per-user`(기본 100, `LIA_SUBSCRIPTIONS_MAX_PER_USER`), 메시지 "구독은 최대 {N}개까지 할 수 있어요."

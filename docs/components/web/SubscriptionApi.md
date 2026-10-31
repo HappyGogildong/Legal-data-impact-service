@@ -91,27 +91,29 @@ related: ["components/web/BookmarkApi.md", "components/web/HistoryApi.md", "comp
 기존 구독 확인이 한도 확인보다 앞이다 — 한도에 찬 사용자가 이미 구독한 법령의 시점을 바꿔도 오류가 아니다.
 
 ### 알림 생성 (배치 `notify`, D74 ③)
-구독 법령의 `status = '시행예정'` 버전 중 `시행일 − notify_before ≤ 오늘(서울) ≤ 시행일` 이면 알림 한 건. 중복은 `UNIQUE(user_id, law_id, effective_date, notify_before)` 가 막는다 — 이 테이블이 알림함이자 Outbox([[concurrency-and-reliability]] §3).
+구독 법령의 `status = '시행예정'` 버전(그날 시행으로 바뀐 `시행중` 버전 포함) 중 `시행일 − notify_before ≤ 오늘(서울) ≤ 시행일` 이면 알림 한 건. 중복은 `UNIQUE(user_id, law_id, effective_date, notify_before)` 가 막는다 — 이 테이블이 알림함이자 Outbox([[concurrency-and-reliability]] §3).
 
 ```sql
 INSERT INTO notifications (user_id, law_id, effective_date, law_title, notify_before, created_at)
 SELECT s.user_id, v.law_id, v.effective_date, v.title, s.notify_before, now()
 FROM law_subscriptions s
-JOIN law_versions v ON v.law_id = s.law_id AND v.status = '시행예정'
+JOIN law_versions v ON v.law_id = s.law_id
+ AND (v.status = '시행예정' OR (v.status = '시행중' AND v.effective_date = :today))
 WHERE v.effective_date - s.notify_before <= :today AND :today <= v.effective_date
 ON CONFLICT (user_id, law_id, effective_date, notify_before) DO NOTHING
 ```
 - `:today` 는 서울 날짜(실행 시점). 삽입된 행 수가 만든 알림 수다.
+- 그날 시행된 버전을 `시행중` 이어도 넣는 이유: `run` 이 같은 실행의 소진 중 TRANSITION 으로 시행일이 된 버전을 먼저 `시행중` 으로 바꾸고 끝 단계에서 알림을 만들기 때문이다 — 시행예정만 보면 시행일 당일 알림(당일 시점·전날을 놓친 보충)이 빠진다. 기준선(옛 `시행중` 본)은 시행일이 과거라 들어오지 않는다.
 - "≤ 오늘" 이라 배치가 하루 빠져도 다음 실행에서 한 번 만든다. 시점 안으로 늦게 들어온 새 개정도 다음 실행에서 한 번.
-- 시점을 바꾸면 키(`notify_before`)가 달라져 새 시점의 알림이 다시 만들어진다. 이미 시행일이 지난 버전(`시행중`·`과거`)·철회 버전은 대상이 아니다.
-- 드라이런(`--dry-run`)은 같은 조건의 `count(*)` 만 센다(삽입 없음).
+- 시점을 바꾸면 키(`notify_before`)가 달라져 새 시점의 알림이 다시 만들어진다. 오늘 이전에 이미 시행된 버전(`시행중`·`과거`)·철회 버전은 대상이 아니다.
+- 드라이런(`--dry-run`)은 같은 조건에서 아직 없는 알림 수만 센다(삽입 없음).
 
 ### 배치 명령 (`IngestJob`)
 | 명령 | 동작 | 기록 |
 |---|---|---|
 | `notify` | 알림 생성 | `counts.notified` — 만든 수 |
 | `notify --dry-run` | 삽입 없이 만들 수만 | `counts.planned.notified` |
-| `run`(드라이런 아님) | 큐 소진 뒤 **끝 단계**로 notify 를 부른다 | `counts.notified` |
+| `run`(드라이런 아님) | 큐 소진 뒤 **끝 단계**로 notify 를 부른다 — 그 단계가 실패해도 실행 결과는 수집대로 두고 로그와 `notify.failed` 만 남긴다(`notify` 단독 명령은 예외를 그대로 전파) | `counts.notified` · 실패 시 `counts.notify.failed = 1` |
 
 운영 명령 목록은 [[deployment]].
 

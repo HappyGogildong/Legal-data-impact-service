@@ -12,6 +12,7 @@ import com.lia.core.pipeline.batch.DueNotifications;
 /**
  * 인앱 알림함(D74) — {@code notifications}. 배치가 {@link #createDue} 로 만들고, 고유 키
  * {@code (user_id, law_id, effective_date, notify_before)} 가 정확히 한 번을 보장한다(이 테이블이 Outbox 역할).
+ * 대상은 시행예정 버전과 그날 시행으로 바뀐 버전(같은 실행의 TRANSITION 뒤 시행일 당일 알림용, {@code DUE}).
  * 설계: docs/components/web/SubscriptionApi.md
  */
 public class NotificationStore implements DueNotifications {
@@ -19,10 +20,15 @@ public class NotificationStore implements DueNotifications {
     public record NotificationRow(long id, String lawId, String title, LocalDate effectiveDate, int notifyBefore,
                                   OffsetDateTime createdAt, boolean read) {}
 
-    /** 구독 × 시행예정 버전 중 알릴 때가 된 것 — createDue·countDue 가 같은 조건을 쓴다. */
+    /**
+     * 구독 × 시행예정 버전 중 알릴 때가 된 것 — createDue·countDue 가 같은 조건을 쓴다.
+     * 오늘 시행된 버전은 {@code 시행중} 이어도 포함한다 — run 이 같은 실행에서 TRANSITION 으로 먼저 바꾸므로,
+     * 시행일 당일 알림(당일 시점·전날을 놓친 보충)이 빠지지 않게. 기준선(옛 시행중본)은 시행일이 과거라 들어오지 않는다.
+     */
     private static final String DUE = """
             FROM law_subscriptions s
-            JOIN law_versions v ON v.law_id = s.law_id AND v.status = '시행예정'
+            JOIN law_versions v ON v.law_id = s.law_id
+             AND (v.status = '시행예정' OR (v.status = '시행중' AND v.effective_date = :today))
             WHERE v.effective_date - s.notify_before <= :today AND :today <= v.effective_date
             """;
 

@@ -36,7 +36,7 @@ import com.lia.core.store.PendingVersion;
 
 /**
  * 배치 실행 한 번(D62) — 정리(열린 실행 닫기·중단된 작업 복구·DONE 정리) → 명령별 작업 등록(탐색 등) →
- * 워커 풀로 큐 소진 → 기록. run 은 끝으로 구독 알림을 만든다(D74). 완료·실패는 이번 실행이 소유한 작업에만 반영된다({@link TaskQueue}).
+ * 워커 풀로 큐 소진 → 기록. run 은 끝으로 구독 알림을 만든다 — 그날 시행 전환된 버전도 포함하고, 이 단계의 실패는 실행 결과를 바꾸지 않고 {@code notify.failed} 로만 남긴다(D74). 완료·실패는 이번 실행이 소유한 작업에만 반영된다({@link TaskQueue}).
  *
  * <p>소진: 워커가 {@link TaskQueue#claim}으로 작업을 가져가 종류별 {@link TaskHandler}에 맡긴다. 같은 법령의
  * 작업이 동시에 돌지 않도록 처리 중 법령 집합을 들고 가져가기에서 제외하며, "가져가기 + 집합 등록"은 직렬로 한다.
@@ -179,8 +179,13 @@ public class IngestJob {
             counts.put("dead", drained[2]);
             counts.put("deferred.INDEX", queue.countReady(TaskKind.INDEX));   // 색인 지연 — 미룬 것은 결과에 넣지 않는다
             counts.put("deferred.SUMMARIZE", queue.countReady(TaskKind.SUMMARIZE));
-            if (command.type() == JobCommand.Type.RUN) {   // 끝 단계 — 오늘 동기화된 시행예정본까지 보고 알린다(D74)
-                counts.put("notified", dueNotifications.createDue(todaySeoul()));
+            if (command.type() == JobCommand.Type.RUN) {   // 끝 단계 — 오늘 동기화된 시행예정본과 그날 시행 전환된 버전까지 보고 알린다(D74)
+                try {
+                    counts.put("notified", dueNotifications.createDue(todaySeoul()));
+                } catch (RuntimeException e) {   // 수집은 이미 끝났다 — 알림 실패로 실행을 FAILED 로 만들지 않고 다음 실행이 보충한다
+                    log.warn("[batch] 구독 알림 생성 실패", e);
+                    counts.put("notify.failed", 1);
+                }
             }
             return finish(runId, outcome(drained[1], drained[2], listComplete, kinds), listComplete, counts);
         } catch (RuntimeException | Error e) {

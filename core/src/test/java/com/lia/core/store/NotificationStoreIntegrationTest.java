@@ -109,6 +109,43 @@ class NotificationStoreIntegrationTest {
     }
 
     @Test
+    void 시행일_당일_시행중으로_바뀐_버전도_당일_시점_알림이_만들어진다() {
+        version("D", EFFECTIVE, "시행중", "라법");   // run 의 TRANSITION 이 이미 시행중으로 바꾼 뒤
+        subscribe(userId, "D", 0);
+
+        assertEquals(1, store.createDue(EFFECTIVE));
+        assertEquals(1, count());
+    }
+
+    @Test
+    void 전날_실행이_없었어도_시행일에_시행중이_된_뒤_보충된다() {
+        version("D", EFFECTIVE, "시행중", "라법");   // 전날 배치가 빠지고 시행일에 처음 돌아 이미 전환됨
+        subscribe(userId, "D", 1);
+
+        assertEquals(1, store.createDue(EFFECTIVE), "시행일 당일에라도 놓친 1일 전 알림을 보충한다");
+        assertEquals(0, store.createDue(EFFECTIVE), "정확히 한 번");
+    }
+
+    @Test
+    void 시행일이_과거인_시행중_버전은_기준선이라_제외() {
+        version("D", EFFECTIVE.minusDays(30), "시행중", "라법");   // 기준선(옛 시행중본)
+        subscribe(userId, "D", 0);
+        subscribe(userId, "D", 30);
+
+        assertEquals(0, store.createDue(EFFECTIVE));
+        assertEquals(0, count());
+    }
+
+    @Test
+    void countDue_는_당일_시행중으로_바뀐_버전도_센다() {
+        version("D", EFFECTIVE, "시행중", "라법");
+        subscribe(userId, "D", 0);
+
+        assertEquals(1, store.countDue(EFFECTIVE));
+        assertEquals(0, count());
+    }
+
+    @Test
     void 시점을_바꾸면_새_시점_알림이_다시_간다() {
         subscribe(userId, "A", 7);
         store.createDue(EFFECTIVE.minusDays(7));
