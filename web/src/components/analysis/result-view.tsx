@@ -24,7 +24,7 @@ type ResultViewProps = {
 };
 
 /**
- * S02 분석 결과 — 실시간 요소(상황 질문·보기 버튼·후속 질문)를 ResultBody 위에 얹는다.
+ * S02 분석 결과 — 실시간 요소(상황 질문·보기 버튼·이력 저장은 afterCards 로, 후속 질문은 footer 로)를 ResultBody 에 넣는다.
  */
 export function ResultView({
   response,

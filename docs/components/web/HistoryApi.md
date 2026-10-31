@@ -122,7 +122,7 @@ related: ["components/web/BookmarkApi.md", "components/web/AnalysisApi.md", "com
 테스트는 계층별로 귀속한다.
 - `HttpSessionRecentAnalysesTest` — 최근 20개 LRU·사용자 묶기·재생성 연결 조건(같은 법령·같은 `setId`).
 - `AnalysisControllerTest` · `ActionRevisionControllerTest` — 로그인/법령 분석만 보관(익명·발견·미해소엔 `analysisId` 없음), 재생성 요청의 `analysisId` 연결(모르는 `questionId`·다른 `setId`).
-- `AnalysisHistoryStoreIntegrationTest` — 저장 순서·잠금(실제 DB)·멱등·한도·revision 읽기·`lawUpdated`·`latestEffectiveDate`.
+- `AnalysisHistoryStoreIntegrationTest`(실제 DB, Docker 없으면 스킵) — 저장 순서·같은 분석 재저장(스냅샷 갱신·id 유지)·한도·revision 읽기·`lawUpdated`·`latestEffectiveDate`. 동시 저장 직렬화(계정 행 잠금)를 겨냥한 동시성 테스트는 없다.
 - `HistorySnapshotsTest` — 버전·관대한 읽기(알 수 없는 필드·모르는 enum·primitive null)·고정 파일 `snapshot-v1.json`.
 - `HistoryUseCaseTest` — 결과 enum → 예외 변환.
 - `HistoryApiTest` — HTTP·인증·CSRF·오류 매핑·남의 기록 격리.
