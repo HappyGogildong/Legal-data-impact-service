@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { isActive } from "./nav-items";
+import { NAV_ITEMS, isActive } from "./nav-items";
+
+describe("NAV_ITEMS", () => {
+  it("주 메뉴는 홈·알림·안내·내 정보", () => {
+    expect(NAV_ITEMS.map((item) => item.label)).toEqual([
+      "홈",
+      "알림",
+      "안내",
+      "내 정보",
+    ]);
+  });
+});
 
 describe("isActive", () => {
   it("'/' 는 홈에서만 활성이다", () => {
