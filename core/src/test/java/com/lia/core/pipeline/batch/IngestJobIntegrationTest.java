@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -51,6 +52,7 @@ import com.lia.core.store.ChunkStore;
 import com.lia.core.store.LawStore;
 import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
+import com.lia.core.store.NotificationStore;
 import com.lia.core.testsupport.FakeEmbeddingModel;
 import com.lia.core.testsupport.FakeLawFeed;
 import com.lia.core.testsupport.LawFixtures;
@@ -80,6 +82,7 @@ class IngestJobIntegrationTest {
     /** groundedEngine 의 추론기 호출 수 — 유료 호출이 없었는지 확인용. */
     static final AtomicInteger reasonerCalls = new AtomicInteger();
     static IngestService ingest;
+    static NotificationStore notifications;
     static TransactionTemplate tx;
     FakeLawFeed feed;
 
@@ -93,6 +96,7 @@ class IngestJobIntegrationTest {
         runs = new IngestRunStore(jdbc, new ObjectMapper());
         summaries = new LawSummaryStore(jdbc, new ObjectMapper(), "p-test");
         groundedSummaries = new GroundedSummaries(summaries, new ContextBuilder());
+        notifications = new NotificationStore(jdbc);
         chunkStore = TestDatabases.chunkStore(ds, new FakeEmbeddingModel(8), 8);
         ingest = new IngestService(new Normalizer(), new DiffBuilder(), lawStore, null);
         tx = new TransactionTemplate(new DataSourceTransactionManager(ds));
@@ -103,6 +107,8 @@ class IngestJobIntegrationTest {
         jdbc.sql("DELETE FROM ingest_tasks").update();
         jdbc.sql("DELETE FROM ingest_runs").update();
         jdbc.sql("DELETE FROM law_summaries").update();
+        jdbc.sql("DELETE FROM notifications").update();
+        jdbc.sql("DELETE FROM law_subscriptions").update();
         reasonerCalls.set(0);
         jdbc.sql("DELETE FROM law_versions").update();
         jdbc.sql("TRUNCATE TABLE vector_store").update();
@@ -151,8 +157,8 @@ class IngestJobIntegrationTest {
                 new SummarizeHandler(lawStore, summaryEngine, summaries, groundedSummaries, new MinIntervalLimiter(Duration.ZERO), "test-model"),
                 new TransitionHandler(lawStore, chunkStore, queue, tx),
                 new PurgeHandler(lawStore, chunkStore, tx));
-        return new IngestJob(queue, runs, discoverer, lawStore, groundedSummaries, handlers, workers, indexEnabled, summaryEnabled,
-                Duration.ofMillis(20), Duration.ofDays(30), clock, null);
+        return new IngestJob(queue, runs, discoverer, lawStore, groundedSummaries, notifications, handlers, workers, indexEnabled,
+                summaryEnabled, Duration.ofMillis(20), Duration.ofDays(30), clock, null);
     }
 
     /** 본문 fetch 에서 멈추는 주택법 원천 — 진입하면 {@code entered}, {@code release} 가 열릴 때까지 대기. */
@@ -595,6 +601,60 @@ class IngestJobIntegrationTest {
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    private UUID account() {
+        UUID id = UUID.randomUUID();
+        jdbc.sql("INSERT INTO accounts (user_id, provider, provider_id, created_at) VALUES (:id, 'kakao', :sub, now())")
+                .param("id", id).param("sub", id.toString()).update();
+        return id;
+    }
+
+    private void version(String lawId, LocalDate effectiveDate, String status, String title) {
+        jdbc.sql("""
+                INSERT INTO law_versions (law_id, effective_date, revision, status, title, payload, last_seen)
+                VALUES (:lawId, :efYd, 'rev', :status, :title, '{}'::jsonb, now())
+                """)
+                .param("lawId", lawId).param("efYd", effectiveDate).param("status", status).param("title", title).update();
+    }
+
+    private void subscribe(UUID userId, String lawId, int notifyBefore) {
+        jdbc.sql("INSERT INTO law_subscriptions (user_id, law_id, notify_before, created_at) VALUES (:u, :l, :n, now())")
+                .param("u", userId).param("l", lawId).param("n", notifyBefore).update();
+    }
+
+    @Test
+    @DisplayName("notify 명령 — 시점이 된 구독 알림을 만들고 다시 돌리면 0, --dry-run 은 세기만(D74)")
+    void notify_명령() {
+        LocalDate today = LocalDate.of(2026, 10, 31);
+        UUID userId = account();
+        version("001809", today.plusDays(5), "시행예정", "주택법");
+        subscribe(userId, "001809", 7);
+
+        RunReport dry = job(today).run(new JobCommand(JobCommand.Type.NOTIFY, false, true, null, null, null));
+        assertEquals(1, dry.counts().get("planned.notified"));
+        assertEquals(0, jdbc.sql("SELECT count(*) FROM notifications").query(Integer.class).single());
+
+        RunReport first = job(today).run(new JobCommand(JobCommand.Type.NOTIFY, false, false, null, null, null));
+        assertEquals(RunOutcome.SUCCESS, first.outcome());
+        assertEquals(1, first.counts().get("notified"));
+        RunReport again = job(today).run(new JobCommand(JobCommand.Type.NOTIFY, false, false, null, null, null));
+        assertEquals(0, again.counts().get("notified"));
+    }
+
+    @Test
+    @DisplayName("run 은 끝 단계로 notify 를 부르고 notified 를 기록한다 — --dry-run 은 부르지 않는다")
+    void run_끝에_notify() {
+        LocalDate today = LocalDate.of(2026, 10, 31);
+        UUID userId = account();
+        version("009999", today.plusDays(1), "시행예정", "가상법");   // 원천에 없는 법령 — 탐색과 섞이지 않게
+        subscribe(userId, "009999", 1);
+
+        RunReport dry = job(today).run(new JobCommand(JobCommand.Type.RUN, false, true, null, null, null));
+        assertNull(dry.counts().get("notified"));
+
+        RunReport run = job(today).run(new JobCommand(JobCommand.Type.RUN, false, false, null, null, null));
+        assertEquals(1, run.counts().get("notified"));
     }
 
     private static void pause(Duration duration) {

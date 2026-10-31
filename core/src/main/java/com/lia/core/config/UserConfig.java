@@ -16,6 +16,7 @@ import com.lia.core.auth.AccountStore;
 import com.lia.core.profile.UserProfileStore;
 import com.lia.core.store.AnalysisHistoryStore;
 import com.lia.core.store.LawBookmarkStore;
+import com.lia.core.store.NotificationStore;
 
 /**
  * 사용자(계정·프로필·북마크·이력) 유스케이스 배선 — application 코어는 Spring 애노테이션 없이 두고 여기서 {@code @Bean} 으로 잇는다
@@ -56,6 +57,12 @@ public class UserConfig {
     public AnalysisHistoryStore analysisHistoryStore(JdbcClient jdbcClient, PlatformTransactionManager transactionManager,
             @Value("${lia.history.max-per-user}") int maxPerUser) {
         return new AnalysisHistoryStore(jdbcClient, new TransactionTemplate(transactionManager), maxPerUser);
+    }
+
+    /** 구독 알림 저장소(D74) — 웹 알림함과 배치 notify 단계가 함께 쓴다. */
+    @Bean
+    public NotificationStore notificationStore(JdbcClient jdbcClient) {
+        return new NotificationStore(jdbcClient);
     }
 
     @Bean

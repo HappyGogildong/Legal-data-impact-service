@@ -42,6 +42,7 @@ import com.lia.core.store.ChunkStore;
 import com.lia.core.store.LawStore;
 import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
+import com.lia.core.store.NotificationStore;
 
 /**
  * 적재 배치 배선(D62) — {@code batch} 프로파일에서만. 웹 컨텍스트에는 배치 빈이 없다.
@@ -88,7 +89,7 @@ public class BatchConfig {
                                PendingLawFeed feed, IngestService ingest, ChunkStore chunkStore, RAGIndexer indexer,
                                Clock batchClock, ObservationRegistry observations,
                                AnalysisEngine analysisEngine, LawSummaryStore lawSummaryStore,
-                               LawSummaries lawSummaries,
+                               LawSummaries lawSummaries, NotificationStore notificationStore,
                                PlatformTransactionManager transactionManager,
                                @Value("${lia.batch.workers}") int workers,
                                @Value("${lia.batch.index.enabled}") boolean indexEnabled,
@@ -107,8 +108,8 @@ public class BatchConfig {
                         SpringAiReasoner.MODEL),
                 new TransitionHandler(lawStore, chunkStore, queue, transactions),
                 new PurgeHandler(lawStore, chunkStore, transactions));
-        return new IngestJob(queue, runs, discoverer, lawStore, lawSummaries, handlers, workers, indexEnabled, summaryEnabled,
-                idlePoll,
+        return new IngestJob(queue, runs, discoverer, lawStore, lawSummaries, notificationStore, handlers, workers, indexEnabled,
+                summaryEnabled, idlePoll,
                 doneRetention, batchClock, observations);
     }
 

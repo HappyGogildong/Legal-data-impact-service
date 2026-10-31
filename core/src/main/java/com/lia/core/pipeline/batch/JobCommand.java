@@ -7,13 +7,14 @@ import java.util.Set;
 
 /**
  * 배치 명령(D62) — {@code run [--full] [--dry-run]} · {@code sync <lawId> <efYd> [mst]} · {@code index} · {@code summarize [--dry-run]} ·
- * {@code reindex-all} · {@code requeue-dead}. Spring 의 {@code --spring.*} 옵션은 무시한다.
+ * {@code reindex-all} · {@code requeue-dead} · {@code notify [--dry-run]}. Spring 의 {@code --spring.*} 옵션은 무시한다.
  * {@code summarize}는 모든 시행예정본에 요약 작업을 등록해, 요약이 없거나 낡은 것을 채운다(유효한 요약은 건너뜀).
  * {@code --dry-run}은 요약이 필요한 시행예정본 수만 세고 등록·유료 호출은 하지 않는다.
+ * {@code notify}는 구독 알림을 만든다(D74) — {@code --dry-run}은 만들 수만 센다. {@code run}은 끝 단계로 함께 돈다.
  */
 public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, LocalDate effectiveDate, String mst) {
 
-    public enum Type { RUN, SYNC, INDEX, SUMMARIZE, REINDEX_ALL, REQUEUE_DEAD }
+    public enum Type { RUN, SYNC, INDEX, SUMMARIZE, REINDEX_ALL, REQUEUE_DEAD, NOTIFY }
 
     /**
      * @param nonOptionArgs 비옵션 인자 — 명령과 그 인자
@@ -21,7 +22,7 @@ public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, 
      */
     public static JobCommand parse(List<String> nonOptionArgs, Set<String> optionNames) {
         if (nonOptionArgs.isEmpty()) {
-            throw new IllegalArgumentException("명령이 필요합니다: run · sync <lawId> <efYd> [mst] · index · summarize · reindex-all · requeue-dead");
+            throw new IllegalArgumentException("명령이 필요합니다: run · sync <lawId> <efYd> [mst] · index · summarize · reindex-all · requeue-dead · notify");
         }
         String name = nonOptionArgs.get(0);
         return switch (name) {
@@ -38,6 +39,7 @@ public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, 
             case "summarize" -> new JobCommand(Type.SUMMARIZE, false, optionNames.contains("dry-run"), null, null, null);
             case "reindex-all" -> new JobCommand(Type.REINDEX_ALL, false, false, null, null, null);
             case "requeue-dead" -> new JobCommand(Type.REQUEUE_DEAD, false, false, null, null, null);
+            case "notify" -> new JobCommand(Type.NOTIFY, false, optionNames.contains("dry-run"), null, null, null);
             default -> throw new IllegalArgumentException("모르는 명령: " + name);
         };
     }
@@ -51,6 +53,7 @@ public record JobCommand(Type type, boolean full, boolean dryRun, String lawId, 
             case SUMMARIZE -> "summarize" + (dryRun ? " --dry-run" : "");
             case REINDEX_ALL -> "reindex-all";
             case REQUEUE_DEAD -> "requeue-dead";
+            case NOTIFY -> "notify" + (dryRun ? " --dry-run" : "");
         };
     }
 

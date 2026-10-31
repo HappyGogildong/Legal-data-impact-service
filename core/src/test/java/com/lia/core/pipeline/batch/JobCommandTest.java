@@ -64,6 +64,19 @@ class JobCommandTest {
     }
 
     @Test
+    @DisplayName("notify 명령 — 드라이런 표기(D74)")
+    void notify_명령과_드라이런() {
+        JobCommand notify = JobCommand.parse(List.of("notify"), Set.of());
+        assertEquals(JobCommand.Type.NOTIFY, notify.type());
+        assertFalse(notify.dryRun());
+        assertEquals("notify", notify.label());
+
+        JobCommand dry = JobCommand.parse(List.of("notify"), Set.of("dry-run"));
+        assertTrue(dry.dryRun());
+        assertEquals("notify --dry-run", dry.label());
+    }
+
+    @Test
     @DisplayName("명령 없음·모르는 명령·sync 인자 부족·잘못된 날짜 → IllegalArgumentException")
     void 잘못된입력() {
         assertThrows(IllegalArgumentException.class, () -> JobCommand.parse(List.of(), Set.of()));

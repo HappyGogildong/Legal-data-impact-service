@@ -54,6 +54,7 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 | `sync <lawId> <efYd> [mst]` | 단건 `SYNC` 등록 후 소진. `mst`를 생략하면 저장된 시행예정본의 값, 그것도 없으면 거부 |
 | `index` | 탐색·수집 없이 **쌓여 있는 `READY` `INDEX`만** 소진 — 색인을 꺼 둔 동안 밀린 작업 처리 |
 | `summarize [--dry-run]` | 탐색·수집 없이 **모든 시행예정본에 `SUMMARIZE` 등록 후 소진** — 요약이 없거나 낡은 것만 만든다(유효한 요약은 유료 호출 없이 건너뜀). 쉬운 요약 일괄 생성·채우기(유료 Opus, D67). `--dry-run`은 요약이 필요한 시행예정본 수(`planned.SUMMARIZE`)만 기록하고 등록·소진(유료 호출)은 하지 않는다 — 비용 확인용 |
+| `notify [--dry-run]` | 구독 알림만 만든다(D74) — 등록·소진·LLM 없음. 시점이 된 구독 × 시행예정본을 `notifications`에 넣고(중복 키로 정확히 한 번) 만든 수를 `notified`로 기록. `--dry-run`은 만들 수(`planned.notified`)만 센다 |
 | `reindex-all` | 시행예정 전체에 `INDEX` 등록 후 소진(임베딩 모델 교체 시) |
 | `requeue-dead` | `DEAD` 작업의 **기존 행**을 `READY`로(`task_id`·시도 이력 유지, 시도 횟수 0) 되돌린 뒤 소진. 되돌아온 `SUMMARIZE`는 이 명령이 처리하지 않고 `run`(요약 켜짐) 또는 `summarize`를 기다린다. `DEAD` `SUMMARIZE`는 격리 작업이라 `summarize`가 다시 등록하지 않는다 — `requeue-dead`로 먼저 풀어야 한다 |
 
@@ -80,7 +81,7 @@ ALTER TABLE law_versions ADD COLUMN missing_since date;   -- 완주 목록에서
 
 CREATE TABLE ingest_runs (                          -- 실행 단위
   run_id        bigserial PRIMARY KEY,
-  command       text        NOT NULL,             -- run · run --full · run --dry-run · sync … · index · summarize · reindex-all · requeue-dead
+  command       text        NOT NULL,             -- run · run --full · run --dry-run · sync … · index · summarize · reindex-all · requeue-dead · notify
   started_at    timestamptz NOT NULL,
   finished_at   timestamptz,
   outcome       text        CHECK (outcome IN ('SUCCESS', 'PARTIAL', 'FAILED')),
@@ -135,6 +136,7 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
 3. **시작** — `ingest_runs` 행 생성.
 4. **등록** — `Discoverer`(명령에 따라 생략·대체: `sync`·`reindex-all`·`summarize`·`requeue-dead`는 해당 작업만 등록, `index`는 등록 없음). `--dry-run`은 여기서 기록 후 종료.
 5. **소진** — 워커 풀이 작업을 처리한다. 실행 중에 생긴 작업(SYNC → INDEX, TRANSITION → SYNC)도 같은 실행에서 처리한다. 워커는 가져갈 작업이 없어도 **진행 중인 작업이 남아 있으면** 잠시 기다렸다 다시 가져가고(그 작업이 새 작업을 만들 수 있으므로), **가져갈 작업도 진행 중인 작업도 없을 때** 종료한다.
+   - `run`(드라이런 아님)은 소진 뒤 끝 단계로 `notify`를 부른다 — 오늘 동기화된 시행예정본까지 보고 구독 알림을 만들고 `notified`를 기록한다(D74).
 6. **기록** — 건수·결과·`list_complete`·종료 시각을 `ingest_runs`에. 예외로 끝나도 `FAILED`로 기록한 뒤 전파한다. 잠금 해제.
 
 ## 탐색 분류 규칙
