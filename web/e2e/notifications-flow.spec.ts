@@ -73,7 +73,7 @@ test("S05 시행 알림 받기 → 메뉴 알림 배지 → 알림함에서 눌�
   await expect(
     page
       .getByRole("navigation", { name: nav })
-      .getByLabel("읽지 않은 알림 1개"),
+      .getByRole("link", { name: /읽지 않은 알림 1개/ }),
   ).toBeVisible();
   await page.getByRole("button", { name: /주택법 개정이/ }).click();
   await expect(page).toHaveURL(new RegExp(`/laws/001809/${effective}$`));

@@ -30,7 +30,7 @@ export function notificationMessage(
 export function NotificationListView() {
   const session = useRequireSession();
   const signedIn = session.isSuccess && session.data !== null;
-  const inbox = useNotifications(signedIn);
+  const inbox = useNotifications(signedIn, { refetchOnMount: "always" });
   const queryClient = useQueryClient();
   const router = useRouter();
   const today = useToday();
@@ -95,6 +95,7 @@ export function NotificationListView() {
                 onClick={() => open(item.id!, item.lawId!, item.effectiveDate!)}
                 className="flex w-full items-start gap-2 px-3.5 py-3 text-left"
               >
+                {!item.read && <span className="sr-only">읽지 않음 </span>}
                 <span
                   aria-hidden
                   className={`mt-1.5 size-1.5 shrink-0 rounded-full ${item.read ? "bg-transparent" : "bg-navy"}`}

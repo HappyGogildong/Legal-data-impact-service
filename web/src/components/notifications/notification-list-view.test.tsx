@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { empty, json, mockApi } from "@/test/api-mock";
+import { NOTIFICATIONS_KEY } from "@/lib/api/notifications";
+import { SESSION_KEY } from "@/lib/session";
 import {
   NotificationListView,
   notificationMessage,
@@ -37,7 +39,10 @@ const ITEMS = [
   },
 ];
 
-function renderList(routes: Parameters<typeof mockApi>[0] = {}) {
+function renderList(
+  routes: Parameters<typeof mockApi>[0] = {},
+  prepare?: (client: QueryClient) => void,
+) {
   const requests = mockApi({
     "GET /api/v1/account": () => json(ACCOUNT),
     "GET /api/v1/notifications": () => json({ items: ITEMS, unreadCount: 1 }),
@@ -46,6 +51,7 @@ function renderList(routes: Parameters<typeof mockApi>[0] = {}) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  prepare?.(client);
   render(
     <QueryClientProvider client={client}>
       <NotificationListView />
@@ -91,6 +97,36 @@ describe("NotificationListView", () => {
       expect(router.push).toHaveBeenCalledWith("/laws/001809/2026-11-09"),
     );
     expect(requests.some((request) => request.method === "POST")).toBe(true);
+  });
+
+  it("읽지 않은 행은 버튼 이름에 '읽지 않음', 읽은 행엔 없다", async () => {
+    renderList();
+    const unread = await screen.findByRole("button", {
+      name: /주택법 개정이 7일 뒤 시행돼요/,
+    });
+    expect(unread).toHaveAccessibleName(/읽지 않음/);
+    const read = screen.getByRole("button", {
+      name: /근로기준법 개정이 오늘 시행돼요/,
+    });
+    expect(read).not.toHaveAccessibleName(/읽지 않음/);
+  });
+
+  it("캐시가 신선해도 알림함을 열면 다시 받는다", async () => {
+    // 화면 이동으로 열 때 — 앱 셸이 이미 세션과 알림(배지)을 받아 둔 상태
+    const requests = renderList({}, (client) => {
+      client.setQueryData(SESSION_KEY, ACCOUNT);
+      client.setQueryData(NOTIFICATIONS_KEY, { items: ITEMS, unreadCount: 1 });
+    });
+    await screen.findByRole("button", { name: /주택법 개정이 7일 뒤/ });
+    await vi.waitFor(() =>
+      expect(
+        requests.some(
+          (request) =>
+            request.method === "GET" &&
+            new URL(request.url).pathname === "/api/v1/notifications",
+        ),
+      ).toBe(true),
+    );
   });
 
   it("모두 읽음", async () => {

@@ -11,11 +11,14 @@ export function UnreadBadge() {
   const count = inbox.data?.unreadCount ?? 0;
   if (!signedIn || count === 0) return null;
   return (
-    <span
-      aria-label={`읽지 않은 알림 ${count}개`}
-      className="ml-1 rounded-full bg-removed px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
-    >
-      {count > 9 ? "9+" : count}
-    </span>
+    <>
+      <span
+        aria-hidden
+        className="ml-1 rounded-full bg-removed px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
+      >
+        {count > 9 ? "9+" : count}
+      </span>
+      <span className="sr-only">읽지 않은 알림 {count}개</span>
+    </>
   );
 }
