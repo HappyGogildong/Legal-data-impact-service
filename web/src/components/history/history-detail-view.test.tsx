@@ -135,6 +135,26 @@ describe("HistoryDetailView", () => {
     ).toHaveTextContent("계약을 이미 맺었나요?: 예");
   });
 
+  it("읽을 수 없는 기록(unreadable)은 '이 기록은 표시할 수 없어요'와 삭제 버튼만", async () => {
+    renderDetail({ ...DETAIL, body: undefined, unreadable: true });
+
+    expect(
+      await screen.findByText("저장 당시(2026-10-30) 기준이에요"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("이 기록은 표시할 수 없어요")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+    expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
+  });
+
+  it("본문(body)이 없는 기록도 같은 안내", async () => {
+    renderDetail({ ...DETAIL, body: undefined });
+
+    expect(
+      await screen.findByText("이 기록은 표시할 수 없어요"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "삭제" })).toBeInTheDocument();
+  });
+
   it("삭제는 확인 후 DELETE 하고 목록으로", async () => {
     const requests = renderDetail(DETAIL, {
       "DELETE /api/v1/history/7": () => empty(204),

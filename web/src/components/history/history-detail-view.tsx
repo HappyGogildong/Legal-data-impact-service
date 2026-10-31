@@ -76,8 +76,10 @@ export function HistoryDetailView() {
     );
   }
   const data = detail.data;
-  const law = data?.body?.law;
-  if (!data || !data.body || !law) return null;
+  if (!data) return null;
+  // 저장한 스냅샷을 서버가 읽지 못했거나(unreadable) 본문이 없으면 결과 대신 안내 — 삭제는 그대로 둔다
+  const body = data.unreadable ? undefined : data.body;
+  const law = body?.law;
 
   const savedDay = data.savedAt ? seoulDate(new Date(data.savedAt)) : "";
   const answers = data.answers ?? [];
@@ -126,37 +128,43 @@ export function HistoryDetailView() {
           </p>
         )}
       </div>
-      <ResultBody
-        response={data.body}
-        revision={data.revision}
-        header={
-          <LawHeaderView
-            law={law}
-            alternatives={[]}
-            onPickAlternative={noAlternative}
-          />
-        }
-        afterCards={() =>
-          answers.length > 0 && (
-            <section
-              aria-label="확인한 상황"
-              className="rounded-lg border border-border bg-card p-3.5 text-sm"
-            >
-              <h2 className="font-bold">확인한 상황</h2>
-              <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                {answers.map((answer, index) => (
-                  <li
-                    key={index}
-                    className="rounded-full bg-chip px-2.5 py-1 text-xs"
-                  >
-                    {answer.question}: {answer.answer}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )
-        }
-      />
+      {body && law ? (
+        <ResultBody
+          response={body}
+          revision={data.revision}
+          header={
+            <LawHeaderView
+              law={law}
+              alternatives={[]}
+              onPickAlternative={noAlternative}
+            />
+          }
+          afterCards={() =>
+            answers.length > 0 && (
+              <section
+                aria-label="확인한 상황"
+                className="rounded-lg border border-border bg-card p-3.5 text-sm"
+              >
+                <h2 className="font-bold">확인한 상황</h2>
+                <ul className="mt-1.5 flex flex-wrap gap-1.5">
+                  {answers.map((answer, index) => (
+                    <li
+                      key={index}
+                      className="rounded-full bg-chip px-2.5 py-1 text-xs"
+                    >
+                      {answer.question}: {answer.answer}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )
+          }
+        />
+      ) : (
+        <p className="mx-auto w-full max-w-[1120px] px-4 py-8 text-center text-sm">
+          이 기록은 표시할 수 없어요
+        </p>
+      )}
       <div className="mx-auto w-full max-w-[1120px] px-4 pb-6">
         <button
           type="button"

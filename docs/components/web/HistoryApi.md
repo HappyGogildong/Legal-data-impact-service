@@ -43,7 +43,8 @@ related: ["components/web/BookmarkApi.md", "components/web/AnalysisApi.md", "com
   "body": { /* 분석 응답(§3.0) 화면에 보낸 그대로, analysisId 제외 */ },
   "revision": { /* 대응 방안 재생성 응답(§3.0.1), 재생성했을 때만 — 없으면 키 생략 */ },
   "answers": [ { "question": "계약을 2026-11-01 이전에 맺었나요?", "answer": "예" } ],
-  "latestEffectiveDate": "2027-02-01" }   // 가장 이른 시행예정본, 없으면 키 생략
+  "latestEffectiveDate": "2027-02-01",    // 가장 이른 시행예정본, 없으면 키 생략
+  "unreadable": true }                    // 저장한 스냅샷을 읽지 못했을 때만(body·revision 없음, answers 빈 목록) — 아래 "관대한 읽기" 절
 ```
 
 ```jsonc
@@ -63,6 +64,13 @@ related: ["components/web/BookmarkApi.md", "components/web/AnalysisApi.md", "com
 - **재생성 연결** — `POST /analyses/action-revisions` 요청의 선택 필드 `analysisId` 가 있고, **재생성이 성공하고 같은 법령(`lawId`·`effectiveDate`)** 일 때만 그 항목의 재생성본·답을 덮어 쓴다. 실패(`unmet`)·다른 법령이면 붙이지 않는다.
 - 재생성을 연결하지 않고 저장하면 상세 응답에 `revision` 키가 없고(없으면 생략) `answers` 는 빈 목록이다.
 
+## 스냅샷 버전·관대한 읽기·읽기 실패 시 `unreadable`
+저장한 행은 DTO(`AnalysisApiResponse`·`ActionRevisionApiResponse` 등)가 바뀐 뒤에도 상세에서 열려야 한다. 그래서 스냅샷은 **앱 기본 매퍼가 아니라 전용 매퍼**(`HistorySnapshots`)로 쓰고 읽는다.
+- **버전** — 스냅샷에 `"version": 1`(`HistorySnapshot.version`). 없는 옛 스냅샷은 1 로 본다. 형식이 크게 바뀌면 이 숫자를 올리고 읽을 때 변환한다.
+- **관대한 읽기**(Jackson 3, `JsonMapper.builder()`) — `DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES` 끔(알 수 없는 필드 무시) · `DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES` 끔(primitive 자리의 null 은 기본값) · `EnumFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL` 켬(지워진 enum 상수는 null). Jackson 3 에서 마지막 상수는 `DeserializationFeature` 가 아니라 `tools.jackson.databind.cfg.EnumFeature` 에 있다. 새로 생긴 필드는 기본값으로 읽힌다.
+- **읽기 실패** — 그래도 읽지 못하면(깨진 JSON·타입 불일치, `JacksonException`) 상세는 500 이 아니라 **메타데이터만**(질문·법령·저장일·`lawUpdated`·`latestEffectiveDate`) 돌려주고 `unreadable: true` 를 붙인다(읽혔으면 키 생략). `body`·`revision` 은 없고 `answers` 는 빈 목록. 화면은 "이 기록은 표시할 수 없어요"와 삭제 버튼을 보여 준다. 로그엔 이력 id 만 warn 으로 남기고 내용은 남기지 않는다.
+- **고정 파일 회귀 테스트** — 버전 1 DTO 로 만든 풍부한 스냅샷을 `core/src/test/resources/history/snapshot-v1.json` 으로 커밋해 두고 전용 매퍼로 읽어 핵심 필드를 단언한다. DTO 를 바꿔 옛 행을 못 읽게 되면 CI 가 실패한다(새 버전을 만들면 `snapshot-v2.json` 을 더하고 v1 은 그대로 둔다).
+
 ## 구조 (컴포넌트)
 | 클래스 | 역할 |
 |---|---|
@@ -70,6 +78,7 @@ related: ["components/web/BookmarkApi.md", "components/web/AnalysisApi.md", "com
 | `HistoryUseCase` | 저장소의 저장 결과 enum → 예외(분석 만료·한도 초과·계정 없음). 규칙은 갖지 않는다. |
 | `AnalysisHistoryStore` | `analysis_history` 저장소. **계정 행 `FOR UPDATE` 잠금·멱등·한도·트랜잭션**, 삭제, 목록·상세, 저장한 버전의 현재 `revision`·`status` 읽기와 `lawUpdated` 판정, `latestEffectiveDate` 조회. 스냅샷은 JSON 문자열 그대로 저장·반환. |
 | `HttpSessionRecentAnalyses` | 세션의 최근 분석 결과 보관(위 절). |
+| `HistorySnapshots` | 스냅샷 전용 관대한 매퍼 — 쓰기(`version` 포함)·읽기(위 절). |
 
 계층: `HistoryController` → `HistoryUseCase` → `AnalysisHistoryStore`. 스냅샷 `{ body, revision, answers }` 는 컨트롤러에서 만들고, 그 아래 계층은 내용을 모른다.
 
@@ -113,6 +122,7 @@ related: ["components/web/BookmarkApi.md", "components/web/AnalysisApi.md", "com
 - `HttpSessionRecentAnalysesTest` — 최근 20개 LRU·로그인/법령 분석만 보관·재생성 연결 조건.
 - `AnalysisControllerTest` · `ActionRevisionControllerTest` — 분석 응답의 `analysisId`, 재생성 요청의 `analysisId` 연결.
 - `AnalysisHistoryStoreIntegrationTest` — 저장 순서·잠금(실제 DB)·멱등·한도·revision 읽기·`lawUpdated`·`latestEffectiveDate`.
+- `HistorySnapshotsTest` — 버전·관대한 읽기(알 수 없는 필드·모르는 enum·primitive null)·고정 파일 `snapshot-v1.json`.
 - `HistoryUseCaseTest` — 결과 enum → 예외 변환.
 - `HistoryApiTest` — HTTP·인증·CSRF·오류 매핑·남의 기록 격리.
 

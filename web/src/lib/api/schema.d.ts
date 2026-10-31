@@ -415,6 +415,7 @@ export interface components {
             revision?: components["schemas"]["ActionRevisionApiResponse"];
             /** Format: date-time */
             savedAt?: string;
+            unreadable?: boolean;
         };
         HistoryItem: {
             /** Format: date */

@@ -35,8 +35,6 @@ import com.lia.core.testsupport.InMemoryAnalysisHistoryStore;
 import com.lia.core.testsupport.InMemoryLawBookmarkStore;
 import com.lia.core.testsupport.InMemoryUserProfileStore;
 
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 웹 슬라이스 공용 컨텍스트 — 실제 SecurityConfig + 실제 컨트롤러 + 인메모리 store.
@@ -190,12 +188,6 @@ class ApiSliceTestConfig {
     @Bean
     HistoryUseCase historyUseCase(InMemoryAnalysisHistoryStore store) {
         return new HistoryUseCase(store);
-    }
-
-    /** HistoryController 가 스냅샷을 직렬화한다 — 실제 앱은 Boot 가 만든 것을 쓴다. */
-    @Bean
-    ObjectMapper objectMapper() {
-        return JsonMapper.builder().build();
     }
 
     @Bean

@@ -463,6 +463,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 
 - `lawUpdated` — 저장한 버전의 지금 revision·상태가 저장 당시와 다르거나 그 버전이 없어짐.
 - `latestEffectiveDate` — 그 법령의 가장 이른 시행예정본(다시 분석할 버전). 없으면 생략.
+- `unreadable` — 저장한 스냅샷을 읽지 못했을 때만 `true`(그 밖엔 키 생략). 이때 `body`·`revision` 없이 메타데이터만, `answers` 는 빈 목록. 스냅샷은 `version`(현재 1)을 갖고 알 수 없는 필드·모르는 enum 은 무시하며 읽는다.
 - 한도 `lia.history.max-per-user`(기본 100, `LIA_HISTORY_MAX_PER_USER`), 메시지 "이력은 최대 {N}개까지 저장할 수 있어요."
 
 ---

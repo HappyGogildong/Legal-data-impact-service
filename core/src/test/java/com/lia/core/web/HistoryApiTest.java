@@ -28,12 +28,14 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import com.jayway.jsonpath.JsonPath;
+import com.lia.core.application.history.HistoryUseCase;
 import com.lia.core.auth.CurrentUser;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.LawRef;
+import com.lia.core.store.AnalysisHistoryStore;
 import com.lia.core.testsupport.InMemoryAccountStore;
 
 /** History API 웹 슬라이스 — 세션 결과로 저장(201/200 멱등)·만료 409·한도 409·목록·상세(남의 것 404)·삭제 204·400·401·403. */
@@ -43,6 +45,7 @@ class HistoryApiTest {
     static final LawRef HOUSING = new LawRef("001809", ApiSliceTestConfig.LAW_EFFECTIVE, null);
 
     @Autowired InMemoryAccountStore accounts;
+    @Autowired HistoryUseCase history;
     MockMvc mvc;
     MockHttpSession session;
 
@@ -175,6 +178,29 @@ class HistoryApiTest {
                 .andExpect(jsonPath("$.revision.stepNotes[0].note").value("신고하세요"))
                 .andExpect(jsonPath("$.answers[0].question").value("계약했나요?"))
                 .andExpect(jsonPath("$.answers[0].answer").value("예"));
+    }
+
+    @Test
+    @DisplayName("읽을 수 없는 스냅샷은 500 이 아니라 메타데이터만 + unreadable: true, 읽히면 키가 없다")
+    void 읽을_수_없는_스냅샷() throws Exception {
+        UUID userId = (UUID) session.getAttribute(CurrentUser.SESSION_KEY);
+        long broken = history.save(userId, new AnalysisHistoryStore.NewEntry("broken-1", "주택법 바뀌면?", "001809",
+                ApiSliceTestConfig.LAW_EFFECTIVE, "주택법", "{\"body\":")).id();
+        long fine = saveAndGetId(remember(session, HOUSING), session);
+
+        mvc.perform(signedIn(get("/api/v1/history/" + broken), session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(broken))
+                .andExpect(jsonPath("$.query").value("주택법 바뀌면?"))
+                .andExpect(jsonPath("$.lawTitle").value("주택법"))
+                .andExpect(jsonPath("$.unreadable").value(true))
+                .andExpect(jsonPath("$.body").doesNotExist())
+                .andExpect(jsonPath("$.revision").doesNotExist())
+                .andExpect(jsonPath("$.answers.length()").value(0));
+        mvc.perform(signedIn(get("/api/v1/history/" + fine), session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unreadable").doesNotExist())
+                .andExpect(jsonPath("$.body.law.lawId").value("001809"));
     }
 
     @Test
