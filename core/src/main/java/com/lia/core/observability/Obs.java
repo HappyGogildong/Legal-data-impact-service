@@ -37,7 +37,7 @@ public final class Obs {
     public static final String INFLIGHT_DUP = "lia.analysis.inflight.duplicate";
 
     // --- 태그 키 (저카디널리티만) ---
-    public static final String TAG_TARGET = "target";       // eflaw | law
+    public static final String TAG_TARGET = "target";       // eflaw | current(현행 기준선, D76)
     public static final String TAG_KIND = "kind";           // SYNC | INDEX | TRANSITION | PURGE
     public static final String TAG_STATE = "state";         // 해소 4상태
     public static final String TAG_MODEL = "model";         // opus | haiku

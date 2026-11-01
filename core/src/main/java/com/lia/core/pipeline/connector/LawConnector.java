@@ -25,10 +25,10 @@ import com.lia.core.observability.Obs;
 /**
  * 국가법령정보(law.go.kr DRF) 커넥터 — <b>MVP의 유일한 수집 경로</b>(D42).
  *
- * <p>target 두 개를 한 커넥터가 담당한다. 응답 스키마가 동일하기 때문이다.
+ * <p>{@code eflaw}(시행일 기준) 하나로 두 시점을 본다 — 응답 스키마가 동일하다.
  * <ul>
- *   <li>{@code eflaw} — 공포 후 시행 대기 법령 = <b>분석 대상</b></li>
- *   <li>{@code law}   — 시행중 법령 = <b>diff 기준선</b></li>
+ *   <li>시행예정 행 — 공포 후 시행 대기 법령 = <b>분석 대상</b></li>
+ *   <li>현행 행({@code nw=3}) — 오늘 시행 중인 법령 = <b>diff 기준선</b>(D76 — {@code target=law} 는 공포일 기준이라 쓰지 않는다)</li>
  * </ul>
  *
  * <p>의안(Bill) 커넥터 계약({@code RawBill})은 구현하지 않는다 — 다루는 것이 의안이 아니라
@@ -159,30 +159,49 @@ public class LawConnector implements PendingLawFeed {
     }
 
     /**
-     * 시행중(현행) 본문 — diff 기준선.
+     * 시행중(현행) 본문 — diff 기준선. <b>시행일 기준 현행</b>이다(D76).
      *
-     * <p><b>반드시 {@code 법령ID} 로 조회한다.</b> {@code MST}(법령일련번호)는 버전마다
-     * 달라서 시행중↔시행예정 연결에 쓸 수 없다(실측 확인).
+     * <p>목록 {@code target=eflaw&LID=&nw=3} 으로 현행 행을 찾고, 그 행의 MST·시행일로 본문을 받는다.
+     * {@code target=law} 는 공포일 기준 현행이라 단계적 시행 법령에서 아직 시행되지 않은 본문(공포본의
+     * 마지막 시행일 기준)을 준다. {@code MST} 만으로는 연결할 수 없다 — 버전마다 다르고, 단계적 시행이면
+     * 한 MST 에 시행일별 버전이 여럿이다. 설계: docs/troubleshooting/006-current-law-by-promulgation-date.md
      *
      * @return 현행본. <b>{@code null} 이면 현행본 없음</b>(제정 법령 등) — diff 기준선이
      *         없다는 도메인 상태이며, DiffBuilder 가 전부 신설로 처리한다. 설계: docs/reference/law-domain-basics.md §3
+     * @throws LawApiException 현행 행이 여럿이거나 시행일이 없거나, 본문 시행일이 현행 행과 다를 때(추측해 고르지 않는다)
      */
     @Override
     public RawLaw fetchCurrent(String lawId) {
         return Observation.createNotStarted(Obs.CONNECTOR_FETCH, observations)
-                .lowCardinalityKeyValue(Obs.TAG_TARGET, "law")
+                .lowCardinalityKeyValue(Obs.TAG_TARGET, "current")
                 .observe(() -> {
                     requireOc();
-                    var uri = UriComponentsBuilder.fromPath("/DRF/lawService.do")
-                            .queryParam("target", "law")
-                            .queryParam("ID", lawId);
-                    Map<String, Object> payload = request(uri);
-                    // 제정(신규) 법령은 현행본이 없어 국가법령정보가 {"Law":"일치하는 법령이 없습니다..."}
-                    // 를 준다. 오류가 아니라 diff 기준선 부재(전부 신설) — DiffBuilder(baseline=null) 처리.
-                    if (!LawEnvelope.hasLawBody(payload)) {
+                    Map<String, Object> payload = request(UriComponentsBuilder.fromPath("/DRF/lawSearch.do")
+                            .queryParam("target", "eflaw")
+                            .queryParam("LID", lawId)
+                            .queryParam("nw", 3));
+                    List<Map<String, Object>> rows = LawEnvelope.extractRows(payload);
+                    // 제정(신규) 법령은 현행 행이 없다 — 오류가 아니라 diff 기준선 부재(전부 신설).
+                    if (rows.isEmpty()) {
                         return null;
                     }
-                    return fromBody(payload, "시행중", null);
+                    if (rows.size() > 1 || LawEnvelope.totalCount(payload) > 1) {
+                        throw new LawApiException("현행 행이 여럿이다: 법령ID " + lawId);
+                    }
+                    RawLaw row = fromListRow(rows.getFirst());
+                    if (row.mst() == null || row.effectiveDate() == null) {
+                        throw new LawApiException("현행 행에 법령일련번호·시행일자가 없다: 법령ID " + lawId);
+                    }
+                    var uri = UriComponentsBuilder.fromPath("/DRF/lawService.do")
+                            .queryParam("target", "eflaw")
+                            .queryParam("MST", row.mst())
+                            .queryParam("efYd", row.effectiveDate().format(YMD));
+                    RawLaw current = fromBody(request(uri), "시행중", row.mst());
+                    if (!row.effectiveDate().equals(current.effectiveDate())) {
+                        throw new LawApiException("현행 본문 시행일 " + current.effectiveDate()
+                                + " ≠ 현행 행 " + row.effectiveDate() + ": 법령ID " + lawId);
+                    }
+                    return current;
                 });
     }
 

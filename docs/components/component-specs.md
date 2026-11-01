@@ -35,7 +35,7 @@ related:
 
 ### 1.1 `Law` — MVP 분석 대상 (공포된 법령)
 
-**시행중본과 시행예정본이 같은 구조**다(`target=law` / `target=eflaw`가 동일 스키마 `법령 > {기본정보, 조문, 부칙, 개정문, 제개정이유}`). `status`로만 구분한다.
+**시행중본과 시행예정본이 같은 구조**다(둘 다 `target=eflaw` 본문 — 시행중본은 시행일 기준 현행 행, D76 — 동일 스키마 `법령 > {기본정보, 조문, 부칙, 개정문, 제개정이유}`). `status`로만 구분한다.
 
 ```ts
 Law {                        // 🟢A(국가법령정보 API) — 전 필드 그라운딩 가능
@@ -390,7 +390,7 @@ Layer A(SUMMARY·DIFF) 프롬프트에는 질문이 들어가지 않는다 — �
   | 커넥터 | 출처 | 산출 | 용도 | 상태 |
   |---|---|---|---|---|
   | `LawConnector` | 국가법령정보 `eflaw` | `RawLaw[]` | **시행예정 법령 = 분석 대상** | ✅ 구현 |
-  | `LawConnector` | 국가법령정보 `law` | `RawLaw` | 시행중 법령 = **diff 기준선** | ✅ 구현 |
+  | `LawConnector` | 국가법령정보 `eflaw` 현행 행(`nw=3`, D76) | `RawLaw` | 시행중 법령 = **diff 기준선** | ✅ 구현 |
   | `MolegNoticeConnector` | 법제처 입법예고 | `RawBill[]` | 정부입법 의안 | post-MVP |
   | `AssemblyBillsConnector` | 열린국회정보 | `RawBill[]` | 의원발의 의안(통과율 ~20%) | post-MVP |
 - 입력: `listPending(from,to,limit)` · `searchPending(query,from,to,limit)` · `fetchPending(mst,efYd)` · `fetchCurrent(lawId)`

@@ -96,7 +96,7 @@ PersonaImpact/ActionPlan을 실제로 굴리는 값. **모든 항목은 조문 `
 
 | 속성 | 비고 | MVP |
 |---|---|---|
-| `baselineLawId` diff 기준선 | **같은 `lawId`의 시행중본.** `target=law&ID=` 로 조회 | ✅ ★ |
+| `baselineLawId` diff 기준선 | **같은 `lawId`의 시행중본(시행일 기준).** `eflaw` 목록 `LID=&nw=3` 의 현행 행 → 본문 `MST=&efYd=`(D76 — `target=law` 는 공포일 기준이라 쓰지 않음) | ✅ ★ |
 | 동일 `lawId`의 **다른 시행예정본** | 시행 대기 개정이 복수일 수 있다 → 기준 시점 정책 미정(**D43**) | ⚠️ |
 | 상·하위 법령 관계 (법률↔시행령↔시행규칙) | 위임조항 추적 | △ |
 | `precedentRefs` 유사 선례·판례 | Precedent(RAG, 후속) | ✗ |
