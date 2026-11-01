@@ -22,6 +22,7 @@ related:
 | [002](002-delegation-regex-korean-morphology.md) | 위임조항 정규식 한글 형태소 누락 | 파싱 | `정한다` ≠ `정하는` — 단위 테스트가 포착 |
 | [003](003-boot4-tracing-autoconfig-moved.md) | Boot 4.0 트레이스가 Tempo에 안 뜸 | 관측·Spring 4 | 자동설정이 starter-actuator에서 분리 → `starter-opentelemetry` 필요 |
 | [004](004-jejeong-law-no-baseline-english-envelope.md) | 제정 법령 현행본 부재 → 영문 `Law` 봉투 | 커넥터·도메인 | "환경 차이"로 보인 간헐 실패가 실은 **날짜 의존 데이터** |
+| [005](005-article-text-number-duplication.md) | 조문 본문에 항·호·목 번호가 두 번 | 파싱·RAG 청킹 | 번호 필드까지 평탄화 → 줄의 46.7%가 번호만 → 청킹 **줄 경계·오버랩 붕괴**, 포함 검사 테스트는 통과 |
 
 ## 부하 테스트 시 추가 예정 (감지 신호 매핑)
 
