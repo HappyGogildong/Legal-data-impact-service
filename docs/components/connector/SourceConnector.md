@@ -38,8 +38,11 @@ GET {law.base}/DRF/lawSearch.do?OC=..&target=eflaw&type=JSON
 GET {law.base}/DRF/lawService.do?OC=..&target=eflaw&MST=283191&type=JSON&efYd=20260804
   → 299KB · 법령 > {기본정보, 조문, 부칙, 개정문, 제개정이유}
 
-# 3) diff 기준선(현행본) — ★ 법령ID(ID)로 조회. MST는 버전마다 달라 연결키로 못 쓴다
-GET {law.base}/DRF/lawService.do?OC=..&target=law&ID=001809&type=JSON
+# 3) diff 기준선(현행본, 시행일 기준) — ★ 법령ID(LID)로 현행 행을 찾고 그 MST+시행일로 본문(D76)
+#    target=law 는 공포일 기준이라 단계적 시행 법령에서 아직 시행 안 된 본문을 준다 — 쓰지 않는다
+GET {law.base}/DRF/lawSearch.do?OC=..&target=eflaw&LID=001809&nw=3&type=JSON
+  → 현행 1행(제정이면 totalCnt=0) · 예: MST=289171 시행일자=20260908
+GET {law.base}/DRF/lawService.do?OC=..&target=eflaw&MST=289171&efYd=20260908&type=JSON
 ```
 
 ### 응답 계약 (주택법 MST=283191, 시행 2026-08-04 실측)
@@ -65,7 +68,7 @@ GET {law.base}/DRF/lawService.do?OC=..&target=law&ID=001809&type=JSON
 
 ### 신구조문대비표는 불필요
 
-신구조문대비표(HWP 첨부)는 **파싱하지 않는다.** 같은 `lawId`의 시행중본(`target=law&ID=`)과 시행예정본(`target=eflaw&MST=`)이 **동일 스키마로 조문 전문을 주므로** 조문 단위 대조를 직접 만들 수 있고, `개정문`이 권위 있는 자구 변경 근거가 된다. 임베딩 벤치 시나리오 A의 정답쌍도 이 경로로 생성한다.
+신구조문대비표(HWP 첨부)는 **파싱하지 않는다.** 같은 `lawId`의 시행중본(`eflaw` 현행 행, D76)과 시행예정본(`target=eflaw&MST=`)이 **동일 스키마로 조문 전문을 주므로** 조문 단위 대조를 직접 만들 수 있고, `개정문`이 권위 있는 자구 변경 근거가 된다. 임베딩 벤치 시나리오 A의 정답쌍도 이 경로로 생성한다.
 
 ---
 
@@ -105,7 +108,7 @@ public class LawConnector {
     List<RawLaw> listPending(LocalDate from, LocalDate to, int limit);   // target=eflaw + efYd
     List<RawLaw> searchPending(String query, LocalDate from, LocalDate to, int limit);
     RawLaw fetchPending(String mst, LocalDate effectiveDate);            // target=eflaw + MST
-    RawLaw fetchCurrent(String lawId);                                   // target=law + ID
+    RawLaw fetchCurrent(String lawId);                                   // eflaw 목록 LID+nw=3 → 본문 MST+efYd (D76)
 }
 
 // 봉투 파싱 순수 함수 — 단위 테스트 대상
