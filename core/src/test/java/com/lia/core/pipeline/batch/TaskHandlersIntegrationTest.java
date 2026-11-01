@@ -200,6 +200,19 @@ class TaskHandlersIntegrationTest {
         assertEquals(Law.Status.과거, lawStore.find(LAW, LocalDate.of(2015, 1, 1)).orElseThrow().status());
     }
 
+    @Test
+    @DisplayName("SYNC — 기준선 시행일이 오늘 이후(미래본)면 영구 실패로 롤백, 저장·등록 없음(D76)")
+    void sync_미래기준선_거부() {
+        SyncHandler beforeBaseline = syncOn(LawFixtures.HOUSING_BASELINE_EFFECTIVE.minusDays(1));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> beforeBaseline.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST)));
+
+        assertTrue(lawStore.find(LAW, EF).isEmpty());
+        assertTrue(lawStore.findBaseline(LAW).isEmpty());
+        assertTrue(readyTasks().isEmpty());
+    }
+
     /** 주입된 첫 source_id 를 인용해 늘 검증을 통과하는 추론기. */
     private static AnalysisEngine groundedEngine() {
         return new AnalysisEngine(new ContextBuilder(), ctx -> countedSummary(ctx), 2);

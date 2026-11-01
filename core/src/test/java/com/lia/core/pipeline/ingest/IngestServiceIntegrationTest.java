@@ -141,6 +141,17 @@ class IngestServiceIntegrationTest {
         assertTrue(store.revisionOf("001809", LocalDate.of(2026, 8, 4), Law.Status.시행예정).orElseThrow().endsWith("+none"));
     }
 
+    @Test
+    @DisplayName("기준선 시행일이 시행예정본보다 늦지 않으면 저장 전에 거부 — 같은 키의 시행예정 행을 시행중으로 덮어쓰지 않는다(D76)")
+    void 기준선_시행일_불변식() {
+        RawLaw pending = raw("samples/housing-act.json", "시행예정");
+        RawLaw sameDayBaseline = raw("samples/housing-act.json", "시행중");   // 단계적 시행 공포본을 target=law 로 받던 경우
+
+        assertThrows(IllegalArgumentException.class, () -> ingest.store(pending, sameDayBaseline));
+
+        assertTrue(store.find("001809", LocalDate.of(2026, 8, 4)).isEmpty(), "아무것도 저장하지 않는다");
+    }
+
     // --- fixture 로더 -----------------------------------------------------
 
     private static RawLaw raw(String path, String status) {
