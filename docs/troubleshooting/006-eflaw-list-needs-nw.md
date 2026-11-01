@@ -50,4 +50,8 @@ tags: [troubleshooting, api, connector]
 
 - `LawConnector` — 시행예정 목록(`listPending`·`listAllPending`)과 검색(`searchPending`) 요청에 `nw=2`.
 
+**검증:**
+- 단위 `LawConnectorPendingListTest`(로컬 HTTP 서버, 쿼터 0) 3건 — 서버가 실 API 처럼 `nw=2` 가 없으면 0건을 준다. 목록·전량 목록(모든 페이지)·검색 요청이 `nw=2` 를 싣는지 확인. RED(3건 모두 0건) 확인 후 GREEN.
+- 라이브 스모크 — `LawLiveSmokeTest` 5건·`NormalizerLiveSmokeTest` 2건 통과(`listPending(2026-11-02~2027-11-02)` → 5건). core 전체 681건 실패 0(유료 API 스모크 9건은 스킵).
+
 **교훈:** 외부 API 의 **기본값은 계약이 아니다**. 원하는 필터는 파라미터로 직접 말하고, "0건"이 정상 응답으로 오는 경로에선 그 0건이 **판정(사라짐·철회)으로 이어지지 않는지** 따져 본다.
