@@ -116,6 +116,18 @@ public final class LawEnvelope {
         return nestedList(lawRoot, "부칙", "부칙단위");
     }
 
+    /** 항·호·목처럼 한 건이면 객체, 여러 건이면 배열로 오는 블록 → 맵 목록(함정 1). 없으면 빈 목록. */
+    @SuppressWarnings("unchecked")
+    public static List<Map<String, Object>> maps(Object node) {
+        if (node instanceof Map<?, ?> single) return List.of((Map<String, Object>) single);
+        if (!(node instanceof List<?> list)) return List.of();
+        List<Map<String, Object>> out = new ArrayList<>(list.size());
+        for (Object o : list) {
+            if (o instanceof Map<?, ?> m) out.add((Map<String, Object>) m);
+        }
+        return out;
+    }
+
     // --- 텍스트 평탄화 ---------------------------------------------------
 
     /**
