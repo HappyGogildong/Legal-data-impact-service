@@ -29,8 +29,8 @@ record RawLaw(String lawId, String mst, String title, String status,   // "시�
 
 ```
 # 1) 목록 — 시행예정만 (오늘 이후 시행일 범위)
-GET {law.base}/DRF/lawSearch.do?OC=..&target=eflaw&type=JSON
-      &efYd=20260802~20271231&sort=efasc&display=200
+GET {law.base}/DRF/lawSearch.do?OC=..&target=eflaw&type=JSON&nw=2
+      &efYd=20260802~20271231&sort=efasc&display=200   # nw=2 필수(D77) — 빼면 0건
   → totalCnt 899 · 각 row: 법령ID·법령일련번호(MST)·법령명한글·시행일자·공포일자·공포번호
                           ·제개정구분명·법종구분·소관부처명·현행연혁코드("시행예정")
 
