@@ -89,6 +89,7 @@ BASE  /api/v1
 | `GET` | `/consents` | 프로필·알림 이메일 동의 상태 | 필요 |
 | `PUT` | `/consents/profile` | 프로필 수집 동의·재동의(만 14세 이상 확인) | 필요 |
 | `PUT` · `DELETE` | `/consents/notification-email` | 알림 이메일 수신 동의 / 철회 | 필요 |
+| `GET` | `/auth/providers` | 켜진 소셜 로그인 provider 목록(D78) — 로그인 화면이 이 버튼만 그린다 | — |
 | `GET` | `/account` | 내 계정(provider·가입일) — 로그인 상태 확인 겸용 | 필요 |
 | `DELETE` | `/account` | 계정 삭제(파기, 프로필 포함) | 필요 |
 | `GET` | `/bookmarks` | 내 관심 법령 북마크 목록(보여 줄 버전·상태, D72) | 필요 |
@@ -346,6 +347,7 @@ GET /api/v1/laws?from=2026-10-25&to=2026-11-24&limit=20&cursor=MjAyNi0xMS0wMXwwM
 // PUT /api/v1/consents/notification-email → 200 { email, consentedAt }  (세션의 IdP 이메일 저장, 없으면 400)
 // DELETE /api/v1/consents/notification-email → 204
 
+// GET /api/v1/auth/providers → { "providers": ["google"] }   (익명·읽기 전용, client-id 가 설정된 provider 만, 순서 google·kakao·naver, 없으면 빈 목록)
 // GET /api/v1/account → { provider, createdAt }   (userId·email 없음)
 // DELETE /api/v1/account → 204, 계정 파기(프로필 cascade) + 세션 무효화
 ```
