@@ -17,6 +17,7 @@ lia:
     law-api-interval: 500ms    # 국가법령정보 최소 호출 간격 — 공식 한도 확인 전 보수적으로
     embedding-interval: 200ms  # 임베딩(법령 1건 색인) 최소 간격
     lookahead-years: 10        # 목록 조회 범위 — 저장된 시행예정본을 모두 덮을 만큼 넉넉히(좁으면 사라짐 오판)
+    max-missing-ratio: 0.2     # 한 실행에서 판정 대상의 이 비율을 넘게(2건 이상) 안 보이면 사라짐 판정 안 함(D77). 실제 대량 철회면 올려서 한 번(env LIA_BATCH_MAX_MISSING_RATIO)
     idle-poll: 500ms           # 진행 중 작업이 새 작업을 만들 때까지 워커가 기다리는 간격
     summary-interval: 2s       # 쉬운 요약(Opus) 최소 호출 간격(D67)
     index:
