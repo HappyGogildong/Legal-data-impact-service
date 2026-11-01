@@ -185,17 +185,40 @@ public class Normalizer {
     /**
      * {@code 조문내용} 만 읽으면 본문이 빈다 — 실측에서 제2조(정의)의 {@code 조문내용} 은
      * 제목 줄뿐이고 실제 정의는 {@code 항 → 호 → 목} 중첩에 있었다.
+     *
+     * <p>줄 = 항·호·목의 <b>내용 필드</b> 하나(D75). 번호 필드와 현행본의 제개정 메타 필드
+     * ({@code 항제개정유형}·{@code 항제개정일자문자열}·{@code 호가지번호})는 본문이 아니다 —
+     * 통째로 평탄화하면 번호만 있는 줄이 끼어 청킹의 줄 경계가 무너진다.
      */
     private static String mergeArticleText(Map<String, Object> article) {
-        StringBuilder sb = new StringBuilder();
-        String head = LawEnvelope.text(article.get("조문내용"));
-        if (!head.isBlank()) sb.append(head);
-        String body = LawEnvelope.text(article.get("항"));
-        if (!body.isBlank()) {
-            if (!sb.isEmpty()) sb.append('\n');
-            sb.append(body);
+        List<String> lines = new ArrayList<>();
+        addNumbered(lines, null, article.get("조문내용"));
+        for (Map<String, Object> paragraph : LawEnvelope.maps(article.get("항"))) {
+            addNumbered(lines, paragraph.get("항번호"), paragraph.get("항내용"));
+            for (Map<String, Object> item : LawEnvelope.maps(paragraph.get("호"))) {
+                addNumbered(lines, itemNumber(item), item.get("호내용"));
+                for (Map<String, Object> subItem : LawEnvelope.maps(item.get("목"))) {
+                    addNumbered(lines, subItem.get("목번호"), subItem.get("목내용"));
+                }
+            }
         }
-        return sb.toString().strip();
+        return String.join("\n", lines);
+    }
+
+    /** 내용은 번호로 시작한다(실측 전수). 아닐 때만 번호를 앞에 붙여 정보를 잃지 않는다. */
+    private static void addNumbered(List<String> lines, Object number, Object content) {
+        String body = LawEnvelope.text(content);   // 목내용은 세부 항목 목록으로도 온다
+        if (body.isEmpty()) return;
+        String no = LawEnvelope.str(number);
+        lines.add(no == null || body.startsWith(no) ? body : no + " " + body);
+    }
+
+    /** 가지호는 {@code 호번호} "4." + {@code 호가지번호} "2" 로 따로 온다 — 내용은 "4의2. …". */
+    private static String itemNumber(Map<String, Object> item) {
+        String no = LawEnvelope.str(item.get("호번호"));
+        String branch = LawEnvelope.str(item.get("호가지번호"));
+        if (no == null || branch == null) return no;
+        return (no.endsWith(".") ? no.substring(0, no.length() - 1) : no) + "의" + branch + ".";
     }
 
     /**
