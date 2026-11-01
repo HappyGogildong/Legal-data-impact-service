@@ -1,6 +1,6 @@
 ---
 title: "005 · 현행본이 미래본 — target=law 는 공포일 기준 현행"
-status: Draft
+status: Resolved
 date: 2026-11-01
 tags: [troubleshooting, connector, api, domain, date-dependent]
 ---
@@ -66,6 +66,16 @@ diff 기준선(D43 ② "현재 시행중본")으로 받은 주택법(법령ID 00
 
 ## 5. 최종 적용·검증
 
-_구현 후 채운다._
+- `LawConnector.fetchCurrent` — 목록 `eflaw&LID=&nw=3` → 0건 `null` / 1건이면 본문 `eflaw&MST=&efYd=`(상태 `시행중`). 현행 행 복수·MST/시행일 누락·본문 시행일 불일치는 `LawApiException`. 계측 태그 `target=current`.
+- `IngestService.store` — 기준선 시행일 ≥ 시행예정본 시행일이면 쓰기 전에 `IllegalArgumentException`.
+- `SyncHandler` — 기준선 시행일 > 오늘(서울)이면 트랜잭션 롤백 + `IllegalArgumentException`(영구 실패 → DEAD).
+- `LawEnvelope.hasLawBody` 제거 — `target=law` 의 `{"Law":...}` 봉투 판별용이었다.
+
+**검증:**
+- 단위 `LawConnectorCurrentTest`(로컬 HTTP 서버, 쿼터 0) 4건 — 현행 행 → MST+efYd 본문·`ID` 미사용 / 0건 → `null`·본문 미호출 / 복수 → 예외 / 시행일 불일치 → 예외. RED 확인 후 GREEN.
+- 통합 `IngestServiceIntegrationTest.기준선_시행일_불변식`(같은 날 기준선 → 거부·무저장), `TaskHandlersIntegrationTest.sync_미래기준선_거부`(롤백·등록 없음). core 전체 683건 중 실패는 라이브 스모크 6건뿐 — 아래 별건.
+- 로컬 DB: 오염 행 32건을 CSV 로 백업한 뒤 삭제 → `시행중`·시행일 > 오늘 **0건**. 해당 시행예정 버전은 다음 `run` 의 탐색이 새 버전으로 다시 SYNC 한다.
+
+> **별건(같은 날 발견):** `lawSearch target=eflaw&efYd=..` 가 `nw` 없이 `totalCnt=0` 을 준다(`nw=2` 를 붙이면 875). 목록 기반 라이브 스모크가 모두 실패하는 원인이며 `listPending`·`searchPending` 이 영향을 받는다 — 빈 목록이 "완주"로 판정되면 사라짐 처리(PURGE)로 이어질 수 있어 고치기 전까지 로컬 `run` 을 돌리지 않는다. 이 문서 범위 밖이라 따로 다룬다.
 
 **교훈:** 이름이 같은 "현행"도 **기준 시점이 다를 수 있다**(공포일 vs 시행일). 외부 API 의 의미는 이름이 아니라 **안내서와 실응답**으로 확인하고, 저장 키가 겹칠 수 있는 두 쓰기는 **불변식으로 막는다**.
