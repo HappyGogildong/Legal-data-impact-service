@@ -20,6 +20,9 @@ import com.lia.core.store.LawStore;
  * <p>가드: 시행일이 오늘 이전이거나 저장된 행이 {@code 시행중}·{@code 과거}면 아무것도 하지 않는다(fetch 도 없음) —
  * 그 버전은 TRANSITION 이 맡는다. 실패로 남은 오래된 SYNC·{@code requeue-dead}·수동 {@code sync}가 전환된 버전을
  * 시행예정으로 되돌리고 다시 색인하지 않게({@code LawStore.upsert}는 상태를 덮어쓴다).
+ *
+ * <p>기준선 시행일이 오늘 이후면 트랜잭션째 롤백하고 {@code IllegalArgumentException}(영구 실패)을 던진다 —
+ * 미래본을 기준선으로 쓰지 않는다(D76).
  */
 public class SyncHandler implements TaskHandler {
 
@@ -58,6 +61,10 @@ public class SyncHandler implements TaskHandler {
         RawLaw baseline = feed.fetchCurrent(task.lawId());                      // null = 제정
         transactions.executeWithoutResult(status -> {
             IngestResult result = ingest.store(pending, baseline);
+            if (result.baselineEffectiveDate() != null && result.baselineEffectiveDate().isAfter(LocalDate.now(clock))) {
+                throw new IllegalArgumentException("기준선 시행일 " + result.baselineEffectiveDate()
+                        + " 이 오늘 이후다(미래본): 법령ID " + result.lawId());
+            }
             if (result.baselineEffectiveDate() != null) {
                 lawStore.supersedeOlderInForce(result.lawId(), result.baselineEffectiveDate());
             }

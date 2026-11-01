@@ -75,17 +75,7 @@ public final class LawEnvelope {
 
     // --- 본문 ------------------------------------------------------------
 
-    /**
-     * 본문에 {@code 법령} 블록이 있는가. 없으면 <b>현행본 없음</b>을 뜻한다 —
-     * 제정(신규) 법령을 {@code target=law} 로 조회하면 국가법령정보가
-     * {@code {"Law": "일치하는 법령이 없습니다..."}} 를 돌려주기 때문이다(영문 루트).
-     * fetchCurrent 는 이걸로 "diff 기준선 부재"를 판별한다(도메인 상태이지 오류가 아님).
-     */
-    public static boolean hasLawBody(Map<String, Object> payload) {
-        return payload != null && payload.get("법령") instanceof Map;
-    }
-
-    /** 본문 응답의 {@code 법령} 블록. 없으면 예외(현행본 부재 판별은 {@link #hasLawBody}). */
+    /** 본문 응답의 {@code 법령} 블록. 없으면 예외. */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> lawRoot(Map<String, Object> payload) {
         Object root = payload.get("법령");
@@ -114,6 +104,18 @@ public final class LawEnvelope {
      */
     public static List<Map<String, Object>> addenda(Map<String, Object> lawRoot) {
         return nestedList(lawRoot, "부칙", "부칙단위");
+    }
+
+    /** 항·호·목처럼 한 건이면 객체, 여러 건이면 배열로 오는 블록 → 맵 목록(함정 1). 없으면 빈 목록. */
+    @SuppressWarnings("unchecked")
+    public static List<Map<String, Object>> maps(Object node) {
+        if (node instanceof Map<?, ?> single) return List.of((Map<String, Object>) single);
+        if (!(node instanceof List<?> list)) return List.of();
+        List<Map<String, Object>> out = new ArrayList<>(list.size());
+        for (Object o : list) {
+            if (o instanceof Map<?, ?> m) out.add((Map<String, Object>) m);
+        }
+        return out;
     }
 
     // --- 텍스트 평탄화 ---------------------------------------------------

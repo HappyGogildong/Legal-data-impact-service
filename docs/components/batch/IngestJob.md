@@ -170,14 +170,14 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
 - 시행일 변경(같은 법령이 다른 시행일로 다시 등장)은 새 행이 신규로 들어오고 옛 행은 사라짐 경로로 `철회`된다.
 - `--dry-run`은 같은 분류로 계획 건수만 세고 `missing_since`도 쓰지 않는다.
 
-**대량 사라짐 방어(D77)** — 완주 목록이어도 이번 실행에서 안 보인 판정 대상(조회 범위 안·시행일 > 오늘인 저장 시행예정본)이 **2건 이상이고 판정 대상의 `lia.batch.max-missing-ratio`(기본 `0.2`)를 넘으면** 그 실행은 사라짐 판정을 하지 않는다 — `missing_since` 기록·`PURGE` 모두 없음, 경고 로그, `list_complete=false`(→ `PARTIAL`). 정상 철회는 한 번에 몇 건이라 이 선을 넘지 않고, 넘는다면 원천 API 쪽 이상(예: 파라미터 기본값이 바뀌어 정상 봉투로 0건 — [[troubleshooting/006-eflaw-list-needs-nw|006]])일 가능성이 크다. 1건은 비율과 무관하게 판정한다(저장본이 적을 때 정상 철회가 막히지 않게). 실제로 대량 철회가 맞다면 설정값을 올려 한 번 돌린다(env `LIA_BATCH_MAX_MISSING_RATIO`).
+**대량 사라짐 방어(D77)** — 완주 목록이어도 이번 실행에서 안 보인 판정 대상(조회 범위 안·시행일 > 오늘인 저장 시행예정본)이 **2건 이상이고 판정 대상의 `lia.batch.max-missing-ratio`(기본 `0.2`)를 넘으면** 그 실행은 사라짐 판정을 하지 않는다 — `missing_since` 기록·`PURGE` 모두 없음, 경고 로그, `list_complete=false`(→ `PARTIAL`). 정상 철회는 한 번에 몇 건이라 이 선을 넘지 않고, 넘는다면 원천 API 쪽 이상(예: 파라미터 기본값이 바뀌어 정상 봉투로 0건 — [[troubleshooting/007-eflaw-list-needs-nw|007]])일 가능성이 크다. 1건은 비율과 무관하게 판정한다(저장본이 적을 때 정상 철회가 막히지 않게). 실제로 대량 철회가 맞다면 설정값을 올려 한 번 돌린다(env `LIA_BATCH_MAX_MISSING_RATIO`).
 
 **주 1회 전체 재검증(`run --full`)** — 공포 즉시 시행되는 개정은 시행예정 목록에 나타나지 않아, 매일 실행만으로는 우리 기준선(시행중본)이 낡을 수 있다(같은 법령의 다른 시행예정본 diff도 틀어짐). 주 1회 목록 전체에 `SYNC`를 등록해 기준선을 다시 받는다. revision 비교로 실제 바뀐 것만 재색인된다(국가법령정보 호출 ≈ 목록 수 × 2).
 
 ## 작업별 동작
 | 작업 | 동작 | 완료(`DONE`) 조건 |
 |---|---|---|
-| `SYNC(lawId, 시행일, mst)` | 시행일이 오늘 이전이거나 저장된 행이 `시행중`·`과거`면 **아무것도 안 함**(그 버전은 `TRANSITION`이 맡는다 — 오래된 SYNC가 전환된 버전을 시행예정으로 되돌리지 않게). 그 외: `fetchPending`·`fetchCurrent`(트랜잭션 밖) → **한 트랜잭션**: [[IngestService]] `store`(revision·상태가 같으면 저장 생략) · 같은 법령의 더 오래된 `시행중` → `과거` · `missing_since` 지움 · 시행예정본이 바뀌었으면 `INDEX`·`SUMMARIZE` 등록 | 원문 조회·정본 저장(또는 동일해 생략)·필요 시 `INDEX`·`SUMMARIZE` 등록까지 커밋. **색인 완료를 뜻하지 않는다** |
+| `SYNC(lawId, 시행일, mst)` | 시행일이 오늘 이전이거나 저장된 행이 `시행중`·`과거`면 **아무것도 안 함**(그 버전은 `TRANSITION`이 맡는다 — 오래된 SYNC가 전환된 버전을 시행예정으로 되돌리지 않게). 그 외: `fetchPending`·`fetchCurrent`(트랜잭션 밖) → **한 트랜잭션**: [[IngestService]] `store`(revision·상태가 같으면 저장 생략) · 기준선 시행일이 오늘 이후면 영구 실패로 롤백(D76 — 미래본을 기준선으로 쓰지 않는다) · 같은 법령의 더 오래된 `시행중` → `과거` · `missing_since` 지움 · 시행예정본이 바뀌었으면 `INDEX`·`SUMMARIZE` 등록 | 원문 조회·정본 저장(또는 동일해 생략)·필요 시 `INDEX`·`SUMMARIZE` 등록까지 커밋. **색인 완료를 뜻하지 않는다** |
 | `INDEX(lawId, 시행일)` | [[LawStore]]에서 정본을 읽어 [[RAGIndexer]] `index` → [[ChunkStore]] `replaceVersion`(**한 트랜잭션**). 상태가 `시행예정`이 아니면(그 사이 전환·철회) 아무것도 안 함 | 벡터 교체 커밋, 또는 할 일 없음 |
 | `SUMMARIZE(lawId, 시행일)` | [[LawStore]]에서 정본을 읽어 `AnalysisEngine` SUMMARY(조립→Opus→인용 검증→재생성≤N) → `law_summaries` upsert(정본 revision·프롬프트 버전·모델과 함께). 상태가 `시행예정`이 아니면 아무것도 안 함. 인용 검증이 끝내 실패하면 **저장하지 않고 완료**(재시도해도 같은 입력이라 같은 실패 — 화면은 실시간 대체) | 요약 저장 커밋, 또는 할 일 없음 |
 | `TRANSITION(lawId, 시행일)` | **한 트랜잭션**: 상태 `시행예정 → 시행중`, 같은 법령의 더 오래된 `시행중` → `과거`, 이 버전의 pending 색인 제거(`replaceVersion(…, [])`), 같은 법령의 **남은 시행예정본마다 `SYNC`** 등록(기준선이 바뀌어 diff 재생성 필요). 버전이 이미 `시행예정`이 아니면 상태는 건드리지 않고 **그 버전의 시행예정 색인만 제거**(시행예정이 아닌 버전의 시행예정 청크 제거는 언제나 옳다) | 상태 전환·색인 제거·형제 `SYNC` 등록, 또는 색인 제거만 |

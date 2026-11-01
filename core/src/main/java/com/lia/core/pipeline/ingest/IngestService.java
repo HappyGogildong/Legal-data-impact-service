@@ -42,11 +42,18 @@ public class IngestService {
     /**
      * pending {@code RawLaw}(+ 기준선, 제정이면 null) → normalize → diff → revision 이 바뀐 것만 upsert.
      * 시행예정본과 (있으면) 시행중본을 모두 저장한다.
+     *
+     * @throws IllegalArgumentException 기준선 시행일이 시행예정본보다 늦지 않을 때(D76) — 같은 날이면 기준선
+     *         upsert 가 같은 키의 시행예정 행을 시행중으로 덮어쓴다. 아무것도 쓰지 않고 던진다.
      */
     public IngestResult store(RawLaw pendingRaw, RawLaw baselineRaw) {
         return Observation.createNotStarted(Obs.INGEST, observations).observe(() -> {
             Law pending = normalizer.normalize(pendingRaw);
             Law baseline = baselineRaw == null ? null : normalizer.normalize(baselineRaw);
+            if (baseline != null && !baseline.effectiveDate().isBefore(pending.effectiveDate())) {
+                throw new IllegalArgumentException("기준선 시행일 " + baseline.effectiveDate()
+                        + " 이 시행예정본 " + pending.effectiveDate() + " 보다 늦지 않다: 법령ID " + pending.lawId());
+            }
             Law diffed = diffBuilder.build(pending, baseline)
                     .withRevision(pending.revision() + "+" + (baseline == null ? "none" : baseline.revision()));
 

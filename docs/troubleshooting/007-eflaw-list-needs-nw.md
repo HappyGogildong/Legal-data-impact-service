@@ -1,16 +1,16 @@
 ---
-title: "006 · 시행예정 목록이 nw 없이 조용히 0건"
+title: "007 · 시행예정 목록이 nw 없이 조용히 0건"
 status: Resolved
 date: 2026-11-01
 tags: [troubleshooting, api, connector]
 ---
 
-# 006 · 시행예정 목록이 `nw` 없이 조용히 0건
+# 007 · 시행예정 목록이 `nw` 없이 조용히 0건
 
 | | |
 |---|---|
 | 유형 | API 통합 · 조용한 실패 |
-| 발생 시점 | 2026-11-01 (D76 기준선 수정 중 라이브 스모크) |
+| 발생 시점 | 2026-11-01 (D76 기준선 수정 중 라이브 스모크 — [[006-current-law-by-promulgation-date|006]]) |
 | 관련 | D77 · 파일 `core/.../connector/LawConnector.java` · [[LawConnector]] |
 
 ## 1. 문제 정의
