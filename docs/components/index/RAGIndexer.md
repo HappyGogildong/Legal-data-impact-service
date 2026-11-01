@@ -32,7 +32,7 @@ related: ["components/component-specs.md", "components/embed/Embedder.md", "comp
 1. **대상 선별** — `Law.changedArticles()` + `amendReason` 요약. (전문·미변경 조문·시행중본 제외 — 저장·노이즈 절감.)
 2. **청킹**(D55) —
    - **조문 단위**: 변경 조문 1개 = 1 청크. **과대 조문**(문자수 > 임계 `MAX_CHARS`)만 분할(하위 청크 `art:{no}#k`).
-   - **구조 기반 분할**: Normalizer가 항→호→목을 `\n`로 병합하므로 줄 = 항/호/목 단위다. **줄 경계를 지키며 그리디 패킹**해 단위 중간을 자르지 않는다(법령 RAG 품질). 인접 청크는 직전 1줄 오버랩으로 문맥 보존. 한 줄(항)이 그 자체로 한도를 넘는 예외에만 문자 분할 폴백.
+   - **구조 기반 분할**: Normalizer가 항→호→목의 **내용 필드**를 `\n`로 병합하므로 줄 = 항/호/목 단위다(번호 필드는 넣지 않음, D75 — 그 전엔 번호만 있는 줄이 절반 가까이 끼어 오버랩이 번호만 겹쳤다). 근거 데이터·통계: [[law-api-response-anatomy]] §8. **줄 경계를 지키며 그리디 패킹**해 단위 중간을 자르지 않는다(법령 RAG 품질). 인접 청크는 직전 1줄 오버랩으로 문맥 보존. 한 줄(항)이 그 자체로 한도를 넘는 예외에만 문자 분할 폴백.
    - ⚠️ **문자수 ≠ 토큰수** — `text-embedding-3-small`(cl100k)에서 한국어는 음절당 토큰이 많아(대략 2~3토큰/음절) 6000자면 8191토큰을 넘길 수 있다. 그래서 임계를 **한국어 기준 보수적으로 2500자**(`MAX_CHARS`)로 둔다. 정밀 제한이 필요하면 jtokkit(cl100k) 토큰 카운트로 교체(D48 — 지금은 의존성 회피).
    - **요약**: `amendReason` = 법령 단위 1 청크(과대 시 동일 분할).
 3. **`source_id` 부여** — 조문 `LAW:{lawId}@{efYd}:art:{no}` · 요약 `LAW:{lawId}@{efYd}`. **시행일 포함**(복수 시행예정본, D43). 메타: `source_id·lawId·efYd·kind(article|summary)·namespace=pending·changed·articleNo?`.
