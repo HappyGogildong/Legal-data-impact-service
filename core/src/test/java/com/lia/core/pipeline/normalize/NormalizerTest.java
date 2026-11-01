@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -18,6 +19,7 @@ import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.connector.LawEnvelope;
 import com.lia.core.pipeline.connector.RawLaw;
+import com.lia.core.testsupport.LawFixtures;
 
 /**
  * Normalizer 단위 테스트 — 각 케이스가 실측 함정 하나에 대응한다.
@@ -175,6 +177,77 @@ class NormalizerTest {
 
             assertEquals(Article.ChangeType.이동, law.article("57").changeType());
             assertEquals("56", law.article("57").movedFrom());
+        }
+
+        @Test
+        void 항_호_목_번호_필드는_본문에_두_번_들어가지_않는다() {
+            Article article = parseSingle(Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문내용", "제57조(주택의 분양가격 제한 등)",
+                    "항", List.of(Map.of("항번호", "①", "항내용", "① 사업주체는 분양가격 이하로 공급하여야 한다.",
+                            "호", List.of(Map.of("호번호", "2.", "호내용", "2. 주거정책심의위원회가 지정하는 지역",
+                                    "목", List.of(Map.of("목번호", "가.", "목내용", "가. 삭제 <2023.12.26>")))))))).get(0);
+
+            assertEquals("""
+                    제57조(주택의 분양가격 제한 등)
+                    ① 사업주체는 분양가격 이하로 공급하여야 한다.
+                    2. 주거정책심의위원회가 지정하는 지역
+                    가. 삭제 <2023.12.26>""", article.text());
+        }
+
+        @Test
+        void 현행본의_제개정_메타_필드는_본문에_넣지_않는다() {
+            Article article = parseSingle(Map.of("조문번호", "57", "조문여부", "조문", "조문변경여부", "N",
+                    "조문내용", "제57조(주택의 분양가격 제한 등)",
+                    "항", List.of(Map.of("항제개정유형", "개정", "항제개정일자문자열", "2020.8.18, 2026.9.8",
+                            "항번호", "②", "항내용", "② 다음 각 호의 경우에는 적용하지 아니한다.",
+                            "호", List.of(Map.of("호번호", "4.", "호가지번호", "2",
+                                    "호내용", "4의2. 주거환경개선사업에서 공급하는 주택")))))).get(0);
+
+            assertEquals("""
+                    제57조(주택의 분양가격 제한 등)
+                    ② 다음 각 호의 경우에는 적용하지 아니한다.
+                    4의2. 주거환경개선사업에서 공급하는 주택""", article.text());
+        }
+
+        @Test
+        void 내용이_번호로_시작하지_않으면_번호를_앞에_붙인다() {
+            Article article = parseSingle(Map.of("조문번호", "3", "조문여부", "조문", "조문변경여부", "Y",
+                    "조문내용", "제3조(적용)",
+                    "항", List.of(Map.of("항번호", "①", "항내용", "이 법은 주택에 적용한다.")))).get(0);
+
+            assertEquals("제3조(적용)\n① 이 법은 주택에 적용한다.", article.text());
+        }
+
+        @Test
+        void 목내용이_목록으로_와도_세부_항목까지_줄로_펼친다() {
+            Article article = parseSingle(Map.of("조문번호", "2", "조문여부", "조문", "조문변경여부", "N",
+                    "조문내용", "제2조(정의)",
+                    "항", List.of(Map.of("호", List.of(Map.of("호번호", "11.", "호내용", "11. \"주택조합\"이란 다음 각 목의 조합을 말한다.",
+                            "목", List.of(Map.of("목번호", "가.", "목내용", List.of(List.of(
+                                    "가. 지역주택조합: 다음 구분에 따른 지역에 거주하는 주민의 조합",
+                                    "    1) 서울특별시ㆍ인천광역시 및 경기도")))))))))).get(0);
+
+            assertEquals("""
+                    제2조(정의)
+                    11. "주택조합"이란 다음 각 목의 조합을 말한다.
+                    가. 지역주택조합: 다음 구분에 따른 지역에 거주하는 주민의 조합
+                    1) 서울특별시ㆍ인천광역시 및 경기도""", article.text());
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"samples/raw/housing-act-pending-20270909.json", "samples/raw/housing-act-current-20270309.json"})
+        void 실제_응답의_본문에_번호만_있는_줄이나_제개정_메타_줄이_없다(String fixture) {
+            Law law = normalizer.normalize(LawFixtures.raw(fixture, "시행예정"));
+            Pattern numberOnly = Pattern.compile("^([①-⑳]|[0-9]+(의[0-9]+)?\\.|[가-하]\\.)$");
+
+            assertFalse(law.realArticles().isEmpty());
+            for (Article article : law.realArticles()) {
+                for (String line : article.text().split("\n")) {
+                    assertFalse(numberOnly.matcher(line).matches(), () -> "제" + article.no() + "조에 번호만 있는 줄: " + line);
+                    assertNotEquals("개정", line, () -> "제" + article.no() + "조에 제개정 유형 줄");
+                }
+            }
+            assertTrue(law.article("57").text().contains("4의2. 「도시 및 주거환경정비법」"), "가지호 본문이 빠졌다");
         }
 
         /** 조문단위 하나만 담은 법령 본문 — 조문번호·가지번호 같은 필드 단위 케이스용. */

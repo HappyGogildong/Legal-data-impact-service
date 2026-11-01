@@ -164,7 +164,7 @@ public class LawConnector implements PendingLawFeed {
      * <p>목록 {@code target=eflaw&LID=&nw=3} 으로 현행 행을 찾고, 그 행의 MST·시행일로 본문을 받는다.
      * {@code target=law} 는 공포일 기준 현행이라 단계적 시행 법령에서 아직 시행되지 않은 본문(공포본의
      * 마지막 시행일 기준)을 준다. {@code MST} 만으로는 연결할 수 없다 — 버전마다 다르고, 단계적 시행이면
-     * 한 MST 에 시행일별 버전이 여럿이다. 설계: docs/troubleshooting/005-current-law-by-promulgation-date.md
+     * 한 MST 에 시행일별 버전이 여럿이다. 설계: docs/troubleshooting/006-current-law-by-promulgation-date.md
      *
      * @return 현행본. <b>{@code null} 이면 현행본 없음</b>(제정 법령 등) — diff 기준선이
      *         없다는 도메인 상태이며, DiffBuilder 가 전부 신설로 처리한다. 설계: docs/reference/law-domain-basics.md §3

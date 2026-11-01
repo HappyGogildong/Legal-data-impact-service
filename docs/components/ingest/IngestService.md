@@ -40,7 +40,7 @@ related: ["components/batch/IngestJob.md", "components/component-specs.md", "com
 - **기준선본도 저장한다** — diff의 기준이 된 시행중본을 함께 upsert해, 이후 `findBaseline`·정확 조회·context 조립에서 재사용.
 - **revision이 같으면 쓰지 않는다** — 불필요한 쓰기·색인·캐시 무효화를 막는다(두 번 돌아도 결과 동일, [[concurrency-and-reliability]] §2).
 - 정본 단위 = **`(lawId, effectiveDate)`**(D43).
-- **기준선 시행일 < 시행예정본 시행일** — 어기면 저장 전에 `IllegalArgumentException`(D76). 같으면 기준선 upsert 가 같은 키의 시행예정 행을 `시행중`으로 덮어쓰고, 늦으면 기준선이 미래본이다(단계적 시행 법령을 `target=law` 로 받던 때의 실제 사고, [[troubleshooting/005-current-law-by-promulgation-date|005]]).
+- **기준선 시행일 < 시행예정본 시행일** — 어기면 저장 전에 `IllegalArgumentException`(D76). 같으면 기준선 upsert 가 같은 키의 시행예정 행을 `시행중`으로 덮어쓰고, 늦으면 기준선이 미래본이다(단계적 시행 법령을 `target=law` 로 받던 때의 실제 사고, [[troubleshooting/006-current-law-by-promulgation-date|006]]).
 
 ## Invariants
 - 저장되는 시행예정 정본은 **항상 diff를 거친 것**(`diffBuilder.build` 산출) — raw 정규화본을 바로 저장하지 않는다.

@@ -3,7 +3,7 @@ title: LawConnector — 클래스 스펙
 status: Draft
 date: 2026-08-22
 tags: [component, pipeline, connector]
-related: ["components/component-specs.md", "components/connector/SourceConnector.md", "reference/law-domain-basics.md", "docs/troubleshooting/004-jejeong-law-no-baseline-english-envelope.md", "docs/troubleshooting/005-current-law-by-promulgation-date.md"]
+related: ["components/component-specs.md", "components/connector/SourceConnector.md", "reference/law-domain-basics.md", "docs/troubleshooting/004-jejeong-law-no-baseline-english-envelope.md", "docs/troubleshooting/006-current-law-by-promulgation-date.md"]
 ---
 
 # LawConnector
@@ -32,7 +32,7 @@ related: ["components/component-specs.md", "components/connector/SourceConnector
 | `eflaw` 목록 `nw=3` | 현행 행 찾기(diff 기준선) | **`LID`**(법령ID; MST 아님) | `LawSearch` — 현행 1행, 제정이면 `totalCnt=0` |
 | `eflaw` 본문 | 현행 본문(diff 기준선) | 현행 행의 `MST`+`efYd` | `법령` |
 
-> **`target=law` 는 쓰지 않는다(D76).** API 안내서상 "현행법령(**공포일**)"이라, 단계적 시행 법령이면 일부만 시행 중인 공포본을 **마지막 시행일 기준 본문**으로 준다(아직 시행되지 않은 조문 포함). `eflaw&ID=`(efYd 생략) 단독 조회는 제정 법령에 HTML "미신청된 목록/본문" 페이지를 줘 권한 오류와 구분되지 않는다([[troubleshooting/005-current-law-by-promulgation-date|005]]).
+> **`target=law` 는 쓰지 않는다(D76).** API 안내서상 "현행법령(**공포일**)"이라, 단계적 시행 법령이면 일부만 시행 중인 공포본을 **마지막 시행일 기준 본문**으로 준다(아직 시행되지 않은 조문 포함). `eflaw&ID=`(efYd 생략) 단독 조회는 제정 법령에 HTML "미신청된 목록/본문" 페이지를 줘 권한 오류와 구분되지 않는다([[troubleshooting/006-current-law-by-promulgation-date|006]]).
 
 - 목록: `GET /DRF/lawSearch.do?target=eflaw&efYd=..&sort=efasc&display=..` → `LawSearch.law[]`
 - 현행 행: `GET /DRF/lawSearch.do?target=eflaw&LID=..&nw=3` → `LawSearch.law` 0~1건

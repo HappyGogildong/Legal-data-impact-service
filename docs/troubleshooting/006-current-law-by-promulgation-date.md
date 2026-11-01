@@ -1,17 +1,17 @@
 ---
-title: "005 · 현행본이 미래본 — target=law 는 공포일 기준 현행"
+title: "006 · 현행본이 미래본 — target=law 는 공포일 기준 현행"
 status: Resolved
 date: 2026-11-01
 tags: [troubleshooting, connector, api, domain, date-dependent]
 ---
 
-# 005 · 현행본이 미래본 — `target=law` 는 공포일 기준 현행
+# 006 · 현행본이 미래본 — `target=law` 는 공포일 기준 현행
 
 | | |
 |---|---|
 | 유형 | 커넥터 · API 의미 · 도메인 상태 · **날짜 의존** |
-| 발생 시점 | 2026-11-01 (로컬 적재 데이터 점검) |
-| 관련 | D43 ② · D76 · `LawConnector.fetchCurrent` · `IngestService.store` · `SyncHandler` |
+| 발생 시점 | 2026-11-01 (청킹 근거용으로 현행본 원본을 받다가 발견 — [[005-article-text-number-duplication|005]] · 로컬 적재 데이터 점검) |
+| 관련 | D43 ② · D76 · 커밋 `02b6e24`(정책) · `eaa3d75`(실패 테스트) · `b0e41a6`(수정) · `LawConnector.fetchCurrent` · `IngestService.store` · `SyncHandler` · 원본 `docs/mvp/raw-samples/law-001809-current-raw.json.txt` |
 
 ## 1. 문제 정의
 
