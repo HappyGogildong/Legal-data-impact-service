@@ -161,6 +161,7 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
 | 시행일 ≤ 오늘 | `TRANSITION` 등록 — 날짜 기준이라 목록 완주와 무관 |
 | 시행일 > 조회 상한(오늘 + `lookahead-years`) | 판정 안 함 — 조회 범위 밖이라 목록에 없는 게 정상 |
 | 목록 실패·미완주 | 판정 안 함 — `missing_since` 기록·`PURGE` 모두 없음 |
+| 대량 사라짐(아래) | 판정 안 함 — 이번 실행 전체 |
 | `missing_since` 없음 | `missing_since = 오늘` (첫 미확인 — 정리 안 함) |
 | `missing_since = 오늘` | 아무것도 안 함 — 같은 날 다시 돌린 실행은 새 증거가 아니다 |
 | `missing_since < 오늘` | `PURGE` 등록 (다른 날의 두 번째 미확인) |
@@ -168,6 +169,8 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
 - **"두 번 연속 미확인" = 서로 다른 날짜(KST)의 완주 실행 두 번**, 그 사이 한 번도 보이지 않음. 미완주·실패 실행은 세지도 초기화하지도 않는다. 별도 카운터·실행 ID 컬럼은 두지 않는다(날짜가 이미 그 정보다). 정상 일정에서 철회는 첫 미확인 다음 날 등록된다.
 - 시행일 변경(같은 법령이 다른 시행일로 다시 등장)은 새 행이 신규로 들어오고 옛 행은 사라짐 경로로 `철회`된다.
 - `--dry-run`은 같은 분류로 계획 건수만 세고 `missing_since`도 쓰지 않는다.
+
+**대량 사라짐 방어(D77)** — 완주 목록이어도 이번 실행에서 안 보인 판정 대상(조회 범위 안·시행일 > 오늘인 저장 시행예정본)이 **2건 이상이고 판정 대상의 `lia.batch.max-missing-ratio`(기본 `0.2`)를 넘으면** 그 실행은 사라짐 판정을 하지 않는다 — `missing_since` 기록·`PURGE` 모두 없음, 경고 로그, `list_complete=false`(→ `PARTIAL`). 정상 철회는 한 번에 몇 건이라 이 선을 넘지 않고, 넘는다면 원천 API 쪽 이상(예: 파라미터 기본값이 바뀌어 정상 봉투로 0건 — [[troubleshooting/006-eflaw-list-needs-nw|006]])일 가능성이 크다. 1건은 비율과 무관하게 판정한다(저장본이 적을 때 정상 철회가 막히지 않게). 실제로 대량 철회가 맞다면 설정값을 올려 한 번 돌린다(env `LIA_BATCH_MAX_MISSING_RATIO`).
 
 **주 1회 전체 재검증(`run --full`)** — 공포 즉시 시행되는 개정은 시행예정 목록에 나타나지 않아, 매일 실행만으로는 우리 기준선(시행중본)이 낡을 수 있다(같은 법령의 다른 시행예정본 diff도 틀어짐). 주 1회 목록 전체에 `SYNC`를 등록해 기준선을 다시 받는다. revision 비교로 실제 바뀐 것만 재색인된다(국가법령정보 호출 ≈ 목록 수 × 2).
 
@@ -284,6 +287,7 @@ Pushgateway는 두지 않는다. **신호:** `DEAD ≥ 1` · 마지막 성공 �
 - **두 번 연속 실행해도 결과가 같다** — 두 번째 실행은 등록·쓰기가 없다(MST·revision 증분).
 - 시행예정 색인에는 `status = 시행예정`인 버전만 있다(전환·철회 시 제거).
 - 사라짐 판정은 조회 범위 안의 버전에 대해, **서로 다른 날짜의 완주 목록 두 번**에서 연속 미확인일 때만 한다.
+- 한 실행이 판정 대상의 `max-missing-ratio` 를 넘는 수(2건 이상)를 한꺼번에 사라짐으로 판정하지 않는다(D77).
 - 다음 실행이 시작된 뒤에는 이전 실행 행이 모두 `finished_at`·`outcome`을 가진다.
 
 ## Side Effects
@@ -300,7 +304,7 @@ Pushgateway는 두지 않는다. **신호:** `DEAD ≥ 1` · 마지막 성공 �
 ## 검증
 | 대상 | 방법 | 확인할 것 |
 |---|---|---|
-| `Discoverer` | 표 기반, 가짜 원천 + Testcontainers | 신규·MST 변경·동일·시행 도래·첫 미확인·같은 날 재실행(PURGE 안 함)·다른 날 두 번째 미확인·조회 범위 밖·목록 미완주·미완주 목록에 보이면 해제·`--full`·`--dry-run`·철회본 재등장·중복 키 |
+| `Discoverer` | 표 기반, 가짜 원천 + Testcontainers | 신규·MST 변경·동일·시행 도래·첫 미확인·같은 날 재실행(PURGE 안 함)·다른 날 두 번째 미확인·조회 범위 밖·목록 미완주·미완주 목록에 보이면 해제·`--full`·`--dry-run`·철회본 재등장·중복 키·대량 사라짐(비율 초과면 판정 안 함, 1건은 판정) |
 | `TaskQueue` | Testcontainers | 중복 등록 무시, `DEAD`가 재등록 차단, `SKIP LOCKED` 동시 가져가기, 가져가기 시 시도 행, 소유권 잃은 완료 무시, 중단 복구(`ABANDONED`·한도면 `DEAD`), 이번 실행 시도 작업 제외, 우선순위, 종류 필터, `requeue-dead` 이력 보존, `mst` CHECK |
 | `IngestRunStore` | Testcontainers | 종료 기록, 열린 실행 정리, `finished_at`/`outcome` CHECK |
 | 핸들러 | 가짜 원천(샘플 fixture) + Testcontainers | SYNC: revision 같으면 저장·INDEX 없음, 저장 후 등록 실패 시 함께 롤백. TRANSITION: 형제 SYNC·`과거` 전환·색인 제거. INDEX: 실패 시 이전 청크 유지. PURGE: `철회`·색인 제거 |
