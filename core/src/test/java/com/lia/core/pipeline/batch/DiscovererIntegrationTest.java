@@ -58,9 +58,17 @@ class DiscovererIntegrationTest {
         discoverer = discovererOn(TODAY);
     }
 
-    /** 그날을 오늘로 보는 탐색기(조회 범위 10년). */
+    /** 그날을 오늘로 보는 탐색기(조회 범위 10년, 대량 사라짐 비율 20%). */
     private Discoverer discovererOn(LocalDate day) {
-        return new Discoverer(feed, lawStore, queue, Clock.fixed(day.atStartOfDay(SEOUL).toInstant(), SEOUL), 10);
+        return new Discoverer(feed, lawStore, queue, Clock.fixed(day.atStartOfDay(SEOUL).toInstant(), SEOUL), 10, 0.2);
+    }
+
+    /** 시행예정본 {@code count}개(L0..)를 저장하고 앞의 {@code listed}개만 목록에 올린다. */
+    private void storeAndList(int count, int listed) {
+        for (int i = 0; i < count; i++) {
+            lawStore.upsert(TestLaws.law("L" + i, "M" + i, Law.Status.시행예정, FUTURE));
+            if (i < listed) feed.head("L" + i, "M" + i, FUTURE);
+        }
     }
 
     private List<String> tasks() {
@@ -119,7 +127,7 @@ class DiscovererIntegrationTest {
     }
 
     @Test
-    @DisplayName("사라짐 — 첫 미확인은 missing_since 기록만, 다음 날 두 번째 미확인에 PURGE")
+    @DisplayName("사라짐 — 첫 미확인은 missing_since 기록만, 다음 날 두 번째 미확인에 PURGE(1건은 비율과 무관하게 판정)")
     void 사라짐_두번() {
         lawStore.upsert(TestLaws.law("A", "M1", Law.Status.시행예정, FUTURE));
 
@@ -218,6 +226,44 @@ class DiscovererIntegrationTest {
         assertTrue(tasks().isEmpty(), "미완주 목록으로 PURGE 금지");
         assertEquals(0, r.markedMissing());
         assertFalse(r.listComplete());
+    }
+
+    @Test
+    @DisplayName("대량 사라짐 — 완주 목록이어도 판정 대상의 20% 를 넘게(2건 이상) 안 보이면 판정하지 않는다(D77)")
+    void 대량사라짐_판정안함() {
+        storeAndList(10, 7);                                   // 3/10 안 보임 = 30%
+        lawStore.markMissing("L9", FUTURE, TODAY.minusDays(1));  // 어제 미확인 — 평소라면 오늘 PURGE
+
+        DiscoveryResult r = discoverer.discover(false, false);
+
+        assertTrue(tasks().isEmpty(), "PURGE 금지");
+        assertEquals(0, r.markedMissing());
+        assertNull(lawStore.findPendingVersions("L7").get(0).missingSince());
+        assertFalse(r.listComplete(), "PARTIAL 로 드러나게");
+        assertEquals(7, r.listed());
+    }
+
+    @Test
+    @DisplayName("원천이 정상 봉투로 0건 — 저장된 시행예정본을 한꺼번에 사라짐으로 보지 않는다(D77)")
+    void 빈목록_판정안함() {
+        storeAndList(3, 0);
+
+        DiscoveryResult r = discoverer.discover(false, false);
+
+        assertEquals(0, r.markedMissing());
+        assertFalse(r.listComplete());
+        assertNull(lawStore.findPendingVersions("L0").get(0).missingSince());
+    }
+
+    @Test
+    @DisplayName("비율 이하의 사라짐은 평소대로 판정한다 — 2/10 = 20% 는 넘지 않음")
+    void 비율이하_판정() {
+        storeAndList(10, 8);
+
+        DiscoveryResult r = discoverer.discover(false, false);
+
+        assertEquals(2, r.markedMissing());
+        assertTrue(r.listComplete());
     }
 
     @Test

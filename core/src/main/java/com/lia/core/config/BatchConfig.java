@@ -80,8 +80,9 @@ public class BatchConfig {
 
     @Bean
     public Discoverer discoverer(PendingLawFeed feed, LawStore lawStore, TaskQueue queue, Clock batchClock,
-                                 @Value("${lia.batch.lookahead-years}") int lookaheadYears) {
-        return new Discoverer(feed, lawStore, queue, batchClock, lookaheadYears);
+                                 @Value("${lia.batch.lookahead-years}") int lookaheadYears,
+                                 @Value("${lia.batch.max-missing-ratio}") double maxMissingRatio) {
+        return new Discoverer(feed, lawStore, queue, batchClock, lookaheadYears, maxMissingRatio);
     }
 
     @Bean

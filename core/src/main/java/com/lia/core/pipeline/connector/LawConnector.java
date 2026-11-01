@@ -44,6 +44,12 @@ public class LawConnector implements PendingLawFeed {
     /** DRF 목록 조회 상한(실측 확인). */
     static final int MAX_PAGE_SIZE = 200;
 
+    /**
+     * 목록 종류 — 시행예정만(1 연혁 · 2 시행예정 · 3 현행). 빼면 정상 봉투로 0건이 온다(D77,
+     * 2026-11-01 실측) — 그 0건은 완주로 판정돼 사라짐(철회)으로 번진다. 기본값에 기대지 않는다.
+     */
+    private static final String PENDING_ONLY = "2";
+
     private final RestClient http;
     private final LiaSourceProperties.Law props;
     private final ObservationRegistry observations;   // 미주입 시 NOOP
@@ -76,7 +82,7 @@ public class LawConnector implements PendingLawFeed {
     // --- 공개 API --------------------------------------------------------
 
     /**
-     * 시행 대기 법령 목록. {@code efYd} 범위로 "아직 시행되지 않은 것"만 거른다.
+     * 시행 대기 법령 목록. {@code nw=2}(시행예정) + {@code efYd} 범위로 "아직 시행되지 않은 것"만 거른다.
      *
      * @param from 시행일 하한(보통 오늘 다음 날)
      * @param to   시행일 상한
@@ -102,6 +108,7 @@ public class LawConnector implements PendingLawFeed {
             int want = limit <= 0 ? MAX_PAGE_SIZE : Math.min(MAX_PAGE_SIZE, limit - collected.size());
             Map<String, Object> payload = request(UriComponentsBuilder.fromPath("/DRF/lawSearch.do")
                     .queryParam("target", "eflaw")
+                    .queryParam("nw", PENDING_ONLY)
                     .queryParam("efYd", range)
                     .queryParam("sort", "efasc")
                     .queryParam("page", page)
@@ -131,6 +138,7 @@ public class LawConnector implements PendingLawFeed {
         if (query == null || query.isBlank()) return List.of();
         Map<String, Object> payload = request(UriComponentsBuilder.fromPath("/DRF/lawSearch.do")
                 .queryParam("target", "eflaw")
+                .queryParam("nw", PENDING_ONLY)
                 .queryParam("query", query)
                 .queryParam("efYd", from.format(YMD) + "~" + to.format(YMD))
                 .queryParam("sort", "efasc")

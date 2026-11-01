@@ -30,28 +30,39 @@ import com.lia.core.store.PendingVersion;
  *       (같은 날 재실행은 같은 API 상태라 새 증거가 아니다). 조회 범위 밖 버전은 판정하지 않는다</li>
  *   <li>lawId·시행일·MST 중 하나라도 없는 행은 건너뛰고 세며, 그런 행이 있으면 목록을 미완주로 본다
  *       (그 행이 어느 법령인지 몰라 "안 보임"을 판정할 수 없다). 행 하나로 탐색 전체가 실패하지 않게</li>
+ *   <li>완주 목록이어도 판정 대상의 {@code maxMissingRatio} 를 넘게(2건 이상) 안 보이면 원천 이상으로 보고
+ *       미완주로 취급한다(D77) — API 가 정상 봉투로 0건을 주면 저장본 전부가 철회될 수 있다</li>
  * </ul>
  */
 public class Discoverer {
 
     private static final Logger log = LoggerFactory.getLogger(Discoverer.class);
 
+    /** 이 건수 미만의 사라짐은 비율과 무관하게 판정한다 — 저장본이 적을 때 정상 철회가 막히지 않게. */
+    private static final int MASS_MISSING_MIN = 2;
+
     private final PendingLawFeed feed;
     private final LawStore lawStore;
     private final TaskQueue queue;
     private final Clock clock;
     private final int lookaheadYears;
+    private final double maxMissingRatio;
 
     /**
      * @param lookaheadYears 목록 조회 범위(오늘+1일 ~ 오늘+N년). 저장된 시행예정본을 모두 덮을 만큼 넉넉해야
      *                       범위 밖 법령을 "사라짐"으로 오판하지 않는다
+     * @param maxMissingRatio 한 실행에서 사라짐으로 판정할 수 있는 판정 대상의 최대 비율(D77). 넘으면(2건 이상)
+     *                        원천 이상으로 보고 그 실행은 사라짐 판정을 하지 않는다
      */
-    public Discoverer(PendingLawFeed feed, LawStore lawStore, TaskQueue queue, Clock clock, int lookaheadYears) {
+    public Discoverer(PendingLawFeed feed, LawStore lawStore, TaskQueue queue, Clock clock, int lookaheadYears,
+                      double maxMissingRatio) {
+        if (!(maxMissingRatio > 0)) throw new IllegalArgumentException("maxMissingRatio 는 0 보다 커야 한다: " + maxMissingRatio);
         this.feed = feed;
         this.lawStore = lawStore;
         this.queue = queue;
         this.clock = clock;
         this.lookaheadYears = lookaheadYears;
+        this.maxMissingRatio = maxMissingRatio;
     }
 
     public DiscoveryResult discover(boolean full, boolean dryRun) {
@@ -94,7 +105,8 @@ public class Discoverer {
             }
         }
 
-        boolean complete = list != null && list.complete() && malformedRows == 0;
+        boolean complete = list != null && list.complete() && malformedRows == 0
+                && !massDisappearance(stored.values(), listed, today, horizon);
         int markedMissing = 0;
         for (PendingVersion saved : stored.values()) {
             LocalDate effectiveDate = saved.effectiveDate();
@@ -125,6 +137,25 @@ public class Discoverer {
         }
         return new DiscoveryResult(list == null ? 0 : list.heads().size(), complete, planned, enqueued, markedMissing,
                 duplicateKeys, malformedRows);
+    }
+
+    /** 판정 대상(조회 범위 안·시행일 > 오늘) 중 안 보인 것이 비율을 넘으면(2건 이상) true — 원천 이상 의심. */
+    private boolean massDisappearance(Iterable<PendingVersion> stored, Set<String> listed,
+                                      LocalDate today, LocalDate horizon) {
+        int judgeable = 0;
+        int unseen = 0;
+        for (PendingVersion saved : stored) {
+            LocalDate effectiveDate = saved.effectiveDate();
+            if (!effectiveDate.isAfter(today) || effectiveDate.isAfter(horizon)) continue;
+            judgeable++;
+            if (!listed.contains(key(saved.lawId(), effectiveDate))) unseen++;
+        }
+        boolean suspicious = unseen >= MASS_MISSING_MIN && unseen > judgeable * maxMissingRatio;
+        if (suspicious) {
+            log.warn("[batch] 판정 대상 {}건 중 {}건이 목록에 없음(한도 {}%) — 원천 이상 의심, 이번 실행은 사라짐 판정 안 함",
+                    judgeable, unseen, Math.round(maxMissingRatio * 100));
+        }
+        return suspicious;
     }
 
     private static boolean malformed(RawLaw head) {
