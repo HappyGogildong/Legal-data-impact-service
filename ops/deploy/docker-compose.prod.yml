@@ -1,0 +1,100 @@
+# LIA 운영 — EC2 한 대(D63). 실행은 ops/deploy/lia 래퍼로만(비밀값을 환경변수로 넘긴다). 직접 실행하지 말 것.
+name: lia
+
+x-core-env: &core-env
+  SPRING_DATASOURCE_URL: jdbc:postgresql://${LIA_DB_HOST:?}:5432/lia?sslmode=${LIA_DB_SSLMODE:-require}
+  SPRING_DATASOURCE_USERNAME: lia_app
+  SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:?}
+  LAW_OC: ${LAW_OC:?}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:?}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?}
+  JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xmx512m}
+  MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:-0.1}
+
+services:
+  caddy:
+    image: caddy:2.11
+    ports: ["80:80", "443:443"]
+    environment:
+      LIA_DOMAIN: ${LIA_DOMAIN:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data          # Let's Encrypt 인증서 보존 — 지우면 재발급(발급 한도 주의)
+      - caddy_config:/config
+    depends_on: [core]
+    restart: unless-stopped
+
+  core:
+    image: ghcr.io/happygogildong/lia-core:${LIA_IMAGE_TAG:?}
+    environment:
+      <<: *core-env
+      SPRING_PROFILES_ACTIVE: oauth
+      SERVER_FORWARD_HEADERS_STRATEGY: native     # Caddy 의 X-Forwarded-Proto 를 믿어 Secure 쿠키·https 리다이렉트
+      FRONTEND_URL: ${FRONTEND_URL:?}
+      OAUTH2_REDIRECT_BASE_URL: ${OAUTH2_REDIRECT_BASE_URL:?}
+      SPRINGDOC_API_DOCS_ENABLED: ${SPRINGDOC_API_DOCS_ENABLED:-false}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}        # 없으면 그 provider 는 꺼짐(D78)
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-}
+    restart: unless-stopped
+
+  # 배치(D62) — 평소엔 안 뜬다. cron 이 `ops/deploy/lia ingest run` 으로 띄운다.
+  ingest:
+    image: ghcr.io/happygogildong/lia-core:${LIA_IMAGE_TAG:?}
+    profiles: ["batch"]
+    environment:
+      <<: *core-env
+      SPRING_PROFILES_ACTIVE: batch
+      LIA_BATCH_SUMMARY_ENABLED: ${LIA_BATCH_SUMMARY_ENABLED:-false}
+      LIA_BATCH_INDEX_ENABLED: ${LIA_BATCH_INDEX_ENABLED:-true}
+    healthcheck:
+      disable: true            # 웹 서버가 없어 이미지의 actuator 헬스체크가 의미 없다
+    restart: "no"
+    stop_grace_period: 60s     # 종료 신호 후 진행 중 작업을 마치고 실행 기록을 남길 시간
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=15d"]
+    volumes:
+      - ./prometheus.prod.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./tempo.prod.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    ports: ["127.0.0.1:3001:3000"]    # 외부 비공개 — SSM 포트 포워딩으로만
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?}
+      LIA_DB_HOST: ${LIA_DB_HOST:?}
+      LIA_DB_USER: grafana_reader
+      LIA_DB_SSLMODE: ${LIA_DB_SSLMODE:-require}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:?}
+    volumes:
+      # 하위 폴더를 따로 마운트한다 — provisioning 을 통째로 ro 마운트하면 그 안에 alerting 마운트 지점을 못 만들어 컨테이너가 안 뜬다
+      - ../observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../observability/grafana/alerting:/etc/grafana/provisioning/alerting:ro   # 운영에서만(로컬엔 웹훅 없음)
+      - grafana_data:/var/lib/grafana
+    depends_on: [prometheus, tempo]
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
+  prometheus_data:
+  tempo_data:
+  grafana_data:

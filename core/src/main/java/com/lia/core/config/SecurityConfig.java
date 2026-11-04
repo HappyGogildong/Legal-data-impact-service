@@ -34,7 +34,7 @@ public class SecurityConfig {
       HttpSecurity http,
       OAuth2LoginSuccessHandler loginSuccessHandler,
       AccountStore accountStore,
-      // oauth 프로파일일 때만 이 빈이 존재 → Optional 로 받아 조건부 처리
+      // oauth 프로파일 + client-id 가 있는 provider 가 있을 때만 이 빈이 존재(D78) → Optional 로 받아 조건부 처리
       ObjectProvider<ClientRegistrationRepository> clientRegistrations) throws Exception {
 
     http
@@ -47,6 +47,7 @@ public class SecurityConfig {
             .requestMatchers("/api/v1/laws/**").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/v1/analyses").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/v1/data-status").permitAll()
+            .requestMatchers(HttpMethod.GET, "/api/v1/auth/providers").permitAll()
             .requestMatchers("/v3/api-docs/**").permitAll()   // OpenAPI — 운영은 springdoc 설정으로 끈다
             // 문서용(Auth.md 표 미러) — 실제 보호는 아래 anyRequest 가 한다
             .requestMatchers("/api/v1/profile/**").authenticated()
@@ -80,7 +81,7 @@ public class SecurityConfig {
         //    인가 전에 파기하고 익명으로 진행시킨다. 보호 API 는 2)의 401, 공개 API 는 정상 처리.
         .addFilterAfter(new StaleSessionFilter(accountStore), SecurityContextHolderFilter.class);
 
-    // 6) 소셜 로그인 — ClientRegistrationRepository 빈이 있을 때(=oauth 프로파일)만 붙인다.
+    // 6) 소셜 로그인 — ClientRegistrationRepository 빈이 있을 때만 붙인다(OAuthClientRegistrationConfig).
     //    없는데 oauth2Login() 을 부르면 부팅 자체가 깨진다.
     //    성공 시 loginSuccessHandler 가 provider+subject→userId 매핑 후 세션에 심는다.
     clientRegistrations.ifAvailable(repo -> {

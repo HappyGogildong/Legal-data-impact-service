@@ -1,0 +1,11 @@
+# 운영 Prometheus — 같은 compose 의 core 만(D63). 로컬 설정(ops/observability/prometheus.yml)은 호스트 bootRun 대상까지 있다.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: lia-core
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['core:8080']
+        labels: { service: lia-core }

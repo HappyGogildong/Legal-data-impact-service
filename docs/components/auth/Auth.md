@@ -21,7 +21,7 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 
 ## Collaborators
 - **Spring Security** (`spring-boot-starter-security` · `spring-boot-starter-oauth2-client` — 신규 의존).
-- **IdP**: Kakao/Naver/Google OAuth2 (client-id/secret는 `.env`, D39). **리다이렉트 주소**는 `${OAUTH2_REDIRECT_BASE_URL:{baseUrl}}/login/oauth2/code/{id}` — 설정하지 않으면 요청 기준 `{baseUrl}`(로컬; 빈 값으로 두지 말 것 — `${VAR:기본값}` 은 변수가 없을 때만 기본값을 쓰므로 빈 문자열이면 상대 주소가 되어 provider가 거부한다), 운영은 프런트 도메인(`https://app.<도메인>` 형태, 끝 `/` 없이 — Vercel rewrites로 콜백이 백엔드에 온다 — D64).
+- **IdP**: Kakao/Naver/Google OAuth2 (client-id/secret는 로컬 `.env`·운영 Parameter Store, D39·D63). **`client-id` 가 비어 있지 않은 provider 만 등록**하고(D78), 켜진 목록은 `GET /api/v1/auth/providers` 로 웹에 알린다. **리다이렉트 주소**는 `${OAUTH2_REDIRECT_BASE_URL:{baseUrl}}/login/oauth2/code/{id}` — 설정하지 않으면 요청 기준 `{baseUrl}`(로컬; 빈 값으로 두지 말 것 — `${VAR:기본값}` 은 변수가 없을 때만 기본값을 쓰므로 빈 문자열이면 상대 주소가 되어 provider가 거부한다), 운영은 프런트 도메인(`https://app.<도메인>` 형태, 끝 `/` 없이 — Vercel rewrites로 콜백이 백엔드에 온다 — D64).
 - **DB**: `accounts` 테이블(JdbcClient+Flyway, [[LawStore]] 패턴).
 - 소비자: [[ProfileApi]]·Layer B 경로가 세션 principal의 `userId`를 읽는다.
 
@@ -85,6 +85,7 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 
 ## 검증
 - 통합: `AccountStoreIntegrationTest`(Testcontainers — 매핑 라운드트립·멱등·**동시 최초 로그인 경합**·delete·알림 이메일 저장/해제·**동의 없는 email을 CHECK가 거부**).
+- 등록(D78): `OAuthClientRegistrationConfigTest`(구글만·셋 다·없음·프로파일 꺼짐) · `OAuthGoogleOnlyBootTest`·`OAuthNoKeysBootTest`(실제 전체 컨텍스트 부팅, 구글로 302, 키 없음 부팅).
 - 단위: `OAuth2LoginSuccessHandlerTest`(subject 회수/생성·**로그인 시 email 미저장**·프론트 리다이렉트·subject 누락 fail-closed, 인메모리 `InMemoryAccountStore`). provider 3종 추출 자체는 `OAuth2IdentityTest`.
 - 슬라이스: `SecurityConfigTest`(보호 401·공개 200·`/error`·SPA CSRF·로그아웃 204) — [[SecurityConfig]] §검증.
 - 라이브(수동): 실제 소셜 로그인 왕복.

@@ -52,6 +52,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["authProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bookmarks": {
         parameters: {
             query?: never;
@@ -676,6 +692,9 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        ProvidersResponse: {
+            providers?: string[];
+        };
         SituationAnswer: {
             answer?: string;
             questionId?: string;
@@ -842,6 +861,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActionRevisionApiResponse"];
+                };
+            };
+        };
+    };
+    authProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProvidersResponse"];
                 };
             };
         };

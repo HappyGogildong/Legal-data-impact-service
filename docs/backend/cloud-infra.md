@@ -1,10 +1,10 @@
 ---
 title: 클라우드 인프라 — 단일 EC2 + RDS (저비용 운영)
 status: Draft
-version: 0.1
-date: 2026-10-22
+version: 0.2
+date: 2026-11-02
 tags: [backend, infra, aws, deployment, ops, observability]
-related: ["backend/deployment.md", "backend/observability.md", "components/batch/IngestJob.md", "adr/decision-log.md", "adr/ADR-001-knowledge-store-sizing.md"]
+related: ["backend/deployment.md", "backend/observability.md", "components/auth/Auth.md", "frontend/frontend-stack.md", "components/batch/IngestJob.md", "adr/decision-log.md", "adr/ADR-001-knowledge-store-sizing.md"]
 ---
 
 # 클라우드 인프라 (AWS · 저비용 운영)
@@ -33,9 +33,21 @@ AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
 | DB | **RDS PostgreSQL 16(db.t4g.micro) + pgvector** | 백업·패치·복구를 AWS가 맡는다(D34 유지). 매니지드를 쓰는 유일한 곳 |
 | 관측 | **같은 EC2에 Prometheus·Tempo·Grafana** | Grafana가 VPC 안이라 RDS의 실행 기록(`ingest_runs`)을 바로 조회 — 배치 패널·경보의 전제 |
 | 리전 | **서울(ap-northeast-2)** | 국가법령정보 등 국내 API와 사용자 지연. us-east-1보다 약 20% 비쌈 |
+| 주소 | **무료 주소로 시작**(D78) — 웹 `https://<프로젝트>.vercel.app`, API `https://api.<EIP 점→하이픈>.sslip.io` | 도메인 구매·DNS 설정 없이 시작. 도메인을 사면 `prod.env` 값과 OAuth 콘솔 주소만 바꾼다(아래 §1.1) |
 
 - **arm64(t4g)** — 같은 사양에서 x86보다 약 20% 저렴. 이미지는 CI에서 **빌드 단계만 네이티브(amd64)로 Gradle 실행, 런타임 단계만 arm64**(`FROM --platform=$BUILDPLATFORM`) — jar는 아키텍처 무관이라 빌드가 느려지지 않는다.
 - **메모리 예산(4GB)** — OS 0.4 · core JVM 0.8(`-Xmx512m`) · 배치 실행 시 0.6 · Prometheus 0.3 · Tempo 0.3 · Grafana 0.2 · Caddy 0.05 ≈ 2.7GB.
+
+### 1.1 주소 (D78)
+
+| 용도 | 첫 배포 | 도메인을 산 뒤 |
+|---|---|---|
+| 웹(Vercel) | `https://<프로젝트>.vercel.app` | `https://app.<도메인>` |
+| API(EC2·Caddy) | `https://api.<EIP 점→하이픈>.sslip.io` — 예: EIP `13.125.1.1` → `api.13-125-1-1.sslip.io` | `https://api.<도메인>` |
+
+- sslip.io 는 이름 안의 IP를 그대로 돌려주는 공개 DNS 서비스다. A 레코드 설정이 필요 없고, Caddy 가 그 이름으로 Let's Encrypt 인증서를 받는다.
+- 값이 들어가는 곳: `prod.env` 의 `LIA_DOMAIN`(API 이름) · `FRONTEND_URL` · `OAUTH2_REDIRECT_BASE_URL`(둘 다 웹 주소) · Vercel 환경변수 `LIA_API_ORIGIN`(`https://` + API 이름) · Google OAuth 콘솔의 리다이렉트 URI(`<웹 주소>/login/oauth2/code/google`).
+- **위험과 탈출로** — sslip.io 는 제3자 서비스라 장애·인증서 발급 한도에 걸리면 API 주소가 막힌다. 그때는 도메인을 사서 위 표 오른쪽 값으로 바꾼다(코드 변경 없음).
 
 ### 비용 (서울 리전 온디맨드 대략치, 2026-10 기준 추정)
 
@@ -72,7 +84,7 @@ AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
 - 이후 SSM 방식 CD도 이 역할을 재사용한다.
 
 **비밀값 — SSM Parameter Store (SecureString, 기본 등급 무료)**
-- 경로 `/lia/prod/` — `LAW_OC` · `OPENAI_API_KEY` · `ANTHROPIC_API_KEY` · `SPRING_DATASOURCE_PASSWORD`(앱 계정) · OAuth 클라이언트 비밀값 · `GF_SECURITY_ADMIN_PASSWORD` · `GRAFANA_DB_PASSWORD`(읽기 계정) · `DISCORD_WEBHOOK_URL` · `DB_MASTER_PASSWORD`(최초 설정용). 파라미터 이름의 마지막 부분이 곧 환경변수 이름이다.
+- 경로 `/lia/prod/` — `LAW_OC` · `OPENAI_API_KEY` · `ANTHROPIC_API_KEY` · `SPRING_DATASOURCE_PASSWORD`(앱 계정) · OAuth 클라이언트 값(`GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET` — 카카오·네이버는 키가 생기면 같은 규칙으로 추가, 없으면 그 provider 는 등록되지 않는다 D78) · `GF_SECURITY_ADMIN_PASSWORD` · `GRAFANA_DB_PASSWORD`(읽기 계정) · `DISCORD_WEBHOOK_URL` · `DB_MASTER_PASSWORD`(최초 설정용). 파라미터 이름의 마지막 부분이 곧 환경변수 이름이다.
 - 배포 래퍼 `ops/deploy/lia`가 실행할 때마다 `get-parameters-by-path --with-decryption`으로 읽어 **환경변수로 export한 뒤** `docker compose`를 실행 — **디스크에 비밀값 파일이 남지 않는다.** 정기 배치(cron)도 같은 래퍼를 거친다.
 - 비밀이 아닌 설정(도메인·`FRONTEND_URL`·`OAUTH2_REDIRECT_BASE_URL`·`SPRINGDOC_API_DOCS_ENABLED=false`·샘플링 비율·JVM 힙 등)은 레포의 `ops/deploy/prod.env`.
 - 로컬 개발은 그대로 레포 루트 `.env` — D39는 "로컬=`.env`, 운영=Parameter Store"로 보완된다.
@@ -132,7 +144,9 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 ```
 - 래퍼가 Parameter Store를 읽고 `docker compose run --rm ingest …` 실행. 로그 파일은 logrotate 주 단위 정리 — 실행 결과의 기준은 `ingest_runs`.
 
-**소셜 로그인 준비 (#36)** — 웹은 Vercel(`app.<도메인>`)이 API·로그인 경로를 rewrites로 이 EC2(`api.<도메인>`)에 전달한다(D64, [[frontend-stack]] §2). provider 콘솔과 앱의 OAuth `redirect-uri`는 `https://app.<도메인>/login/oauth2/code/{kakao|naver|google}`, `FRONTEND_URL` = `https://app.<도메인>`.
+**소셜 로그인 (#36, D78)** — 웹은 Vercel 이 API·로그인 경로를 rewrites로 이 EC2 에 전달한다(D64, [[frontend-stack]] §2). provider 콘솔과 앱의 OAuth `redirect-uri`는 `<웹 주소>/login/oauth2/code/{google|kakao|naver}`, `FRONTEND_URL` = 웹 주소. 운영은 `oauth` 프로파일을 켜고(`SPRING_PROFILES_ACTIVE=oauth`), **`client-id` 가 있는 provider 만 등록**된다 — 첫 배포는 구글만. 웹 로그인 화면은 `GET /api/v1/auth/providers` 의 목록만 버튼으로 그린다.
+
+**운영 첫 설정(`prod.env`)** — 쉬운 요약 배치 **꺼짐**(`LIA_BATCH_SUMMARY_ENABLED=false`, 유료 Opus — 백필 뒤 `summarize --dry-run` 으로 규모를 보고 따로 결정, D67·D78), 색인 켜짐(`LIA_BATCH_INDEX_ENABLED=true`, 임베딩 비용은 백필 전체가 1달러 미만 추정).
 
 ## 4. 관측·배치 패널·경보
 
@@ -152,15 +166,15 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 | 색인 지연 | READY인 INDEX 수 · 가장 오래된 READY의 나이 | `ingest_tasks` |
 | 일별 추이 | 결과별 실행 수·처리 건수 | `ingest_runs` |
 
-**경보 3개** (Grafana 관리, `ops/observability/grafana/provisioning/alerting/`)
+**경보 3개** (Grafana 관리, `ops/observability/grafana/alerting/lia-batch-alerts.yaml`)
 
 | 경보 | 조건 | 의미 |
 |---|---|---|
 | 격리 작업 발생 | `DEAD ≥ 1` | 사람이 원인을 보고 `requeue-dead` 여부 판단 |
-| 성공 실행 없음 | 마지막 성공 후 **26시간** 초과 | 배치 실패·cron 미동작·잠금이 쥔 채 멈춤을 모두 잡는다 |
+| 완료된 정기 실행 없음 | 끝까지 돈 `run`(SUCCESS·PARTIAL) 후 **26시간** 초과, 한 번도 없으면 발동 | 배치 실패·cron 미동작·잠금이 쥔 채 멈춤을 모두 잡는다. 격리 1건으로 PARTIAL 이 이어져도 이 경보까지 겹쳐 울리지 않게 PARTIAL 도 완료로 센다 |
 | 목록 미완주 연속 | 최근 `run` 2회 연속 `list_complete=false` | 국가법령정보 API 이상, 사라짐 판정이 계속 미뤄짐 |
 
-- 알림 채널은 **Discord 웹훅** 하나(`$DISCORD_WEBHOOK_URL`). 경보 프로비저닝은 **운영 compose에서만** 마운트 — 로컬엔 웹훅이 없어 계속 실패로 뜨기 때문.
+- 알림 채널은 **Discord 웹훅** 하나(`$DISCORD_WEBHOOK_URL`). 경보 파일은 `provisioning` 폴더 **밖**에 두고 **운영 compose에서만** 마운트한다 — 로컬은 `provisioning`을 통째로 마운트하는데 웹훅이 없어 계속 실패로 뜨기 때문. 운영 compose는 `provisioning`의 하위 폴더를 따로 마운트한다(통째로 읽기 전용 마운트하면 그 안에 `alerting` 마운트 지점을 만들지 못해 Grafana 컨테이너가 뜨지 않는다).
 - **한계** — Grafana 자체가 죽으면 경보도 울리지 않는다(같은 EC2에 둔 대가).
 
 **운영 관측 설정**
@@ -175,11 +189,12 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 | 영역 | 파일 |
 |---|---|
 | 이미지·CI | `core/Dockerfile`(`--platform=$BUILDPLATFORM`) · `.github/workflows/ci-core.yml`(main 병합 시 buildx arm64·amd64 → GHCR push, PR은 빌드만) |
-| 운영 배포 | `ops/deploy/`: `docker-compose.prod.yml` · `Caddyfile` · `prod.env` · `lia`(래퍼 — `up <tag>`·`ingest <args>`) · `bootstrap.sh` · `prometheus.prod.yml` · `crontab` · `logrotate.conf` |
-| 관측 | 데이터 소스 `lia-postgres` · `lia-batch.json` · `alerting/`(Discord 연락처·정책·규칙 3개, 운영에서만 마운트) · 로컬 관측 compose의 Grafana DB 환경변수 |
+| 운영 배포 | `ops/deploy/`: `docker-compose.prod.yml` · `Caddyfile` · `prod.env` · `lia`(래퍼 — `up <tag>`·`ingest <args>`·`ps`·`logs <서비스>`, 현재 태그는 `.image-tag`에 기록·커밋 안 함) · `bootstrap.sh` · `prometheus.prod.yml` · `tempo.prod.yaml` · `crontab` · `logrotate.conf` · `README.md` |
+| 관측 | 데이터 소스 `lia-postgres` · `lia-batch.json` · `ops/observability/grafana/alerting/`(Discord 연락처·정책·규칙 3개, 운영에서만 마운트) · 로컬 관측 compose의 Grafana DB 환경변수 |
+| 소셜 로그인 | `OAuthClientRegistrationConfig`(`lia.oauth.*` → client-id 가 있는 provider 만) · `GET /api/v1/auth/providers` · 웹 S07 — D78 |
 | 문서 | 이 문서 · [[deployment]] 후속 절 연결 · [[observability]] 배치 대시보드 · D63 · status · mkdocs 목차 |
 
-- **앱 코드는 바꾸지 않는다** — 프록시 헤더는 운영 compose 환경변수(`SERVER_FORWARD_HEADERS_STRATEGY=native`), actuator 차단은 Caddy.
+- **인프라 때문에 앱 비즈니스 코드를 바꾸지 않는다** — 프록시 헤더는 운영 compose 환경변수(`SERVER_FORWARD_HEADERS_STRATEGY=native`), actuator 차단은 Caddy. 앱 변경은 소셜 로그인 등록(D78)뿐.
 
 ### AWS 구축 런북 (수동, 1회)
 
@@ -187,13 +202,15 @@ AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운
 
 1. **계정 보안** — 루트 MFA, 관리자 IAM 사용자 생성 후 루트 미사용. 리전 `ap-northeast-2`.
 2. **예산 경보** — AWS Budgets: 월 $60·$80 이메일.
+   - 2-1. **GHCR 패키지 공개** — 이 작업이 main 에 병합되면 CI 가 `lia-core` 패키지를 만든다. 기본이 비공개이므로 GitHub 패키지 설정에서 Public 으로 바꾼다(이미지에 비밀값 없음, EC2 가 인증 없이 pull).
 3. **IAM 역할** `lia-ec2-role` — 신뢰 주체 EC2, `AmazonSSMManagedInstanceCore` + `/lia/prod/*` `ssm:GetParametersByPath` 인라인 정책. 인스턴스 프로파일로 연결.
 4. **보안 그룹** — `lia-ec2`(80·443), `lia-rds`(5432 ← `lia-ec2`).
 5. **RDS** — PostgreSQL 16, `db.t4g.micro`, gp3 20GB, 퍼블릭 접근 끔, `lia-rds`, 초기 DB `lia`, 자동 백업 7일, 관리자 비밀번호는 직접 지정.
 6. **Parameter Store** — `/lia/prod/` 아래 §2의 값들을 SecureString으로 등록.
 7. **EC2** — Amazon Linux 2023 arm64, `t4g.medium`, gp3 30GB, `lia-ec2`, `lia-ec2-role`, 키 페어 없음. 접속(SSM) 후 `ops/deploy/bootstrap.sh`.
-8. **Elastic IP + 도메인** — Elastic IP 연결, `api.<도메인>` A 레코드를 그 IP로(`app.<도메인>`은 Vercel, D64). `prod.env`의 `LIA_DOMAIN`(= `api.<도메인>`)·`FRONTEND_URL`(= `https://app.<도메인>`) 설정.
+8. **Elastic IP + 주소** — Elastic IP 를 만들어 EC2 에 연결하고, §1.1 규칙으로 API 이름(`api.<EIP 점→하이픈>.sslip.io`)을 정한다. 웹 주소는 9-1의 Vercel 프로젝트 주소. `prod.env` 의 `LIA_DOMAIN`·`FRONTEND_URL`·`OAUTH2_REDIRECT_BASE_URL` 을 채워 커밋한다(비밀값 아님). 도메인을 샀다면 A 레코드를 EIP 로 두고 그 이름을 쓴다.
 9. **최초 SQL** — SSM 원격 포트 포워딩으로 RDS 접속, §2의 확장·계정 SQL 실행(관리자 계정).
+   - 9-1. **Vercel·Google·Discord** — Vercel 에 `web/` 프로젝트를 만들고(루트 디렉터리 `web`) 환경변수 `LIA_API_ORIGIN` = `https://<API 이름>` 을 넣는다. Google Cloud 콘솔 OAuth 클라이언트에 리다이렉트 URI `<웹 주소>/login/oauth2/code/google` 을 등록하고 ID·비밀값을 Parameter Store 에. Discord 채널 웹훅을 만들어 `DISCORD_WEBHOOK_URL` 로.
 10. **첫 배포** — `ops/deploy/lia up <커밋 SHA>` → Flyway·PgVectorStore가 스키마 생성.
 11. **읽기 권한** — `GRANT SELECT ON ingest_runs, ingest_tasks, ingest_task_attempts TO grafana_reader;`
 12. **cron** — `ops/deploy/crontab` 설치, logrotate 설정.
@@ -202,6 +219,8 @@ AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운
     - SSM 포트 포워딩으로 Grafana 접속 → `LIA · Overview`·`LIA · Batch` 표시.
     - 경보 연락처 시험 발송 → Discord 수신.
     - `ops/deploy/lia ingest run --dry-run` → `ingest_runs`에 기록, 배치 패널 반영.
+    - `https://<API 이름>/api/v1/auth/providers` → `{"providers":["google"]}`, 웹에서 구글 로그인 왕복 → 동의 화면(S08).
+14. **백필** — `ops/deploy/lia ingest run`(시행예정 전체 수집·정규화·색인, D75·D76·D77 반영). 소요 시간·임베딩 비용·`DEAD` 건수를 #44 에 기록. 쉬운 요약은 `ops/deploy/lia ingest summarize --dry-run` 결과를 보고 따로 결정.
 
 ### 검증 (구현 단계)
 - **로컬 관측 스택** — Grafana API로 `lia-postgres` 연결 상태, `LIA · Batch` 로드, 패널 쿼리가 로컬 DB의 실행 기록(샘플 데이터)에 결과를 내는지.

@@ -1,0 +1,5 @@
+# LIA 정기 배치(D62·D63) — root crontab 으로 설치: crontab /opt/lia/ops/deploy/crontab (시스템 시간대 Asia/Seoul)
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+0 4 * * *  /opt/lia/ops/deploy/lia ingest run        >> /var/log/lia/ingest.log 2>&1
+0 5 * * 0  /opt/lia/ops/deploy/lia ingest run --full >> /var/log/lia/ingest.log 2>&1

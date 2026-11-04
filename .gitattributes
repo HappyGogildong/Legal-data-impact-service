@@ -2,3 +2,6 @@
 # CRLF 로 바꾸면 shebang 이 "/bin/sh\r" 이 되어 docker build 가 "./gradlew: not found" 로 실패한다.
 gradlew text eol=lf
 *.sh    text eol=lf
+ops/deploy/lia text eol=lf
+ops/deploy/crontab text eol=lf
+ops/deploy/logrotate.conf text eol=lf

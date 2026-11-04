@@ -26,6 +26,11 @@ services:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_SECURITY_ADMIN_PASSWORD: lia
+      # lia-postgres 데이터 소스(배치 대시보드) — 로컬 DB
+      LIA_DB_HOST: db
+      LIA_DB_USER: lia
+      LIA_DB_SSLMODE: disable
+      GRAFANA_DB_PASSWORD: lia
     volumes:
       - ./ops/observability/grafana/provisioning:/etc/grafana/provisioning:ro
     ports: ["3001:3000"]     # 호스트 3000 은 mcp 가 쓰므로 3001

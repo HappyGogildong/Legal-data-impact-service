@@ -30,6 +30,7 @@ Auth.md 인가 표의 **구현이자 근거**. 매처는 위→아래 첫 매칭
 | `/error` | 공개 | **오류 포워드(ERROR 디스패치)도 인가 대상**이다. 막으면 익명의 공개 API 호출이 400/500 대신 빈 403을 받는다 |
 | `/api/v1/laws/**` | 공개 | 익명 Layer A 허용(정본 조회) |
 | `GET /api/v1/data-status` | 공개 | 데이터 현황(시각·개수만, [[DataStatusApi]]) |
+| `GET /api/v1/auth/providers` | 공개 | 켜진 소셜 로그인 provider 목록(id 만, [[AuthProvidersApi]], D78) — 로그인 전 화면이 읽는다 |
 | `/v3/api-docs/**` | 공개 | OpenAPI(웹 타입 생성). 운영은 springdoc 설정으로 끔 |
 | `POST /api/v1/analyses` | 공개 | 익명 Layer A 허용 — 프로필 없으면 Layer B는 `unmet`(D60). **메서드 한정**: GET 등 후속 생겨도 자동 개방 방지 |
 | `POST /api/v1/laws/{lawId}/{efYd}/views` | 공개(`/api/v1/laws/**`) | S05 조회 신호 — 횟수만 증가, 세션을 읽지 않는다(D66) |
