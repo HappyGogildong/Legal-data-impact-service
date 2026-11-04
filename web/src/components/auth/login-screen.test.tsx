@@ -62,9 +62,9 @@ describe("LoginScreen", () => {
     renderScreen();
 
     await screen.findByRole("link", { name: "카카오로 계속하기" });
-    expect(
-      screen.getAllByRole("link").map((link) => link.textContent),
-    ).toEqual(["카카오로 계속하기", "네이버로 계속하기", "Google로 계속하기"]);
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toEqual(
+      ["카카오로 계속하기", "네이버로 계속하기", "Google로 계속하기"],
+    );
   });
 
   it("켜진 provider 가 없으면 준비 중 안내", async () => {

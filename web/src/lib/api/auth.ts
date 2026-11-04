@@ -9,6 +9,12 @@ import type {
   ProfileInput,
 } from "./types";
 
+/** 켜진 소셜 로그인 provider id(D78) — 로그인 화면이 이 버튼만 그린다. */
+export async function fetchAuthProviders(): Promise<string[]> {
+  const { providers } = await unwrap(await api.GET("/api/v1/auth/providers"));
+  return providers ?? [];
+}
+
 /** 로그인 상태 확인 겸용 — 401 이면 익명(null). */
 export async function fetchAccount(): Promise<Account | null> {
   const result = await api.GET("/api/v1/account");

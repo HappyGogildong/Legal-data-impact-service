@@ -1,6 +1,8 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
+import { fetchAuthProviders } from "@/lib/api/auth";
 import { clearReturnTo, readReturnTo } from "@/lib/return-to";
 
 /** 소셜 로그인 — 시작은 전체 페이지 이동(<a>). <Link> 미리 불러오기가 OAuth 를 건드리지 않게. */
@@ -32,6 +34,11 @@ const ERROR_TEXT: Record<string, string> = {
 export function LoginScreen() {
   const router = useRouter();
   const error = useSearchParams().get("error");
+  const enabled = useQuery({
+    queryKey: ["auth-providers"],
+    queryFn: fetchAuthProviders,
+    staleTime: 5 * 60_000,
+  });
 
   /** 로그인 우회는 여정의 마지막 이동 — 돌아올 경로를 쓰고 지운 뒤 이동한다(이벤트 처리기라 지우기 가능). */
   function continueWithoutLogin() {
@@ -78,15 +85,38 @@ export function LoginScreen() {
         로그인 없이도 볼 수 있어요.
       </p>
       <div className="mt-5 flex flex-col gap-2">
-        {PROVIDERS.map((provider) => (
-          <a
-            key={provider.id}
-            href={`/oauth2/authorization/${provider.id}`}
-            className={`rounded-md py-3 text-center text-[13.5px] font-bold ${provider.className}`}
-          >
-            {provider.label}
-          </a>
-        ))}
+        {enabled.isPending ? (
+          <p className="text-sm text-muted-foreground">불러오는 중…</p>
+        ) : enabled.isError ? (
+          <>
+            <p className="text-sm text-muted-foreground">
+              로그인 방법을 불러오지 못했어요.
+            </p>
+            <button
+              type="button"
+              onClick={() => enabled.refetch()}
+              className="rounded-md bg-navy py-2.5 text-[13px] font-bold text-white"
+            >
+              다시 시도
+            </button>
+          </>
+        ) : enabled.data.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            지금은 로그인을 준비 중이에요.
+          </p>
+        ) : (
+          PROVIDERS.filter((provider) =>
+            enabled.data.includes(provider.id),
+          ).map((provider) => (
+            <a
+              key={provider.id}
+              href={`/oauth2/authorization/${provider.id}`}
+              className={`rounded-md py-3 text-center text-[13.5px] font-bold ${provider.className}`}
+            >
+              {provider.label}
+            </a>
+          ))
+        )}
       </div>
     </div>
   );
