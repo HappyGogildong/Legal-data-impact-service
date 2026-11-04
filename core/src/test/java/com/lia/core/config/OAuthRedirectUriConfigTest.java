@@ -15,7 +15,7 @@ import org.springframework.core.io.ClassPathResource;
 /** application-oauth.yml 의 리다이렉트 주소 — 환경변수가 없으면 요청 기준, 있으면 프런트 도메인(D64). */
 class OAuthRedirectUriConfigTest {
 
-    static final String KEY = "spring.security.oauth2.client.registration.%s.redirect-uri";
+    static final String KEY = "lia.oauth.registration.%s.redirect-uri";
 
     /** 시스템 환경·속성의 간섭 없이 yml + 지정 값만. */
     private static StandardEnvironment environment(Map<String, Object> values) throws IOException {
