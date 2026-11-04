@@ -1,4 +1,4 @@
-# Grafana 자동 프로비저닝 — 데이터소스 (지표 Prometheus · 트레이스 Tempo)
+# Grafana 자동 프로비저닝 — 데이터소스 (지표 Prometheus · 트레이스 Tempo · 배치 실행 기록 lia-postgres)
 apiVersion: 1
 datasources:
   - name: Prometheus
@@ -12,3 +12,16 @@ datasources:
     type: tempo
     access: proxy
     url: http://tempo:3200
+  # 배치 실행 기록(ingest_*) — 값은 환경변수로, 로컬·운영이 같은 파일을 쓴다. 운영 계정 grafana_reader 는 ingest_* SELECT 만(cloud-infra §2).
+  - name: lia-postgres
+    uid: lia-postgres
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: ${LIA_DB_HOST}:5432
+    user: ${LIA_DB_USER}
+    jsonData:
+      database: lia
+      sslmode: ${LIA_DB_SSLMODE}
+      postgresVersion: 1600
+    secureJsonData:
+      password: ${GRAFANA_DB_PASSWORD}

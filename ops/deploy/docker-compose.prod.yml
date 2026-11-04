@@ -84,7 +84,9 @@ services:
       GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?}
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:?}
     volumes:
-      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      # 하위 폴더를 따로 마운트한다 — provisioning 을 통째로 ro 마운트하면 그 안에 alerting 마운트 지점을 못 만들어 컨테이너가 안 뜬다
+      - ../observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ../observability/grafana/alerting:/etc/grafana/provisioning/alerting:ro   # 운영에서만(로컬엔 웹훅 없음)
       - grafana_data:/var/lib/grafana
     depends_on: [prometheus, tempo]

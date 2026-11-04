@@ -1,0 +1,121 @@
+# LIA 배치 경보(D63, cloud-infra §4) — 운영 compose 에서만 /etc/grafana/provisioning/alerting 으로 마운트한다.
+# provisioning 폴더 밖에 두는 이유: 로컬 관측 스택은 provisioning 을 통째로 마운트하는데, 로컬엔 웹훅이 없어 계속 실패로 뜬다.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: lia-discord
+    receivers:
+      - uid: lia-discord
+        type: discord
+        settings:
+          url: ${DISCORD_WEBHOOK_URL}
+
+policies:
+  - orgId: 1
+    receiver: lia-discord
+    group_by: ["alertname"]
+
+groups:
+  - orgId: 1
+    name: lia-batch
+    folder: LIA
+    interval: 5m
+    rules:
+      - uid: lia-batch-dead
+        title: 격리 작업 발생 (DEAD ≥ 1)
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 격리(DEAD) 작업이 있다 — 원인을 보고 requeue-dead 여부를 판단한다.
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: lia-postgres
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              rawSql: SELECT count(*)::float AS dead FROM ingest_tasks WHERE status = 'DEAD'
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+
+      # 첫 백필 전에는 울린다 — 사실이다(완료된 실행이 없다). 배치 실패·cron 미동작·잠금을 쥔 채 멈춤을 모두 잡는다.
+      - uid: lia-batch-no-success
+        title: 완료된 정기 실행 없음 (26시간)
+        condition: C
+        for: 0s
+        noDataState: Alerting
+        execErrState: Error
+        annotations:
+          summary: 26시간 동안 끝까지 돈 정기 실행(run)이 없다 — 배치 실패·cron 미동작을 확인한다.
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: lia-postgres
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              rawSql: >-
+                SELECT COALESCE(EXTRACT(EPOCH FROM now() - max(finished_at)) / 3600, 9999)::float AS hours
+                FROM ingest_runs
+                WHERE outcome IN ('SUCCESS', 'PARTIAL') AND command IN ('run', 'run --full')
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [26] }
+
+      - uid: lia-batch-list-incomplete
+        title: 목록 미완주 연속 (최근 run 2회)
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 최근 정기 실행 2회 연속 목록을 끝까지 받지 못했다 — 국가법령정보 API 이상, 사라짐 판정이 계속 미뤄진다.
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: lia-postgres
+            model:
+              refId: A
+              format: table
+              rawQuery: true
+              editorMode: code
+              rawSql: >-
+                SELECT count(*) FILTER (WHERE list_complete = false)::float AS incomplete
+                FROM (SELECT list_complete FROM ingest_runs
+                      WHERE command IN ('run', 'run --full') AND finished_at IS NOT NULL
+                      ORDER BY started_at DESC LIMIT 2) recent
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [1] }
