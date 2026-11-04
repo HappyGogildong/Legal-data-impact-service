@@ -21,6 +21,7 @@ import com.lia.core.application.history.HistoryUseCase;
 import com.lia.core.application.notification.NotificationUseCase;
 import com.lia.core.application.profile.ProfileUseCase;
 import com.lia.core.application.subscription.SubscriptionUseCase;
+import com.lia.core.auth.EnabledOAuthProviders;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.config.SecurityConfig;
 import com.lia.core.domain.analysis.ImpactResult;
@@ -54,7 +55,8 @@ import com.lia.core.testsupport.InMemoryUserProfileStore;
 @Import({SecurityConfig.class, ApiExceptionHandler.class,
         ProfileController.class, ConsentController.class, AccountController.class,
         DataStatusController.class, LawController.class, LawViewController.class, ActionRevisionController.class,
-        BookmarkController.class, HistoryController.class, SubscriptionController.class, NotificationController.class})
+        BookmarkController.class, HistoryController.class, SubscriptionController.class, NotificationController.class,
+        AuthProvidersController.class})
 class ApiSliceTestConfig {
 
     static final String POLICY = "v-test";
@@ -85,6 +87,12 @@ class ApiSliceTestConfig {
     @Bean
     OAuth2LoginSuccessHandler loginSuccessHandler(InMemoryAccountStore accounts) {
         return new OAuth2LoginSuccessHandler(accounts, "http://localhost:3000");
+    }
+
+    /** 구글만 켜진 상태(D78). */
+    @Bean
+    EnabledOAuthProviders enabledOAuthProviders() {
+        return EnabledOAuthProviders.of(List.of("google"));
     }
 
     /** DB 없이 고정 값을 돌려주는 데이터 현황(웹 슬라이스는 HTTP·인가만 본다). */
