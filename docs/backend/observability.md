@@ -65,7 +65,7 @@ Grafana `http://localhost:3001`(익명 Admin) · Prometheus `:9090` · Tempo `:3
 ---
 
 ### 1.2 배치 대시보드·경보 (D63)
-1회성 배치는 Prometheus가 긁지 못하므로 Grafana가 Postgres 데이터 소스 `lia-postgres`로 실행 기록(`ingest_runs`·`ingest_tasks`)을 직접 조회한다. 대시보드 `LIA · Batch`(마지막 실행·성공 후 경과·최근 실행·작업 상태·DEAD 목록·색인 지연·일별 추이)와 경보 3개(DEAD≥1·26시간 성공 없음·목록 미완주 연속, Discord). 운영에서 Grafana DB 계정은 `ingest_*` 읽기 전용. 상세: [[cloud-infra]] §4.
+1회성 배치는 Prometheus가 긁지 못하므로 Grafana가 Postgres 데이터 소스 `lia-postgres`로 실행 기록(`ingest_runs`·`ingest_tasks`)을 직접 조회한다. 대시보드 `LIA · Batch`(마지막 실행·성공 후 경과·최근 실행·작업 상태·DEAD 목록·색인 지연·일별 추이 — `lia-batch.json`, 로컬에서도 동작)와 경보 3개(DEAD≥1·26시간 완료 실행 없음·목록 미완주 연속, Discord — `ops/observability/grafana/alerting/`, 운영에서만 마운트). 운영에서 Grafana DB 계정은 `ingest_*` 읽기 전용. 상세: [[cloud-infra]] §4.
 
 ## 2. 도메인 지표 (우리가 실제로 봐야 할 것)
 

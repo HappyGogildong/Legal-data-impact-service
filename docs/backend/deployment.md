@@ -104,8 +104,8 @@ docker compose run --rm ingest summarize --dry-run
 
 ## CI
 - 경로 필터로 나눈 두 워크플로 — 바뀐 쪽만 돈다. 계약 파일 `api/**`가 바뀌면 둘 다 돈다(백엔드 스냅샷 테스트 + 웹 타입 동기). 문서만 바뀐 PR은 CI 없음.
-- `.github/workflows/ci-core.yml` — `ubuntu-latest`(Docker 내장) → 단위 + **Testcontainers 통합** 테스트. **라이브 스모크는 OC/`LIA_*_LIVE` 미설정으로 skip**(결정론 오프라인). 이어 `docker build ./core`로 이미지 검증. 레지스트리 push/CD는 후속.
+- `.github/workflows/ci-core.yml` — `ubuntu-latest`(Docker 내장) → 단위 + **Testcontainers 통합** 테스트. **라이브 스모크는 OC/`LIA_*_LIVE` 미설정으로 skip**(결정론 오프라인). 이어 PR 은 amd64 이미지 빌드 검증, main 병합은 `linux/amd64`·`linux/arm64` 이미지를 GHCR(`ghcr.io/happygogildong/lia-core`, 태그 커밋 SHA·`main`)에 푸시한다(D63). 레지스트리 push/CD는 후속.
 
 ## 후속 (out of scope)
-- 클라우드 운영 — [[cloud-infra]](D63): 단일 EC2 + RDS pgvector + Caddy + SSM Parameter Store, GHCR 이미지 수동 배포. 그 너머(SSM 방식 CD·IaC·ALB·ECS)는 그 문서의 범위 밖 절.
-- mcp 컨테이너화 · 웹 UI(#14) 배포 · Loki 로그 적재([[observability]] 계획) · 이미지 레지스트리 push.
+- 클라우드 운영 — [[cloud-infra]](D63·D78): 단일 EC2 + RDS pgvector + Caddy + SSM Parameter Store, GHCR 이미지 수동 배포. 운영 파일은 `ops/deploy/`, 구축 절차는 그 문서 §5 런북. 그 너머(SSM 방식 CD·IaC·ALB·ECS)는 그 문서의 범위 밖 절.
+- mcp 컨테이너화 · Loki 로그 적재([[observability]] 계획).

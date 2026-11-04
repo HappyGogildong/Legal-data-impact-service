@@ -166,15 +166,15 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 | 색인 지연 | READY인 INDEX 수 · 가장 오래된 READY의 나이 | `ingest_tasks` |
 | 일별 추이 | 결과별 실행 수·처리 건수 | `ingest_runs` |
 
-**경보 3개** (Grafana 관리, `ops/observability/grafana/provisioning/alerting/`)
+**경보 3개** (Grafana 관리, `ops/observability/grafana/alerting/lia-batch-alerts.yaml`)
 
 | 경보 | 조건 | 의미 |
 |---|---|---|
 | 격리 작업 발생 | `DEAD ≥ 1` | 사람이 원인을 보고 `requeue-dead` 여부 판단 |
-| 성공 실행 없음 | 마지막 성공 후 **26시간** 초과 | 배치 실패·cron 미동작·잠금이 쥔 채 멈춤을 모두 잡는다 |
+| 완료된 정기 실행 없음 | 끝까지 돈 `run`(SUCCESS·PARTIAL) 후 **26시간** 초과, 한 번도 없으면 발동 | 배치 실패·cron 미동작·잠금이 쥔 채 멈춤을 모두 잡는다. 격리 1건으로 PARTIAL 이 이어져도 이 경보까지 겹쳐 울리지 않게 PARTIAL 도 완료로 센다 |
 | 목록 미완주 연속 | 최근 `run` 2회 연속 `list_complete=false` | 국가법령정보 API 이상, 사라짐 판정이 계속 미뤄짐 |
 
-- 알림 채널은 **Discord 웹훅** 하나(`$DISCORD_WEBHOOK_URL`). 경보 프로비저닝은 **운영 compose에서만** 마운트 — 로컬엔 웹훅이 없어 계속 실패로 뜨기 때문.
+- 알림 채널은 **Discord 웹훅** 하나(`$DISCORD_WEBHOOK_URL`). 경보 파일은 `provisioning` 폴더 **밖**에 두고 **운영 compose에서만** 마운트한다 — 로컬은 `provisioning`을 통째로 마운트하는데 웹훅이 없어 계속 실패로 뜨기 때문. 운영 compose는 `provisioning`의 하위 폴더를 따로 마운트한다(통째로 읽기 전용 마운트하면 그 안에 `alerting` 마운트 지점을 만들지 못해 Grafana 컨테이너가 뜨지 않는다).
 - **한계** — Grafana 자체가 죽으면 경보도 울리지 않는다(같은 EC2에 둔 대가).
 
 **운영 관측 설정**
@@ -189,11 +189,12 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 | 영역 | 파일 |
 |---|---|
 | 이미지·CI | `core/Dockerfile`(`--platform=$BUILDPLATFORM`) · `.github/workflows/ci-core.yml`(main 병합 시 buildx arm64·amd64 → GHCR push, PR은 빌드만) |
-| 운영 배포 | `ops/deploy/`: `docker-compose.prod.yml` · `Caddyfile` · `prod.env` · `lia`(래퍼 — `up <tag>`·`ingest <args>`) · `bootstrap.sh` · `prometheus.prod.yml` · `crontab` · `logrotate.conf` |
-| 관측 | 데이터 소스 `lia-postgres` · `lia-batch.json` · `alerting/`(Discord 연락처·정책·규칙 3개, 운영에서만 마운트) · 로컬 관측 compose의 Grafana DB 환경변수 |
+| 운영 배포 | `ops/deploy/`: `docker-compose.prod.yml` · `Caddyfile` · `prod.env` · `lia`(래퍼 — `up <tag>`·`ingest <args>`·`ps`·`logs <서비스>`, 현재 태그는 `.image-tag`에 기록·커밋 안 함) · `bootstrap.sh` · `prometheus.prod.yml` · `tempo.prod.yaml` · `crontab` · `logrotate.conf` · `README.md` |
+| 관측 | 데이터 소스 `lia-postgres` · `lia-batch.json` · `ops/observability/grafana/alerting/`(Discord 연락처·정책·규칙 3개, 운영에서만 마운트) · 로컬 관측 compose의 Grafana DB 환경변수 |
+| 소셜 로그인 | `OAuthClientRegistrationConfig`(`lia.oauth.*` → client-id 가 있는 provider 만) · `GET /api/v1/auth/providers` · 웹 S07 — D78 |
 | 문서 | 이 문서 · [[deployment]] 후속 절 연결 · [[observability]] 배치 대시보드 · D63 · status · mkdocs 목차 |
 
-- **앱 코드는 바꾸지 않는다** — 프록시 헤더는 운영 compose 환경변수(`SERVER_FORWARD_HEADERS_STRATEGY=native`), actuator 차단은 Caddy.
+- **인프라 때문에 앱 비즈니스 코드를 바꾸지 않는다** — 프록시 헤더는 운영 compose 환경변수(`SERVER_FORWARD_HEADERS_STRATEGY=native`), actuator 차단은 Caddy. 앱 변경은 소셜 로그인 등록(D78)뿐.
 
 ### AWS 구축 런북 (수동, 1회)
 
@@ -201,6 +202,7 @@ AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운
 
 1. **계정 보안** — 루트 MFA, 관리자 IAM 사용자 생성 후 루트 미사용. 리전 `ap-northeast-2`.
 2. **예산 경보** — AWS Budgets: 월 $60·$80 이메일.
+   - 2-1. **GHCR 패키지 공개** — 이 작업이 main 에 병합되면 CI 가 `lia-core` 패키지를 만든다. 기본이 비공개이므로 GitHub 패키지 설정에서 Public 으로 바꾼다(이미지에 비밀값 없음, EC2 가 인증 없이 pull).
 3. **IAM 역할** `lia-ec2-role` — 신뢰 주체 EC2, `AmazonSSMManagedInstanceCore` + `/lia/prod/*` `ssm:GetParametersByPath` 인라인 정책. 인스턴스 프로파일로 연결.
 4. **보안 그룹** — `lia-ec2`(80·443), `lia-rds`(5432 ← `lia-ec2`).
 5. **RDS** — PostgreSQL 16, `db.t4g.micro`, gp3 20GB, 퍼블릭 접근 끔, `lia-rds`, 초기 DB `lia`, 자동 백업 7일, 관리자 비밀번호는 직접 지정.
