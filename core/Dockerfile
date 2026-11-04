@@ -2,8 +2,8 @@
 # build: gradle wrapper 로 bootJar (테스트는 CI 소유 → -x test)
 # runtime: JRE 21 slim + non-root + actuator 헬스체크
 
-# ---- build ----
-FROM eclipse-temurin:21-jdk AS build
+# ---- build ---- (빌드 머신 아키텍처로 — jar 는 아키텍처 무관이라 arm64 이미지도 Gradle 을 에뮬레이션하지 않는다, D63)
+FROM --platform=$BUILDPLATFORM eclipse-temurin:21-jdk AS build
 WORKDIR /workspace
 # 1) 의존성 캐시 레이어: 빌드 스크립트·wrapper 먼저 복사 → 소스 변경 시 재다운로드 회피
 COPY gradlew settings.gradle build.gradle ./
