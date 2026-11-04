@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# LIA 운영 래퍼(D63) — SSM Parameter Store(/lia/prod/)의 비밀값을 환경변수로만 넘겨 docker compose 를 실행한다.
+# 디스크에 비밀값 파일을 남기지 않는다. 정기 배치(cron)도 이 래퍼를 거친다.
+#   lia up <이미지 태그>      — pull + up -d (태그는 커밋 SHA. 롤백은 이전 SHA)
+#   lia ingest <배치 인자…>   — 배치 1회 실행(종료 코드 그대로: 0 성공 · 1 실패 · 2 부분)
+#   lia ps | lia logs <서비스>
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+DEPLOY="$ROOT/ops/deploy"
+TAG_FILE="$DEPLOY/.image-tag"
+REGION="${AWS_REGION:-ap-northeast-2}"
+
+compose() { docker compose -f "$DEPLOY/docker-compose.prod.yml" --env-file "$DEPLOY/prod.env" "$@"; }
+
+load_secrets() {
+  local name value
+  while IFS=$'\t' read -r name value; do
+    [[ -n "$name" ]] || continue
+    export "${name##*/}=$value"
+  done < <(aws ssm get-parameters-by-path --region "$REGION" --path /lia/prod/ --with-decryption \
+             --query 'Parameters[].[Name,Value]' --output text)
+}
+
+current_tag() {
+  [[ -s "$TAG_FILE" ]] || { echo "이미지 태그가 없다 — 먼저 'lia up <태그>'" >&2; exit 1; }
+  cat "$TAG_FILE"
+}
+
+cmd="${1:-}"
+shift || true
+case "$cmd" in
+  up)
+    tag="${1:?사용법: lia up <이미지 태그>}"
+    load_secrets
+    export LIA_IMAGE_TAG="$tag"
+    compose pull core
+    compose up -d --remove-orphans
+    echo "$tag" > "$TAG_FILE"
+    ;;
+  ingest)
+    load_secrets
+    LIA_IMAGE_TAG="$(current_tag)"
+    export LIA_IMAGE_TAG
+    compose --profile batch run --rm ingest "$@"
+    ;;
+  ps)
+    load_secrets    # compose 파일의 ${VAR:?} 검사를 통과하려면 값이 있어야 한다
+    LIA_IMAGE_TAG="$(current_tag)"
+    export LIA_IMAGE_TAG
+    compose ps
+    ;;
+  logs)
+    service="${1:?사용법: lia logs <서비스>}"
+    load_secrets
+    LIA_IMAGE_TAG="$(current_tag)"
+    export LIA_IMAGE_TAG
+    compose logs --tail=200 "$service"
+    ;;
+  *)
+    echo "사용법: lia up <태그> | lia ingest <인자…> | lia ps | lia logs <서비스>" >&2
+    exit 64
+    ;;
+esac

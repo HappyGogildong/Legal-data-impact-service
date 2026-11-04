@@ -40,3 +40,6 @@ __bash_sync_test.txt
 # --- superpowers 작업 산출물(계획·설계 초안) — 커밋하지 않는다 ---
 docs/superpowers/
 .superpowers/
+
+# 운영 래퍼가 쓰는 현재 이미지 태그(비밀 아님)
+ops/deploy/.image-tag

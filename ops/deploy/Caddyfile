@@ -1,0 +1,13 @@
+# LIA API 앞단(D63·D78) — TLS(Let's Encrypt, 이름은 LIA_DOMAIN) + actuator 차단.
+{$LIA_DOMAIN} {
+	encode zstd gzip
+
+	# 앱이 actuator 를 열어 두므로 여기서 막는다 — 지표(prometheus)가 인터넷에 나가지 않게. health 만 허용.
+	@actuator_blocked {
+		path /actuator /actuator/*
+		not path /actuator/health
+	}
+	respond @actuator_blocked 404
+
+	reverse_proxy core:8080
+}
