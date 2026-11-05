@@ -20,10 +20,11 @@ related: ["adr/decision-log.md", "backend/observability.md", "components/batch/I
 | 임베딩 | OpenAI, 색인·법령 발견 검색어 | `spring.ai.openai.embedding.*` | D32·D70 |
 | 개인화 하루 한도 | 사용자별·서울 날짜, **첫 Layer B 1회 + 상황 재생성 1회씩**, 호출 직전 차감·환불 없음 | `lia.personalization.daily-limit`(`LIA_PERSONALIZATION_DAILY_LIMIT`) 20 | D69·D71 |
 | 인용 검증 실패 시 재생성 | 분석 최대 3회 시도(코드 상수 `ANALYZE_MAX_ATTEMPTS` — 설정값화는 후속) · 배치 요약 `lia.batch.…max-attempts` 3 | — | D69 |
-| 쉬운 요약 선계산 | 정기 배치 기본 꺼짐, `summarize` 명령은 늘 처리(`--dry-run` 으로 규모 먼저) | `LIA_BATCH_SUMMARY_ENABLED` false | D67 |
+| Layer A 선계산(요약·변경점) | 정기 배치 기본 꺼짐, `summarize` 명령은 늘 처리(`--dry-run` 으로 규모 먼저). 시행예정본 1건에 차원마다 Opus 1회 | `LIA_BATCH_SUMMARY_ENABLED` false | D67·D80 |
 | 색인 임베딩 | 정기 배치에서 처리, 끄면 큐에 남김 | `LIA_BATCH_INDEX_ENABLED` true | D62 |
 | 법령 발견 | Haiku 1 + 임베딩 1, Opus·한도·조회 집계 없음 | `lia.discovery.*` | D70 |
-| 저장된 쉬운 요약 재사용 | 비용 0(유효할 때) | — | D67 |
+| 온라인 Layer A | 저장본만 읽는다(비용 0). 없으면 `NOT_PRECOMPUTED`, Opus 호출 없음. 로컬 개발에서만 켠다 | `lia.analysis.layer-a-live`(`LIA_ANALYSIS_LAYER_A_LIVE`) false | D80 |
+| 익명 분석 하루 상한 | 서비스 전체·서울 날짜, 분류 전에 차감, 넘으면 429. 로그인 사용자는 세지 않음 | `lia.analysis.anonymous-daily-limit`(`LIA_ANALYSIS_ANONYMOUS_DAILY_LIMIT`) 1000(잠정) | D81 |
 
 ### 바꾸는 법
 
@@ -35,10 +36,10 @@ related: ["adr/decision-log.md", "backend/observability.md", "components/batch/I
 
 - **로컬은 동작 확인만** — 전체 법령 임베딩·요약 일괄 적재는 클라우드 배포 후에 한다. 로컬 큐에는 INDEX·SUMMARIZE 가 READY 로 남아 있어도 된다.
 - **유료 라이브 테스트는 옵트인 환경변수** — 기본 테스트는 가짜 구현만 쓰고, 실제 Opus·임베딩을 부르는 스모크는 명시적으로 켠 때만(예: `LIA_ANALYZE_LIVE=1`).
-- **대략 1회 비용(참고치)** — Opus 분석 약 $0.1~0.3 · 쉬운 요약 1건 약 $0.09(로컬 22건 약 $2 실측). 상황 재생성도 Opus 1회라 첫 Layer B 와 같은 규모로 본다.
+- **대략 1회 비용(참고치)** — Opus 분석 약 $0.1~0.3 · 쉬운 요약 1건 약 $0.09(로컬 22건 약 $2 실측). 변경점 1건은 아직 재지 않았다 — 요약과 같다고 보면 시행예정본 전체(약 860건) 선계산은 약 $155 로 추정하며, 기준선을 함께 넣으므로 더 들 수 있다. `summarize --dry-run` 의 `planned.SUMMARIZE.calls` 로 호출 수를 먼저 본다. 상황 재생성도 Opus 1회라 첫 Layer B 와 같은 규모로 본다.
 
 ## 미정·후속
 
-- **요청 빈도 제한** — 입력 공격 일괄 작업에서 함께 다룬다(현재는 개인화 하루 한도만 있음).
+- **요청 빈도 제한** — IP별 제한은 입력 공격 일괄 작업에서 함께 다룬다(현재는 개인화 하루 한도와 익명 전체 상한만 있고, 로그인 사용자의 분류 호출에는 상한이 없다).
 - **온라인 재시도 설정** — Spring AI 기본 재시도가 프록시 120초를 넘길 수 있다. 재시도 횟수·간격을 설정으로 노출하고 프록시 제한과 맞춘다.
 - **`ANALYZE_MAX_ATTEMPTS` 설정값화** — 지금은 코드 상수(3).
