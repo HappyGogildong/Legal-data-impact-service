@@ -364,6 +364,22 @@ class QueryDispatcherTest {
     }
 
     @Test
+    void 저장본이_없으면_그_차원만_NOT_PRECOMPUTED_나머지는_filled() {
+        DimensionHandler notReady = new DimensionHandler() {
+            public QueryType type() { return QueryType.DIFF; }
+            public AnalyzeResponse handle(DispatchContext ctx) {
+                throw new NotPrecomputedException("저장본 없음");
+            }
+        };
+        QueryDispatcher d = dispatcher(loaded(), handler(QueryType.SUMMARY, resp("S")), notReady);
+
+        DispatchResult r = dispatchAnonymous(d, refQuery(Set.of(QueryType.SUMMARY, QueryType.DIFF), QueryType.SUMMARY, false));
+
+        assertTrue(r.filled().containsKey(QueryType.SUMMARY));
+        assertEquals(Unmet.Reason.NOT_PRECOMPUTED, r.unmet().get(QueryType.DIFF).reason());
+    }
+
+    @Test
     void 핸들러가_근거부족이면_그_차원만_INSUFFICIENT_GROUNDING_나머지는_filled() {
         DimensionHandler failing = new DimensionHandler() {
             public QueryType type() { return QueryType.DIFF; }

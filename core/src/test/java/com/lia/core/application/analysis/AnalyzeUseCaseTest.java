@@ -108,7 +108,7 @@ class AnalyzeUseCaseTest {
         if (lawLoaded) src.versions.put("001809@2026-08-04", law());
         AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
         DimensionHandlerRegistry registry =
-                new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder()), new DiffHandler(engine)));
+                new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder(), true), new DiffHandler(engine, (law, baseline) -> Optional.empty(), new ContextBuilder(), true)));
         return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry, new PersonalizedHandler(null), userId -> false, NO_DISCOVERY),
                 (lawId, efYd) -> { recorded.add(lawId + "@" + efYd); return true; }, anonymousGate());
     }
@@ -133,7 +133,7 @@ class AnalyzeUseCaseTest {
         src.versions.put("001809@2026-08-04", law());
         AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
         DimensionHandlerRegistry registry =
-                new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder()), new DiffHandler(engine)));
+                new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder(), true), new DiffHandler(engine, (law, baseline) -> Optional.empty(), new ContextBuilder(), true)));
         OffsetDateTime now = OffsetDateTime.parse("2026-10-28T00:00:00Z");
         StoredProfile stored = new StoredProfile(new UserProfile(null, 34, null, null, null, null, null),
                 storedPolicyVersion, now, now);
@@ -242,7 +242,7 @@ class AnalyzeUseCaseTest {
         src.versions.put("001809@2026-08-04", law());
         AnalysisEngine engine = new AnalysisEngine(new ContextBuilder(), groundedReasoner(), 3);
         AnalyzeUseCase failing = new AnalyzeUseCase(planner,
-                new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder()))),
+                new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder(), true))),
                         new PersonalizedHandler(null), userId -> false, NO_DISCOVERY),
                 (lawId, efYd) -> { throw new IllegalStateException("DB 끊김"); }, anonymousGate());
 

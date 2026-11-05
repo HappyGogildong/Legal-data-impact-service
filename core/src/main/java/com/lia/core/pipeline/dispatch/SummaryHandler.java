@@ -2,6 +2,7 @@ package com.lia.core.pipeline.dispatch;
 
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.lia.core.domain.analysis.ImpactResult;
@@ -25,7 +26,8 @@ public class SummaryHandler implements DimensionHandler {
     private final LawSummaries summaries;
     private final ContextBuilder contextBuilder;
 
-    public SummaryHandler(AnalysisEngine engine, LawSummaries summaries, ContextBuilder contextBuilder) {
+    public SummaryHandler(AnalysisEngine engine, LawSummaries summaries, ContextBuilder contextBuilder,
+                          @Value("${lia.analysis.layer-a-live}") boolean live) {
         this.engine = engine;
         this.summaries = summaries;
         this.contextBuilder = contextBuilder;

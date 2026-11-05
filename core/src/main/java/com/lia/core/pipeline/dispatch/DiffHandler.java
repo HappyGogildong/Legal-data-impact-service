@@ -1,11 +1,14 @@
 package com.lia.core.pipeline.dispatch;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.AnalyzeRequest;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
+import com.lia.core.pipeline.analyze.ContextBuilder;
 import com.lia.core.pipeline.plan.QueryType;
+import com.lia.core.store.LawDiffs;
 
 /**
  * DIFF 차원(Layer A, 프로필 무관) — 변경 조문 ↔ 시행중 기준선 대조. 정본+기준선을 DIFF로
@@ -16,7 +19,10 @@ public class DiffHandler implements DimensionHandler {
 
     private final AnalysisEngine engine;
 
-    public DiffHandler(AnalysisEngine engine) { this.engine = engine; }
+    public DiffHandler(AnalysisEngine engine, LawDiffs diffs, ContextBuilder contextBuilder,
+                       @Value("${lia.analysis.layer-a-live}") boolean live) {
+        this.engine = engine;
+    }
 
     @Override public QueryType type() { return QueryType.DIFF; }
 
