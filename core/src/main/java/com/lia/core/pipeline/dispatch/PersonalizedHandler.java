@@ -34,7 +34,7 @@ public class PersonalizedHandler {
     public Map<QueryType, AnalyzeResponse> handle(DispatchContext ctx, UserProfile profile, String question,
                                                   Set<QueryType> requested) {
         AnalyzeResponse response = engine.analyze(
-                new AnalyzeRequest(QueryType.IMPACT, ctx.law(), ctx.baseline(), profile, question));
+                new AnalyzeRequest(QueryType.IMPACT, ctx.law(), ctx.baseline(), profile, question), requested);
         ImpactResult r = response.result();
         Map<QueryType, AnalyzeResponse> out = new EnumMap<>(QueryType.class);
         if (requested.contains(QueryType.IMPACT)) {

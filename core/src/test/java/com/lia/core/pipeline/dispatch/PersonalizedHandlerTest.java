@@ -113,4 +113,21 @@ class PersonalizedHandlerTest {
         assertEquals(EnumSet.of(QueryType.ACTION), EnumSet.copyOf(out.keySet()));
         assertEquals(1, calls.size());
     }
+
+    @Test
+    void 영향만_요청하면_대응이_비어도_영향을_채운다() {
+        Reasoner impactOnly = ctx -> {
+            calls.add(ctx);
+            String cite = ctx.injectedSourceIds().iterator().next();
+            return new ImpactResult(ctx.lawRef(), "IMPACT", "요약",
+                    List.of(new ImpactResult.Claim("주장", List.of(cite), 0.9)),
+                    List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of(cite))),
+                    List.of(), null, List.of(), "참고용", null);
+        };
+        Map<QueryType, AnalyzeResponse> out = new PersonalizedHandler(new AnalysisEngine(new ContextBuilder(), impactOnly, 3))
+                .handle(ctx(), PROFILE, "내 영향", EnumSet.of(QueryType.IMPACT));
+
+        assertEquals(EnumSet.of(QueryType.IMPACT), EnumSet.copyOf(out.keySet()));
+        assertEquals(1, calls.size(), "다시 부르지 않는다");
+    }
 }
