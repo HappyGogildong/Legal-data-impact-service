@@ -163,9 +163,9 @@ public class IngestJob {
                     else counts.put("notified", dueNotifications.createDue(todaySeoul()));
                     return finish(runId, RunOutcome.SUCCESS, null, counts);
                 }
-                case SUMMARIZE -> {   // 모든 시행예정본에 등록 — 요약이 없거나 낡은 것을 채운다(유효한 요약은 핸들러가 건너뜀)
+                case SUMMARIZE -> {   // 모든 시행예정본에 등록 — 요약·변경점이 없거나 낡은 것을 채운다(유효한 요약은 핸들러가 건너뜀)
                     if (command.dryRun()) {   // 대상 수만 — 등록·소진(유료 호출) 없음
-                        counts.put("planned.SUMMARIZE", countSummaryTargets());
+                        planSummaries(counts);
                         return finish(runId, outcome(0, 0, null, Set.of()), null, counts);
                     }
                     int enqueued = 0;
@@ -208,14 +208,20 @@ public class IngestJob {
         return LocalDate.ofInstant(clock.instant(), SEOUL);
     }
 
-    /** 요약이 필요한 시행예정본 수 — 시행예정 정본이 있고 유효한 요약이 없는 것(SummarizeHandler 의 건너뜀 기준과 같다). */
-    private int countSummaryTargets() {
-        int targets = 0;
+    /** 채울 차원이 있는 시행예정본 수와 유료 호출 수(재생성 제외) — SummarizeHandler 와 같은 기준({@link LayerATargets}). */
+    private void planSummaries(Map<String, Integer> counts) {
+        int versions = 0;
+        int calls = 0;
         for (PendingVersion version : lawStore.listPendingVersions()) {
             Optional<Law> law = lawStore.find(version.lawId(), version.effectiveDate());
-            if (law.isPresent() && law.get().pending() && summaries.findCurrent(law.get()).isEmpty()) targets++;
+            if (law.isEmpty() || !law.get().pending()) continue;
+            Law baseline = lawStore.findBaseline(version.lawId()).orElse(null);
+            int missing = LayerATargets.missing(law.get(), baseline, summaries, diffs).size();
+            if (missing > 0) versions++;
+            calls += missing;
         }
-        return targets;
+        counts.put("planned.SUMMARIZE", versions);
+        counts.put("planned.SUMMARIZE.calls", calls);
     }
 
     /**

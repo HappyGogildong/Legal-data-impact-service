@@ -11,7 +11,7 @@ import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
 
 /**
- * 미리 만든 쉬운 요약 읽기(D67) — 저장본이 <b>지금의 근거 집합 안에서만</b> 인용할 때만 돌려준다.
+ * 미리 만든 Layer A 읽기(쉬운 요약 D67·변경점 D80) — 저장본이 <b>지금의 근거 집합 안에서만</b> 인용할 때만 돌려준다.
  * 저장소의 유효성(정본 revision·프롬프트 버전)은 정규화·{@link ContextBuilder}·{@code Law.sourceId} 형식이 바뀌어
  * 주입되는 source_id 집합이 달라지는 경우를 잡지 못한다. 저장본을 지금 {@code ContextBuilder}가 SUMMARY 로 조립하는
  * 집합에 대고 엔진의 인용 검증({@code AnalysisEngine.grounded} — 주장 ≥1·주장마다 인용 ≥1·claims·impacts·actions 의
@@ -35,7 +35,8 @@ public class GroundedSummaries implements LawSummaries, LawDiffs {
 
     @Override
     public Optional<ImpactResult> findCurrent(Law law, Law baseline) {
-        return Optional.empty();
+        return store.findStoredDiff(law, baseline).filter(stored -> AnalysisEngine.grounded(stored,
+                contextBuilder.build(new AnalyzeRequest(QueryType.DIFF, law, baseline)).injectedSourceIds()));
     }
 
     private boolean isGrounded(ImpactResult stored, Law law) {

@@ -13,13 +13,16 @@ import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
 
 /**
- * 쉬운 요약 저장소(D67) — {@code law_summaries}. 배치({@code SummarizeHandler})가 쓴다. 읽기는 이 저장소가 아니라
+ * Layer A 선계산 저장소(D67·D80) — {@code law_summaries}, 한 버전에 차원(SUMMARY·DIFF)마다 1행. 배치({@code SummarizeHandler})가 쓴다. 읽기는 이 저장소가 아니라
  * {@link LawSummaries}(인용이 지금 근거 안인지까지 확인하는 {@code GroundedSummaries})로 — 이쪽 {@link #findStored}는 날것의 조회다.
- * 저장본 유효 = 정본 revision·프롬프트 버전 일치. 빈은 {@code PipelineConfig}(프롬프트 버전 주입).
+ * 저장본 유효 = 정본 revision·프롬프트 버전 일치(변경점은 대조한 기준선 revision 까지). 빈은 {@code PipelineConfig}(프롬프트 버전 주입).
  */
 public class LawSummaryStore {
 
     private static final Logger log = LoggerFactory.getLogger(LawSummaryStore.class);
+
+    private static final String SUMMARY = "SUMMARY";
+    private static final String DIFF = "DIFF";
 
     private final JdbcClient jdbc;
     private final ObjectMapper json;
@@ -33,41 +36,62 @@ public class LawSummaryStore {
 
     /** 그 버전의 요약을 저장(있으면 교체) — 지금 정본 revision·프롬프트 버전과 함께. */
     public void save(Law law, ImpactResult result, String model) {
+        upsert(law, SUMMARY, null, result, model);
+    }
+
+    /** 그 버전의 변경점 설명을 저장(있으면 교체) — 대조한 기준선 revision 과 함께(D80). 제정은 baseline null. */
+    public void saveDiff(Law law, Law baseline, ImpactResult result, String model) {
+        upsert(law, DIFF, revisionOf(baseline), result, model);
+    }
+
+    private void upsert(Law law, String dimension, String baselineRevision, ImpactResult result, String model) {
         jdbc.sql("""
-                INSERT INTO law_summaries (law_id, effective_date, revision, prompt_version, model, result, created_at)
-                VALUES (:lawId, :efYd, :revision, :promptVersion, :model, CAST(:result AS jsonb), now())
-                ON CONFLICT (law_id, effective_date) DO UPDATE SET
-                  revision = EXCLUDED.revision, prompt_version = EXCLUDED.prompt_version,
+                INSERT INTO law_summaries (law_id, effective_date, dimension, revision, baseline_revision,
+                                           prompt_version, model, result, created_at)
+                VALUES (:lawId, :efYd, :dimension, :revision, CAST(:baselineRevision AS text),
+                        :promptVersion, :model, CAST(:result AS jsonb), now())
+                ON CONFLICT (law_id, effective_date, dimension) DO UPDATE SET
+                  revision = EXCLUDED.revision, baseline_revision = EXCLUDED.baseline_revision,
+                  prompt_version = EXCLUDED.prompt_version,
                   model = EXCLUDED.model, result = EXCLUDED.result, created_at = EXCLUDED.created_at
                 """)
                 .param("lawId", law.lawId())
                 .param("efYd", law.effectiveDate())
+                .param("dimension", dimension)
                 .param("revision", law.revision())
+                .param("baselineRevision", baselineRevision)
                 .param("promptVersion", promptVersion)
                 .param("model", model)
                 .param("result", json.writeValueAsString(result))
                 .update();
     }
 
-    /** 그 버전의 변경점 설명을 저장(있으면 교체) — 대조한 기준선 revision 과 함께(D80). */
-    public void saveDiff(Law law, Law baseline, ImpactResult result, String model) {
-    }
-
-    /** 그 버전의 변경점 저장본(D80). */
-    public Optional<ImpactResult> findStoredDiff(Law law, Law baseline) {
-        return Optional.empty();
-    }
-
     /** 그 버전의 저장본 — 정본 revision·프롬프트 버전이 지금과 같을 때만(인용의 근거 확인 전 날것). 없거나 낡으면 empty. */
     public Optional<ImpactResult> findStored(Law law) {
+        return find(law, SUMMARY, null);
+    }
+
+    /** 그 버전의 변경점 저장본 — 요약의 조건 + 대조한 기준선 revision 이 지금과 같을 때만(D80). */
+    public Optional<ImpactResult> findStoredDiff(Law law, Law baseline) {
+        return find(law, DIFF, revisionOf(baseline));
+    }
+
+    private static String revisionOf(Law baseline) {
+        return baseline == null ? null : baseline.revision();
+    }
+
+    private Optional<ImpactResult> find(Law law, String dimension, String baselineRevision) {
         return jdbc.sql("""
                 SELECT result FROM law_summaries
-                WHERE law_id = :lawId AND effective_date = :efYd
+                WHERE law_id = :lawId AND effective_date = :efYd AND dimension = :dimension
                   AND revision = :revision AND prompt_version = :promptVersion
+                  AND baseline_revision IS NOT DISTINCT FROM CAST(:baselineRevision AS text)
                 """)
                 .param("lawId", law.lawId())
                 .param("efYd", law.effectiveDate())
+                .param("dimension", dimension)
                 .param("revision", law.revision())
+                .param("baselineRevision", baselineRevision)
                 .param("promptVersion", promptVersion)
                 .query(String.class)
                 .optional()
