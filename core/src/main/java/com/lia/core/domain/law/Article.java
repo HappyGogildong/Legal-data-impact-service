@@ -1,6 +1,8 @@
 package com.lia.core.domain.law;
 
 import java.time.LocalDate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 조문 — 법령 컨텍스트의 도메인 타입.
@@ -27,6 +29,9 @@ public record Article(
      */
     public enum ChangeType { 신설, 개정, 삭제, 이동, 없음 }
 
+    /** 한 조문을 가리키는 표기 — "18", "제105조의2", "제18조제1항"(항·호·목은 버린다). */
+    private static final Pattern WRITTEN_NO = Pattern.compile("제?(\\d+)조?(의\\d+)?(?:제\\d+[항호목])*");
+
     /** 인용 표기용 조문 라벨 — "제18조", 가지조는 "제105조의2" ({@code no} 가 "105의2" 일 때). */
     public String label() {
         return labelOf(no);
@@ -40,6 +45,16 @@ public record Article(
         if (no == null) return "";
         int branchAt = no.indexOf('의');
         return branchAt < 0 ? "제" + no + "조" : "제" + no.substring(0, branchAt) + "조" + no.substring(branchAt);
+    }
+
+    /**
+     * 사람·번역기가 쓴 조문 표기 → {@code no} 형식("18", "105의2"). 한 조문으로 해석되지 않으면(여러 조문 포함) null.
+     */
+    public static String normalizeNo(String written) {
+        if (written == null) return null;
+        Matcher matcher = WRITTEN_NO.matcher(written.replaceAll("\\s+", ""));
+        if (!matcher.matches()) return null;
+        return matcher.group(2) == null ? matcher.group(1) : matcher.group(1) + matcher.group(2);
     }
 
     /**

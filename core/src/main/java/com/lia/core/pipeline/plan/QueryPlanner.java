@@ -38,7 +38,9 @@ public class QueryPlanner {
             LawRef ref;
             List<RawLaw> alternatives = List.of();
             if (explicitRef != null) {
-                ref = explicitRef;                         // 이미 특정됨 — 해소 생략
+                // 이미 특정됨 — 해소 생략. 후보를 고른 재요청은 조문이 비어 있어 같은 질문의 조문 번호를 잇는다(D82).
+                ref = explicitRef.articleNo() != null ? explicitRef
+                        : new LawRef(explicitRef.lawId(), explicitRef.effectiveDate(), draft.articleNo());
             } else {
                 ResolutionResult rr = sourceAnalyzer.resolve(draft.lawName());
                 if (!rr.analyzable()) return new PlanResult.Unresolved(rr);
