@@ -32,11 +32,16 @@ public class AnalysisEngine {
         this.maxAttempts = maxAttempts;
     }
 
-    public AnalyzeResponse analyze(AnalyzeRequest req, Set<QueryType> requested) {
-        return analyze(req);
+    /** Layer A·대응 방안 재생성은 그 차원, 첫 Layer B 는 영향·대응 둘 다를 검증한다. */
+    public AnalyzeResponse analyze(AnalyzeRequest req) {
+        return analyze(req, req.dimension() == QueryType.IMPACT ? BOTH_PERSONALIZED : Set.of(req.dimension()));
     }
 
-    public AnalyzeResponse analyze(AnalyzeRequest req) {
+    /**
+     * @param requested 첫 Layer B 에서 사용자에게 나갈 차원 — 이 차원만 검증한다. 호출은 영향·대응을 함께 만들지만
+     *                  나가지 않을 쪽이 비었거나 틀렸다고 나갈 답을 버리거나 다시 부르지 않는다(D79).
+     */
+    public AnalyzeResponse analyze(AnalyzeRequest req, Set<QueryType> requested) {
         AnalysisContext ctx = contextBuilder.build(req);
         Set<String> injected = ctx.injectedSourceIds();
 
@@ -44,7 +49,14 @@ public class AnalysisEngine {
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             if (req.dimension().isPersonalized()) {
                 PersonalizedOutput out = reasoner.reasonPersonalized(ctx);
-                if (grounded(req.dimension(), out.result(), injected)) {
+                boolean passed = req.dimension() == QueryType.ACTION
+                        ? grounded(QueryType.ACTION, out.result(), injected)
+                        : groundedRequested(requested, out.result(), injected);
+                if (passed) {
+                    // 상황은 대응 방안의 것이다(D71) — 대응이 나가지 않으면 없다(대응이 비어 있을 수도 있다)
+                    if (!requested.contains(QueryType.ACTION)) {
+                        return new AnalyzeResponse(out.result(), injected, Situation.none());
+                    }
                     // 재생성(ACTION)은 새 질문을 내지 않는다 — 질문은 첫 응답에서 세션에 보관된 것을 쓴다(D71)
                     List<SituationQuestion> questions = req.dimension() == QueryType.ACTION
                             ? List.of() : admissibleQuestions(out.questions(), injected);
@@ -61,6 +73,8 @@ public class AnalysisEngine {
         throw new InsufficientGroundingException(
                 "인용 검증 %d회 실패 — 근거 부족(환각 노출 금지)".formatted(maxAttempts));
     }
+
+    private static final Set<QueryType> BOTH_PERSONALIZED = Set.of(QueryType.IMPACT, QueryType.ACTION);
 
     static final int MAX_QUESTIONS = 3;
 
@@ -127,27 +141,45 @@ public class AnalysisEngine {
      * 차원별 인용 검증 — Layer A 는 {@link #grounded(ImpactResult, Set)} 그대로, Layer B 는 거기에 더해
      * 영향·대응이 <b>둘 다</b> 있고 항목마다 인용(영향 citations·대응 basis)이 있어야 한다(D69).
      * 둘 다 요구하는 건 결과를 IMPACT·ACTION 으로 나눴을 때 두 차원이 늘 채워지게 하려는 것 — 해당이 없으면
-     * 모델이 "영향 없음"·"따로 할 일 없음"을 조문 인용과 함께 쓴다.
+     * 모델이 "영향 없음"·"따로 할 일 없음"을 조문 인용과 함께 쓴다. 한 차원만 나가는 요청은 {@link #groundedRequested}.
      */
     static boolean grounded(QueryType dimension, ImpactResult r, Set<String> injectedSourceIds) {
         if (dimension == QueryType.ACTION) return actionGrounded(r, injectedSourceIds);   // 재생성(D71)
-        if (!grounded(r, injectedSourceIds)) return false;
-        return !dimension.isPersonalized() || personalizedComplete(r);
+        if (dimension == QueryType.IMPACT) return groundedRequested(BOTH_PERSONALIZED, r, injectedSourceIds);
+        return grounded(r, injectedSourceIds);
+    }
+
+    /** 첫 Layer B — 나갈 차원의 내용만 본다(D79). 영향 차원은 주장·영향, 대응 차원은 대응. */
+    static boolean groundedRequested(Set<QueryType> requested, ImpactResult r, Set<String> injectedSourceIds) {
+        if (r == null) return false;
+        return (!requested.contains(QueryType.IMPACT) || impactPartGrounded(r, injectedSourceIds))
+                && (!requested.contains(QueryType.ACTION) || actionPartGrounded(r, injectedSourceIds));
+    }
+
+    private static boolean impactPartGrounded(ImpactResult r, Set<String> injectedSourceIds) {
+        if (r.claims() == null || r.claims().isEmpty() || r.impacts() == null || r.impacts().isEmpty()) return false;
+        List<FaithfulnessGate.Claim> claims = r.claims().stream()
+                .map(c -> new FaithfulnessGate.Claim(c.statement(), c.citations()))
+                .toList();
+        return FaithfulnessGate.passes(claims, injectedSourceIds)
+                && r.impacts().stream().allMatch(i -> i.citations() != null && !i.citations().isEmpty()
+                        && injectedSourceIds.containsAll(i.citations()));
+    }
+
+    private static boolean actionPartGrounded(ImpactResult r, Set<String> injectedSourceIds) {
+        return actionsWellFormed(r)
+                && r.actions().stream().allMatch(a -> injectedSourceIds.containsAll(a.basis()));
     }
 
     /** 대응 방안 재생성 — 대응 ≥1·각 {@code what} 이 비어 있지 않고(공백 포함)·각 근거 ≥1·모든 인용이 주입 집합 안(주장은 필수 아님). 상황 사실은 근거 집합 밖. */
     private static boolean actionGrounded(ImpactResult r, Set<String> injectedSourceIds) {
-        return r != null && r.actions() != null && !r.actions().isEmpty()
-                && r.actions().stream().allMatch(a -> a.what() != null && !a.what().isBlank()
-                        && a.basis() != null && !a.basis().isEmpty())
-                && injectedSourceIds.containsAll(citedSourceIds(r));
+        return r != null && actionsWellFormed(r) && injectedSourceIds.containsAll(citedSourceIds(r));
     }
 
-    private static boolean personalizedComplete(ImpactResult r) {
-        return r.impacts() != null && !r.impacts().isEmpty()
-                && r.actions() != null && !r.actions().isEmpty()
-                && r.impacts().stream().allMatch(i -> i.citations() != null && !i.citations().isEmpty())
-                && r.actions().stream().allMatch(a -> a.basis() != null && !a.basis().isEmpty());
+    private static boolean actionsWellFormed(ImpactResult r) {
+        return r.actions() != null && !r.actions().isEmpty()
+                && r.actions().stream().allMatch(a -> a.what() != null && !a.what().isBlank()
+                        && a.basis() != null && !a.basis().isEmpty());
     }
 
     /** 결과가 인용한 모든 source_id 수집(claims·impacts·actions.basis) — null 안전. */
