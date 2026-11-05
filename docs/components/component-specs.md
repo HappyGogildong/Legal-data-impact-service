@@ -307,7 +307,7 @@ Layer A(SUMMARY·DIFF) 프롬프트에는 질문이 들어가지 않는다 — �
 계약 규칙:
 - **요청 게이트는 오케스트레이터(#8)가 먼저** 수행한다. Analysis Engine(#11)은 방어적 재검증만.
 - 응답 `result`는 **항상 §1 ImpactResult 스키마**. 인용검증은 엔진 내부(`AnalysisEngine.grounded`)가 수행하고, 독립 Verification Gate(#12)는 이연(§4 #12).
-- **답변 캐시는 아직 없다** — Layer A 요약만 배치가 미리 만들어 저장하고(D67, `law_summaries`), Layer B 개인화 답은 저장하지 않는다(D69). 도입 시 키는 아래.
+- **답변 캐시는 아직 없다** — Layer A 요약·변경점은 배치가 미리 만들어 저장하고(D67·D80, `law_summaries`), Layer B 개인화 답은 저장하지 않는다(D69). 도입 시 키는 아래.
 - **답변 캐시 키(완전 동일 질의 전용, §3.4, 후속)**: `hash(정규화 질문) + law.lawId + law.effectiveDate + law.revision + (profileHash|"-") + prompt_version`. **질문 해시를 반드시 포함**해야 다른 질의가 같은 답으로 collapse되지 않는다(D51). context 재사용은 이 키가 아니라 **prompt caching**(§3.3·§3.4)이 담당.
   `effectiveDate` 를 넣는 이유: 같은 법령에 시행예정본이 복수일 수 있어 `lawId` 만으로는 캐시가 충돌한다(D43).
   `profileHash` = 주입 대상 프로필 속성의 정규화 해시 — **`userId`를 키에 쓰지 않는다**(동일 속성 사용자 간 캐시 재사용 + 개인 추적 방지, D41).
@@ -434,7 +434,7 @@ Layer A(SUMMARY·DIFF) 프롬프트에는 질문이 들어가지 않는다 — �
 ### #4 Law Store (RDB / Postgres+pgvector)
 - 역할: 법령 정본(`Law`/`Article`/`Addendum`) + 쉬운 요약 저장본(D67) + (후속) `LawFacts`(Layer A 캐시)·답변 캐시. **벡터 chunks는 별도 [[ChunkStore]]**(PgVectorStore)가 소유 — JSONB 정본(JdbcClient)과 벡터(PgVectorStore)를 분리(2026-08-27).
 - 입력/출력: Law/Article CRUD · 목록·상세 조회([[LawCatalogApi]]) · 요약 저장본 읽기·쓰기.
-- 동작: upsert. **유니크 키는 `(lawId, effectiveDate)`** — `lawId` 단독은 안 된다. 같은 법령에 시행예정본이 복수일 수 있다(D43). 쉬운 요약은 `law_summaries` 에 버전마다 1행 — 정본 revision·프롬프트 버전이 같고 지금의 근거 집합으로 인용 검증을 다시 통과할 때만 유효(`GroundedSummaries`). `LawFacts` 캐시 키=`lawId@effectiveDate + revision`(후속), 답변 캐시 키=§3.4(후속).
+- 동작: upsert. **유니크 키는 `(lawId, effectiveDate)`** — `lawId` 단독은 안 된다. 같은 법령에 시행예정본이 복수일 수 있다(D43). Layer A 저장본은 `law_summaries` 에 버전·차원마다 1행 — 정본 revision·프롬프트 버전(변경점은 기준선 revision 까지)이 같고 지금의 근거 집합으로 인용 검증을 다시 통과할 때만 유효(`GroundedSummaries`, D80). `LawFacts` 캐시 키=`lawId@effectiveDate + revision`(후속), 답변 캐시 키=§3.4(후속).
 - store 패키지의 테이블 전체는 [[LawStore]] §store 패키지 테이블.
 - 의존: 없음.
 - 오류: 제약 위반 → upsert 충돌 해소.
@@ -458,7 +458,7 @@ Layer A(SUMMARY·DIFF) 프롬프트에는 질문이 들어가지 않는다 — �
 - 입력: `AnalysisQuery`(해소·발견 완료) + 질문 원문 + `profileSearch`(발견 시 프로필 라벨을 검색어에 붙일지, D70) + `Personalization`(개인화 판정, [[ProfileUseCase|PersonalizationGate]]). 출력: `DispatchResult{ primaryType, filled, unmet, discovery? }`.
 - 동작:
   1. `Target.Reference`면 정본·기준선을 1회 조회(미적재면 전 차원 `unmet`).
-  2. Layer A(SUMMARY·DIFF) — 차원별 핸들러. SUMMARY 는 유효한 쉬운 요약 저장본이 있으면 그것(D67), 없으면 Analysis Engine(#11) 실시간. DIFF 는 실시간.
+  2. Layer A(SUMMARY·DIFF) — 차원별 핸들러. 유효한 저장본이 있으면 그것(D67·D80), 없으면 Opus 를 부르지 않고 `NOT_PRECOMPUTED`. 실시간 Analysis Engine(#11)은 `lia.analysis.layer-a-live` 를 켠 로컬 개발에서만.
   3. Layer B(IMPACT·ACTION) — `PersonalizedHandler` 를 **한 번**(Opus 1회, 결과를 차원별 분할). 게이트 순서: 개인화 불가 사유 → 기준선 미적재 → 하루 한도(D69).
   4. 근거 부족(`InsufficientGroundingException`)은 그 차원만 `unmet(INSUFFICIENT_GROUNDING)` — 부분성공.
   5. `Target.Discovery` → `LawDiscovery`(후보만, D70) — 분석 팬아웃 없음, 결과는 `DispatchResult.discovery`. 상세 [[LawDiscovery]]. 답변 캐시(§3.4)는 후속.

@@ -63,9 +63,9 @@ docker compose run --rm ingest run
 #   compose ingest 서비스 environment 에 LIA_BATCH_INDEX_ENABLED: "false" (cron 줄은 그대로)
 # 밀린 색인을 원하는 때 처리 — 설정과 무관하게 동작
 docker compose run --rm ingest index
-# 쉬운 요약 일괄 생성(유료 Opus, D67) — 정기 run 에서 켜려면 env LIA_BATCH_SUMMARY_ENABLED=true
+# 요약·변경점 일괄 생성(유료 Opus, D67·D80) — 정기 run 에서 켜려면 env LIA_BATCH_SUMMARY_ENABLED=true
 docker compose run --rm ingest summarize
-# 비용 확인 — 요약이 필요한 시행예정본 수만 센다(등록·유료 호출 없음)
+# 비용 확인 — 채울 시행예정본 수와 유료 호출 수만 센다(등록·유료 호출 없음)
 docker compose run --rm ingest summarize --dry-run
 ```
 

@@ -94,7 +94,7 @@ AnalysisQuery {
 ## 4. 구조 결정 의도 (왜 이렇게)
 
 - **LLM = 번역기, 실행 = 결정론(D46).** 자연어 입력 ≠ 동적 제어. 번역기가 타입 DTO를 뱉는 순간 이후 경로는 고정되어, 결정성·캐시·인용 감사가 보존된다(D37 강화). 에이전트를 넣으면 같은 질문이 매번 다른 경로 → 캐시 미스·인용 사슬 위험·지연 — 법률 그라운딩 서비스엔 부채.
-- **타입이 검색 전략을 고른다(비용 레버).** LOOKUP·SUMMARY·DIFF는 캐시/검색이라 RAG·LLM 불필요. 온라인 LLM 비용은 IMPACT·ACTION에만. "Lookup에 비싼 RAG 안 돌린다"가 우리 선계산 구조에선 더 강하다.
+- **타입이 검색 전략을 고른다(비용 레버).** LOOKUP·SUMMARY·DIFF는 검색이거나 배치가 만든 저장본이라(D80) 답변용 RAG·Opus 불필요. 온라인 Opus 비용은 IMPACT·ACTION에만(분류 Haiku 는 요청마다, 익명은 하루 상한 안에서, D81). "Lookup에 비싼 RAG 안 돌린다"가 우리 선계산 구조에선 더 강하다.
 - **DTO가 로깅·캐시·디버깅 지점.** "AI가 왜 이상한 법령을 참조?"를 *번역 단계(DTO)* 오분류인지 *실행 단계* 실패인지 분리 진단. 캐시 키 = 정규화된 `AnalysisQuery`.
 - **Reference vs Discovery 분리.** "주택법 바뀌면?"(해소된 1건)과 "나한테 영향 있을 법 찾아줘"(코퍼스 검색 N건)는 근본적으로 다른 연산. target을 sealed로 나눠 dispatcher가 형태별로 처리.
 - **fail-closed 승계.** Reference 미해소·Discovery 무결과 모두 지어내지 않는다. 불변식은 `ResolutionResult`·`AnalysisQuery` 생성자가 강제.

@@ -22,7 +22,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 - **포트**: `LawSource`(정본·기준선 정확조회, [[LawStore]] 구현) · `DimensionHandlerRegistry`(차원→Layer A 핸들러) · `PersonalizationQuota`(하루 개인화 한도, `PersonalizationUsageStore` 구현).
 - **주입**: `PersonalizedHandler`(Layer B 전담, 레지스트리 밖) · `LawDiscovery`(LOOKUP 전담, 레지스트리 밖, D70).
-- **간접**: 핸들러들이 [[AnalysisEngine]]에 추론을 위임. `SummaryHandler` 는 쉬운 요약 저장본(`LawSummaries`, D67)을 먼저 본다.
+- **간접**: 핸들러들이 [[AnalysisEngine]]에 추론을 위임. Layer A 핸들러는 저장본(`LawSummaries`·`LawDiffs`, D67·D80)만 읽고, 위임은 `lia.analysis.layer-a-live` 를 켠 로컬 개발에서만 한다.
 - **외부 시스템**: 없음(직접). 정본 읽기는 `LawSource` 뒤로 격리.
 
 ## 구조 (컴포넌트)
@@ -32,13 +32,13 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 | `QueryDispatcher` | 오케스트레이터 — target 해석 → 차원 라우팅 → `DispatchResult` 조립. 흐름·게이트만. |
 | `DimensionHandler` (포트) | **Layer A 전용** 한 차원의 실행 계약 — `type() / needsRag() / needsBaseline() / handle(ctx)`. 실행 본체는 AnalysisEngine 위임. Layer B(IMPACT·ACTION)는 이 포트가 아니라 `PersonalizedHandler`(D69). |
 | `DimensionHandlerRegistry` | `QueryType → DimensionHandler` 매핑. `@Component` 자동수집, 중복 타입 fail-fast, 구성 후 불변. |
-| `SummaryHandler` | SUMMARY(Layer A) — 정본을 SUMMARY로 위임. 비교 아님 → baseline 미사용. 저장된 쉬운 요약(D67, `LawSummaries`)이 유효하면 그것으로 답하고 추론기를 부르지 않는다 — 없거나 낡았으면 실시간. |
-| `DiffHandler` | DIFF(Layer A) — 정본+기준선을 DIFF로 위임. baseline null이면 제정(D42). |
+| `SummaryHandler` | SUMMARY(Layer A) — 저장된 쉬운 요약(D67, `LawSummaries`)이 유효하면(시행예정본 한정) 그것으로 답하고 추론기를 부르지 않는다. 없으면 `NotPrecomputedException` → `NOT_PRECOMPUTED`(D80). 비교 아님 → baseline 미사용. |
+| `DiffHandler` | DIFF(Layer A) — 저장된 변경점(D80, `LawDiffs`)이 유효하면 그것으로 답한다. 없으면 `NotPrecomputedException` → `NOT_PRECOMPUTED`. baseline null이면 제정(D42). |
 | `PersonalizedHandler` | IMPACT·ACTION(Layer B, D69) — `AnalyzeRequest(IMPACT, law, baseline, profile, question)` 로 엔진 **1회**, 결과를 요청된 차원만 분할(IMPACT ← summary·claims·impacts / ACTION ← actions·effectiveInfo, 공통 uncertainties·disclaimer). 엔진이 낸 상황 질문·단계 설명은 ACTION 응답의 `Situation`(`questions`·`stepNotes`)에 싣는다(D71, IMPACT 응답은 `Situation.none()`). |
 | `PersonalAdmission` (정적 함수 모음) | Layer B 판정의 **공통 부분**(D71) — 개정본인데 기준선 없음(`BASELINE_NOT_LOADED`)·하루 한도 차감(`DAILY_LIMIT`)·정본 없음·근거 부족 사유를 만든다. 첫 Layer B(디스패처)와 상황 재생성([[ActionRevisionUseCase]])이 **같은 함수를 공유**해 규칙이 갈라지지 않는다. |
 | `Personalization` (sealed) | 개인화 판정 — `Usable(userId, UserProfile)` \| `Blocked(Reason)`. `anonymous()` = `Blocked(PROFILE_REQUIRED)`. 만드는 쪽은 `PersonalizationGate`([[ProfileUseCase]]). |
 | `PersonalizationQuota` (포트) | `tryConsume(userId)` — 하루 한도 원자 차감, 초과면 false. 구현 `store.PersonalizationUsageStore`(V10). |
-| `Unmet` (record) | 미충족 사유 `{ reason, message }` — `LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`·`PROFILE_REQUIRED`·`CONSENT_OUTDATED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`·`SITUATION_EXPIRED`(D71, 상황 재생성 전용 — 디스패처는 만들지 않는다)·`NOT_IMPLEMENTED`. 공개 API 코드와 같다([[AnalysisApi]]). |
+| `Unmet` (record) | 미충족 사유 `{ reason, message }` — `LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`·`PROFILE_REQUIRED`·`CONSENT_OUTDATED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`·`NOT_PRECOMPUTED`(D80, Layer A 저장본 없음)·`SITUATION_EXPIRED`(D71, 상황 재생성 전용 — 디스패처는 만들지 않는다)·`NOT_IMPLEMENTED`. 공개 API 코드와 같다([[AnalysisApi]]). |
 | `DispatchContext` (record) | 핸들러 실행 재료 `{ law, baseline?, query }`. dispatcher가 정본 1회 조회해 조립. |
 | `DispatchResult` (record) | 차원별 결과 묶음 `{ primaryType, filled, unmet, discovery? }`. `fullySatisfied()`. `discovery` 는 Discovery 질문일 때만(D70). |
 | `DispatchResult.Discovery` (record) | LOOKUP 결과 `{ found: DiscoveryResult, profileBlocked: Unmet? }` — `profileBlocked` 는 프로필 토글이 켜졌는데 프로필을 못 쓴 경우의 사유(`PROFILE_REQUIRED`·`CONSENT_OUTDATED`). |
@@ -47,8 +47,8 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 | 핸들러 | 차원 | kind | 입력 | 상태 |
 |---|---|---|---|---|
-| `SummaryHandler` | SUMMARY | A | Law + `제개정이유` (저장 요약 우선, D67) | ✅ |
-| `DiffHandler` | DIFF | A | Law(변경조문) + baseline + 개정문·부칙 | ✅ |
+| `SummaryHandler` | SUMMARY | A | 저장본만(D67·D80) — 로컬 실시간은 Law + `제개정이유` | ✅ |
+| `DiffHandler` | DIFF | A | 저장본만(D80) — 로컬 실시간은 Law(변경조문) + baseline + 개정문·부칙 | ✅ |
 | `PersonalizedHandler` | IMPACT·ACTION | B | Law + baseline + UserProfile 속성 + 질문 | ✅ D69 |
 | `LawDiscovery` | LOOKUP | 발견 | 질문 + (프로필 라벨) | ✅ D70 (레지스트리 밖) |
 
