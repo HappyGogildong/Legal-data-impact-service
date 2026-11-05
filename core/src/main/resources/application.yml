@@ -33,6 +33,7 @@ lia:
   privacy:
     policy-version: ${PRIVACY_POLICY_VERSION:draft-2026-09}   # 동의 시 기록할 처리방침 버전(D61). 실제 처리방침 게시 시 교체
   analysis:
+    anonymous-daily-limit: ${LIA_ANALYSIS_ANONYMOUS_DAILY_LIMIT:1000}   # 익명 분석 요청 서비스 전체 하루 상한(D81, 잠정). 넘으면 429
     layer-a-live: ${LIA_ANALYSIS_LAYER_A_LIVE:false}   # 저장본 없는 요약·변경점을 요청 때 Opus 로(로컬 개발 전용, D80). 운영은 꺼 둔다
   personalization:
     daily-limit: ${LIA_PERSONALIZATION_DAILY_LIMIT:20}   # 사용자별 하루 Layer B(내 영향·대응 방안) 생성 한도(D69)

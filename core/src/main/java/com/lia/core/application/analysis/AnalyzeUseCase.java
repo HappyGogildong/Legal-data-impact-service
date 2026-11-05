@@ -39,7 +39,7 @@ public class AnalyzeUseCase {
     private final PersonalizationGate gate;
 
     public AnalyzeUseCase(QueryPlanner planner, QueryDispatcher dispatcher, LawViews views,
-                          PersonalizationGate gate) {
+                          PersonalizationGate gate, AnonymousAnalysisQuota anonymousQuota) {
         this.planner = planner;
         this.dispatcher = dispatcher;
         this.views = views;

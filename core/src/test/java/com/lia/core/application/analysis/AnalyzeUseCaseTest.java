@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
@@ -110,7 +111,7 @@ class AnalyzeUseCaseTest {
         DimensionHandlerRegistry registry =
                 new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder(), true), new DiffHandler(engine, (law, baseline) -> Optional.empty(), new ContextBuilder(), true)));
         return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry, new PersonalizedHandler(null), userId -> false, NO_DISCOVERY),
-                (lawId, efYd) -> { recorded.add(lawId + "@" + efYd); return true; }, anonymousGate());
+                (lawId, efYd) -> { recorded.add(lawId + "@" + efYd); return true; }, anonymousGate(), () -> true);
     }
 
     /** 저장소가 항상 같은 프로필 행(없으면 null)을 돌려주는 게이트 — DB 없이. */
@@ -138,7 +139,7 @@ class AnalyzeUseCaseTest {
         StoredProfile stored = new StoredProfile(new UserProfile(null, 34, null, null, null, null, null),
                 storedPolicyVersion, now, now);
         return new AnalyzeUseCase(planner, new QueryDispatcher(src, registry, new PersonalizedHandler(null), userId -> true, NO_DISCOVERY),
-                (lawId, efYd) -> true, gate(stored, "v1"));
+                (lawId, efYd) -> true, gate(stored, "v1"), () -> true);
     }
 
     @Test
@@ -193,6 +194,53 @@ class AnalyzeUseCaseTest {
         assertEquals(ResolutionState.UNVERIFIED, u.resolution().state());
     }
 
+    /** 분류기 호출 수를 세는 유스케이스 — 상한은 인자로. */
+    private AnalyzeUseCase countingUseCase(AtomicInteger translations, AnonymousAnalysisQuota quota) {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.SUMMARY, Set.of(QueryType.SUMMARY), false, TargetKind.REFERENCE,
+                "없는법", null, List.of(), List.of(), List.of(), "요약");
+        QueryTranslator translator = q -> {
+            translations.incrementAndGet();
+            return draft;
+        };
+        QueryPlanner planner = new QueryPlanner(translator, new SourceAnalyzer(new FakeLookup()));
+        return new AnalyzeUseCase(planner, new QueryDispatcher(new FakeLawSource(), new DimensionHandlerRegistry(List.of()),
+                new PersonalizedHandler(null), userId -> false, NO_DISCOVERY), (lawId, efYd) -> true, anonymousGate(), quota);
+    }
+
+    @Test
+    void 익명_상한에_닿으면_분류기를_부르기_전에_거부한다() {
+        AtomicInteger translations = new AtomicInteger();
+
+        assertThrows(AnonymousLimitException.class,
+                () -> countingUseCase(translations, () -> false).analyze("주택법", null, Optional.empty()));
+
+        assertEquals(0, translations.get(), "Haiku 호출 없음");
+    }
+
+    @Test
+    void 익명_요청은_1회_차감한다() {
+        AtomicInteger consumed = new AtomicInteger();
+
+        countingUseCase(new AtomicInteger(), () -> {
+            consumed.incrementAndGet();
+            return true;
+        }).analyze("주택법", null, Optional.empty());
+
+        assertEquals(1, consumed.get());
+    }
+
+    @Test
+    void 로그인_요청은_익명_상한을_보지도_차감하지도_않는다() {
+        AtomicInteger translations = new AtomicInteger();
+
+        countingUseCase(translations, () -> {
+            throw new AssertionError("로그인 사용자는 세지 않는다");
+        }).analyze("주택법", null, Optional.of(UUID.randomUUID()));
+
+        assertEquals(1, translations.get());
+    }
+
     @Test
     void 정본으로_답을_낸_Reference_분석은_조회로_센다() {
         AnalysisQueryDraft draft = new AnalysisQueryDraft(
@@ -244,7 +292,7 @@ class AnalyzeUseCaseTest {
         AnalyzeUseCase failing = new AnalyzeUseCase(planner,
                 new QueryDispatcher(src, new DimensionHandlerRegistry(List.of(new SummaryHandler(engine, law -> Optional.empty(), new ContextBuilder(), true))),
                         new PersonalizedHandler(null), userId -> false, NO_DISCOVERY),
-                (lawId, efYd) -> { throw new IllegalStateException("DB 끊김"); }, anonymousGate());
+                (lawId, efYd) -> { throw new IllegalStateException("DB 끊김"); }, anonymousGate(), () -> true);
 
         AnalysisOutcome out = failing.analyze("주택법 뭐가 바뀌어?", null, Optional.empty());
 
