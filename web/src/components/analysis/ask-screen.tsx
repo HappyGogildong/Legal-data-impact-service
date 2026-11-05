@@ -93,7 +93,9 @@ export function AskScreen() {
       ask={ask}
       onAsk={reask}
       renderUnmetAction={(unmet) =>
-        unmet?.reason === "NOT_PRECOMPUTED" ? (
+        unmet?.reason === "NOT_PRECOMPUTED" ||
+        unmet?.reason === "ARTICLE_NOT_CHANGED" ||
+        unmet?.reason === "ARTICLE_NOT_FOUND" ? (
           <LawDetailLink law={response.law} />
         ) : (
           <PersonalizeAction unmet={unmet} />

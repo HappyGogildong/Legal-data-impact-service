@@ -72,6 +72,21 @@ describe("analysis-view", () => {
     ).toBe("준비 중");
   });
 
+  it("지목한 조문이 안 바뀌었거나 없으면 그대로 알린다(D82)", () => {
+    expect(unmetCopy({ reason: "ARTICLE_NOT_CHANGED" }).title).toBe(
+      "이 조문은 이번 개정에서 바뀌지 않았어요",
+    );
+    expect(unmetCopy({ reason: "ARTICLE_NOT_FOUND" }).title).toBe(
+      "이 법령에서 찾을 수 없는 조문이에요",
+    );
+    expect(
+      cardStatus("diff", undefined, { reason: "ARTICLE_NOT_CHANGED" }, new Map()),
+    ).toBe("변경 없음");
+    expect(
+      cardStatus("diff", undefined, { reason: "ARTICLE_NOT_FOUND" }, new Map()),
+    ).toBe("조문 없음");
+  });
+
   it("카드 상태 — 변경점은 조문 수, 미충족은 짧은 사유", () => {
     expect(cardStatus("diff", diff, undefined, index)).toBe("조문 1개");
     expect(cardStatus("summary", summary, undefined, index)).toBeNull();

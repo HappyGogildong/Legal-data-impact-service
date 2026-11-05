@@ -458,7 +458,7 @@ Layer A(SUMMARY·DIFF) 프롬프트에는 질문이 들어가지 않는다 — �
 - 입력: `AnalysisQuery`(해소·발견 완료) + 질문 원문 + `profileSearch`(발견 시 프로필 라벨을 검색어에 붙일지, D70) + `Personalization`(개인화 판정, [[ProfileUseCase|PersonalizationGate]]). 출력: `DispatchResult{ primaryType, filled, unmet, discovery? }`.
 - 동작:
   1. `Target.Reference`면 정본·기준선을 1회 조회(미적재면 전 차원 `unmet`).
-  2. Layer A(SUMMARY·DIFF) — 차원별 핸들러. 유효한 저장본이 있으면 그것(D67·D80), 없으면 Opus 를 부르지 않고 `NOT_PRECOMPUTED`. 실시간 Analysis Engine(#11)은 `lia.analysis.layer-a-live` 를 켠 로컬 개발에서만.
+  2. Layer A(SUMMARY·DIFF) — 차원별 핸들러. 유효한 저장본이 있으면 그것(D67·D80), 없으면 Opus 를 부르지 않고 `NOT_PRECOMPUTED`. 실시간 Analysis Engine(#11)은 `lia.analysis.layer-a-live` 를 켠 로컬 개발에서만. DIFF 가 조문을 지목하면 저장본을 그 조문으로 좁힌다(D82).
   3. Layer B(IMPACT·ACTION) — `PersonalizedHandler` 를 **한 번**(Opus 1회, 결과를 차원별 분할). 게이트 순서: 개인화 불가 사유 → 기준선 미적재 → 하루 한도(D69).
   4. 근거 부족(`InsufficientGroundingException`)은 그 차원만 `unmet(INSUFFICIENT_GROUNDING)` — 부분성공.
   5. `Target.Discovery` → `LawDiscovery`(후보만, D70) — 분석 팬아웃 없음, 결과는 `DispatchResult.discovery`. 상세 [[LawDiscovery]]. 답변 캐시(§3.4)는 후속.

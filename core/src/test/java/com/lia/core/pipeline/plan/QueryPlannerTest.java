@@ -225,4 +225,32 @@ class QueryPlannerTest {
         assertEquals(QueryType.IMPACT, q.primaryType());
         assertTrue(q.profileBound());
     }
+
+    @Test
+    void 명시적_참조에_조문이_없으면_같은_질문의_조문_번호를_잇는다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.DIFF, Set.of(QueryType.DIFF), true, TargetKind.REFERENCE,
+                "주택법", "제18조", List.of(), List.of(), List.of(), "제18조 변경점");
+        LawRef chosen = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
+
+        PlanResult result = plannerFor(draft).plan("주택법 제18조 뭐가 바뀌었어?", chosen, false);
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class, result).query();
+        Target.Reference ref = assertInstanceOf(Target.Reference.class, q.target());
+        assertEquals("18", ref.lawRef().articleNo());
+    }
+
+    @Test
+    void 명시적_참조의_조문이_번역기가_뽑은_조문보다_우선한다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.DIFF, Set.of(QueryType.DIFF), true, TargetKind.REFERENCE,
+                "주택법", "18", List.of(), List.of(), List.of(), "변경점");
+        LawRef chosen = new LawRef("001809", LocalDate.of(2026, 8, 4), "7");
+
+        PlanResult result = plannerFor(draft).plan("주택법 제18조 뭐가 바뀌었어?", chosen, false);
+
+        AnalysisQuery q = assertInstanceOf(PlanResult.Planned.class, result).query();
+        Target.Reference ref = assertInstanceOf(Target.Reference.class, q.target());
+        assertEquals("7", ref.lawRef().articleNo());
+    }
 }

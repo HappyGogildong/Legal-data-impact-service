@@ -226,6 +226,57 @@ describe("AskScreen", () => {
     ).toHaveAttribute("href", `/laws/${law.lawId}/${law.effectiveDate}`);
   });
 
+  it.each([
+    ["ARTICLE_NOT_CHANGED", "이 조문은 이번 개정에서 바뀌지 않았어요"],
+    ["ARTICLE_NOT_FOUND", "이 법령에서 찾을 수 없는 조문이에요"],
+  ] as const)("지목한 조문이 %s 이면 안내와 함께 법령 상세로 보낸다(D82)", async (reason, title) => {
+    setAsk({ query: "주택법 제3조 뭐가 바뀌었어?" });
+    mockApi({
+      "POST /api/v1/analyses": () =>
+        apiJson({
+          ...resolvedResponse,
+          answer: {},
+          unmet: { diff: { reason, message: "제3조" } },
+        }),
+      "GET /api/v1/account": () => apiJson({ error: "unauthenticated" }, 401),
+    });
+    renderScreen();
+
+    expect(await screen.findByText(title)).toBeInTheDocument();
+    const law = resolvedResponse.law!;
+    expect(
+      screen.getByRole("link", { name: "법령 상세에서 확인하기" }),
+    ).toHaveAttribute("href", `/laws/${law.lawId}/${law.effectiveDate}`);
+  });
+
+  it("조문으로 좁힌 변경점은 카드가 하나뿐이라 펼친 채로 주장을 보여 준다(D82)", async () => {
+    setAsk({ query: "주택법 제18조 뭐가 바뀌었어?" });
+    mockApi({
+      "POST /api/v1/analyses": () =>
+        apiJson({
+          ...resolvedResponse,
+          answer: {
+            diff: {
+              claims: [
+                {
+                  statement: "제18조 통합심의 대상이 넓어진다",
+                  citations: [ARTICLE_18],
+                  confidence: 0.9,
+                },
+              ],
+            },
+          },
+          unmet: {},
+        }),
+      "GET /api/v1/account": () => apiJson({ error: "unauthenticated" }, 401),
+    });
+    renderScreen();
+
+    expect(
+      await screen.findByText("제18조 통합심의 대상이 넓어진다"),
+    ).toBeInTheDocument();
+  });
+
   it("결과 화면 '내 영향' 카드를 열면 익명에게 로그인하기가 붙는다(renderUnmetAction 연결)", async () => {
     setAsk({ query: "주택법 바뀌면?" });
     mockApi({

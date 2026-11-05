@@ -52,13 +52,14 @@ export function ResultBody({
     if (source.sourceId) sources.set(source.sourceId, source);
   }
   const selectedSource = selected ? (sources.get(selected) ?? null) : null;
+  const dimensions = presentDimensions(response);
 
   return (
     <div className="mx-auto max-w-[1120px] px-4 py-4 lg:py-6">
       {header}
       <div className="mt-2.5 lg:grid lg:grid-cols-[1.7fr_1fr] lg:items-start lg:gap-4">
         <div className="flex flex-col gap-2.5">
-          {presentDimensions(response).map((dimension) => (
+          {dimensions.map((dimension) => (
             <DimensionCard
               key={dimension}
               dimension={dimension}
@@ -72,7 +73,9 @@ export function ResultBody({
               selected={selected}
               onCite={setSelected}
               defaultOpen={
-                dimension === "summary" || (isDesktop && dimension === "diff")
+                dimensions.length === 1 || // 하나뿐이면 그게 질문의 답이다(D82)
+                dimension === "summary" ||
+                (isDesktop && dimension === "diff")
               }
               renderUnmetAction={renderUnmetAction}
               stepNotes={

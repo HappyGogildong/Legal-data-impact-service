@@ -106,6 +106,8 @@ public class QueryDispatcher {
                 unmet.put(t, PersonalAdmission.insufficientGrounding(t));   // 다른 차원은 그대로 — 부분 성공(D69)
             } catch (NotPrecomputedException e) {
                 unmet.put(t, new Unmet(Unmet.Reason.NOT_PRECOMPUTED, e.getMessage()));   // Opus 호출 없음(D80)
+            } catch (ArticleOutOfScopeException e) {
+                unmet.put(t, new Unmet(e.reason(), e.getMessage()));   // 지목한 조문이 안 바뀜·없음(D82)
             }
         }
         if (!personalizedTypes.isEmpty()) {

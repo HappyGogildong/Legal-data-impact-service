@@ -380,6 +380,23 @@ class QueryDispatcherTest {
     }
 
     @Test
+    void 지목한_조문이_변경_범위_밖이면_그_차원만_그_사유_나머지는_filled() {
+        DimensionHandler outOfScope = new DimensionHandler() {
+            public QueryType type() { return QueryType.DIFF; }
+            public AnalyzeResponse handle(DispatchContext ctx) {
+                throw new ArticleOutOfScopeException(Unmet.Reason.ARTICLE_NOT_CHANGED, "제3조는 그대로");
+            }
+        };
+        QueryDispatcher d = dispatcher(loaded(), handler(QueryType.SUMMARY, resp("S")), outOfScope);
+
+        DispatchResult r = dispatchAnonymous(d, refQuery(Set.of(QueryType.SUMMARY, QueryType.DIFF), QueryType.SUMMARY, false));
+
+        assertTrue(r.filled().containsKey(QueryType.SUMMARY));
+        assertEquals(Unmet.Reason.ARTICLE_NOT_CHANGED, r.unmet().get(QueryType.DIFF).reason());
+        assertEquals("제3조는 그대로", r.unmet().get(QueryType.DIFF).message());
+    }
+
+    @Test
     void 핸들러가_근거부족이면_그_차원만_INSUFFICIENT_GROUNDING_나머지는_filled() {
         DimensionHandler failing = new DimensionHandler() {
             public QueryType type() { return QueryType.DIFF; }

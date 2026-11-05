@@ -114,6 +114,16 @@ export function unmetCopy(unmet: Pick<Unmet, "reason"> | undefined): UnmetCopy {
         title: "이 설명은 아직 준비되지 않았어요",
         body: "법령 상세에서 개정 이유와 조문을 먼저 확인해 주세요.",
       };
+    case "ARTICLE_NOT_CHANGED":
+      return {
+        title: "이 조문은 이번 개정에서 바뀌지 않았어요",
+        body: "법령 상세에서 바뀐 조문을 확인해 주세요.",
+      };
+    case "ARTICLE_NOT_FOUND":
+      return {
+        title: "이 법령에서 찾을 수 없는 조문이에요",
+        body: "조문 번호를 다시 확인하거나 법령 상세에서 바뀐 조문을 확인해 주세요.",
+      };
     case "SITUATION_EXPIRED":
       return {
         title: "상황 질문이 만료됐어요",
@@ -132,6 +142,8 @@ const UNMET_STATUS: Record<string, string> = {
   BASELINE_NOT_LOADED: "준비 중",
   NOT_IMPLEMENTED: "준비 중",
   NOT_PRECOMPUTED: "준비 중",
+  ARTICLE_NOT_CHANGED: "변경 없음",
+  ARTICLE_NOT_FOUND: "조문 없음",
   CONSENT_OUTDATED: "재동의 필요",
   DAILY_LIMIT: "한도 초과",
   INSUFFICIENT_GROUNDING: "근거 부족",
