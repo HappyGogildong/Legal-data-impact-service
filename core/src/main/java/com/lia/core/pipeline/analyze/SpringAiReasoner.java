@@ -80,7 +80,7 @@ public class SpringAiReasoner implements Reasoner {
                 r.actions(), r.effectiveInfo(), r.uncertainties(), r.disclaimer(), meta);
     }
 
-    /** 차원 → 계층(A: SUMMARY·DIFF 선계산 / B: IMPACT·ACTION 프로필별). */
+    /** 차원 → 계층(A: SUMMARY·DIFF 선계산, 배치에서만 호출(D80) / B: IMPACT·ACTION 프로필별). */
     private static String layer(QueryType dimension) {
         return dimension.isPersonalized() ? "B" : "A";
     }

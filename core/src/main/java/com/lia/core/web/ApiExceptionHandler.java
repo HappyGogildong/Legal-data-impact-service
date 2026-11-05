@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.lia.core.application.account.AccountNotFoundException;
+import com.lia.core.application.analysis.AnonymousLimitException;
 import com.lia.core.application.bookmark.BookmarkLimitException;
 import com.lia.core.application.bookmark.UnknownLawException;
 import com.lia.core.application.history.AnalysisExpiredException;
@@ -70,6 +71,13 @@ public class ApiExceptionHandler {
     public ResponseEntity<Map<String, Object>> bookmarkLimit(BookmarkLimitException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("error", "bookmark_limit", "message", e.getMessage()));
+    }
+
+    /** 오늘 익명 분석 상한 초과 — 429(D81). 메시지는 화면에 그대로. */
+    @ExceptionHandler(AnonymousLimitException.class)
+    public ResponseEntity<Map<String, Object>> anonymousLimit(AnonymousLimitException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(Map.of("error", "anonymous_limit", "message", e.getMessage()));
     }
 
     /** 저장할 분석 결과가 세션에 없음 — 409(D73). 메시지는 화면에 그대로. */

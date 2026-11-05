@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
  * <p><b>개인화(D69)</b> — 세션 userId 로 {@link PersonalizationGate}가 Layer B 가능 여부를 판정하고,
  * 그 판정과 질문 원문을 디스패처에 넘긴다(프롬프트엔 프로필 속성·질문만, userId 는 한도 키로만).
  *
+ * <p><b>익명 상한(D81)</b> — 익명 요청은 분류 전에 {@link AnonymousAnalysisQuota}로 1회 센다. 넘으면 {@link AnonymousLimitException}.
+ *
  * <p><b>조회 집계(D66)</b> — Reference 분석이 정본으로 답(채운 차원)을 냈으면 {@link LawViews}로 1회 센다.
  * 기록 실패는 삼키고 로그만 — 분석 응답을 바꾸지 않는다.
  */
@@ -37,9 +39,11 @@ public class AnalyzeUseCase {
     private final QueryDispatcher dispatcher;
     private final LawViews views;
     private final PersonalizationGate gate;
+    private final AnonymousAnalysisQuota anonymousQuota;
 
     public AnalyzeUseCase(QueryPlanner planner, QueryDispatcher dispatcher, LawViews views,
-                          PersonalizationGate gate) {
+                          PersonalizationGate gate, AnonymousAnalysisQuota anonymousQuota) {
+        this.anonymousQuota = anonymousQuota;
         this.planner = planner;
         this.dispatcher = dispatcher;
         this.views = views;
@@ -57,6 +61,10 @@ public class AnalyzeUseCase {
      * @param profileSearch 법령 발견에서 프로필 라벨을 검색어에 붙일지(D70 — 프로필을 쓸 수 있을 때만 적용)
      */
     public AnalysisOutcome analyze(String query, LawRef explicitRef, Optional<UUID> userId, boolean profileSearch) {
+        // 분류(Haiku)도 비용이다 — 익명은 호출 전에 센다. 로그인 사용자는 세지 않는다(D81)
+        if (userId.isEmpty() && !anonymousQuota.tryConsume()) {
+            throw new AnonymousLimitException("오늘 비로그인 분석 횟수가 모두 찼어요. 로그인하면 계속 이용할 수 있어요.");
+        }
         Personalization personalization = gate.check(userId);
         boolean profilePresent = personalization instanceof Personalization.Usable;
         PlanResult plan = planner.plan(query, explicitRef, profilePresent);

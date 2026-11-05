@@ -35,14 +35,14 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
    ⚠️ 인용키는 **시행일 포함**: `LAW:{lawId}@{effectiveDate}:art:{no}`(복수 시행예정본, D43). 형식은 [[component-specs]] §1.3.
 2. **Opus API 호출** — constrained JSON([[analysis-prompt-spec]] §4 스키마), adaptive thinking(항상 켜짐)·effort=medium(D68).
 3. **1차 인용검증** — 스키마 유효 + **인용 존재성**(모든 `claims[].citations` ⊆ 주입 `source_id`). 실패 시 재생성(≤`regen_max`).
-4. 산출: `ImpactResult` + `injectedSourceIds`. 쉬운 요약(SUMMARY)은 배치가 이 엔진으로 미리 만들어 `law_summaries` 에 저장하고(D67, [[IngestJob]] SUMMARIZE), 읽을 때 `GroundedSummaries` 가 같은 `grounded` 규칙으로 지금의 근거 집합에 다시 대 본다. **(후속)** `LawFacts`·답변 캐시(D51).
+4. 산출: `ImpactResult` + `injectedSourceIds`. Layer A(SUMMARY·DIFF)는 배치가 이 엔진으로 미리 만들어 `law_summaries` 에 저장하고(D67·D80, [[IngestJob]] SUMMARIZE), 읽을 때 `GroundedSummaries` 가 같은 `grounded` 규칙으로 지금의 근거 집합에 다시 대 본다. 운영 온라인 경로에서 이 엔진을 부르는 것은 Layer B 뿐이다. **(후속)** `LawFacts`·답변 캐시(D51).
 
 - **Layer B 입력·검증(D69):** `AnalyzeRequest` 에 `profile`·`question`(Layer B 일 때만 non-null). `ContextBuilder` 는 Layer B 에도 현행 기준선 블록을 넣는다. 검증은 **요청된 차원만**(D79) — IMPACT 는 주장·영향 ≥ 1, ACTION 은 대응 ≥ 1, 항목마다 인용, 모든 인용은 주입 집합 안. 둘 다 요청이면 둘 다. 프로필은 근거 집합 밖이라 인용하면 실패.
 - **Layer B 상황 질문·단계 설명(D71):** 첫 Layer B 는 `Reasoner.reasonPersonalized` 로 **Layer B 전용 출력 레코드**(`PersonalizedReply` — `ImpactResult` 필드 + `actions[].situationNote` + `situationQuestions[]`)를 받아 `PersonalizedOutput`(`ImpactResult` 그대로 + 질문 + 단계 설명)으로 나눈다. `ImpactResult`·SYSTEM·`PROMPT_VERSION` 은 바뀌지 않는다([[analysis-prompt-spec]] §5.1). 기존 D69 그라운딩은 그대로 하고, 거기에 두 필터를 더한다 — **질문 필터**: `basis` 가 주입 집합 밖이거나 형식이 깨진 질문(문장 비었음·200자 초과 또는 줄바꿈 포함·`CHOICE` 선택지가 2~4개가 아님·선택지 40자 초과)은 **그 질문만** 버리고(답 전체 실패 아님), 최대 3개만 남기고 `q1`·`q2`·`q3` 를 다시 붙인다. **단계 설명 필터**: 범위 밖 단계 번호·빈 문장·200자 초과 또는 줄바꿈 포함 설명은 버리고, 같은 단계는 처음 것만 남긴다.
 - **ACTION 재생성 그라운딩(D71):** `AnalyzeRequest.dimension == ACTION`(상황 확인 후 대응 방안만)이면 `ContextBuilder` 가 같은 근거 블록 + `situation` 을 `[SITUATION]` 으로 붙이고, 검증은 actions ≥ 1 · 각 `what` 비어 있지 않음(공백 포함) · 각 `basis` ≥ 1 · 모든 인용 ⊆ 주입 집합(claims·impacts 필수 아님). 상황 사실은 근거 집합 밖이라 인용하면 실패 → 재생성 ≤2 → `InsufficientGroundingException`. 재생성은 새 질문을 내지 않는다(질문은 첫 응답에서 세션에 보관된 것을 쓴다). 한도 차감은 엔진이 아니라 호출자([[ActionRevisionUseCase]])가 호출 직전에 1회 한다.
 
 ## 2계층
-- **Layer A**(프로필 무관, SUMMARY·DIFF): 지금은 SUMMARY 만 오프라인 선계산(D67) — 모든 사용자가 재사용(비용 레버, D07). DIFF 는 요청 시 생성. `LawFacts` 는 후속.
+- **Layer A**(프로필 무관, SUMMARY·DIFF): 둘 다 오프라인 선계산(D07·D67·D80) — 모든 사용자가 재사용(비용 레버). 저장본이 없으면 온라인은 Opus 를 부르지 않고 `NOT_PRECOMPUTED`. `LawFacts` 는 후속.
 - **Layer B**(프로필별, IMPACT·ACTION): 정본 근거 + 프로필 속성 + 질문으로 **Opus 1회**에 둘 다 생성(D69). 저장하지 않는다 — 답변 캐시를 도입하면 키는 `userId`가 아니라 **프로필 속성 해시**(D41).
 
 ## 구조 (컴포넌트)

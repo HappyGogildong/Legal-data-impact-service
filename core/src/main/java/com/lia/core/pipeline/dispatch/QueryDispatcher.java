@@ -104,6 +104,8 @@ public class QueryDispatcher {
                 filled.put(t, h.handle(ctx));
             } catch (InsufficientGroundingException e) {
                 unmet.put(t, PersonalAdmission.insufficientGrounding(t));   // 다른 차원은 그대로 — 부분 성공(D69)
+            } catch (NotPrecomputedException e) {
+                unmet.put(t, new Unmet(Unmet.Reason.NOT_PRECOMPUTED, e.getMessage()));   // Opus 호출 없음(D80)
             }
         }
         if (!personalizedTypes.isEmpty()) {

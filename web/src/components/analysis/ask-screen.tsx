@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useHydrated } from "@/hooks/use-browser";
@@ -12,6 +13,8 @@ import {
   useAsk,
   type AskRequest,
 } from "@/lib/ask-store";
+import type { AnalysisResponse } from "@/lib/api/types";
+import { lawHref } from "@/lib/law-view";
 import { AnalysisProgress } from "./analysis-progress";
 import { DiscoveryView } from "./discovery-view";
 import { ErrorCard } from "./error-card";
@@ -20,6 +23,19 @@ import { ResolutionView } from "./resolution-view";
 import { ResultView } from "./result-view";
 
 /** /ask — 탭에 저장된 질문을 분석해 S02(해소 성공)·S03(해소 실패)·S04(법령 발견)·오류로 가른다. 질문이 없으면 홈으로. */
+/** 미리 만든 설명이 없을 때(D80) — 결정론으로 볼 수 있는 법령 상세로. */
+function LawDetailLink({ law }: { law: AnalysisResponse["law"] }) {
+  if (!law?.lawId || !law.effectiveDate) return null;
+  return (
+    <Link
+      href={lawHref(law.lawId, law.effectiveDate)}
+      className="mt-2 inline-block text-[12.5px] font-bold text-navy"
+    >
+      법령 상세에서 확인하기
+    </Link>
+  );
+}
+
 export function AskScreen() {
   const router = useRouter();
   const hydrated = useHydrated();
@@ -76,7 +92,13 @@ export function AskScreen() {
       response={response}
       ask={ask}
       onAsk={reask}
-      renderUnmetAction={(unmet) => <PersonalizeAction unmet={unmet} />}
+      renderUnmetAction={(unmet) =>
+        unmet?.reason === "NOT_PRECOMPUTED" ? (
+          <LawDetailLink law={response.law} />
+        ) : (
+          <PersonalizeAction unmet={unmet} />
+        )
+      }
     />
   );
 }

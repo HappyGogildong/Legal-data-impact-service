@@ -5,30 +5,6 @@ import { FollowUpBar } from "@/components/analysis/follow-up-bar";
 import type { LawHeader, LawRefInput } from "@/lib/api/types";
 import { setAsk, type AskRequest } from "@/lib/ask-store";
 
-/** "쉬운 요약 보기" — 이 법령(lawRef)으로 분석 화면(S02)을 연다. 질문은 URL 이 아니라 탭 저장소(frontend-stack §5, D65). */
-export function SummaryButton({
-  title,
-  lawRef,
-}: {
-  title: string;
-  lawRef: LawRefInput;
-}) {
-  const router = useRouter();
-  function openSummary() {
-    setAsk({ query: `${title} 쉬운 요약`, lawRef });
-    router.push("/ask");
-  }
-  return (
-    <button
-      type="button"
-      onClick={openSummary}
-      className="rounded-md bg-navy px-3 py-1.5 text-[13px] font-bold text-white"
-    >
-      쉬운 요약 보기
-    </button>
-  );
-}
-
 /** "내 영향·대응 방안 보기"(D69) — 이 법령으로 Layer B 를 요청한다. 로그인·프로필이 없으면 응답의 미충족 안내가 로그인 흐름으로 이끈다. */
 export function PersonalizeButton({
   title,

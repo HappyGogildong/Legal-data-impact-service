@@ -146,7 +146,7 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 
 **소셜 로그인 (#36, D78)** — 웹은 Vercel 이 API·로그인 경로를 rewrites로 이 EC2 에 전달한다(D64, [[frontend-stack]] §2). provider 콘솔과 앱의 OAuth `redirect-uri`는 `<웹 주소>/login/oauth2/code/{google|kakao|naver}`, `FRONTEND_URL` = 웹 주소. 운영은 `oauth` 프로파일을 켜고(`SPRING_PROFILES_ACTIVE=oauth`), **`client-id` 가 있는 provider 만 등록**된다 — 첫 배포는 구글만. 웹 로그인 화면은 `GET /api/v1/auth/providers` 의 목록만 버튼으로 그린다.
 
-**운영 첫 설정(`prod.env`)** — 쉬운 요약 배치 **꺼짐**(`LIA_BATCH_SUMMARY_ENABLED=false`, 유료 Opus — 백필 뒤 `summarize --dry-run` 으로 규모를 보고 따로 결정, D67·D78), 색인 켜짐(`LIA_BATCH_INDEX_ENABLED=true`, 임베딩 비용은 백필 전체가 1달러 미만 추정).
+**운영 첫 설정(`prod.env`)** — Layer A(요약·변경점) 배치 **꺼짐**(`LIA_BATCH_SUMMARY_ENABLED=false`, 유료 Opus — 백필 뒤 `summarize --dry-run` 으로 규모를 보고 따로 결정, D67·D78·D80. 돌리기 전까지 분석 화면의 요약·변경점은 준비 중으로 나온다), 익명 분석 하루 상한 1,000(`LIA_ANALYSIS_ANONYMOUS_DAILY_LIMIT`, 잠정, D81), 색인 켜짐(`LIA_BATCH_INDEX_ENABLED=true`, 임베딩 비용은 백필 전체가 1달러 미만 추정).
 
 ## 4. 관측·배치 패널·경보
 

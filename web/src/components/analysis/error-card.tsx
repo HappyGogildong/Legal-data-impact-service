@@ -3,8 +3,15 @@
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/lib/api/errors";
 import { setDraft } from "@/lib/ask-store";
+import { setReturnTo } from "@/lib/return-to";
 
-/** 시스템 오류(S16 서버·네트워크 오류의 화면 안 버전). 400 은 질문 문제라 고치기로. */
+const BUTTON =
+  "mt-3 rounded-md bg-navy px-4 py-2 text-[13px] font-bold text-white";
+
+/**
+ * 시스템 오류(S16 서버·네트워크 오류의 화면 안 버전). 400 은 질문 문제라 고치기, 429 는 오늘 익명 상한(D81)이라
+ * 다시 시도해도 소용없어 로그인으로, 그 외는 다시 시도.
+ */
 export function ErrorCard({
   error,
   query,
@@ -16,11 +23,15 @@ export function ErrorCard({
   onRetry: () => void;
 }) {
   const router = useRouter();
-  const badRequestMessage =
-    error instanceof ApiError && error.status === 400 ? error.message : null;
+  const status = error instanceof ApiError ? error.status : null;
+  const serverMessage = error instanceof ApiError ? error.message : null;
   const editQuestion = () => {
     if (query !== undefined) setDraft(query);
     router.push("/");
+  };
+  const login = () => {
+    setReturnTo("/ask");
+    router.push("/login");
   };
   return (
     <div role="alert" className="mx-auto max-w-[640px] px-4 py-12 text-center">
@@ -28,13 +39,18 @@ export function ErrorCard({
         ⚡
       </p>
       <h1 className="mt-2 font-bold">
-        {badRequestMessage ? "질문을 확인해 주세요" : "잠시 문제가 생겼어요"}
+        {status === 400
+          ? "질문을 확인해 주세요"
+          : status === 429
+            ? "오늘은 더 분석할 수 없어요"
+            : "잠시 문제가 생겼어요"}
       </h1>
       <p className="text-sm text-muted-foreground">
-        {badRequestMessage ??
-          "잠시 후 다시 시도해 주세요. 계속되면 안내 페이지의 문의처로 알려 주세요."}
+        {status === 400 || status === 429
+          ? serverMessage
+          : "잠시 후 다시 시도해 주세요. 계속되면 안내 페이지의 문의처로 알려 주세요."}
       </p>
-      {badRequestMessage ? (
+      {status === 400 ? (
         <button
           type="button"
           onClick={editQuestion}
@@ -42,12 +58,12 @@ export function ErrorCard({
         >
           질문 고치기
         </button>
+      ) : status === 429 ? (
+        <button type="button" onClick={login} className={BUTTON}>
+          로그인하기
+        </button>
       ) : (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-3 rounded-md bg-navy px-4 py-2 text-[13px] font-bold text-white"
-        >
+        <button type="button" onClick={onRetry} className={BUTTON}>
           다시 시도
         </button>
       )}

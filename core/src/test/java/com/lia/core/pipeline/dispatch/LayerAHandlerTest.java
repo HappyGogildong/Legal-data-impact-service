@@ -25,7 +25,7 @@ import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.plan.Target;
 
 /**
- * Layer A 핸들러 단위 — Summary/Diff가 <b>올바른 AnalyzeRequest(차원·정본·기준선)</b>를 구성해
+ * Layer A 핸들러 단위 — 온라인은 저장본만 읽고(D80), 실시간을 켠 로컬에서만 <b>올바른 AnalyzeRequest(차원·정본·기준선)</b>를 구성해
  * AnalysisEngine에 위임하는지 확인. CapturingEngine으로 전달 인자를 포착한다.
  */
 class LayerAHandlerTest {
@@ -61,57 +61,102 @@ class LayerAHandlerTest {
                 List.of(), arts, List.of(), null, null, "rev1", Instant.now());
     }
 
+    private static final ImpactResult STORED = new ImpactResult("LAW:001809@2026-08-04", "SUMMARY", "저장본",
+            List.of(new ImpactResult.Claim("바뀐다", List.of("LAW:001809@2026-08-04:art:18"), 0.9)),
+            List.of(), List.of(), null, List.of(), "참고용", null);
+
+    private static SummaryHandler summary(CapturingEngine engine, ImpactResult stored, boolean live) {
+        return new SummaryHandler(engine, law -> Optional.ofNullable(stored), new ContextBuilder(), live);
+    }
+
+    private static DiffHandler diff(CapturingEngine engine, ImpactResult stored, boolean live) {
+        return new DiffHandler(engine, (law, baseline) -> Optional.ofNullable(stored), new ContextBuilder(), live);
+    }
+
+    private static DispatchContext inForce() {
+        LawRef ref = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
+        return new DispatchContext(law(Law.Status.시행중), law(Law.Status.시행중), new AnalysisQuery(QueryType.SUMMARY,
+                Set.of(QueryType.SUMMARY), new Target.Reference(ref), "의도", ArticleScope.CHANGED_ONLY, false, null));
+    }
+
     @Test
-    void SummaryHandler는_SUMMARY_차원으로_정본을_위임한다() {
+    void SummaryHandler는_유효한_저장본이_있으면_엔진을_부르지_않고_그것으로_답한다() {
+        CapturingEngine eng = new CapturingEngine();
+
+        AnalyzeResponse response = summary(eng, STORED, false).handle(ctx(null));
+
+        assertNull(eng.captured, "저장본 적중 — 추론하지 않는다");
+        assertSame(STORED, response.result());
+        assertTrue(response.injectedSourceIds().contains("LAW:001809@2026-08-04:art:18"),
+                "근거 집합은 정본으로 다시 조립한다(인용 칩 근거 해석용)");
+    }
+
+    @Test
+    void SummaryHandler는_저장본이_없으면_엔진을_부르지_않고_미충족으로_알린다() {
+        CapturingEngine eng = new CapturingEngine();
+
+        assertThrows(NotPrecomputedException.class, () -> summary(eng, null, false).handle(ctx(null)));
+
+        assertNull(eng.captured, "온라인 Opus 호출 없음(D80)");
+    }
+
+    @Test
+    void SummaryHandler는_시행예정이_아니면_저장본을_쓰지_않고_미충족으로_알린다() {
+        CapturingEngine eng = new CapturingEngine();
+
+        assertThrows(NotPrecomputedException.class, () -> summary(eng, STORED, false).handle(inForce()));
+
+        assertNull(eng.captured);
+    }
+
+    @Test
+    void SummaryHandler는_실시간을_켜면_저장본이_없을_때_엔진에_위임한다() {
         CapturingEngine eng = new CapturingEngine();
         DispatchContext c = ctx(null);
 
-        new SummaryHandler(eng, law -> Optional.empty(), new ContextBuilder()).handle(c);
+        summary(eng, null, true).handle(c);
 
         assertEquals(QueryType.SUMMARY, eng.captured.dimension());
         assertSame(c.law(), eng.captured.law());
     }
 
     @Test
-    void SummaryHandler는_유효한_저장본이_있으면_엔진을_부르지_않고_그것으로_답한다() {
+    void DiffHandler는_유효한_저장본이_있으면_엔진을_부르지_않고_기준선까지_근거로_답한다() {
         CapturingEngine eng = new CapturingEngine();
-        ImpactResult stored = new ImpactResult("LAW:001809@2026-08-04", "SUMMARY", "저장된 요약",
-                List.of(new ImpactResult.Claim("바뀐다", List.of("LAW:001809@2026-08-04:art:18"), 0.9)),
-                List.of(), List.of(), null, List.of(), "참고용", null);
-        DispatchContext c = ctx(null);
+        Law baseline = law(Law.Status.시행중);
 
-        AnalyzeResponse response = new SummaryHandler(eng, law -> Optional.of(stored), new ContextBuilder()).handle(c);
+        AnalyzeResponse response = diff(eng, STORED, false).handle(ctx(baseline));
 
         assertNull(eng.captured, "저장본 적중 — 추론하지 않는다");
-        assertSame(stored, response.result());
-        assertTrue(response.injectedSourceIds().contains("LAW:001809@2026-08-04:art:18"),
-                "근거 집합은 정본으로 다시 조립한다(인용 칩 근거 해석용)");
+        assertSame(STORED, response.result());
+        assertTrue(response.injectedSourceIds().contains(baseline.sourceId(baseline.article("18"))),
+                "변경점 근거에는 기준선 조문도 들어간다");
     }
 
     @Test
-    void SummaryHandler는_시행예정이_아니면_저장본이_있어도_쓰지_않고_엔진에_맡긴다() {
+    void DiffHandler는_저장본이_없으면_엔진을_부르지_않고_미충족으로_알린다() {
         CapturingEngine eng = new CapturingEngine();
-        ImpactResult stored = new ImpactResult("LAW:001809@2026-08-04", "SUMMARY", "저장된 요약",
-                List.of(new ImpactResult.Claim("바뀐다", List.of("LAW:001809@2026-08-04:art:18"), 0.9)),
-                List.of(), List.of(), null, List.of(), "참고용", null);
-        Law inForce = law(Law.Status.시행중);
-        LawRef ref = new LawRef("001809", LocalDate.of(2026, 8, 4), null);
-        DispatchContext c = new DispatchContext(inForce, null, new AnalysisQuery(QueryType.SUMMARY,
-                Set.of(QueryType.SUMMARY), new Target.Reference(ref), "의도", ArticleScope.CHANGED_ONLY, false, null));
 
-        AnalyzeResponse response = new SummaryHandler(eng, law -> Optional.of(stored), new ContextBuilder()).handle(c);
+        assertThrows(NotPrecomputedException.class, () -> diff(eng, null, false).handle(ctx(law())));
 
-        assertSame(inForce, eng.captured.law(), "시행예정이 아니면 저장본 대신 실시간(엔진)으로 — 상세 화면과 같은 기준");
-        assertNull(response.result());
+        assertNull(eng.captured, "온라인 Opus 호출 없음(D80)");
     }
 
     @Test
-    void DiffHandler는_DIFF_차원으로_기준선과_함께_위임한다() {
+    void DiffHandler는_시행예정이_아니면_저장본을_쓰지_않고_미충족으로_알린다() {
+        CapturingEngine eng = new CapturingEngine();
+
+        assertThrows(NotPrecomputedException.class, () -> diff(eng, STORED, false).handle(inForce()));
+
+        assertNull(eng.captured);
+    }
+
+    @Test
+    void DiffHandler는_실시간을_켜면_저장본이_없을_때_기준선과_함께_위임한다() {
         CapturingEngine eng = new CapturingEngine();
         Law baseline = law();
-        DispatchContext c = ctx(baseline);
 
-        new DiffHandler(eng).handle(c);
+        diff(eng, null, true).handle(ctx(baseline));
 
         assertEquals(QueryType.DIFF, eng.captured.dimension());
         assertSame(baseline, eng.captured.baseline());
@@ -120,7 +165,7 @@ class LayerAHandlerTest {
     @Test
     void DiffHandler는_baseline을_요구하고_SummaryHandler는_아니다() {
         CapturingEngine eng = new CapturingEngine();
-        assertTrue(new DiffHandler(eng).needsBaseline(), "DIFF는 대조 대상 baseline 필요");
-        assertFalse(new SummaryHandler(eng, law -> Optional.empty(), new ContextBuilder()).needsBaseline(), "SUMMARY는 baseline 불필요");
+        assertTrue(diff(eng, null, false).needsBaseline(), "DIFF는 대조 대상 baseline 필요");
+        assertFalse(summary(eng, null, false).needsBaseline(), "SUMMARY는 baseline 불필요");
     }
 }

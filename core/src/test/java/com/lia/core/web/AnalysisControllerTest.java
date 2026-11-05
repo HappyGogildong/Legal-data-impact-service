@@ -22,6 +22,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 
 import com.lia.core.application.analysis.AnalysisOutcome;
 import com.lia.core.application.analysis.AnalyzeUseCase;
+import com.lia.core.application.analysis.AnonymousLimitException;
 import com.lia.core.auth.CurrentUser;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.analysis.Situation;
@@ -83,6 +84,16 @@ class AnalysisControllerTest {
         assertTrue(body.answer().containsKey("summary"), "채워진 차원 소문자 키");
         assertTrue(body.unmet().containsKey("impact"), "못 채운 차원+사유");
         assertEquals("참고용", body.disclaimer());
+    }
+
+    @Test
+    void 익명_상한_초과는_429와_화면_메시지로_매핑한다() {
+        ResponseEntity<Map<String, Object>> resp =
+                new ApiExceptionHandler().anonymousLimit(new AnonymousLimitException("오늘은 마감"));
+
+        assertEquals(429, resp.getStatusCode().value());
+        assertEquals("anonymous_limit", resp.getBody().get("error"));
+        assertEquals("오늘은 마감", resp.getBody().get("message"));
     }
 
     @Test

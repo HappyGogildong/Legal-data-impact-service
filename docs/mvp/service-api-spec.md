@@ -129,7 +129,7 @@ BASE  /api/v1
 1. **번역** — `QueryTranslator`(Haiku)가 자연어를 `AnalysisQuery`(타입 집합·엔티티·target)로. `scope`/`lawRef`가 오면 힌트로 병합.
 2. **해소/발견** — target이 `Reference`면 해소(4상태, fail-closed), `Discovery`(LOOKUP)면 `LawDiscovery` 가 `pending` ns 코퍼스를 검색해 후보를 돌려준다(D70).
 3. **플래닝** — 프로필 유무로 Layer B 차원을 빼지 않는다(D69). 프로필을 못 쓰면 디스패처가 그 차원을 사유(`PROFILE_REQUIRED`·`CONSENT_OUTDATED`)와 함께 `unmet` 으로 표기한다. 단 프로필이 없고 Layer A 차원이 하나도 없으면 `SUMMARY` 를 더해 요약은 보여 준다(선계산본이 있으면 비용 0). 검증된 `AnalysisQuery` 확정.
-4. **디스패치·검증** — 타입별 핸들러(SUMMARY=쉬운 요약 저장본 있으면 그것·없으면 Opus, DIFF=Opus, Layer B=개인화 게이트·하루 한도 통과 시 Opus 1회로 IMPACT·ACTION, D67·D69) → 엔진 내부 인용검증(근거 부족은 그 차원만 `INSUFFICIENT_GROUNDING`). 정본은 저장소 정확 조회(벡터 검색 아님). Discovery 는 분석 팬아웃 없이 후보만(D70).
+4. **디스패치·검증** — 익명은 분류 전에 하루 상한을 센다(넘으면 429, D81). 타입별 핸들러(SUMMARY·DIFF=배치가 만든 저장본만·없으면 `NOT_PRECOMPUTED`, D67·D80, Layer B=개인화 게이트·하루 한도 통과 시 Opus 1회로 IMPACT·ACTION, D69) → 엔진 내부 인용검증(근거 부족은 그 차원만 `INSUFFICIENT_GROUNDING`). 정본은 저장소 정확 조회(벡터 검색 아님). Discovery 는 분석 팬아웃 없이 후보만(D70).
 
 **RESOLVED 응답** — 해소되고 분석까지 성공:
 ```jsonc
@@ -148,7 +148,7 @@ BASE  /api/v1
   },
   "unmet": {                                   // 못 채운 차원 → 사유 코드·설명. 웹은 코드로 안내를 고른다
     "impact": { "reason": "PROFILE_REQUIRED", "message": "프로필 필요 (Layer B)" }
-  },                                           // 코드: LAW_NOT_LOADED · BASELINE_NOT_LOADED · PROFILE_REQUIRED · NOT_IMPLEMENTED · CONSENT_OUTDATED · DAILY_LIMIT · INSUFFICIENT_GROUNDING
+  },                                           // 코드: LAW_NOT_LOADED · BASELINE_NOT_LOADED · PROFILE_REQUIRED · NOT_IMPLEMENTED · CONSENT_OUTDATED · DAILY_LIMIT · INSUFFICIENT_GROUNDING · NOT_PRECOMPUTED
   "sources": [                                 // answer 안 모든 인용키의 근거(인용 칩·근거 패널용). 찾지 못한 인용은 label=sourceId, text=null
     { "sourceId": "LAW:001809@2026-08-04:art:18", "label": "주택법 제18조(사업계획의 통합심의)",
       "text": "① …(개정)", "previousText": "① …(현행)",   // changeType·previousText 는 찾은 법령 버전이 시행예정일 때만(시행중·과거·철회 버전은 키에 날짜가 있어도 null). previousText: 현행 원문(개정·삭제·이동만, 신설·무변경은 null)
@@ -199,7 +199,8 @@ BASE  /api/v1
 - 익명 요청에 F3·F4가 필요하면 그 차원은 생략하고 `unmet: {"impact": {"reason":"PROFILE_REQUIRED", "message":"…"}}`(차원→사유 코드·설명) — 전체를 막지 않는다.
 - `CONSENT_OUTDATED` — 개인화 차원(Layer B)인데 프로필 동의가 옛 처리방침 버전이다 → 재동의 안내 (D69)
 - `DAILY_LIMIT` — 오늘 개인화 분석 한도(`lia.personalization.daily-limit`, 기본 20)를 다 썼다 (D69)
-- `INSUFFICIENT_GROUNDING` — 재생성 후에도 인용 검증을 통과하지 못했다(환각 노출 금지). Layer A·B 공통 (D69)
+- `INSUFFICIENT_GROUNDING` — 재생성 후에도 인용 검증을 통과하지 못했다(환각 노출 금지). 운영에서는 Layer B 만(Layer A 는 배치에서 걸러 저장하지 않는다) (D69·D80)
+- `NOT_PRECOMPUTED` — 요약·변경점의 유효한 저장본이 없다. 온라인은 Opus 를 부르지 않는다(로그인 사용자도 같다). 시행예정본이 아닌 버전도 저장본이 없어 이 사유다 (D80)
 - `SITUATION_EXPIRED` — `POST /analyses/action-revisions` 전용(§3.0.1): 세션에 그 법령의 상황 질문이 없거나(세션 만료·새 로그인·다른 법령), 요청 `setId` 가 세션의 질문 묶음과 다르다(다른 탭·후속 질문이 같은 법령 질문을 덮어씀) (D71)
 - `analysisId` — 로그인 사용자의 법령이 정해진 분석에만. 이력 저장(§3.9)·대응 방안 재생성(§3.0.1)이 돌려보낸다. 서버가 최근 20개를 세션에 보관(D73).
 - `situation`(D71) — 질문은 서버가 **HTTP 세션(메모리)에 법령 버전별로 보관**(최근 20개)한다. 클라이언트는 질문 문장을 되돌려 보내지 않고 `setId`(화면이 받은 질문 묶음 식별자)와 `questionId`+답만 `POST /analyses/action-revisions` 로 보낸다. 근거가 주입 집합 밖이거나 형식이 깨진 질문은 서버가 버린다(최대 3개, 질문 문장·단계 설명은 최대 200자 한 줄(줄바꿈 없음), 선택지 최대 40자).
@@ -488,7 +489,7 @@ GET /api/v1/laws/trending?window=week&limit=10
 | 404 | `not_found` | `lawId`/`efYd` 조합이 저장소에 없음 · 프로필 미생성 · 북마크할 법령이 저장소에 없음(`PUT /bookmarks/{lawId}`) · 이력이 없거나 남의 기록(`GET /history/{id}`) · 구독할 법령이 저장소에 없음(`PUT /subscriptions/{lawId}`) |
 | 409 | `consent_required` · `bookmark_limit` · `analysis_expired` · `history_limit` · `subscription_limit` | 현재 처리방침 버전의 프로필 동의 없이 `PUT /profile` (D61) · 사용자당 북마크 한도 초과 `PUT /bookmarks/{lawId}` (D72) · 저장할 분석 결과가 세션에 없음 `POST /history` (D73) · 이력 한도 초과 `POST /history` (D73) · 구독 한도 초과 `PUT /subscriptions/{lawId}` (D74) |
 | 422 | `insufficient_grounding` | 요청한 **모든** 차원이 인용검증 실패(일부만 실패면 200 + `unmet`) |
-| 429 | `rate_limited` | 모델·출처 API 한도 |
+| 429 | `anonymous_limit` · `rate_limited` | 오늘 익명 분석 상한(`lia.analysis.anonymous-daily-limit`, 기본 1,000, D81 — `message` 를 화면에 그대로) · 모델·출처 API 한도 |
 | 503 | `upstream_error` | 모델 API 장애 |
 
 > **프로필 미설정은 오류가 아니다.** `/analyses`는 익명·프로필 없음도 정상 처리하고 채울 수 없는 차원을 `unmet`으로 표기한다(부분 성공). 전면 차단(`409`)하지 않는 이유는 자연어 질의 모델에서 "일단 답을 주되 개인화는 프로필 입력을 유도"가 자연스럽기 때문이다.

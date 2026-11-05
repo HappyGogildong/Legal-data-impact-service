@@ -78,7 +78,7 @@ class IngestJobIntegrationTest {
     static ChunkStore chunkStore;
     static LawSummaryStore summaries;
     /** 지금 근거 집합 안 인용만 인정하는 읽기 — 운영 배선과 같은 구성. */
-    static LawSummaries groundedSummaries;
+    static GroundedSummaries groundedSummaries;
     /** groundedEngine 의 추론기 호출 수 — 유료 호출이 없었는지 확인용. */
     static final AtomicInteger reasonerCalls = new AtomicInteger();
     static IngestService ingest;
@@ -160,10 +160,10 @@ class IngestJobIntegrationTest {
         List<TaskHandler> handlers = List.of(
                 sync != null ? sync : new SyncHandler(feed, ingest, lawStore, queue, tx, clock),
                 new IndexHandler(lawStore, new RAGIndexer(chunkStore), new MinIntervalLimiter(Duration.ZERO)),
-                new SummarizeHandler(lawStore, summaryEngine, summaries, groundedSummaries, new MinIntervalLimiter(Duration.ZERO), "test-model"),
+                new SummarizeHandler(lawStore, summaryEngine, summaries, groundedSummaries, groundedSummaries, new MinIntervalLimiter(Duration.ZERO), "test-model"),
                 new TransitionHandler(lawStore, chunkStore, queue, tx),
                 new PurgeHandler(lawStore, chunkStore, tx));
-        return new IngestJob(queue, runs, discoverer, lawStore, groundedSummaries, dueNotifications, handlers, workers, indexEnabled,
+        return new IngestJob(queue, runs, discoverer, lawStore, groundedSummaries, groundedSummaries, dueNotifications, handlers, workers, indexEnabled,
                 summaryEnabled, Duration.ofMillis(20), Duration.ofDays(30), clock, null);
     }
 
@@ -320,11 +320,11 @@ class IngestJobIntegrationTest {
         assertEquals(1, filled.counts().get("enqueued.SUMMARIZE"));
         assertEquals(1, filled.counts().get("done"));
         assertTrue(groundedSummaries.findCurrent(lawStore.find(LAW, EF).orElseThrow()).isPresent());
-        assertEquals(1, reasonerCalls.get());
+        assertEquals(2, reasonerCalls.get(), "요약·변경점 각 1회");
 
         RunReport again = job(today).run(summarize);
         assertEquals(1, again.counts().get("done"), "등록·처리는 되지만");
-        assertEquals(1, reasonerCalls.get(), "유효한 요약이 있어 추론기는 부르지 않는다");
+        assertEquals(2, reasonerCalls.get(), "유효한 저장본이 있어 추론기는 부르지 않는다");
     }
 
     @Test
@@ -339,6 +339,7 @@ class IngestJobIntegrationTest {
 
         assertEquals(RunOutcome.SUCCESS, planned.outcome());
         assertEquals(1, planned.counts().get("planned.SUMMARIZE"));
+        assertEquals(2, planned.counts().get("planned.SUMMARIZE.calls"), "요약·변경점 호출 수");
         assertFalse(planned.counts().containsKey("enqueued.SUMMARIZE"));
         assertEquals(readyBefore, readyCount(TaskKind.SUMMARIZE), "큐에 아무것도 더하지 않는다");
         assertEquals(0, reasonerCalls.get(), "유료 호출 없음");
@@ -346,7 +347,8 @@ class IngestJobIntegrationTest {
 
         job(today).run(new JobCommand(JobCommand.Type.SUMMARIZE, false, false, null, null, null));
         RunReport afterFill = job(today).run(dryRun);
-        assertEquals(0, afterFill.counts().get("planned.SUMMARIZE"), "유효한 요약이 있으면 대상이 아니다");
+        assertEquals(0, afterFill.counts().get("planned.SUMMARIZE"), "유효한 저장본이 있으면 대상이 아니다");
+        assertEquals(0, afterFill.counts().get("planned.SUMMARIZE.calls"));
     }
 
     private int readyCount(TaskKind kind) {

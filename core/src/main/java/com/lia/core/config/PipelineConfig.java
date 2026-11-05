@@ -36,6 +36,7 @@ import com.lia.core.pipeline.plan.QueryTranslator;
 import com.lia.core.pipeline.plan.SpringAiQueryTranslator;
 import com.lia.core.application.analysis.ActionRevisionUseCase;
 import com.lia.core.application.analysis.AnalyzeUseCase;
+import com.lia.core.application.analysis.AnonymousAnalysisQuota;
 import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.pipeline.dispatch.PersonalizationQuota;
 import com.lia.core.pipeline.discover.LawDiscovery;
@@ -48,6 +49,7 @@ import com.lia.core.store.LawSource;
 import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
 import com.lia.core.store.LawViews;
+import com.lia.core.store.AnonymousAnalysisUsageStore;
 import com.lia.core.store.PersonalizationUsageStore;
 import com.lia.core.store.PgVectorChunkStore;
 
@@ -163,7 +165,7 @@ public class PipelineConfig {
 
     /** 쉬운 요약 읽기 포트(D67)의 유일한 구현 — 인용이 지금 근거 집합 안인 저장본만. 분석·법령 상세·배치가 공유한다. */
     @Bean
-    public LawSummaries lawSummaries(LawSummaryStore lawSummaryStore, ContextBuilder contextBuilder) {
+    public GroundedSummaries lawSummaries(LawSummaryStore lawSummaryStore, ContextBuilder contextBuilder) {
         return new GroundedSummaries(lawSummaryStore, contextBuilder);
     }
 
@@ -182,8 +184,9 @@ public class PipelineConfig {
     /** 온라인 유스케이스(plan→dispatch). 애노테이션 없는 코어를 여기서 배선(프레임워크 비의존). */
     @Bean
     public AnalyzeUseCase analyzeUseCase(QueryPlanner queryPlanner, QueryDispatcher queryDispatcher, LawViews lawViews,
-                                         PersonalizationGate personalizationGate) {
-        return new AnalyzeUseCase(queryPlanner, queryDispatcher, lawViews, personalizationGate);
+                                         PersonalizationGate personalizationGate,
+                                         AnonymousAnalysisQuota anonymousAnalysisQuota) {
+        return new AnalyzeUseCase(queryPlanner, queryDispatcher, lawViews, personalizationGate, anonymousAnalysisQuota);
     }
 
     /** 대응 방안 상황 확인 → 대응 방안만 재생성(D71). */
@@ -192,6 +195,13 @@ public class PipelineConfig {
                                                        PersonalizationQuota personalizationQuota,
                                                        AnalysisEngine analysisEngine) {
         return new ActionRevisionUseCase(personalizationGate, lawSource, personalizationQuota, analysisEngine);
+    }
+
+    /** 익명 분석의 서비스 전체 하루 상한(D81) — 분류 전에 차감. */
+    @Bean
+    public AnonymousAnalysisQuota anonymousAnalysisQuota(JdbcClient jdbcClient,
+            @Value("${lia.analysis.anonymous-daily-limit}") int dailyLimit) {
+        return new AnonymousAnalysisUsageStore(jdbcClient, dailyLimit);
     }
 
     /** 사용자별 하루 개인화 분석 한도(D69) — Opus 호출 직전 차감. */

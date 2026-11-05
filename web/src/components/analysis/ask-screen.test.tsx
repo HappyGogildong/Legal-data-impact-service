@@ -179,6 +179,53 @@ describe("AskScreen", () => {
     expect(router.push).toHaveBeenCalledWith("/");
   });
 
+  it("익명 상한 초과(429) → 서버 메시지와 로그인 안내, 다시 시도는 없다(D81)", async () => {
+    setAsk({ query: "주택법 바뀌면?" });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      json({ error: "anonymous_limit", message: "오늘은 마감됐어요" }, 429),
+    );
+    renderScreen();
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "오늘은 더 분석할 수 없어요",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("오늘은 마감됐어요")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "다시 시도" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "로그인하기" }));
+
+    expect(router.push).toHaveBeenCalledWith("/login");
+    expect(sessionStorage.getItem("lia.returnTo")).toBe("/ask");
+  });
+
+  it("미리 만든 설명이 없으면 안내와 함께 법령 상세로 보낸다(D80)", async () => {
+    setAsk({ query: "주택법 쉬운 요약" });
+    mockApi({
+      "POST /api/v1/analyses": () =>
+        apiJson({
+          ...resolvedResponse,
+          answer: {},
+          unmet: {
+            summary: { reason: "NOT_PRECOMPUTED", message: "저장본 없음" },
+          },
+        }),
+      "GET /api/v1/account": () => apiJson({ error: "unauthenticated" }, 401),
+    });
+    renderScreen();
+
+    expect(
+      await screen.findByText("이 설명은 아직 준비되지 않았어요"),
+    ).toBeInTheDocument();
+    const law = resolvedResponse.law!;
+    expect(
+      screen.getByRole("link", { name: "법령 상세에서 확인하기" }),
+    ).toHaveAttribute("href", `/laws/${law.lawId}/${law.effectiveDate}`);
+  });
+
   it("결과 화면 '내 영향' 카드를 열면 익명에게 로그인하기가 붙는다(renderUnmetAction 연결)", async () => {
     setAsk({ query: "주택법 바뀌면?" });
     mockApi({

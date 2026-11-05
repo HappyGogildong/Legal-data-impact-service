@@ -51,7 +51,8 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 | (같은 테이블 읽기) | `LawCatalogStore` | 곧 시행 목록(키셋 커서)·한 법령의 버전들(D65) | [[LawCatalogApi]] |
 | (여러 테이블 집계) | `DataStatusStore` | 데이터 현황(적재 시각·건수) | [[DataStatusApi]] |
 | `vector_store` | `PgVectorChunkStore` · `ChunkStore` | 조문·요약 청크 임베딩 | [[ChunkStore]] |
-| `law_summaries` (V9) | `LawSummaryStore` · `LawSummaries`(구현 `pipeline.analyze.GroundedSummaries`) | 쉬운 요약 선계산(D67) — 버전마다 1행. 저장 revision·프롬프트 버전이 지금과 같을 때만 읽고, 지금의 근거 집합으로 인용 검증을 다시 통과해야 쓴다 | [[IngestJob]](SUMMARIZE) · [[QueryDispatcher]](SummaryHandler) |
+| `law_summaries` (V9·V14) | `LawSummaryStore` · `LawSummaries`·`LawDiffs`(구현 `pipeline.analyze.GroundedSummaries`) | Layer A 선계산(D67·D80) — 버전·차원(SUMMARY·DIFF)마다 1행. 저장 revision·프롬프트 버전(변경점은 `baseline_revision` 까지)이 지금과 같을 때만 읽고, 지금의 근거 집합으로 인용 검증을 다시 통과해야 쓴다 | [[IngestJob]](SUMMARIZE) · [[QueryDispatcher]](SummaryHandler·DiffHandler) |
+| `anonymous_analysis_usage_daily` (V15) | `AnonymousAnalysisUsageStore` · `AnonymousAnalysisQuota` | 익명 분석 서비스 전체 하루 상한(D81) — 서울 날짜별 횟수만. 조건부 upsert 한 문장으로 차감 | `AnalyzeUseCase` |
 | `law_views_daily` (V8) | `LawViewStore` · `LawViews` | 자주 찾는 법령(D66) — 서울 날짜별 조회 횟수만(누가 봤는지 없음) | [[TrendingApi]] |
 | `personalization_usage_daily` (V10) | `PersonalizationUsageStore` · `PersonalizationQuota` | 사용자별 하루 개인화 한도(D69) — 원자 upsert 차감, 계정 삭제 시 cascade | [[QueryDispatcher]] |
 | `accounts`·`user_profiles` (V2~V4) | `auth.AccountStore`·`profile.UserProfileStore` | 계정·프로필·동의 | [[Auth]] · [[UserProfile]] |
@@ -67,7 +68,7 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 - **배치용 계약**([[IngestJob]]): 탐색용 시행예정 버전 목록(`lawId`·`efYd`·`mst`·`missing_since`) · 상태 변경(**컬럼과 payload의 `status`를 함께** — `find`는 payload를 역직렬화) · 더 오래된 `시행중` → `과거` 일괄 전환 · `missing_since` 설정/해제 · 같은 법령의 남은 시행예정본 조회 · 증분 비교용 저장 revision 조회(**상태가 같을 때만** 일치로 본다 — 철회본이 같은 내용으로 다시 나타나도 `시행예정`으로 복원되게). 컬럼 `missing_since date`(완주 목록에서 처음 안 보인 날, KST)는 `V5__ingest_batch.sql`.
 - 배치 쓰기는 호출자 트랜잭션에 참여한다(`JdbcClient` → 같은 `DataSource`) — `SyncHandler`가 저장과 `INDEX` 등록을 한 트랜잭션으로 묶는다.
 - **벡터 (chunks)** — [[ChunkStore]] 소유. 여기서 다루지 않는다.
-- **쉬운 요약 저장본** — `law_summaries`(위 표, D67). 답변 캐시가 아니라 배치가 미리 만든 Layer A 결과.
+- **Layer A 저장본** — `law_summaries`(위 표, D67·D80). 답변 캐시가 아니라 배치가 미리 만든 Layer A 결과.
 - **캐시 (후속)**
   - `LawFacts` — 키 `lawId@efYd + revision`(프로필 무관).
   - `ImpactResult` 답변 캐시 — 키 `hash(정규화 질문)+law_ref+profileHash+prompt_version+revision`(완전 동일 질의, D51). Layer B 개인화 답은 지금 저장하지 않는다(D69).
@@ -105,5 +106,5 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 ## 구현 순서 (near-term → later)
 1. **완료:** `law_versions` upsert + `find`/`findBaseline` + Flyway 스키마 → 적재 파이프라인(Normalizer→DiffBuilder→Store).
 2. 벡터 chunks는 [[ChunkStore]]로 분리 — [[Embedder]]·[[RAGIndexer]]와 함께.
-3. **완료:** 쉬운 요약 저장본 `law_summaries`(D67) · 조회 집계(D66) · 개인화 한도(D69) — 위 §store 패키지 테이블.
+3. **완료:** Layer A 저장본 `law_summaries`(D67·D80) · 조회 집계(D66) · 개인화 한도(D69) · 익명 상한(D81) — 위 §store 패키지 테이블.
 4. `LawFacts`·답변 캐시 — 병목을 지표로 증명한 뒤(D48·D51).

@@ -16,7 +16,7 @@ related: ["ARCHITECTURE.md", "backend/observability.md", "adr/decision-log.md"]
 
 > 실측 성과 수치(p99·QPS 등)는 부하 테스트 단계에서 채운다 — 이 프로젝트는 **측정하지 않은 수치를 쓰지 않는다**([D48](backend/observability.md)). 아래는 현재까지의 기술적 하이라이트다.
 
-- ⚡ **비용 인지 설계** — 자연어 질의를 타입 DTO로 번역하는 [Query Planner](components/plan/QueryPlanner.md)로 캐시(Layer A)/LLM(Layer B)를 분기. 요약·비교는 LLM 호출 0. `조문변경여부` 플래그로 분석 대상을 **137 → 6 조문(약 20분의 1)** 으로 축소(주택법 실측).
+- ⚡ **비용 인지 설계** — 자연어 질의를 타입 DTO로 번역하는 [Query Planner](components/plan/QueryPlanner.md)로 선계산(Layer A)/요청별 LLM(Layer B)을 분기. 요약·변경점은 배치가 미리 만들어 온라인 Opus 호출 0(D80, 분류 Haiku 는 요청마다 1회). `조문변경여부` 플래그로 분석 대상을 **137 → 6 조문(약 20분의 1)** 으로 축소(주택법 실측).
 - 🔄 **법령 수집 파이프라인** — 국가법령정보 *시행 대기 법령*을 배치 수집·정규화·조문 diff 선계산(**실측 899건**). 오프라인(적재)·온라인(질의) 실행 모드 분리.
 - 📊 **측정 선행 Observability** — Prometheus·Loki·Grafana·Tempo + k6. single-flight 등 동시성 기법은 **지표로 병목을 증명한 뒤** 적용(speculative 최적화 배제).
 
@@ -97,6 +97,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 법령 조회(#39, 하위 프로젝트 1/7): `GET /api/v1/laws`(곧 시행 목록 — 오늘(서울) 이후·키셋 커서)·`/laws/{lawId}`(시행예정본·기준선)·`/laws/{lawId}/{efYd}`(결정론 상세 — 개정 이유·시행 규칙·바뀐 조문 현행 대비·부칙·위임 조항, D65) · 웹 홈 곧 시행 5개·S06 목록(기간 필터·더 보기)·S05 상세(조문 고유 주소·쉬운 요약 보기 → S02)·S02 → S05 링크 · 서버 렌더링 조회(`"use cache"`) · E2E 모의 API 서버 | ✅ 단위·통합·웹 슬라이스·E2E(모의 API)·로컬 실데이터 점검. 점검에서 찾은 적재 정규화 버그 수정 — 소관부처에 부처 코드가 섞임(V7 1회 정리), 조문가지번호 누락(제105조의2가 제105조와 겹침), 조문 이동 자리표시 `000000`을 이동으로 오인, 조문 이동 값 6자리(`000703`)가 조문번호와 안 맞음, 장·절 제목 행이 조문번호를 공유해 조문 조회·바뀐 조문에 섞임. 자주 찾는 법령·분야 필터는 다음 하위 프로젝트 |
 | 자주 찾는 법령(하위 프로젝트 2/7, D66): 조회 1회 = S05 상세 방문(브라우저 조회 신호·탭당 1회) + 분석 해소 · `law_views_daily`(V8, 서울 날짜별 횟수만) · `GET /api/v1/laws/trending`(day·week·month, `previousRank`) · `POST …/views`(CSRF 예외) · 웹 홈 이번 주 5개·S06 탭 곧 시행·자주 찾는 | ✅ 단위·통합·웹 슬라이스·E2E(모의 API). 요청 빈도 제한·분야 필터는 후속 |
 | 쉬운 요약 선계산(D67, #38 일부): 배치 작업 `SUMMARIZE`(SYNC 가 바뀐 시행예정본에 등록, `summarize` 명령은 시행예정본 전체를 등록하고 유효한 요약은 건너뜀, 분석과 같은 엔진·인용 검증, 실패면 저장 안 함) · `law_summaries`(V9, revision·프롬프트 버전으로 유효성, 읽을 수 없는 행은 낡음) · 유료 보호(`run`은 `lia.batch.summary.enabled` 켜짐일 때만, 다른 수동 명령은 처리 안 함) · 분석 SUMMARY 가 저장본으로 답 · 상세 API `summary` · S05 쉬운 요약 기본·인용 칩 → 조문·개정 이유 원문 접힘 | ✅ 단위·통합·E2E(가짜 추론기·모의 API). 실제 일괄 생성(유료 Opus)은 사용자 승인 후. DIFF·LawFacts 선계산은 후속 |
+| Layer A 온라인 Opus 제거(D80)·익명 상한(D81) | ✅ 요약·변경점은 배치(`summarize`)가 차원별로 저장(V14, 변경점은 기준선 revision 까지 유효), 온라인은 저장본만 읽고 없으면 `NOT_PRECOMPUTED`. 익명 분석은 서비스 전체 하루 상한(V15, 기본 1,000 잠정), 넘으면 429 |
 | Layer B — 내 영향·대응 방안 (D69) | ✅ 질문·버튼 요청 시 Opus 1회(근거 부족 시 재생성 ≤2회, 한도는 요청당 1), 하루 한도 20(`lia.personalization.daily-limit`, 서울 날짜), 미충족 사유 3종(`CONSENT_OUTDATED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`). 라이브 스모크(`layerB_실생성이_…`)는 옵트인(`LIA_ANALYZE_LIVE`, 유료) — 실행은 사용자 승인 후 |
 | 법령 발견(#19, D70): 법령명 없는 질문 → pending 색인 유사도 검색·법령 단위 묶기·시행예정 확인 → S04 후보(쉬운 요약 첫 문장·근거 칩), 프로필 기준 토글, 후보 선택 시 기존 분석(같은 질문 + lawRef 재요청은 LOOKUP 을 빼고 요약으로) · 라이브 스모크(옵트인 `LIA_DISCOVERY_LIVE`, 유료 임베딩) | ✅ 단위(`LawDiscoveryTest`·플래너·디스패처·유스케이스)·API 슬라이스·웹 단위·E2E(모의 API). 유사도 하한 제외는 Testcontainers(`PgVectorChunkStoreIntegrationTest`). 하한 값은 클라우드 전체 색인 뒤 조정 |
 | 대응 방안 상황 확인(⑤, D71): Layer B 가 상황 질문(최대 3, 근거 조문) 함께 생성 → 세션(메모리) 보관 → 답하면 대응 방안만 재생성(한도 1회), "내 상황 반영" 강조 · 비용 정책 문서 신설 | ✅ 단위·API 슬라이스·웹·E2E, 라이브 스모크(옵트인 `LIA_SITUATION_LIVE`, 유료). 자유 입력 사실 추출은 다음 단계 |
