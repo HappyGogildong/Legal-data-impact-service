@@ -33,12 +33,13 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 | `DimensionHandler` (포트) | **Layer A 전용** 한 차원의 실행 계약 — `type() / needsRag() / needsBaseline() / handle(ctx)`. 실행 본체는 AnalysisEngine 위임. Layer B(IMPACT·ACTION)는 이 포트가 아니라 `PersonalizedHandler`(D69). |
 | `DimensionHandlerRegistry` | `QueryType → DimensionHandler` 매핑. `@Component` 자동수집, 중복 타입 fail-fast, 구성 후 불변. |
 | `SummaryHandler` | SUMMARY(Layer A) — 저장된 쉬운 요약(D67, `LawSummaries`)이 유효하면(시행예정본 한정) 그것으로 답하고 추론기를 부르지 않는다. 없으면 `NotPrecomputedException` → `NOT_PRECOMPUTED`(D80). 비교 아님 → baseline 미사용. |
-| `DiffHandler` | DIFF(Layer A) — 저장된 변경점(D80, `LawDiffs`)이 유효하면 그것으로 답한다. 없으면 `NotPrecomputedException` → `NOT_PRECOMPUTED`. baseline null이면 제정(D42). |
+| `DiffHandler` | DIFF(Layer A) — 저장된 변경점(D80, `LawDiffs`)이 유효하면 그것으로 답한다. 없으면 `NotPrecomputedException` → `NOT_PRECOMPUTED`. baseline null이면 제정(D42). 질문이 조문을 지목하면 `ArticleFocus` 로 좁힌다(D82). |
+| `ArticleFocus` (정적 함수 모음) | 특정 조문 변경점(D82) — 없는 조문·안 바뀐 조문이면 `ArticleOutOfScopeException` 으로 그 사유를 알리고, 바뀐 조문이면 저장 변경점을 그 조문을 인용한 주장으로 거른다. 시행예정본에만 적용한다. |
 | `PersonalizedHandler` | IMPACT·ACTION(Layer B, D69) — `AnalyzeRequest(IMPACT, law, baseline, profile, question)` 로 엔진 **1회**, 결과를 요청된 차원만 분할(IMPACT ← summary·claims·impacts / ACTION ← actions·effectiveInfo, 공통 uncertainties·disclaimer). 엔진이 낸 상황 질문·단계 설명은 ACTION 응답의 `Situation`(`questions`·`stepNotes`)에 싣는다(D71, IMPACT 응답은 `Situation.none()`). |
 | `PersonalAdmission` (정적 함수 모음) | Layer B 판정의 **공통 부분**(D71) — 개정본인데 기준선 없음(`BASELINE_NOT_LOADED`)·하루 한도 차감(`DAILY_LIMIT`)·정본 없음·근거 부족 사유를 만든다. 첫 Layer B(디스패처)와 상황 재생성([[ActionRevisionUseCase]])이 **같은 함수를 공유**해 규칙이 갈라지지 않는다. |
 | `Personalization` (sealed) | 개인화 판정 — `Usable(userId, UserProfile)` \| `Blocked(Reason)`. `anonymous()` = `Blocked(PROFILE_REQUIRED)`. 만드는 쪽은 `PersonalizationGate`([[ProfileUseCase]]). |
 | `PersonalizationQuota` (포트) | `tryConsume(userId)` — 하루 한도 원자 차감, 초과면 false. 구현 `store.PersonalizationUsageStore`(V10). |
-| `Unmet` (record) | 미충족 사유 `{ reason, message }` — `LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`·`PROFILE_REQUIRED`·`CONSENT_OUTDATED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`·`NOT_PRECOMPUTED`(D80, Layer A 저장본 없음)·`SITUATION_EXPIRED`(D71, 상황 재생성 전용 — 디스패처는 만들지 않는다)·`NOT_IMPLEMENTED`. 공개 API 코드와 같다([[AnalysisApi]]). |
+| `Unmet` (record) | 미충족 사유 `{ reason, message }` — `LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`·`PROFILE_REQUIRED`·`CONSENT_OUTDATED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`·`NOT_PRECOMPUTED`(D80, Layer A 저장본 없음)·`ARTICLE_NOT_CHANGED`·`ARTICLE_NOT_FOUND`(D82, 지목한 조문이 안 바뀜·없음)·`SITUATION_EXPIRED`(D71, 상황 재생성 전용 — 디스패처는 만들지 않는다)·`NOT_IMPLEMENTED`. 공개 API 코드와 같다([[AnalysisApi]]). |
 | `DispatchContext` (record) | 핸들러 실행 재료 `{ law, baseline?, query }`. dispatcher가 정본 1회 조회해 조립. |
 | `DispatchResult` (record) | 차원별 결과 묶음 `{ primaryType, filled, unmet, discovery? }`. `fullySatisfied()`. `discovery` 는 Discovery 질문일 때만(D70). |
 | `DispatchResult.Discovery` (record) | LOOKUP 결과 `{ found: DiscoveryResult, profileBlocked: Unmet? }` — `profileBlocked` 는 프로필 토글이 켜졌는데 프로필을 못 쓴 경우의 사유(`PROFILE_REQUIRED`·`CONSENT_OUTDATED`). |
@@ -103,7 +104,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 ## 검증
 
 - **Dispatcher 단위**(FakeHandler·Fake `LawSource`): 단일/복수 차원 filled · 미구현 차원 unmet · 정본 미적재 전타입 unmet · Discovery → `discovery` 결과(`LawDiscovery` 1회·한도 미차감, `filled`·`unmet` 비어 있음) · 토글+`Usable` 이면 프로필 전달, 토글+`Blocked` 면 `profileBlocked`(D70). `PersonalAdmission` 단위(기준선 없음·한도 초과·통과 — 디스패처·재생성 공용, D71) · Layer B(D69): 핸들러 1회 호출·쿼터 1회 소비로 두 차원 filled · `Blocked` 사유면 쿼터·핸들러 무접촉 · `DAILY_LIMIT` · 개정본인데 기준선 없음 → `BASELINE_NOT_LOADED` · 근거 부족 → `INSUFFICIENT_GROUNDING`.
-- **핸들러 단위**: Personalized 의 ACTION 응답에 `Situation`(질문·단계 설명)이 실리고 IMPACT 응답은 `none()`(D71) · Summary/Diff가 올바른 `AnalyzeRequest(dimension, law, baseline)` 구성해 위임(CapturingEngine) · Summary 는 유효한 저장본이 있으면 엔진 무호출 · Personalized 는 두 차원 요청에도 엔진 1회·분할.
+- **핸들러 단위**: 조문 지목 DIFF(D82) — 안 바뀐 조문·없는 조문은 저장본이 없어도 그 사유 · 바뀐 조문은 그 조문을 인용한 주장만·`summary` 제거 · 인용한 주장이 없으면 `NOT_PRECOMPUTED` · 이동 조문은 옛 번호로도 찾는다 · Personalized 의 ACTION 응답에 `Situation`(질문·단계 설명)이 실리고 IMPACT 응답은 `none()`(D71) · Summary/Diff가 올바른 `AnalyzeRequest(dimension, law, baseline)` 구성해 위임(CapturingEngine) · Summary 는 유효한 저장본이 있으면 엔진 무호출 · Personalized 는 두 차원 요청에도 엔진 1회·분할.
 - **레지스트리 단위**: 타입 매핑 · 중복타입 실패.
 
 ## 의존 / 관련

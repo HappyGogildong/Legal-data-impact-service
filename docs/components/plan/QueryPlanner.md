@@ -25,7 +25,7 @@ Target 2형: **`Reference`**(해소된 1건) · **`Discovery`**(코퍼스 검색
 | # | 자연어 질의 | 타입(주/집합) | Target | 파이프라인 | 응답 |
 |---|---|---|---|---|---|
 | S1 | "주택법 바뀌면 나 전세 계약 어떻게 돼?" | IMPACT / {DIFF,IMPACT,ACTION} | Reference | 해소 → diff(캐시)+영향+대응 | 여러 차원 |
-| S2 | "주택법 제18조 뭐가 바뀌었어?" | DIFF / {DIFF} | Reference(art:18) | 해소 → 해당 조문 diff | 조문 대비 |
+| S2 | "주택법 제18조 뭐가 바뀌었어?" | DIFF / {DIFF} | Reference(art:18) | 해소 → 저장 변경점을 해당 조문으로 좁힘(D82) | 조문 대비 |
 | S3 | "주택법이 대체 무슨 법이야?" | SUMMARY / {SUMMARY} | Reference | 해소 → 선계산 요약 | 요약 카드 |
 | S4 | "나한테 영향 있을 시행예정 법령 찾아줘" | LOOKUP / {LOOKUP} | Discovery(프로필) | 코퍼스 검색 | 후보 랭킹 |
 | S5 | "나한테 영향 있을 법령 찾아서 분석해줘" | LOOKUP / {LOOKUP,IMPACT,ACTION} | Discovery(프로필) | 검색 → 후보만(분석은 고른 뒤 재요청, D70) | 후보(고른 뒤 분석) |
@@ -81,7 +81,7 @@ AnalysisQuery {
 
 ## 3.1 타입 (`pipeline/plan`)
 
-- `QueryType` enum(5종) · `Target` sealed: `Reference(LawRef)` | `Discovery(DiscoveryCriteria)` · `LawRef{lawId, effectiveDate?, articleNo?}`.
+- `QueryType` enum(5종) · `Target` sealed: `Reference(LawRef)` | `Discovery(DiscoveryCriteria)` · `LawRef{lawId, effectiveDate?, articleNo?}` — `articleNo` 는 생성자가 `Article.no` 형식("18", "105의2")으로 정규화한다. "제18조제1항"은 "18", 여러 조문·해석 불가 값은 null(법 전체, D82). 명시 참조(`explicitRef`)에 조문이 없으면 같은 질문에서 뽑은 조문 번호를 잇는다.
 - `AnalysisQuery{primaryType, types:Set, target, entities, intentSummary, filters(articleScope), profileBound, options}` — **생성자가 불변식 강제**(fail-closed 승계: primaryType∈types 등).
 - `PlanResult` sealed: `Planned(AnalysisQuery)` | `Unresolved(ResolutionResult)`.
 
