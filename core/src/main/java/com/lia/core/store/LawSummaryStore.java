@@ -49,6 +49,15 @@ public class LawSummaryStore {
                 .update();
     }
 
+    /** 그 버전의 변경점 설명을 저장(있으면 교체) — 대조한 기준선 revision 과 함께(D80). */
+    public void saveDiff(Law law, Law baseline, ImpactResult result, String model) {
+    }
+
+    /** 그 버전의 변경점 저장본(D80). */
+    public Optional<ImpactResult> findStoredDiff(Law law, Law baseline) {
+        return Optional.empty();
+    }
+
     /** 그 버전의 저장본 — 정본 revision·프롬프트 버전이 지금과 같을 때만(인용의 근거 확인 전 날것). 없거나 낡으면 empty. */
     public Optional<ImpactResult> findStored(Law law) {
         return jdbc.sql("""

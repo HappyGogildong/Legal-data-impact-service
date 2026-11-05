@@ -163,7 +163,7 @@ public class PipelineConfig {
 
     /** 쉬운 요약 읽기 포트(D67)의 유일한 구현 — 인용이 지금 근거 집합 안인 저장본만. 분석·법령 상세·배치가 공유한다. */
     @Bean
-    public LawSummaries lawSummaries(LawSummaryStore lawSummaryStore, ContextBuilder contextBuilder) {
+    public GroundedSummaries lawSummaries(LawSummaryStore lawSummaryStore, ContextBuilder contextBuilder) {
         return new GroundedSummaries(lawSummaryStore, contextBuilder);
     }
 

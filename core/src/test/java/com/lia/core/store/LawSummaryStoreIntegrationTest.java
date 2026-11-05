@@ -109,6 +109,50 @@ class LawSummaryStoreIntegrationTest {
     }
 
     @Test
+    @DisplayName("한 버전의 요약과 변경점은 따로 저장된다")
+    void 요약과_변경점_분리() {
+        Law law = TestLaws.law("A", "M1", Law.Status.시행예정, EF);
+        Law baseline = TestLaws.law("A", "B1", Law.Status.시행중, LocalDate.of(2026, 1, 1));
+
+        summaries.save(law, summary("요약"), "claude-opus-4-8");
+        summaries.saveDiff(law, baseline, summary("변경점"), "claude-opus-4-8");
+
+        assertEquals("요약", summaries.findStored(law).orElseThrow().summary());
+        assertEquals("변경점", summaries.findStoredDiff(law, baseline).orElseThrow().summary());
+        assertEquals(2, jdbc.sql("SELECT count(*) FROM law_summaries").query(Integer.class).single());
+
+        summaries.saveDiff(law, baseline, summary("새 변경점"), "claude-opus-4-8");
+        assertEquals("새 변경점", summaries.findStoredDiff(law, baseline).orElseThrow().summary());
+        assertEquals("요약", summaries.findStored(law).orElseThrow().summary(), "요약은 그대로");
+        assertEquals(2, jdbc.sql("SELECT count(*) FROM law_summaries").query(Integer.class).single());
+    }
+
+    @Test
+    @DisplayName("변경점은 기준선·정본 revision·프롬프트 버전이 하나라도 다르면 낡은 것이다")
+    void 변경점_낡음() {
+        Law law = TestLaws.law("A", "M1", Law.Status.시행예정, EF);
+        Law baseline = TestLaws.law("A", "B1", Law.Status.시행중, LocalDate.of(2026, 1, 1));
+        summaries.saveDiff(law, baseline, summary("변경점"), "claude-opus-4-8");
+
+        Law newBaseline = TestLaws.law("A", "B2", Law.Status.시행중, LocalDate.of(2026, 1, 1));
+        assertTrue(summaries.findStoredDiff(law, newBaseline).isEmpty(), "기준선 revision 이 다르다");
+        assertTrue(summaries.findStoredDiff(law, null).isEmpty(), "기준선이 사라졌다");
+        assertTrue(summaries.findStoredDiff(TestLaws.law("A", "M2", Law.Status.시행예정, EF), baseline).isEmpty());
+        assertTrue(new LawSummaryStore(jdbc, new ObjectMapper(), "p2").findStoredDiff(law, baseline).isEmpty());
+    }
+
+    @Test
+    @DisplayName("제정은 기준선 없이 변경점을 저장·조회한다")
+    void 제정_변경점() {
+        Law law = TestLaws.law("A", "M1", Law.Status.시행예정, EF);
+
+        summaries.saveDiff(law, null, summary("전부 신설"), "claude-opus-4-8");
+
+        assertEquals("전부 신설", summaries.findStoredDiff(law, null).orElseThrow().summary());
+        assertTrue(summaries.findStored(law).isEmpty(), "변경점이 요약으로 읽히지 않는다");
+    }
+
+    @Test
     @DisplayName("V9 — ingest_tasks.kind 가 SUMMARIZE 를 받는다")
     void 작업_종류() {
         jdbc.sql("INSERT INTO ingest_tasks (kind, law_id, effective_date, status, created_at, updated_at) VALUES ('SUMMARIZE', 'A', :e, 'READY', now(), now())")

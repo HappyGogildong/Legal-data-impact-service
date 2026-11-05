@@ -31,6 +31,7 @@ import io.micrometer.observation.ObservationRegistry;
 import com.lia.core.domain.law.Law;
 import com.lia.core.observability.Obs;
 import com.lia.core.store.LawStore;
+import com.lia.core.store.LawDiffs;
 import com.lia.core.store.LawSummaries;
 import com.lia.core.store.PendingVersion;
 
@@ -57,6 +58,7 @@ public class IngestJob {
     private final Discoverer discoverer;
     private final LawStore lawStore;
     private final LawSummaries summaries;
+    private final LawDiffs diffs;
     private final DueNotifications dueNotifications;
     private final Map<TaskKind, TaskHandler> handlers = new EnumMap<>(TaskKind.class);
     private final int workers;
@@ -73,11 +75,12 @@ public class IngestJob {
      *                     직접 명령({@code index}·{@code reindex-all}·{@code sync})은 이 값과 무관
      * @param summaryEnabled true 일 때만 run 이 SUMMARIZE(유료 Opus)를 처리 — 다른 수동 명령은 처리하지 않고 summarize 명령만(D67).
      *                       summarize 명령은 모든 시행예정본에 SUMMARIZE 를 등록해 요약이 없거나 낡은 것을 채운다
+     * @param diffs          {@code summarize --dry-run}이 변경점 대상을 셀 때 쓴다(D80)
      * @param summaries      {@code summarize --dry-run}이 요약이 필요한 시행예정본 수를 셀 때 쓴다(핸들러와 같은 유효 기준)
      * @param dueNotifications 구독 알림 생성(D74) — run 끝 단계와 notify 명령이 부른다
      */
     public IngestJob(TaskQueue queue, IngestRunStore runs, Discoverer discoverer, LawStore lawStore,
-                     LawSummaries summaries, DueNotifications dueNotifications, List<TaskHandler> handlers,
+                     LawSummaries summaries, LawDiffs diffs, DueNotifications dueNotifications, List<TaskHandler> handlers,
                      int workers, boolean indexEnabled, boolean summaryEnabled, Duration idlePoll,
                      Duration doneRetention, Clock clock, ObservationRegistry observations) {
         this.queue = queue;
@@ -85,6 +88,7 @@ public class IngestJob {
         this.discoverer = discoverer;
         this.lawStore = lawStore;
         this.summaries = summaries;
+        this.diffs = diffs;
         this.dueNotifications = dueNotifications;
         handlers.forEach(h -> this.handlers.put(h.kind(), h));
         for (TaskKind kind : TaskKind.values()) {

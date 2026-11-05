@@ -11,6 +11,7 @@ import com.lia.core.pipeline.analyze.AnalyzeRequest;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.analyze.InsufficientGroundingException;
 import com.lia.core.pipeline.plan.QueryType;
+import com.lia.core.store.LawDiffs;
 import com.lia.core.store.LawStore;
 import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
@@ -31,15 +32,17 @@ public class SummarizeHandler implements TaskHandler {
     private final AnalysisEngine engine;
     private final LawSummaryStore store;
     private final LawSummaries current;
+    private final LawDiffs currentDiffs;
     private final MinIntervalLimiter limiter;
     private final String model;
 
     public SummarizeHandler(LawStore lawStore, AnalysisEngine engine, LawSummaryStore store,
-                            LawSummaries current, MinIntervalLimiter limiter, String model) {
+                            LawSummaries current, LawDiffs currentDiffs, MinIntervalLimiter limiter, String model) {
         this.lawStore = lawStore;
         this.engine = engine;
         this.store = store;
         this.current = current;
+        this.currentDiffs = currentDiffs;
         this.limiter = limiter;
         this.model = model;
     }

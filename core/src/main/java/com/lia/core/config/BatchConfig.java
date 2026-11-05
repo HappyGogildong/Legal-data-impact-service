@@ -40,6 +40,7 @@ import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.ingest.IngestService;
 import com.lia.core.store.ChunkStore;
 import com.lia.core.store.LawStore;
+import com.lia.core.store.LawDiffs;
 import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
 import com.lia.core.store.NotificationStore;
@@ -90,7 +91,7 @@ public class BatchConfig {
                                PendingLawFeed feed, IngestService ingest, ChunkStore chunkStore, RAGIndexer indexer,
                                Clock batchClock, ObservationRegistry observations,
                                AnalysisEngine analysisEngine, LawSummaryStore lawSummaryStore,
-                               LawSummaries lawSummaries, NotificationStore notificationStore,
+                               LawSummaries lawSummaries, LawDiffs lawDiffs, NotificationStore notificationStore,
                                PlatformTransactionManager transactionManager,
                                @Value("${lia.batch.workers}") int workers,
                                @Value("${lia.batch.index.enabled}") boolean indexEnabled,
@@ -104,12 +105,12 @@ public class BatchConfig {
         List<TaskHandler> handlers = List.of(
                 new SyncHandler(feed, ingest, lawStore, queue, transactions, batchClock),
                 new IndexHandler(lawStore, indexer, new MinIntervalLimiter(embeddingInterval)),
-                new SummarizeHandler(lawStore, analysisEngine, lawSummaryStore, lawSummaries,
+                new SummarizeHandler(lawStore, analysisEngine, lawSummaryStore, lawSummaries, lawDiffs,
                         new MinIntervalLimiter(summaryInterval),
                         SpringAiReasoner.MODEL),
                 new TransitionHandler(lawStore, chunkStore, queue, transactions),
                 new PurgeHandler(lawStore, chunkStore, transactions));
-        return new IngestJob(queue, runs, discoverer, lawStore, lawSummaries, notificationStore, handlers, workers, indexEnabled,
+        return new IngestJob(queue, runs, discoverer, lawStore, lawSummaries, lawDiffs, notificationStore, handlers, workers, indexEnabled,
                 summaryEnabled, idlePoll,
                 doneRetention, batchClock, observations);
     }

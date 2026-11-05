@@ -6,6 +6,7 @@ import java.util.Set;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
 import com.lia.core.pipeline.plan.QueryType;
+import com.lia.core.store.LawDiffs;
 import com.lia.core.store.LawSummaries;
 import com.lia.core.store.LawSummaryStore;
 
@@ -17,7 +18,7 @@ import com.lia.core.store.LawSummaryStore;
  * 인용이 모두 집합 안)을 그대로 다시 돌려, 통과하지 못하면 낡은 것(empty)으로 본다.
  * 분석(SummaryHandler)·법령 상세(LawController)·배치(SummarizeHandler)가 이 포트 하나를 공유한다.
  */
-public class GroundedSummaries implements LawSummaries {
+public class GroundedSummaries implements LawSummaries, LawDiffs {
 
     private final LawSummaryStore store;
     private final ContextBuilder contextBuilder;
@@ -30,6 +31,11 @@ public class GroundedSummaries implements LawSummaries {
     @Override
     public Optional<ImpactResult> findCurrent(Law law) {
         return store.findStored(law).filter(stored -> isGrounded(stored, law));
+    }
+
+    @Override
+    public Optional<ImpactResult> findCurrent(Law law, Law baseline) {
+        return Optional.empty();
     }
 
     private boolean isGrounded(ImpactResult stored, Law law) {
