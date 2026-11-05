@@ -166,6 +166,82 @@ class AnalysisEngineTest {
     private static final String HOUSING_ART = "LAW:001809@2026-08-04:art:18";
     private static final UserProfile PROFILE = new UserProfile(null, 34, null, null, null, null, null);
 
+    private static final String HALLUCINATED = "LAW:999@2099-01-01:art:1";
+
+    /** housing 근거로 주장·영향·대응을 지정해 만든 첫 Layer B 응답. */
+    private static PersonalizedOutput personalizedOutput(List<ImpactResult.Claim> claims, List<ImpactResult.Impact> impacts,
+                                                         List<ImpactResult.Action> actions) {
+        return new PersonalizedOutput(new ImpactResult("LAW:001809@2026-08-04", "IMPACT", "요약",
+                claims, impacts, actions, null, List.of(), "참고용", null), List.of(), List.of());
+    }
+
+    private static final List<ImpactResult.Claim> GOOD_CLAIMS =
+            List.of(new ImpactResult.Claim("주장", List.of(HOUSING_ART), 0.9));
+    private static final List<ImpactResult.Impact> GOOD_IMPACTS =
+            List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of(HOUSING_ART)));
+    private static final List<ImpactResult.Action> GOOD_ACTIONS =
+            List.of(new ImpactResult.Action("확인", null, List.of(HOUSING_ART)));
+
+    private AnalyzeResponse analyzeRequested(PersonalizedOutput out, QueryType... requested) {
+        return engine(personalized(out)).analyze(
+                new AnalyzeRequest(QueryType.IMPACT, housing(), null, PROFILE, "질문"), Set.of(requested));
+    }
+
+    @Test
+    void 영향만_요청하면_대응이_없어도_영향을_돌려준다() {
+        for (List<ImpactResult.Action> missing : java.util.Arrays.asList(null, List.<ImpactResult.Action>of())) {
+            AnalyzeResponse resp = analyzeRequested(personalizedOutput(GOOD_CLAIMS, GOOD_IMPACTS, missing), QueryType.IMPACT);
+            assertEquals(1, resp.result().impacts().size());
+            assertTrue(resp.situation().isEmpty(), "상황은 대응 방안에만(D71)");
+        }
+    }
+
+    @Test
+    void 영향만_요청하면_버려질_대응의_환각_인용으로_실패하지_않는다() {
+        List<ImpactResult.Action> hallucinated = List.of(new ImpactResult.Action("확인", null, List.of(HALLUCINATED)));
+        assertEquals(1, analyzeRequested(personalizedOutput(GOOD_CLAIMS, GOOD_IMPACTS, hallucinated), QueryType.IMPACT)
+                .result().impacts().size());
+    }
+
+    @Test
+    void 대응만_요청하면_주장과_영향이_없어도_대응을_돌려준다() {
+        AnalyzeResponse resp = analyzeRequested(personalizedOutput(List.of(), null, GOOD_ACTIONS), QueryType.ACTION);
+        assertEquals(1, resp.result().actions().size());
+    }
+
+    @Test
+    void 대응만_요청하면_버려질_주장의_환각_인용으로_실패하지_않는다() {
+        List<ImpactResult.Claim> hallucinated = List.of(new ImpactResult.Claim("주장", List.of(HALLUCINATED), 0.9));
+        assertEquals(1, analyzeRequested(personalizedOutput(hallucinated, List.of(), GOOD_ACTIONS), QueryType.ACTION)
+                .result().actions().size());
+    }
+
+    @Test
+    void 요청한_차원의_근거가_없으면_근거_부족이다() {
+        List<ImpactResult.Impact> uncited = List.of(new ImpactResult.Impact("주거", "영향 있음", "상세", List.of()));
+        List<ImpactResult.Action> basisless = List.of(new ImpactResult.Action("확인", null, List.of()));
+        List<ImpactResult.Action> hallucinated = List.of(new ImpactResult.Action("확인", null, List.of(HALLUCINATED)));
+
+        assertThrows(InsufficientGroundingException.class,
+                () -> analyzeRequested(personalizedOutput(GOOD_CLAIMS, uncited, GOOD_ACTIONS), QueryType.IMPACT));
+        assertThrows(InsufficientGroundingException.class,
+                () -> analyzeRequested(personalizedOutput(List.of(), GOOD_IMPACTS, GOOD_ACTIONS), QueryType.IMPACT));
+        assertThrows(InsufficientGroundingException.class,
+                () -> analyzeRequested(personalizedOutput(GOOD_CLAIMS, GOOD_IMPACTS, basisless), QueryType.ACTION));
+        assertThrows(InsufficientGroundingException.class,
+                () -> analyzeRequested(personalizedOutput(GOOD_CLAIMS, GOOD_IMPACTS, hallucinated), QueryType.ACTION));
+    }
+
+    @Test
+    void 둘_다_요청하면_영향과_대응이_모두_있어야_한다() {
+        assertThrows(InsufficientGroundingException.class, () -> analyzeRequested(
+                personalizedOutput(GOOD_CLAIMS, GOOD_IMPACTS, List.of()), QueryType.IMPACT, QueryType.ACTION));
+        assertThrows(InsufficientGroundingException.class, () -> analyzeRequested(
+                personalizedOutput(GOOD_CLAIMS, List.of(), GOOD_ACTIONS), QueryType.IMPACT, QueryType.ACTION));
+        assertEquals(1, analyzeRequested(personalizedOutput(GOOD_CLAIMS, GOOD_IMPACTS, GOOD_ACTIONS),
+                QueryType.IMPACT, QueryType.ACTION).result().actions().size());
+    }
+
     /** housing 근거만 인용하는 개인화 결과 — 영향·대응 모두 인용 있음. */
     private static ImpactResult housingPersonalized() {
         return new ImpactResult("LAW:001809@2026-08-04", "IMPACT", "요약",

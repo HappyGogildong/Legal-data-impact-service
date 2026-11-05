@@ -32,6 +32,10 @@ public class AnalysisEngine {
         this.maxAttempts = maxAttempts;
     }
 
+    public AnalyzeResponse analyze(AnalyzeRequest req, Set<QueryType> requested) {
+        return analyze(req);
+    }
+
     public AnalyzeResponse analyze(AnalyzeRequest req) {
         AnalysisContext ctx = contextBuilder.build(req);
         Set<String> injected = ctx.injectedSourceIds();
