@@ -17,7 +17,7 @@ import {
 } from "@/lib/law-view";
 import { cn } from "@/lib/utils";
 import { DDayBadge } from "./d-day-badge";
-import { AskAboutLaw, PersonalizeButton, SummaryButton } from "./law-actions";
+import { AskAboutLaw, PersonalizeButton } from "./law-actions";
 import { LawSummaryCard } from "./law-summary-card";
 import { ViewBeacon } from "./view-beacon";
 
@@ -160,13 +160,11 @@ export function LawDetailView({
           </>
         ) : (
           <>
-            {pending && lawRef && (
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <SummaryButton title={title} lawRef={lawRef} />
-                <span className="text-xs text-muted-foreground">
-                  근거 조문과 함께 쉽게 풀어 드려요.
-                </span>
-              </div>
+            {pending && (
+              <p className="mb-2 text-xs text-muted-foreground">
+                쉬운 요약을 준비 중이에요. 아래 개정 이유와 조문 대비를 먼저
+                확인해 주세요.
+              </p>
             )}
             {pending && (
               <h3 className="mt-2 text-xs font-bold text-muted-foreground">

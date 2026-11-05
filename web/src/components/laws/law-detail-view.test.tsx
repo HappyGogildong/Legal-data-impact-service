@@ -226,7 +226,9 @@ describe("LawDetailView", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "이 시행예정본은 철회되었어요",
     );
-    expect(screen.queryByText(/쉬운 요약을 준비 중이에요/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/쉬운 요약을 준비 중이에요/),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("textbox", { name: "후속 질문" }),
     ).not.toBeInTheDocument();
@@ -275,7 +277,9 @@ describe("LawDetailView", () => {
       "href",
       "#art-18",
     );
-    expect(screen.queryByText(/쉬운 요약을 준비 중이에요/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/쉬운 요약을 준비 중이에요/),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByText("심의 절차를 간소화한다."),
     ).not.toBeInTheDocument();
