@@ -106,18 +106,13 @@ describe("LawDetailView", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("쉬운 요약 보기 — 질문을 탭 저장소에 두고 /ask (URL 에 질문 없음)", async () => {
+  it("쉬운 요약이 없으면 요청 버튼 없이 준비 중 안내(D80)", () => {
     renderDetail();
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "쉬운 요약 보기" }),
-    );
-
-    expect(router.push).toHaveBeenCalledWith("/ask");
-    expect(JSON.parse(sessionStorage.getItem("lia.ask") ?? "null")).toEqual({
-      query: "주택법 쉬운 요약",
-      lawRef: { lawId: "001809", effectiveDate: "2026-11-03" },
-    });
+    expect(screen.getByText(/쉬운 요약을 준비 중이에요/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "쉬운 요약 보기" }),
+    ).not.toBeInTheDocument();
   });
 
   it("내 영향·대응 방안 보기 — 질문을 탭 저장소에 두고 /ask", async () => {
@@ -231,9 +226,7 @@ describe("LawDetailView", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "이 시행예정본은 철회되었어요",
     );
-    expect(
-      screen.queryByRole("button", { name: "쉬운 요약 보기" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/쉬운 요약을 준비 중이에요/)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("textbox", { name: "후속 질문" }),
     ).not.toBeInTheDocument();
@@ -282,9 +275,7 @@ describe("LawDetailView", () => {
       "href",
       "#art-18",
     );
-    expect(
-      screen.queryByRole("button", { name: "쉬운 요약 보기" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/쉬운 요약을 준비 중이에요/)).not.toBeInTheDocument();
     expect(
       screen.queryByText("심의 절차를 간소화한다."),
     ).not.toBeInTheDocument();

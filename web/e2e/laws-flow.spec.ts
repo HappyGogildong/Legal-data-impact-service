@@ -28,9 +28,7 @@ test("홈 곧 시행 → S06 기간 → S05 상세 → 쉬운 요약(기본)·�
   await page.getByRole("link", { name: "제18조" }).click();
   await expect(page).toHaveURL(/#art-18$/);
   await expect(page.getByText("현행", { exact: true })).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "쉬운 요약 보기" }),
-  ).toHaveCount(0);
+  await expect(page.getByText(/쉬운 요약을 준비 중이에요/)).toHaveCount(0);
 });
 
 test("없는 시행일·잘못된 날짜 → 찾는 페이지가 없어요", async ({ page }) => {

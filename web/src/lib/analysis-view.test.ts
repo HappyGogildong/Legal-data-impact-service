@@ -63,6 +63,15 @@ describe("analysis-view", () => {
     expect(unmetCopy(undefined).title).toBe("이 부분은 지금 답할 수 없어요");
   });
 
+  it("미리 만든 설명이 없으면 준비되지 않았다고 알린다(D80)", () => {
+    const copy = unmetCopy({ reason: "NOT_PRECOMPUTED" });
+    expect(copy.title).toBe("이 설명은 아직 준비되지 않았어요");
+    expect(copy.body).toContain("조문");
+    expect(
+      cardStatus("diff", undefined, { reason: "NOT_PRECOMPUTED" }, new Map()),
+    ).toBe("준비 중");
+  });
+
   it("카드 상태 — 변경점은 조문 수, 미충족은 짧은 사유", () => {
     expect(cardStatus("diff", diff, undefined, index)).toBe("조문 1개");
     expect(cardStatus("summary", summary, undefined, index)).toBeNull();

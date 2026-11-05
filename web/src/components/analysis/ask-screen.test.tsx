@@ -179,6 +179,30 @@ describe("AskScreen", () => {
     expect(router.push).toHaveBeenCalledWith("/");
   });
 
+  it("미리 만든 설명이 없으면 안내와 함께 법령 상세로 보낸다(D80)", async () => {
+    setAsk({ query: "주택법 쉬운 요약" });
+    mockApi({
+      "POST /api/v1/analyses": () =>
+        apiJson({
+          ...resolvedResponse,
+          answer: {},
+          unmet: {
+            summary: { reason: "NOT_PRECOMPUTED", message: "저장본 없음" },
+          },
+        }),
+      "GET /api/v1/account": () => apiJson({ error: "unauthenticated" }, 401),
+    });
+    renderScreen();
+
+    expect(
+      await screen.findByText("이 설명은 아직 준비되지 않았어요"),
+    ).toBeInTheDocument();
+    const law = resolvedResponse.law!;
+    expect(
+      screen.getByRole("link", { name: "법령 상세에서 확인하기" }),
+    ).toHaveAttribute("href", `/laws/${law.lawId}/${law.effectiveDate}`);
+  });
+
   it("결과 화면 '내 영향' 카드를 열면 익명에게 로그인하기가 붙는다(renderUnmetAction 연결)", async () => {
     setAsk({ query: "주택법 바뀌면?" });
     mockApi({
