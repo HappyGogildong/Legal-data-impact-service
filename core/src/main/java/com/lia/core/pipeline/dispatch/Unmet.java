@@ -24,6 +24,10 @@ public record Unmet(Reason reason, String message) {
         INSUFFICIENT_GROUNDING,
         /** Layer A 저장본이 아직 없다 — 온라인은 Opus 를 부르지 않는다(D80). */
         NOT_PRECOMPUTED,
+        /** 변경점 질문이 지목한 조문이 이번 개정에서 바뀌지 않았다(D82). */
+        ARTICLE_NOT_CHANGED,
+        /** 변경점 질문이 지목한 조문이 시행예정본·기준선 어디에도 없다(D82). */
+        ARTICLE_NOT_FOUND,
         /** 그 차원·경로를 아직 구현하지 않았다(핸들러 없음). */
         NOT_IMPLEMENTED,
         /** 상황 질문이 세션에 없다 — 만료·재시작, 다시 받기(D71). */
