@@ -9,7 +9,7 @@ related: ["adr/decision-log.md", "backend/observability.md", "components/batch/I
 
 # 비용 정책
 
-비용이 드는 결정은 이 문서에 모은다 — 항목마다 설정 키·기본값·결정·바꾸는 법. 새 기능이 비용 결정을 만들면 여기에 추가한다. 결정의 배경은 [[decision-log]], 호출·토큰 계측은 [[observability]], 배치 단계는 [[IngestJob]].
+비용이 드는 결정은 이 문서에 모은다 — 항목마다 설정 키·기본값·결정·바꾸는 법. 새 기능이 비용 결정을 만들면 여기에 추가한다. 결정의 배경은 [[decision-log]], 호출·토큰 계측은 [[observability]], 평가 지표는 [[rag-evaluation-framework]], 배치 단계는 [[IngestJob]].
 
 ## 정책 표
 
@@ -25,6 +25,8 @@ related: ["adr/decision-log.md", "backend/observability.md", "components/batch/I
 | 법령 발견 | Haiku 1 + 임베딩 1, Opus·한도·조회 집계 없음 | `lia.discovery.*` | D70 |
 | 온라인 Layer A | 저장본만 읽는다(비용 0). 없으면 `NOT_PRECOMPUTED`, Opus 호출 없음. 로컬 개발에서만 켠다 | `lia.analysis.layer-a-live`(`LIA_ANALYSIS_LAYER_A_LIVE`) false | D80 |
 | 익명 분석 하루 상한 | 서비스 전체·서울 날짜, 분류 전에 차감, 넘으면 429. 로그인 사용자는 세지 않음 | `lia.analysis.anonymous-daily-limit`(`LIA_ANALYSIS_ANONYMOUS_DAILY_LIMIT`) 1000(잠정) | D81 |
+| 오프라인 회귀 평가 | 정답 세트로 수동 실행, 임베딩·Haiku 호출. 프롬프트·모델·검색 설정을 바꾸기 전에 돌린다 | 옵트인 `LIA_RAG_EVAL` | D83 |
+| 운영 배치 평가 | 집계와 표본 추출만 하고 LLM 을 부르지 않는다(판정은 사람). 판정 지표는 이미 만든 답을 쓴다 | 구현 전 — 설정 키는 구현 때 이 표에 적는다 | D83 |
 
 ### 바꾸는 법
 
@@ -43,3 +45,4 @@ related: ["adr/decision-log.md", "backend/observability.md", "components/batch/I
 - **요청 빈도 제한** — IP별 제한은 입력 공격 일괄 작업에서 함께 다룬다(현재는 개인화 하루 한도와 익명 전체 상한만 있고, 로그인 사용자의 분류 호출에는 상한이 없다).
 - **온라인 재시도 설정** — Spring AI 기본 재시도가 프록시 120초를 넘길 수 있다. 재시도 횟수·간격을 설정으로 노출하고 프록시 제한과 맞춘다.
 - **`ANALYZE_MAX_ATTEMPTS` 설정값화** — 지금은 코드 상수(3).
+- **토큰 실측** — 지금은 토큰을 기록하지 않아 위 참고치가 실측을 대체하지 못한다. LLM 호출 기록([[rag-evaluation-framework]] §8)이 생기면 참고치를 실측값으로 바꾸고 예산 경보를 정한다.
