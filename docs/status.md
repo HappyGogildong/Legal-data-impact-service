@@ -72,7 +72,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | `domain/law` — `Law`·`Article`·`Addendum` | ✅ |
 | `DiffBuilder` — 변경 조문 ↔ 기준선 대조(신설·삭제 확정, `diffVsCurrent`) | ✅ |
 | 관측 환경(증분1) — Actuator·Micrometer→Prometheus·Tracing→Tempo·pg-exporter + 파이프라인 계측 | ✅ |
-| RAG 평가·회귀 프레임워크 — 결정론 게이트 스캐폴딩(`com.lia.core.eval`). 평가 경로·지표는 D83 으로 재설계, 코드는 아직 옛 구조 | 🟡 재설계 문서 완료, 구현 전 |
+| RAG 평가·회귀 프레임워크(D83) — 1단계: 서비스 경로(`QueryPlanner`→`LawDiscovery`)를 지나는 오프라인 평가 하네스·지표·회귀 게이트, `eval` 프로파일 실행 | 🟡 1단계 ✅(단위·가짜 데이터). 정답 세트·기준선(3단계)과 운영 배치(2·4·5단계)는 남음 |
 | 컴포넌트 클래스 스펙 규약 + 핵심 4종(DiffBuilder·Normalizer·SourceAnalyzer·LawConnector) | ✅ |
 | Law Store — **near-term 구현**(`law_versions` upsert·find·findBaseline, Flyway V1, JdbcClient+JSONB) | ✅ 실 Postgres 통합테스트 통과(Testcontainers 3/3) |
 | `IngestService` — **적재 파이프라인 조립**(Normalizer→DiffBuilder→LawStore, `store`) | ✅ 실 Postgres 조립 통합테스트 통과(기준선·제정 2/2) |
@@ -81,7 +81,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | ChunkStore — **구현**(포트 + `PgVectorChunkStore`, PgVectorStore 래핑·**정본 단위 replace**(재색인=현재 상태)·내부 임베딩) | ✅ 실 pgvector 통합 3(라운드트립·stale제거·스코프격리) |
 | IngestService 색인 배선 — `store`는 임베딩 프리, 색인은 배치 잡의 `INDEX` 작업이 호출(`IngestJob`, D62) | ✅ 배선·카나리아 |
 | RAG 검색 경로 — `ChunkStoreRetriever`(실물 Retriever) + `SourceAnalyzer.semanticSearch` 배선(ChunkStore) + chunk 메타 title | ✅ 단위 2·실 왕복 스모크 옵트인 |
-| RAG 성능 평가(자기검색 기준선) — `SelfRetrievalGold` + `RagEvalLiveTest`(실 적재→Recall@k). 벤더 OpenAI 임시확정 | ⚠️ D83 으로 폐기 예정 — 서비스 경로를 재지 않고 문제가 쉬워 품질 근거로 쓰지 않는다 |
+| RAG 성능 평가(자기검색 기준선) — `SelfRetrievalGold` + `RagEvalLiveTest`. 벤더 OpenAI 임시확정 | ❌ D83 으로 제거 — 서비스 경로를 재지 않고 문제가 쉬워 품질 근거로 쓰지 않는다 |
 | Query Planner — **계획까지**(`QueryTranslator` 포트+Haiku·`QueryPlanner`: NL→PlanResult, 해소·프로필 게이팅·비법령 거부, D46) | ✅ 단위 4(Fake 번역기)·라이브 스모크 옵트인. Dispatcher/핸들러 실행은 후속 |
 | Analysis Engine — **Layer A**(SUMMARY·DIFF): `ContextBuilder`(정본→source_id 블록)·`Reasoner` 포트+`SpringAiReasoner`(Opus)·`AnalysisEngine`(조립→추론→인용검증→재생성≤N→폴백) | ✅ 단위 10(ContextBuilder 6·Engine 4, FakeReasoner)·라이브 스모크 옵트인 |
 | QueryDispatcher + 차원핸들러 — **Layer A 슬라이스**(D47): `DimensionHandler` 포트+레지스트리·`QueryDispatcher`(Reference 정본 1회조회→차원 라우팅→부분성공 `unmet`)·`Summary`/`Diff` 핸들러(AnalysisEngine 위임)·`LawSource` 포트 | ✅ 단위 11(Dispatcher 7·Handler 2·Registry 2). ImpactHandler·ActionHandler·LookupHandler·캐시·독립 검증게이트는 의존 착지 후 |
@@ -104,7 +104,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 대응 방안 상황 확인(⑤, D71): Layer B 가 상황 질문(최대 3, 근거 조문) 함께 생성 → 세션(메모리) 보관 → 답하면 대응 방안만 재생성(한도 1회), "내 상황 반영" 강조 · 비용 정책 문서 신설 | ✅ 단위·API 슬라이스·웹·E2E, 라이브 스모크(옵트인 `LIA_SITUATION_LIVE`, 유료). 자유 입력 사실 추출은 다음 단계 |
 | 웹 프론트엔드 (#14) — 화면 계획 [[screen-plan]](S01~S16: 질문 중심 + 법령 상세 허브, 모바일 우선, 법령 맥락 후속 질문, 대응 방안 상황 확인, 4단계 구현) · 기술 스택 [[frontend-stack]](D64: Next.js on Vercel + rewrites, Tailwind·shadcn/ui, OpenAPI 타입 생성) · 시각 디자인 [[visual-design]](방향 A 신뢰·공공형, 화면 시안 S01~S16) | 🟡 화면 계획·스택·시안 확정. 1단계(익명·로그인 흐름) 구현됨. 2단계는 하위 프로젝트로 — ①법령 조회 ✅ → ②자주 찾는 법령 ✅ → ②′쉬운 요약 선계산 ✅ → ③Layer B ✅ → ④법령 발견 ✅ → ⑤상황 확인 ✅ → ⑥a 북마크 ✅ → ⑥b 이력 ✅ → ⑦a 구독·알림함 ✅ → ⑦b 프로필 관련 구독 → ⑦c 이메일 발송 |
 
-`./gradlew test` 기준 706개(2026-11-05) 모두 통과 — 통합(실 Postgres/pgvector, Testcontainers)과 무료 국가법령정보 API 라이브 스모크(로컬 `.env` 의 OC 로 켜짐, CI 는 건너뜀) 포함. 웹 `pnpm vitest run` 46개 파일·278 · Playwright E2E 34(17개 × 모바일·데스크톱, 모의 API). skip 16건(9개 클래스)은 실 임베딩·번역·해석(Layer A·Layer B)·법령 발견·상황 확인 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
+`./gradlew test` 기준 790개(2026-11-08) 모두 통과 — 통합(실 Postgres/pgvector, Testcontainers)과 무료 국가법령정보 API 라이브 스모크(로컬 `.env` 의 OC 로 켜짐, CI 는 건너뜀) 포함. 웹 `pnpm vitest run` 46개 파일·278 · Playwright E2E 34(17개 × 모바일·데스크톱, 모의 API). skip 8건(6개 클래스)은 실 임베딩·번역·해석(Layer A·Layer B)·법령 발견·상황 확인 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
 
 > ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 
