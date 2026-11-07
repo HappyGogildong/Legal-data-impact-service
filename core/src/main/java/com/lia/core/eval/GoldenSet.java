@@ -39,6 +39,11 @@ public final class GoldenSet {
         return load(resourcePath, new TypeReference<List<RetrievalCase>>() {});
     }
 
+    /** 정답 세트(D83) — RED 단계 껍데기. */
+    public static List<EvalCase> cases(String resourcePath) {
+        throw new UnsupportedOperationException("아직 구현되지 않았다");
+    }
+
     public static List<RefusalCase> refusal(String resourcePath) {
         return load(resourcePath, new TypeReference<List<RefusalCase>>() {});
     }
