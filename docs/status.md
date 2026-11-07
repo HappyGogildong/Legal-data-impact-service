@@ -72,7 +72,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | `domain/law` — `Law`·`Article`·`Addendum` | ✅ |
 | `DiffBuilder` — 변경 조문 ↔ 기준선 대조(신설·삭제 확정, `diffVsCurrent`) | ✅ |
 | 관측 환경(증분1) — Actuator·Micrometer→Prometheus·Tracing→Tempo·pg-exporter + 파이프라인 계측 | ✅ |
-| RAG 평가·회귀 프레임워크 — 결정론 게이트 스캐폴딩(`com.lia.core.eval`), 거부 게이트 가동 | ✅ |
+| RAG 평가·회귀 프레임워크 — 결정론 게이트 스캐폴딩(`com.lia.core.eval`). 평가 경로·지표는 D83 으로 재설계, 코드는 아직 옛 구조 | 🟡 재설계 문서 완료, 구현 전 |
 | 컴포넌트 클래스 스펙 규약 + 핵심 4종(DiffBuilder·Normalizer·SourceAnalyzer·LawConnector) | ✅ |
 | Law Store — **near-term 구현**(`law_versions` upsert·find·findBaseline, Flyway V1, JdbcClient+JSONB) | ✅ 실 Postgres 통합테스트 통과(Testcontainers 3/3) |
 | `IngestService` — **적재 파이프라인 조립**(Normalizer→DiffBuilder→LawStore, `store`) | ✅ 실 Postgres 조립 통합테스트 통과(기준선·제정 2/2) |
@@ -81,7 +81,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | ChunkStore — **구현**(포트 + `PgVectorChunkStore`, PgVectorStore 래핑·**정본 단위 replace**(재색인=현재 상태)·내부 임베딩) | ✅ 실 pgvector 통합 3(라운드트립·stale제거·스코프격리) |
 | IngestService 색인 배선 — `store`는 임베딩 프리, 색인은 배치 잡의 `INDEX` 작업이 호출(`IngestJob`, D62) | ✅ 배선·카나리아 |
 | RAG 검색 경로 — `ChunkStoreRetriever`(실물 Retriever) + `SourceAnalyzer.semanticSearch` 배선(ChunkStore) + chunk 메타 title | ✅ 단위 2·실 왕복 스모크 옵트인 |
-| RAG 성능 평가(자기검색 기준선) — `SelfRetrievalGold` + `RagEvalLiveTest`(실 적재→Recall@k). 벤더 OpenAI 임시확정 | ✅ 단위 2·실 평가 옵트인(수동). 시나리오 B는 리서치 후 |
+| RAG 성능 평가(자기검색 기준선) — `SelfRetrievalGold` + `RagEvalLiveTest`(실 적재→Recall@k). 벤더 OpenAI 임시확정 | ⚠️ D83 으로 폐기 예정 — 서비스 경로를 재지 않고 문제가 쉬워 품질 근거로 쓰지 않는다 |
 | Query Planner — **계획까지**(`QueryTranslator` 포트+Haiku·`QueryPlanner`: NL→PlanResult, 해소·프로필 게이팅·비법령 거부, D46) | ✅ 단위 4(Fake 번역기)·라이브 스모크 옵트인. Dispatcher/핸들러 실행은 후속 |
 | Analysis Engine — **Layer A**(SUMMARY·DIFF): `ContextBuilder`(정본→source_id 블록)·`Reasoner` 포트+`SpringAiReasoner`(Opus)·`AnalysisEngine`(조립→추론→인용검증→재생성≤N→폴백) | ✅ 단위 10(ContextBuilder 6·Engine 4, FakeReasoner)·라이브 스모크 옵트인 |
 | QueryDispatcher + 차원핸들러 — **Layer A 슬라이스**(D47): `DimensionHandler` 포트+레지스트리·`QueryDispatcher`(Reference 정본 1회조회→차원 라우팅→부분성공 `unmet`)·`Summary`/`Diff` 핸들러(AnalysisEngine 위임)·`LawSource` 포트 | ✅ 단위 11(Dispatcher 7·Handler 2·Registry 2). ImpactHandler·ActionHandler·LookupHandler·캐시·독립 검증게이트는 의존 착지 후 |

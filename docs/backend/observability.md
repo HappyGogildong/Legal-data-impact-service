@@ -1,8 +1,8 @@
 ---
 title: 관측성·성능 측정 환경 (Observability)
 status: Draft
-version: 0.2
-date: 2026-08-18
+version: 0.3
+date: 2026-11-07
 tags: [backend, observability, metrics, tracing, load-test, performance]
 related:
   - "backend/concurrency-and-reliability.md"
@@ -99,6 +99,8 @@ Grafana `http://localhost:3001`(익명 Admin) · Prometheus `:9090` · Tempo `:3
 
 **원칙:** 지표는 *가설을 검증할 수 있게* 태깅한다. "Opus 호출이 많다"가 아니라 "어느 `dimension`의 Opus 호출이 캐시 miss와 함께 늘었나"를 볼 수 있어야 한다.
 
+**토큰·비용(D83).** 토큰은 Prometheus 지표가 아니라 **호출마다 DB 한 행**으로 남긴다. 일회성 배치는 긁히지 않는데 가장 큰 지출이 `summarize`이고 Prometheus 보존도 15일이기 때문이다. 필드와 지표는 [[rag-evaluation-framework]] §2.4·§8. 지금은 구현 전이라 토큰을 기록하지 않는다.
+
 ---
 
 ## 3. 트레이싱 — 시간이 어디로 가나
@@ -172,9 +174,10 @@ p99가 튀면 **어느 span인지** 바로 보인다 — Haiku 번역인지, RAG
 - `grounding.blocked`(인용 없는 주장 차단)·`regenerate`(재생성) — INFO/WARN
 - `ingest.upsert.conflict`·`notify.duplicate` — WARN/ERROR → Grafana 알림 연동
 
-**운영 로그 vs 감사 로그 — 분리한다.**
+**운영 로그 · 감사 로그 · 평가 기록 — 분리한다.**
 - **운영 로그**(Loki): 디버깅·성능. 보존 TTL(예: 30일), 휘발.
 - **감사 로그**: 법률 서비스 책임성 — 답변의 인용·모델·프롬프트 버전을 **append-only 영구** 기록. 상세: [[concurrency-and-reliability]] §4 감사 로그.
+- **평가 기록**(D83): 품질 측정 — DB 에 비동기로 쓰고 일회성 `eval` 컨테이너가 집계한다. 원문은 마스킹한 표본만 30일. 규칙: [[rag-evaluation-framework]] §7.
 
 > **⚠️ D41 — 로그가 최소수집의 뒷문이 되지 않게.** ① 로그에 `userId`·프로필 원본을 남기지 않는다 — **프로필 해시·trace-id만**. ② 자연어 질의 원문에 개인정보가 섞일 수 있다 → 질의 전문을 기본 로깅하지 않거나 마스킹, 보존을 짧게. ③ 감사 로그도 근거·인용만, 개인 식별 최소.
 
