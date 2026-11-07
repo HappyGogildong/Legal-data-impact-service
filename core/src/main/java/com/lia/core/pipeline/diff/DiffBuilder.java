@@ -63,9 +63,8 @@ public class DiffBuilder {
 
     /** 변경 조문 하나를 기준선과 대조해 확정 타입·대조문을 채운다. */
     private Article diffed(Article a, Law baseline) {
-        // 이동은 옛 번호로 기준선을 찾는다; 그 외는 같은 번호.
         boolean moved = a.changeType() == ChangeType.이동 && notBlank(a.movedFrom());
-        String baseNo = moved ? a.movedFrom() : a.no();
+        String baseNo = a.baselineNo();   // 이동은 옛 번호, 그 외는 같은 번호
         Article base = (baseline == null || baseNo == null) ? null : baseline.article(baseNo);
 
         if (isDeletionMarker(a)) {
