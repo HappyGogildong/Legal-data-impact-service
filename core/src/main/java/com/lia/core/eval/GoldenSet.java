@@ -9,7 +9,9 @@ import java.util.List;
 import org.springframework.core.io.ClassPathResource;
 
 import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import com.lia.core.pipeline.resolve.ResolutionState;
 
@@ -25,7 +27,10 @@ import com.lia.core.pipeline.resolve.ResolutionState;
  */
 public final class GoldenSet {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
+    /** 생략한 불리언(거부 문항의 {@code lawNamed} 등)은 false 로 읽는다 — Jackson 3 기본값은 거부. */
+    private static final ObjectMapper JSON = JsonMapper.builder()
+            .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+            .build();
 
     private GoldenSet() {}
 
@@ -39,9 +44,9 @@ public final class GoldenSet {
         return load(resourcePath, new TypeReference<List<RetrievalCase>>() {});
     }
 
-    /** 정답 세트(D83) — RED 단계 껍데기. */
+    /** 정답 세트(D83) — 클래스패스의 JSON 배열. 형식이 틀린 문항이 하나라도 있으면 전체를 거부한다. */
     public static List<EvalCase> cases(String resourcePath) {
-        throw new UnsupportedOperationException("아직 구현되지 않았다");
+        return load(resourcePath, new TypeReference<List<EvalCase>>() {});
     }
 
     public static List<RefusalCase> refusal(String resourcePath) {
