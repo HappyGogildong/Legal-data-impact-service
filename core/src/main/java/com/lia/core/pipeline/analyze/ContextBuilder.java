@@ -38,7 +38,7 @@ public class ContextBuilder {
         if (needsBaseline && req.baseline() != null) {
             Law baseline = req.baseline();
             for (Article a : law.changedArticles()) {
-                Article base = baseline.article(a.no());
+                Article base = baseline.article(a.baselineNo());   // 옮겨진 조문은 옮기기 전 번호
                 if (base != null) {
                     blocks.add(new SourceBlock(baseline.sourceId(base), SourceType.BASELINE, base.text()));
                 }

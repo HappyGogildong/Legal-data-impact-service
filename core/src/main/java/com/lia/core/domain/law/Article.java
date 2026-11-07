@@ -58,6 +58,15 @@ public record Article(
     }
 
     /**
+     * 기준선(시행중본)에서 이 조문에 대응하는 조문 번호 — 옮겨진 조문은 옮기기 전 번호, 그 외는 같은 번호.
+     * 대조(Diff Builder)·근거 조립(ContextBuilder)·조문 대비 화면이 같은 규칙을 써야 근거와 화면이 어긋나지 않는다.
+     */
+    public String baselineNo() {
+        boolean moved = changeType == ChangeType.이동 && movedFrom != null && !movedFrom.isBlank();
+        return moved ? movedFrom : no;
+    }
+
+    /**
      * Diff Builder 가 기준선 대조 결과를 반영한 사본.
      * {@code changeType} 을 신설·삭제로 확정하고 {@code diffVsCurrent} 를 채운다.
      */
