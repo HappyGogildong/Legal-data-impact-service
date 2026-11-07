@@ -77,6 +77,22 @@ class ContextBuilderTest {
     }
 
     @Test
+    void 옮겨진_조문은_옮기기_전_번호의_기준선_조문을_담는다() {
+        // 제18조가 제20조로 옮겨졌다. 기준선의 제20조는 내용이 다른 조문이다(DiffBuilder 와 같은 대응 규칙, D83 필수 근거).
+        Article moved = new Article("20", "제목", "제20조(사업계획의 통합심의 등) 통합하여 검토한다.", true,
+                ChangeType.이동, "18", null, LocalDate.of(2026, 8, 4), true, null);
+        Law pending = housingWith(List.of(moved));
+        Law baseline = baselineWith(List.of(
+                article("18", "제18조(사업계획의 통합심의 등) 개별로 심의한다.", false, ChangeType.없음),
+                article("20", "제20조(주택건설사업의 등록) 등록한다.", false, ChangeType.없음)));
+
+        Set<String> ids = builder.build(new AnalyzeRequest(QueryType.DIFF, pending, baseline)).injectedSourceIds();
+
+        assertTrue(ids.contains("LAW:001809:art:18"), "옮기기 전 조문(제18조)이 기준선 근거여야 한다");
+        assertFalse(ids.contains("LAW:001809:art:20"), "번호만 같은 다른 옛 조문을 근거로 넣으면 안 된다");
+    }
+
+    @Test
     void 개인화_는_기준선_블록을_넣고_프로필과_질문을_싣되_근거_집합엔_없다() {
         UserProfile profile = new UserProfile(null, 34, null, null, null, null, null);
         AnalysisContext ctx = builder.build(
@@ -110,9 +126,12 @@ class ContextBuilderTest {
     }
 
     private static Law baseline() {
-        List<Article> arts = List.of(
+        return baselineWith(List.of(
                 article("18", "제18조(사업계획의 통합심의 등) 개별로 심의한다.", false, ChangeType.없음),
-                article("104", "제104조(벌칙) 1년 이하의 징역에 처한다.", false, ChangeType.없음));
+                article("104", "제104조(벌칙) 1년 이하의 징역에 처한다.", false, ChangeType.없음)));
+    }
+
+    private static Law baselineWith(List<Article> arts) {
         return new Law("001809", "200000", "주택법", Law.Status.시행중,
                 Law.AmendKind.일부개정, Law.LawType.법률, "국토교통부",
                 LocalDate.of(2019, 12, 31), "16000", LocalDate.of(2020, 1, 1),
@@ -139,10 +158,13 @@ class ContextBuilderTest {
     }
 
     private static Law housing() {
-        List<Article> arts = List.of(
+        return housingWith(List.of(
                 article("18", "제18조(사업계획의 통합심의 등) 통합하여 검토한다.", true, ChangeType.개정),
                 article("104", "제104조(벌칙) 2년 이하의 징역에 처한다.", true, ChangeType.개정),
-                article("2", "제2조 미변경 정의", false, ChangeType.없음));
+                article("2", "제2조 미변경 정의", false, ChangeType.없음)));
+    }
+
+    private static Law housingWith(List<Article> arts) {
         List<Addendum> addenda = List.of(
                 new Addendum("제1조", "시행일", Addendum.Kind.시행일, "공포 후 6개월", "21323",
                         LocalDate.of(2026, 2, 3)));
