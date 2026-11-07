@@ -10,8 +10,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 public class LiaCoreApplication {
     public static void main(String[] args) {
         ConfigurableApplicationContext context = SpringApplication.run(LiaCoreApplication.class, args);
-        // 배치(D62)는 한 번 돌고 끝나는 잡 — 실행 결과를 종료 코드로 돌려준다(외부 스케줄러 알림용)
-        if (context.getEnvironment().matchesProfiles("batch")) {
+        // 배치(D62)·오프라인 평가(D83)는 한 번 돌고 끝나는 잡 — 실행 결과를 종료 코드로 돌려준다(외부 스케줄러 알림용)
+        if (context.getEnvironment().matchesProfiles("batch", "eval")) {
             System.exit(SpringApplication.exit(context));
         }
     }

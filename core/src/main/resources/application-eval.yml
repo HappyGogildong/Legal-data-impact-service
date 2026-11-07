@@ -1,0 +1,12 @@
+# 오프라인 회귀 평가(D83) — `--spring.profiles.active=eval`. 웹 서버 없이 한 번 돌고 종료한다.
+# 정답 세트 문항마다 Haiku 1회, 주제 질문마다 임베딩 1회(유료) — 사람이 수동으로 실행한다.
+# 종료 코드 0=통과(기준선 없음 포함) · 1=실행 실패 · 3=회귀. 보고서는 표준 출력에 JSON 한 줄.
+spring:
+  main:
+    web-application-type: none
+
+lia:
+  eval:
+    gold: eval/offline-gold.json          # 클래스패스(접두사 없음) 또는 file:/경로
+    baseline: eval/offline-baseline.json  # 없으면 비교하지 않는다. 운영 전체 색인에서 잰 값만 커밋한다
+    tolerance: 0.02                       # 실제 허용 오차는 이 값과 1/분모 중 큰 값

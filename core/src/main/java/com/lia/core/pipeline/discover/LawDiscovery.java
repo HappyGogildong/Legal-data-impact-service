@@ -59,6 +59,11 @@ public class LawDiscovery {
         this.settings = settings;
     }
 
+    /** 지금 설정 — 오프라인 평가 보고서가 평가 당시 값을 함께 싣는다(D83). */
+    public Settings settings() {
+        return settings;
+    }
+
     /**
      * @param question 사용자 질문 원문
      * @param profile  프로필 기준으로 찾을 때만(토글 + 쓸 수 있는 프로필) — 닫힌 값 라벨만 검색어에 붙는다(userId 없음)
