@@ -1,1 +1,1 @@
-{"config":{"chunkFetch":40,"maxCandidates":10,"minSimilarity":0.3},"indexedLaws":123,"cases":4,"metrics":{"refusal.recall":{"value":1.0,"n":1}}}
+{"config":{"chunkFetch":40,"maxCandidates":10,"minSimilarity":0.3},"indexedLaws":123,"cases":4,"metrics":{"refusal.over":{"value":0.0,"n":2},"refusal.recall":{"value":1.0,"n":1}}}

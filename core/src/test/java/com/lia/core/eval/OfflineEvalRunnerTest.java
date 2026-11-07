@@ -59,10 +59,11 @@ class OfflineEvalRunnerTest {
     @Test
     @DisplayName("기준선보다 나빠지면 회귀로 끝나고 보고서는 그대로 낸다")
     void 회귀() {
-        int code = run(query -> new CaseOutcome(false, List.of(), false, null, null), GOLD, BASELINE);
+        // 답할 수 있는 문항 2개까지 모두 거부 — 과잉 거부율 0 → 1 (분모 2라 한 문항 허용을 넘는다)
+        int code = run(query -> new CaseOutcome(true, List.of(), false, null, null), GOLD, BASELINE);
 
         assertEquals(OfflineEvalRunner.REGRESSED, code);
-        assertEquals(0.0, EvalReport.fromJson(output()).metrics().get("refusal.recall").value(), 1e-9);
+        assertEquals(1.0, EvalReport.fromJson(output()).metrics().get("refusal.over").value(), 1e-9);
     }
 
     @Test
