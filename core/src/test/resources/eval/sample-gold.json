@@ -1,0 +1,25 @@
+[
+  {
+    "query": "주택법 제18조 뭐가 바뀌었어?",
+    "kind": "ANSWERABLE",
+    "lawNamed": true,
+    "expectedLawIds": ["001809"],
+    "articleNo": "18",
+    "expectedDimension": "DIFF"
+  },
+  {
+    "query": "전세 보증금 돌려받는 제도가 어떻게 바뀌어?",
+    "kind": "ANSWERABLE",
+    "lawNamed": false,
+    "expectedLawIds": ["009999"],
+    "acceptableLawIds": ["008888"]
+  },
+  {
+    "query": "우주 여행 면허 제도가 새로 생기나?",
+    "kind": "NO_MATCH"
+  },
+  {
+    "query": "오늘 점심 뭐 먹지",
+    "kind": "REFUSE"
+  }
+]

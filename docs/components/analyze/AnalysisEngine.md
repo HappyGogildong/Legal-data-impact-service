@@ -31,7 +31,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 | 출력 | `AnalyzeResponse{ result: ImpactResult, injectedSourceIds[] }` | 끝까지 인용 검증 실패면 `InsufficientGroundingException`(디스패처가 차원별 unmet 으로) |
 
 ## 동작 (명시적 워크플로)
-1. **context 조립** — [[analysis-prompt-spec]] §3 템플릿으로 `source_id` 부여: **변경 조문 + baseline 대응 조문(DIFF) + 개정문 + 부칙(시행일) + (Layer B면) 프로필**. 벡터 검색 없음 — `law`/`baseline` 애그리거트에서 직접.
+1. **context 조립** — [[analysis-prompt-spec]] §3 템플릿으로 `source_id` 부여: **변경 조문 + baseline 대응 조문(DIFF) + 개정문 + 부칙(시행일) + (Layer B면) 프로필**. 대응 조문은 `Article.baselineNo` — 옮겨진 조문은 옮기기 전 번호로 찾는다(대조·조문 대비 화면과 같은 규칙). 벡터 검색 없음 — `law`/`baseline` 애그리거트에서 직접.
    ⚠️ 인용키는 **시행일 포함**: `LAW:{lawId}@{effectiveDate}:art:{no}`(복수 시행예정본, D43). 형식은 [[component-specs]] §1.3.
 2. **Opus API 호출** — constrained JSON([[analysis-prompt-spec]] §4 스키마), adaptive thinking(항상 켜짐)·effort=medium(D68).
 3. **1차 인용검증** — 스키마 유효 + **인용 존재성**(모든 `claims[].citations` ⊆ 주입 `source_id`). 실패 시 재생성(≤`regen_max`).

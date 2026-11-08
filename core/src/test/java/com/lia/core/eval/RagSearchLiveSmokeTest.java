@@ -23,10 +23,10 @@ import org.testcontainers.utility.DockerImageName;
 import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.domain.law.Law;
-import com.lia.core.eval.Retriever.Retrieved;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.normalize.Normalizer;
+import com.lia.core.store.Chunk;
 import com.lia.core.store.ChunkStore;
 
 /**
@@ -63,12 +63,11 @@ class RagSearchLiveSmokeTest {
         Law housing = new Normalizer().normalize(loadPending("samples/housing-act.json"));
         ragIndexer.index(housing);                                   // 실 OpenAI 임베딩으로 적재
 
-        Retriever retriever = new ChunkStoreRetriever(chunkStore);
-        List<Retrieved> hits = retriever.retrieve("주택 사업계획 통합심의가 어떻게 바뀌나", RagConfig.defaults());
+        List<Chunk> hits = chunkStore.search("주택 사업계획 통합심의가 어떻게 바뀌나", 5);
 
         assertFalse(hits.isEmpty(), "검색 결과 없음 — 왕복 실패");
         assertTrue(hits.stream().anyMatch(h -> h.sourceId().startsWith("LAW:" + housing.lawId())),
-                "적재한 법령의 source_id가 검색되지 않음: " + hits.stream().map(Retrieved::sourceId).toList());
+                "적재한 법령의 source_id가 검색되지 않음: " + hits.stream().map(Chunk::sourceId).toList());
         System.out.printf("[live] 적재→검색 왕복 OK — top: %s%n", hits.get(0).sourceId());
     }
 

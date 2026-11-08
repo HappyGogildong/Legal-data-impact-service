@@ -20,9 +20,7 @@ final class ArticleComparison {
     /** 기준선에서 찾은 현행 원문. 대비 대상이 아니거나 기준선·조문이 없으면 null. */
     static String previousText(Article article, Law baseline) {
         if (baseline == null || !comparable(article)) return null;
-        String baseNo = article.changeType() == Article.ChangeType.이동 && article.movedFrom() != null
-                ? article.movedFrom() : article.no();
-        Article base = baseline.article(baseNo);
+        Article base = baseline.article(article.baselineNo());
         return base == null ? null : base.text();
     }
 

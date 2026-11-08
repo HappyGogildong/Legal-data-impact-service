@@ -25,7 +25,7 @@ related: ["adr/decision-log.md", "backend/observability.md", "components/batch/I
 | 법령 발견 | Haiku 1 + 임베딩 1, Opus·한도·조회 집계 없음 | `lia.discovery.*` | D70 |
 | 온라인 Layer A | 저장본만 읽는다(비용 0). 없으면 `NOT_PRECOMPUTED`, Opus 호출 없음. 로컬 개발에서만 켠다 | `lia.analysis.layer-a-live`(`LIA_ANALYSIS_LAYER_A_LIVE`) false | D80 |
 | 익명 분석 하루 상한 | 서비스 전체·서울 날짜, 분류 전에 차감, 넘으면 429. 로그인 사용자는 세지 않음 | `lia.analysis.anonymous-daily-limit`(`LIA_ANALYSIS_ANONYMOUS_DAILY_LIMIT`) 1000(잠정) | D81 |
-| 오프라인 회귀 평가 | 정답 세트로 수동 실행, 임베딩·Haiku 호출. 프롬프트·모델·검색 설정을 바꾸기 전에 돌린다 | 옵트인 `LIA_RAG_EVAL` | D83 |
+| 오프라인 회귀 평가 | 정답 세트로 수동 실행 — 문항마다 Haiku 1회, 주제 질문마다 임베딩 1회. 프롬프트·모델·검색 설정을 바꾸기 전에 돌린다 | `eval` 프로파일 · `lia.eval.gold`·`lia.eval.baseline`·`lia.eval.tolerance`(0.02) | D83 |
 | 운영 배치 평가 | 집계와 표본 추출만 하고 LLM 을 부르지 않는다(판정은 사람). 판정 지표는 이미 만든 답을 쓴다 | 구현 전 — 설정 키는 구현 때 이 표에 적는다 | D83 |
 
 ### 바꾸는 법
