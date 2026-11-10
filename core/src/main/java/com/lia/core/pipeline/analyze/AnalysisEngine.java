@@ -1,17 +1,24 @@
 package com.lia.core.pipeline.analyze;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.analysis.Situation;
 import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.eval.FaithfulnessGate;
+import com.lia.core.observability.llm.LlmCall;
+import com.lia.core.observability.llm.LlmCallRecorder;
+import com.lia.core.observability.llm.LlmPurpose;
+import com.lia.core.observability.llm.UsageCapture;
 import com.lia.core.pipeline.plan.QueryType;
 
 /**
@@ -25,11 +32,19 @@ public class AnalysisEngine {
     private final ContextBuilder contextBuilder;
     private final Reasoner reasoner;
     private final int maxAttempts;
+    private final LlmCallRecorder recorder;
 
+    /** 호출 기록 없이 — 기록을 다루지 않는 테스트용. */
     public AnalysisEngine(ContextBuilder contextBuilder, Reasoner reasoner, int maxAttempts) {
+        this(contextBuilder, reasoner, maxAttempts, LlmCallRecorder.NONE);
+    }
+
+    /** @param recorder 시도마다 호출 기록을 남긴다(D83) — 본 처리를 막지 않는 구현을 넘긴다 */
+    public AnalysisEngine(ContextBuilder contextBuilder, Reasoner reasoner, int maxAttempts, LlmCallRecorder recorder) {
         this.contextBuilder = contextBuilder;
         this.reasoner = reasoner;
         this.maxAttempts = maxAttempts;
+        this.recorder = recorder;
     }
 
     /** Layer A·대응 방안 재생성은 그 차원, 첫 Layer B 는 영향·대응 둘 다를 검증한다. */
@@ -44,14 +59,25 @@ public class AnalysisEngine {
     public AnalyzeResponse analyze(AnalyzeRequest req, Set<QueryType> requested) {
         AnalysisContext ctx = contextBuilder.build(req);
         Set<String> injected = ctx.injectedSourceIds();
+        CallGroup group = new CallGroup(LlmPurpose.ofAnalysis(req.dimension()), UUID.randomUUID(),
+                req.dimension() == QueryType.IMPACT ? label(requested) : null, ctx.blocks().size());
 
         // 조립된 근거로 추론 → 1차 인용검증. 실패 시 재생성(≤N), 끝까지 실패면 근거부족 폴백(환각 미노출).
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            UsageCapture usage = new UsageCapture();
+            Instant calledAt = Instant.now();
             if (req.dimension().isPersonalized()) {
-                PersonalizedOutput out = reasoner.reasonPersonalized(ctx);
+                PersonalizedOutput out;
+                try {
+                    out = reasoner.reasonPersonalized(ctx, usage);
+                } catch (RuntimeException e) {
+                    record(group, calledAt, attempt, null, false, usage);
+                    throw e;
+                }
                 boolean passed = req.dimension() == QueryType.ACTION
                         ? grounded(QueryType.ACTION, out.result(), injected)
                         : groundedRequested(requested, out.result(), injected);
+                record(group, calledAt, attempt, passed, true, usage);
                 if (passed) {
                     // 상황은 대응 방안의 것이다(D71) — 대응이 나가지 않으면 없다(대응이 비어 있을 수도 있다)
                     if (!requested.contains(QueryType.ACTION)) {
@@ -65,13 +91,37 @@ public class AnalysisEngine {
                 }
                 continue;
             }
-            ImpactResult result = reasoner.reason(ctx);
-            if (grounded(req.dimension(), result, injected)) {
+            ImpactResult result;
+            try {
+                result = reasoner.reason(ctx, usage);
+            } catch (RuntimeException e) {
+                record(group, calledAt, attempt, null, false, usage);
+                throw e;
+            }
+            boolean passed = grounded(req.dimension(), result, injected);
+            record(group, calledAt, attempt, passed, true, usage);
+            if (passed) {
                 return new AnalyzeResponse(result, injected);
             }
         }
         throw new InsufficientGroundingException(
                 "인용 검증 %d회 실패 — 근거 부족(환각 노출 금지)".formatted(maxAttempts));
+    }
+
+    /** analyze 1회의 기록 공통값(D83) — 재시도는 같은 묶음 키로 남는다. */
+    private record CallGroup(LlmPurpose purpose, UUID key, String requested, int contextSources) {}
+
+    /** @param attempt 0부터(기록은 1부터) · @param accepted 인용 검증 통과 여부, 호출 실패면 null */
+    private void record(CallGroup group, Instant calledAt, int attempt, Boolean accepted, boolean succeeded,
+                        UsageCapture usage) {
+        recorder.record(new LlmCall(calledAt, group.purpose(), LlmCall.resolveModel(usage.usage(), reasoner.model()),
+                reasoner.promptVersion(), group.key(), attempt + 1, accepted, succeeded, group.requested(),
+                usage.usage(), group.contextSources()));
+    }
+
+    /** 나갈 차원을 정해진 순서(QueryType 선언 순)로 — 예: {@code IMPACT,ACTION}. */
+    private static String label(Set<QueryType> requested) {
+        return requested.stream().sorted().map(Enum::name).collect(Collectors.joining(","));
     }
 
     private static final Set<QueryType> BOTH_PERSONALIZED = Set.of(QueryType.IMPACT, QueryType.ACTION);

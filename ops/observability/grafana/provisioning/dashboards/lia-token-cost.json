@@ -1,0 +1,624 @@
+{
+  "uid": "lia-token-cost",
+  "title": "LIA · Token & Cost",
+  "description": "유료 모델 호출 기록(llm_calls)과 시점별 단가(llm_prices)로 본 토큰·비용(D83). 지연 시간은 LIA · Overview.",
+  "tags": [
+    "lia",
+    "cost",
+    "eval"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5m",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "daily_limit",
+        "label": "하루 개인화 한도",
+        "type": "custom",
+        "query": "20",
+        "current": {
+          "text": "20",
+          "value": "20"
+        },
+        "options": [
+          {
+            "text": "20",
+            "value": "20",
+            "selected": true
+          }
+        ],
+        "description": "lia.personalization.daily-limit 과 맞춘다",
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "기간 비용",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "description": "단가가 있는 호출만 더한다. 오른쪽 '단가 없는 호출'이 0이 아니면 실제보다 작다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT sum(cost_usd) AS usd FROM llm_call_costs WHERE $__timeFilter(called_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 2,
+      "title": "단가 없는 호출",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "description": "llm_prices 에 그 모델·토큰 종류의 단가가 없는 호출. 공식 가격표를 보고 단가를 넣는다(cost-policy).",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT count(*) AS calls FROM llm_call_costs WHERE $__timeFilter(called_at) AND NOT priced"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 3,
+      "title": "개인화 1회당 비용",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "description": "하루 한도 1회를 쓰는 요청(첫 개인화 분석 + 상황 반영 재생성)의 평균 비용. 인용 검증 실패로 다시 부른 시도까지 더한다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH g AS (\n  SELECT purpose, group_key, count(*) AS attempts, sum(cost_usd) AS cost, bool_and(priced) AS priced,\n         sum(cost_usd) FILTER (WHERE accepted) AS accepted_cost, COALESCE(bool_or(accepted), false) AS answered,\n         sum(input_tokens) AS input_tokens, sum(output_tokens) AS output_tokens\n  FROM llm_call_costs\n  WHERE $__timeFilter(called_at) AND group_key IS NOT NULL\n  GROUP BY purpose, group_key\n)\nSELECT avg(cost) AS usd FROM g WHERE priced AND purpose IN ('PERSONALIZED', 'ACTION_REVISION')"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 4,
+      "title": "사용자 1명 하루 최대 비용(평균 단가 기준)",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "description": "개인화 1회당 평균 비용 × 하루 한도(변수 daily_limit = lia.personalization.daily-limit).",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH g AS (\n  SELECT purpose, group_key, count(*) AS attempts, sum(cost_usd) AS cost, bool_and(priced) AS priced,\n         sum(cost_usd) FILTER (WHERE accepted) AS accepted_cost, COALESCE(bool_or(accepted), false) AS answered,\n         sum(input_tokens) AS input_tokens, sum(output_tokens) AS output_tokens\n  FROM llm_call_costs\n  WHERE $__timeFilter(called_at) AND group_key IS NOT NULL\n  GROUP BY purpose, group_key\n)\nSELECT avg(cost) * $daily_limit AS usd FROM g WHERE priced AND purpose IN ('PERSONALIZED', 'ACTION_REVISION')"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 5,
+      "title": "일별 비용 — 목적별",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT date_trunc('day', called_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul' AS time, purpose AS metric, sum(cost_usd) AS usd FROM llm_call_costs WHERE $__timeFilter(called_at) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 80
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "일별 토큰 — 목적별",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 5
+      },
+      "description": "입력·출력(thinking 포함)·캐시 읽기·캐시 쓰기 토큰의 합.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT date_trunc('day', called_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul' AS time, purpose AS metric, sum(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0) + COALESCE(cache_read_tokens, 0) + COALESCE(cache_write_tokens, 0)) AS tokens FROM llm_call_costs WHERE $__timeFilter(called_at) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 80
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "Layer B 단가 — 요청 1건",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "description": "PERSONALIZED = 첫 개인화(영향·대응을 한 호출로), ACTION_REVISION = 상황 반영 재생성. 둘 다 하루 한도를 1회씩 쓴다. cost_per_request 는 재시도 포함, accepted_cost_per_request 는 통과한 시도만. unanswered = 끝까지 답을 내지 못한 요청(인용 검증 실패 또는 호출 실패).",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH g AS (\n  SELECT purpose, group_key, count(*) AS attempts, sum(cost_usd) AS cost, bool_and(priced) AS priced,\n         sum(cost_usd) FILTER (WHERE accepted) AS accepted_cost, COALESCE(bool_or(accepted), false) AS answered,\n         sum(input_tokens) AS input_tokens, sum(output_tokens) AS output_tokens\n  FROM llm_call_costs\n  WHERE $__timeFilter(called_at) AND group_key IS NOT NULL\n  GROUP BY purpose, group_key\n)\nSELECT COALESCE(purpose, '합계(한도 1회)') AS purpose,\n       count(*) AS requests,\n       avg(cost) FILTER (WHERE priced) AS cost_per_request,\n       avg(accepted_cost) FILTER (WHERE priced AND answered) AS accepted_cost_per_request,\n       percentile_cont(0.5) WITHIN GROUP (ORDER BY cost) FILTER (WHERE priced) AS p50_cost,\n       percentile_cont(0.95) WITHIN GROUP (ORDER BY cost) FILTER (WHERE priced) AS p95_cost,\n       avg(attempts) AS attempts_per_request,\n       percentile_cont(0.95) WITHIN GROUP (ORDER BY input_tokens) AS p95_input_tokens,\n       percentile_cont(0.95) WITHIN GROUP (ORDER BY output_tokens) AS p95_output_tokens,\n       count(*) FILTER (WHERE NOT answered) AS unanswered,\n       count(*) FILTER (WHERE NOT priced) AS unpriced\nFROM g WHERE purpose IN ('PERSONALIZED', 'ACTION_REVISION')\nGROUP BY GROUPING SETS ((purpose), ())\nORDER BY purpose"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "Layer A 단가 — 법령 버전 1건",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      },
+      "description": "배치 summarize 의 선계산 비용. 요청 1건 = 법령 버전 1건의 요약 또는 변경점.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH g AS (\n  SELECT purpose, group_key, count(*) AS attempts, sum(cost_usd) AS cost, bool_and(priced) AS priced,\n         sum(cost_usd) FILTER (WHERE accepted) AS accepted_cost, COALESCE(bool_or(accepted), false) AS answered,\n         sum(input_tokens) AS input_tokens, sum(output_tokens) AS output_tokens\n  FROM llm_call_costs\n  WHERE $__timeFilter(called_at) AND group_key IS NOT NULL\n  GROUP BY purpose, group_key\n)\nSELECT purpose, sum(cost) FILTER (WHERE priced) AS total_cost,\n       count(*) AS requests,\n       avg(cost) FILTER (WHERE priced) AS cost_per_request,\n       avg(accepted_cost) FILTER (WHERE priced AND answered) AS accepted_cost_per_request,\n       percentile_cont(0.5) WITHIN GROUP (ORDER BY cost) FILTER (WHERE priced) AS p50_cost,\n       percentile_cont(0.95) WITHIN GROUP (ORDER BY cost) FILTER (WHERE priced) AS p95_cost,\n       avg(attempts) AS attempts_per_request,\n       percentile_cont(0.95) WITHIN GROUP (ORDER BY input_tokens) AS p95_input_tokens,\n       percentile_cont(0.95) WITHIN GROUP (ORDER BY output_tokens) AS p95_output_tokens,\n       count(*) FILTER (WHERE NOT answered) AS unanswered,\n       count(*) FILTER (WHERE NOT priced) AS unpriced\nFROM g WHERE purpose IN ('SUMMARY', 'DIFF')\nGROUP BY purpose ORDER BY purpose"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "재생성 비율",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 0,
+        "y": 25
+      },
+      "description": "첫 개인화 1건당 상황 반영 재생성 수. 높으면 하루 한도가 빨리 준다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH g AS (\n  SELECT purpose, group_key, count(*) AS attempts, sum(cost_usd) AS cost, bool_and(priced) AS priced,\n         sum(cost_usd) FILTER (WHERE accepted) AS accepted_cost, COALESCE(bool_or(accepted), false) AS answered,\n         sum(input_tokens) AS input_tokens, sum(output_tokens) AS output_tokens\n  FROM llm_call_costs\n  WHERE $__timeFilter(called_at) AND group_key IS NOT NULL\n  GROUP BY purpose, group_key\n)\nSELECT (count(*) FILTER (WHERE purpose = 'ACTION_REVISION'))::numeric\n       / NULLIF(count(*) FILTER (WHERE purpose = 'PERSONALIZED'), 0) AS ratio FROM g"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 10,
+      "title": "재시도 낭비율 — 목적별",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 9,
+        "x": 6,
+        "y": 25
+      },
+      "description": "인용 검증에 실패했거나 호출이 실패해 버린 시도의 비용·호출 비율.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT purpose, sum(cost_usd) FILTER (WHERE accepted IS NOT TRUE) / NULLIF(sum(cost_usd), 0) AS wasted_cost_ratio,\n       count(*) FILTER (WHERE accepted IS NOT TRUE)::numeric / count(*) AS wasted_call_ratio\nFROM llm_call_costs WHERE $__timeFilter(called_at) AND group_key IS NOT NULL GROUP BY purpose ORDER BY purpose"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "title": "출력 잘림률 — 목적별",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 9,
+        "x": 15,
+        "y": 25
+      },
+      "description": "출력 상한(thinking 포함)에 걸려 끊긴 응답의 비율. 0이 아니면 max-tokens 를 본다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT purpose, count(*) FILTER (WHERE lower(stop_reason) IN ('max_tokens', 'length'))::numeric\n       / NULLIF(count(*) FILTER (WHERE succeeded OR stop_reason IS NOT NULL), 0) AS truncated_ratio,\n       count(*) FILTER (WHERE lower(stop_reason) IN ('max_tokens', 'length')) AS truncated\nFROM llm_call_costs WHERE $__timeFilter(called_at) AND purpose NOT IN ('DISCOVERY_EMBED', 'INDEX_EMBED')\nGROUP BY purpose ORDER BY purpose"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "title": "첫 개인화의 요청 차원",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 31
+      },
+      "description": "호출은 늘 영향·대응을 함께 만든다. 한쪽만 요청한 비율이 높으면 그 차원만 만드는 가벼운 호출을 검토한다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT requested, count(DISTINCT group_key) AS requests FROM llm_call_costs\nWHERE $__timeFilter(called_at) AND purpose = 'PERSONALIZED' GROUP BY requested ORDER BY requests DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "title": "근거 블록당 입력 토큰",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 31
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT purpose, avg(input_tokens::numeric / NULLIF(context_sources, 0)) AS input_tokens_per_source,\n       avg(context_sources) AS sources_per_call\nFROM llm_call_costs WHERE $__timeFilter(called_at) AND context_sources IS NOT NULL\nGROUP BY purpose ORDER BY purpose"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 14,
+      "title": "기록 누락",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 31
+      },
+      "description": "llm_calls 에 남기지 못한 호출(대기열 초과·쓰기 실패). 청구액 대조 때 차이를 설명한다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(lia_llm_calls_dropped_total[$__range])) or vector(0)",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 15,
+      "title": "분류·임베딩 호출",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT purpose, model, count(*) AS calls, count(*) FILTER (WHERE NOT succeeded) AS failed,\n       avg(input_tokens) AS avg_input_tokens, sum(input_tokens) AS input_tokens, sum(cost_usd) AS cost_usd\nFROM llm_call_costs WHERE $__timeFilter(called_at) AND purpose IN ('CLASSIFY', 'DISCOVERY_EMBED', 'INDEX_EMBED')\nGROUP BY purpose, model ORDER BY purpose, model"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    }
+  ]
+}

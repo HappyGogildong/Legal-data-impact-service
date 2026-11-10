@@ -1,8 +1,16 @@
 package com.lia.core.pipeline.plan;
 
+import java.time.Instant;
+
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
+
+import com.lia.core.observability.llm.LlmCall;
+import com.lia.core.observability.llm.LlmCallRecorder;
+import com.lia.core.observability.llm.LlmPurpose;
+import com.lia.core.observability.llm.UsageCapture;
+import com.lia.core.observability.llm.UsageCaptureAdvisor;
 
 /**
  * {@link QueryTranslator}의 Spring AI 구현 — 자연어를 {@link AnalysisQueryDraft}로 번역(D46).
@@ -30,20 +38,36 @@ public class SpringAiQueryTranslator implements QueryTranslator {
             """;
 
     private final ChatClient chat;
+    private final LlmCallRecorder recorder;
 
     /**
      * {@code ChatModel}을 명시 주입한다 — openai(임베딩)·anthropic 두 채팅 모델이 공존해
      * 자동설정 {@code ChatClient.Builder}가 모호하므로, 호출부가 Anthropic 모델을 골라 넘긴다.
+     *
+     * @param recorder 분류 호출마다 CLASSIFY 한 행(D83) — 본 처리를 막지 않는 구현을 넘긴다
      */
-    public SpringAiQueryTranslator(ChatModel chatModel) {
+    public SpringAiQueryTranslator(ChatModel chatModel, LlmCallRecorder recorder) {
         this.chat = ChatClient.builder(chatModel)
                 .defaultOptions(AnthropicChatOptions.builder().model(MODEL))
+                .defaultAdvisors(new UsageCaptureAdvisor())
                 .defaultSystem(SYSTEM)
                 .build();
+        this.recorder = recorder;
     }
 
     @Override
     public AnalysisQueryDraft translate(String query) {
-        return chat.prompt().user(query).call().entity(AnalysisQueryDraft.class);
+        UsageCapture usage = new UsageCapture();
+        Instant calledAt = Instant.now();
+        AnalysisQueryDraft draft;
+        try {
+            draft = chat.prompt().user(query).advisors(a -> a.param(UsageCapture.KEY, usage))
+                    .call().entity(AnalysisQueryDraft.class);
+        } catch (RuntimeException e) {
+            recorder.record(LlmCall.single(calledAt, LlmPurpose.CLASSIFY, MODEL, false, usage.usage()));
+            throw e;
+        }
+        recorder.record(LlmCall.single(calledAt, LlmPurpose.CLASSIFY, MODEL, true, usage.usage()));
+        return draft;
     }
 }

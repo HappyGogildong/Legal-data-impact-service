@@ -6,6 +6,8 @@ spring:
     web-application-type: none
 
 lia:
+  llm-calls:
+    async: false                          # 한 번 돌고 끝나는 프로세스 — 동기로 쓴다. 임베딩은 발견 질의라 기본 목적 그대로
   eval:
     gold: eval/offline-gold.json          # 클래스패스(접두사 없음) 또는 file:/경로
     baseline: eval/offline-baseline.json  # 없으면 비교하지 않는다. 운영 전체 색인에서 잰 값만 커밋한다

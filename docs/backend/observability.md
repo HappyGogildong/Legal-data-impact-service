@@ -99,7 +99,7 @@ Grafana `http://localhost:3001`(익명 Admin) · Prometheus `:9090` · Tempo `:3
 
 **원칙:** 지표는 *가설을 검증할 수 있게* 태깅한다. "Opus 호출이 많다"가 아니라 "어느 `dimension`의 Opus 호출이 캐시 miss와 함께 늘었나"를 볼 수 있어야 한다.
 
-**토큰·비용(D83).** 토큰은 Prometheus 지표가 아니라 **호출마다 DB 한 행**으로 남긴다. 일회성 배치는 긁히지 않는데 가장 큰 지출이 `summarize`이고 Prometheus 보존도 15일이기 때문이다. 필드와 지표는 [[rag-evaluation-framework]] §2.4·§8. 지금은 구현 전이라 토큰을 기록하지 않는다.
+**토큰·비용(D83).** 토큰은 Prometheus 지표가 아니라 **호출마다 DB 한 행**으로 남긴다. 일회성 배치는 긁히지 않는데 가장 큰 지출이 `summarize`이고 Prometheus 보존도 15일이기 때문이다. 필드와 지표는 [[rag-evaluation-framework]] §2.4·§8, 기록 경로는 [[LlmCallRecorder]]. 대시보드 `LIA · Token & Cost`(`lia-token-cost.json`)가 `lia-postgres` 로 `llm_call_costs` 를 읽는다. 기록하지 못한 호출은 `lia.llm.calls.dropped{reason}`(queue_full · write_failed)로 센다.
 
 ---
 

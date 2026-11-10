@@ -10,6 +10,8 @@ import java.util.List;
 
 import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.observability.llm.UsageCapture;
+import com.lia.core.observability.llm.UsageCaptureAdvisor;
 import com.lia.core.pipeline.analyze.AnalysisContext.SourceBlock;
 import com.lia.core.pipeline.plan.QueryType;
 
@@ -51,23 +53,46 @@ public class SpringAiReasoner implements Reasoner {
                         .model(MODEL)
                         .thinkingAdaptive()
                         .effort(OutputConfig.Effort.MEDIUM))
-                .defaultAdvisors(new ThinkingBlockFilter())   // thinking 블록이 첫 generation 이라 .entity() 가 빈 내용을 파싱하는 것 방지
+                .defaultAdvisors(new ThinkingBlockFilter(),   // thinking 블록이 첫 generation 이라 .entity() 가 빈 내용을 파싱하는 것 방지
+                        new UsageCaptureAdvisor())                // 호출 기록(D83) — 변환 전에 사용량을 담는다
                 .defaultSystem(SYSTEM)
                 .build();
     }
 
     @Override
     public ImpactResult reason(AnalysisContext context) {
-        ImpactResult raw = chat.prompt().user(userMessage(context)).call().entity(ImpactResult.class);
+        return reason(context, new UsageCapture());
+    }
+
+    @Override
+    public ImpactResult reason(AnalysisContext context, UsageCapture usage) {
+        ImpactResult raw = chat.prompt().user(userMessage(context)).advisors(a -> a.param(UsageCapture.KEY, usage))
+                .call().entity(ImpactResult.class);
         return stampMeta(raw, context.dimension());   // meta는 LLM이 아니라 우리가 확정(모델명·버전·계층)
     }
 
     @Override
     public PersonalizedOutput reasonPersonalized(AnalysisContext context) {
-        PersonalizedReply raw = chat.prompt().user(userMessage(context)).call().entity(PersonalizedReply.class);
+        return reasonPersonalized(context, new UsageCapture());
+    }
+
+    @Override
+    public PersonalizedOutput reasonPersonalized(AnalysisContext context, UsageCapture usage) {
+        PersonalizedReply raw = chat.prompt().user(userMessage(context)).advisors(a -> a.param(UsageCapture.KEY, usage))
+                .call().entity(PersonalizedReply.class);
         if (raw == null) return new PersonalizedOutput(null, List.of(), List.of());   // 엔진 그라운딩이 실패로 처리
         PersonalizedOutput out = raw.toOutput();
         return new PersonalizedOutput(stampMeta(out.result(), context.dimension()), out.questions(), out.stepNotes());
+    }
+
+    @Override
+    public String model() {
+        return MODEL;
+    }
+
+    @Override
+    public String promptVersion() {
+        return PROMPT_VERSION;
     }
 
     /**
