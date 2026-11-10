@@ -38,6 +38,7 @@ import com.lia.core.pipeline.plan.SpringAiQueryTranslator;
 import com.lia.core.application.analysis.ActionRevisionUseCase;
 import com.lia.core.application.analysis.AnalyzeUseCase;
 import com.lia.core.application.analysis.AnonymousAnalysisQuota;
+import com.lia.core.application.analysis.QueryEventRecorder;
 import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.pipeline.dispatch.PersonalizationQuota;
 import com.lia.core.pipeline.discover.LawDiscovery;
@@ -183,20 +184,24 @@ public class PipelineConfig {
                 chunkFetch, maxCandidates, minSimilarity, snippetChars, candidateStatuses));
     }
 
-    /** 온라인 유스케이스(plan→dispatch). 애노테이션 없는 코어를 여기서 배선(프레임워크 비의존). */
+    /** 온라인 유스케이스(plan→dispatch). 애노테이션 없는 코어를 여기서 배선(프레임워크 비의존). 요청마다 질의 이벤트(D83). */
     @Bean
     public AnalyzeUseCase analyzeUseCase(QueryPlanner queryPlanner, QueryDispatcher queryDispatcher, LawViews lawViews,
                                          PersonalizationGate personalizationGate,
-                                         AnonymousAnalysisQuota anonymousAnalysisQuota) {
-        return new AnalyzeUseCase(queryPlanner, queryDispatcher, lawViews, personalizationGate, anonymousAnalysisQuota);
+                                         AnonymousAnalysisQuota anonymousAnalysisQuota,
+                                         QueryEventRecorder queryEventRecorder) {
+        return new AnalyzeUseCase(queryPlanner, queryDispatcher, lawViews, personalizationGate, anonymousAnalysisQuota,
+                queryEventRecorder, SpringAiReasoner.PROMPT_VERSION);
     }
 
-    /** 대응 방안 상황 확인 → 대응 방안만 재생성(D71). */
+    /** 대응 방안 상황 확인 → 대응 방안만 재생성(D71). 요청마다 질의 이벤트(D83). */
     @Bean
     public ActionRevisionUseCase actionRevisionUseCase(PersonalizationGate personalizationGate, LawSource lawSource,
                                                        PersonalizationQuota personalizationQuota,
-                                                       AnalysisEngine analysisEngine) {
-        return new ActionRevisionUseCase(personalizationGate, lawSource, personalizationQuota, analysisEngine);
+                                                       AnalysisEngine analysisEngine,
+                                                       QueryEventRecorder queryEventRecorder) {
+        return new ActionRevisionUseCase(personalizationGate, lawSource, personalizationQuota, analysisEngine,
+                queryEventRecorder, SpringAiReasoner.PROMPT_VERSION);
     }
 
     /** 익명 분석의 서비스 전체 하루 상한(D81) — 분류 전에 차감. */

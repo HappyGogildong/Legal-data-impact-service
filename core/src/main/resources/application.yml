@@ -53,6 +53,8 @@ lia:
     async: true                     # 웹: 요청 경로에 DB 쓰기를 더하지 않는다. 한 번 돌고 끝나는 배치·평가는 false
     queue-capacity: 1000            # 비동기 대기열 크기 — 넘치면 버리고 lia.records.dropped{record=llm_call,reason=queue_full}
     embedding-purpose: DISCOVERY_EMBED   # 임베딩 호출의 목적(호출 단위로는 색인·검색을 가를 수 없어 실행 모드로). 배치는 INDEX_EMBED
+  query-events:                     # 질의 이벤트 query_events(D83) — 웹 요청에서만, 늘 비동기
+    queue-capacity: 1000            # 넘치면 버리고 lia.records.dropped{record=query_event,reason=queue_full}
 
 spring:
   application:
