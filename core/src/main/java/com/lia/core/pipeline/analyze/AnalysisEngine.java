@@ -12,6 +12,7 @@ import com.lia.core.domain.analysis.Situation;
 import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.eval.FaithfulnessGate;
+import com.lia.core.observability.llm.LlmCallRecorder;
 import com.lia.core.pipeline.plan.QueryType;
 
 /**
@@ -25,11 +26,19 @@ public class AnalysisEngine {
     private final ContextBuilder contextBuilder;
     private final Reasoner reasoner;
     private final int maxAttempts;
+    private final LlmCallRecorder recorder;
 
+    /** 호출 기록 없이 — 기록을 다루지 않는 테스트용. */
     public AnalysisEngine(ContextBuilder contextBuilder, Reasoner reasoner, int maxAttempts) {
+        this(contextBuilder, reasoner, maxAttempts, LlmCallRecorder.NONE);
+    }
+
+    /** @param recorder 시도마다 호출 기록을 남긴다(D83) — 본 처리를 막지 않는 구현을 넘긴다 */
+    public AnalysisEngine(ContextBuilder contextBuilder, Reasoner reasoner, int maxAttempts, LlmCallRecorder recorder) {
         this.contextBuilder = contextBuilder;
         this.reasoner = reasoner;
         this.maxAttempts = maxAttempts;
+        this.recorder = recorder;
     }
 
     /** Layer A·대응 방안 재생성은 그 차원, 첫 Layer B 는 영향·대응 둘 다를 검증한다. */

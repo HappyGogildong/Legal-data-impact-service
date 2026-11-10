@@ -3,6 +3,7 @@ package com.lia.core.pipeline.analyze;
 import java.util.List;
 
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.observability.llm.UsageCapture;
 
 /**
  * 조립된 context → {@link ImpactResult} 추론 <b>포트</b>(Opus). 파이프라인의 LLM 경계.
@@ -22,5 +23,28 @@ public interface Reasoner {
      */
     default PersonalizedOutput reasonPersonalized(AnalysisContext context) {
         return new PersonalizedOutput(reason(context), List.of(), List.of());
+    }
+
+    /**
+     * 사용량을 {@code usage} 에 담으며 추론한다(D83 호출 기록) — 응답을 받은 뒤 예외가 나도 담긴 사용량은 남는다.
+     * 기본은 사용량 없이 {@link #reason} — 테스트 가짜 추론이 그대로 쓰인다.
+     */
+    default ImpactResult reason(AnalysisContext context, UsageCapture usage) {
+        return reason(context);
+    }
+
+    /** {@link #reasonPersonalized(AnalysisContext)} 의 사용량 기록판. */
+    default PersonalizedOutput reasonPersonalized(AnalysisContext context, UsageCapture usage) {
+        return reasonPersonalized(context);
+    }
+
+    /** 요청하는 모델 ID — 응답이 없을 때 기록에 쓴다. 모르면 null. */
+    default String model() {
+        return null;
+    }
+
+    /** 프롬프트 버전 — 기록의 비교 축. 모르면 null. */
+    default String promptVersion() {
+        return null;
     }
 }
