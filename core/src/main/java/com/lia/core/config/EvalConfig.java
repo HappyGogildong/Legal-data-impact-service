@@ -24,6 +24,10 @@ public class EvalConfig {
     private static final String COUNT_INDEXED_LAWS =
             "SELECT count(DISTINCT metadata->>'lawId') FROM vector_store";
 
+    /** 법령에 지금 시행예정본이 있는가 — 정답 법령의 시행일이 지난 문항을 뺄 때(D83). */
+    private static final String HAS_PENDING_VERSION =
+            "SELECT EXISTS (SELECT 1 FROM law_versions WHERE law_id = ? AND status = '시행예정')";
+
     @Bean
     public OfflineEvaluator offlineEvaluator(QueryPlanner queryPlanner, LawDiscovery lawDiscovery) {
         return new OfflineEvaluator(queryPlanner, lawDiscovery);
@@ -36,7 +40,7 @@ public class EvalConfig {
                                                @Value("${lia.eval.tolerance}") double tolerance) {
         return new OfflineEvalRunner(evaluator::evaluate, RagConfig.of(lawDiscovery.settings()),
                 () -> jdbcClient.sql(COUNT_INDEXED_LAWS).query(Long.class).single(),
-                lawId -> true,
+                lawId -> jdbcClient.sql(HAS_PENDING_VERSION).param(lawId).query(Boolean.class).single(),
                 gold, baseline, tolerance, System.out);
     }
 }
