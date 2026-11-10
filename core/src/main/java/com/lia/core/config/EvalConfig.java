@@ -36,6 +36,7 @@ public class EvalConfig {
                                                @Value("${lia.eval.tolerance}") double tolerance) {
         return new OfflineEvalRunner(evaluator::evaluate, RagConfig.of(lawDiscovery.settings()),
                 () -> jdbcClient.sql(COUNT_INDEXED_LAWS).query(Long.class).single(),
+                lawId -> true,
                 gold, baseline, tolerance, System.out);
     }
 }

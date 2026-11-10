@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
+import java.util.function.Predicate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +53,7 @@ public class OfflineEvalRunner implements ApplicationRunner, ExitCodeGenerator {
      * @param out          보고서를 낼 곳(운영은 표준 출력)
      */
     public OfflineEvalRunner(Function<String, CaseOutcome> evaluate, RagConfig config, LongSupplier indexedLaws,
-                             String goldPath, String baselinePath, double tolerance, PrintStream out) {
+                             Predicate<String> pendingLaw, String goldPath, String baselinePath, double tolerance, PrintStream out) {
         this.evaluate = evaluate;
         this.config = config;
         this.indexedLaws = indexedLaws;
@@ -67,7 +68,7 @@ public class OfflineEvalRunner implements ApplicationRunner, ExitCodeGenerator {
         try {
             List<EvalCase> cases = GoldenSet.cases(goldPath);
             List<CaseOutcome> outcomes = cases.stream().map(c -> evaluate.apply(c.query())).toList();
-            report = new EvalReport(config, indexedLaws.getAsLong(), cases.size(), OfflineMetrics.score(cases, outcomes));
+            report = new EvalReport(config, indexedLaws.getAsLong(), cases.size(), 0, OfflineMetrics.score(cases, outcomes));
         } catch (RuntimeException e) {
             log.error("[eval] 평가 실패 — 보고서를 내지 않는다", e);
             return FAILED;

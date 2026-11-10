@@ -15,7 +15,7 @@ class RegressionGateTest {
     final RegressionGate gate = new RegressionGate(0.02, Set.of("refusal.over"));
 
     static EvalReport report(Map<String, Measure> metrics) {
-        return new EvalReport(CONFIG, 100, 30, metrics);
+        return new EvalReport(CONFIG, 100, 30, 0, metrics);
     }
 
     @Test
