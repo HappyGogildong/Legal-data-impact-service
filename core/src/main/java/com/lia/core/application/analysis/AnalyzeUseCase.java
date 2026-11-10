@@ -40,9 +40,24 @@ public class AnalyzeUseCase {
     private final LawViews views;
     private final PersonalizationGate gate;
     private final AnonymousAnalysisQuota anonymousQuota;
+    private final QueryEventRecorder events;
+    private final String promptVersion;
 
+    /** 질의 이벤트 없이 — 기록을 다루지 않는 테스트용. */
     public AnalyzeUseCase(QueryPlanner planner, QueryDispatcher dispatcher, LawViews views,
                           PersonalizationGate gate, AnonymousAnalysisQuota anonymousQuota) {
+        this(planner, dispatcher, views, gate, anonymousQuota, QueryEventRecorder.NONE, null);
+    }
+
+    /**
+     * @param events        요청마다 질의 이벤트 한 행(D83) — 응답을 막지 않는 구현을 넘긴다
+     * @param promptVersion 이벤트에 남길 분석 프롬프트 버전
+     */
+    public AnalyzeUseCase(QueryPlanner planner, QueryDispatcher dispatcher, LawViews views,
+                          PersonalizationGate gate, AnonymousAnalysisQuota anonymousQuota,
+                          QueryEventRecorder events, String promptVersion) {
+        this.events = events;
+        this.promptVersion = promptVersion;
         this.anonymousQuota = anonymousQuota;
         this.planner = planner;
         this.dispatcher = dispatcher;

@@ -24,6 +24,14 @@ public sealed interface PlanResult permits PlanResult.Planned, PlanResult.Unreso
         }
     }
 
-    /** 미해소·비법령 — 지어내지 않는다. {@link ResolutionResult}의 4상태·안내를 그대로 전달. */
-    record Unresolved(ResolutionResult resolution) implements PlanResult {}
+    /**
+     * 미해소·비법령 — 지어내지 않는다. {@link ResolutionResult}의 4상태·안내를 그대로 전달.
+     *
+     * @param offTopic 법령 질문이 아니어서 거부했다(상태는 UNVERIFIED 로 같다 — 운영 집계만 이 값으로 가른다, D83)
+     */
+    record Unresolved(ResolutionResult resolution, boolean offTopic) implements PlanResult {
+        public Unresolved(ResolutionResult resolution) {
+            this(resolution, false);
+        }
+    }
 }

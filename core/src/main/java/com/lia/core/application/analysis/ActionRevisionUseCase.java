@@ -36,9 +36,20 @@ public class ActionRevisionUseCase {
     private final LawSource laws;
     private final PersonalizationQuota quota;
     private final AnalysisEngine engine;
+    private final QueryEventRecorder events;
+    private final String promptVersion;
 
+    /** 질의 이벤트 없이 — 기록을 다루지 않는 테스트용. */
     public ActionRevisionUseCase(PersonalizationGate gate, LawSource laws, PersonalizationQuota quota,
                                  AnalysisEngine engine) {
+        this(gate, laws, quota, engine, QueryEventRecorder.NONE, null);
+    }
+
+    /** @param events 재생성 요청마다 질의 이벤트 한 행(D83) · @param promptVersion 이벤트에 남길 프롬프트 버전 */
+    public ActionRevisionUseCase(PersonalizationGate gate, LawSource laws, PersonalizationQuota quota,
+                                 AnalysisEngine engine, QueryEventRecorder events, String promptVersion) {
+        this.events = events;
+        this.promptVersion = promptVersion;
         this.gate = gate;
         this.laws = laws;
         this.quota = quota;

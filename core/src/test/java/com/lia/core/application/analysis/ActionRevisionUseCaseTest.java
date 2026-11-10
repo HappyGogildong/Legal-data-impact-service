@@ -149,6 +149,51 @@ class ActionRevisionUseCaseTest {
 
     private static final List<SituationAnswer> ANSWER_Q1_YES = List.of(new SituationAnswer("q1", "예"));
 
+    // --- 질의 이벤트(D83) ---
+
+    final List<QueryEvent> events = new java.util.ArrayList<>();
+
+    private ActionRevisionUseCase recordingUseCase() {
+        source.versions.put("001809@2026-08-04", law(Law.AmendKind.일부개정));
+        source.baseline = law(Law.AmendKind.일부개정);
+        return new ActionRevisionUseCase(gate(storedWithPolicy("v1")), source, quota,
+                new AnalysisEngine(new ContextBuilder(), reasoner, 3), events::add, "0.3");
+    }
+
+    @Test
+    void 재생성하면_ANSWERED_이벤트_한_행() {
+        saveQuestionQ1();
+
+        recordingUseCase().revise(Optional.of(USER), REF, Q1_SET_ID, ANSWER_Q1_YES, questions);
+
+        assertEquals(1, events.size());
+        QueryEvent event = events.get(0);
+        assertEquals(QueryEvent.Kind.ACTION_REVISION, event.kind());
+        assertEquals(QueryEvent.Status.ANSWERED, event.status());
+        assertTrue(event.signedIn());
+        assertEquals("0.3", event.promptVersion());
+    }
+
+    @Test
+    void 재생성을_못_하면_사유를_남긴다() {
+        recordingUseCase().revise(Optional.of(USER), REF, Q1_SET_ID, ANSWER_Q1_YES, questions);
+
+        assertEquals(QueryEvent.Status.NOT_ANSWERED, events.get(0).status());
+        assertEquals(java.util.Map.of(QueryType.ACTION, Unmet.Reason.SITUATION_EXPIRED), events.get(0).unmet());
+    }
+
+    @Test
+    void 위조한_답은_ERROR_한_행을_남기고_같은_예외를_던진다() {
+        saveQuestionQ1();
+        List<SituationAnswer> forged = List.of(new SituationAnswer("q9", "예"));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> recordingUseCase().revise(Optional.of(USER), REF, Q1_SET_ID, forged, questions));
+
+        assertEquals(1, events.size());
+        assertEquals(QueryEvent.Status.ERROR, events.get(0).status());
+    }
+
     @Test
     void 익명이면_PROFILE_REQUIRED_로_한도와_엔진을_건드리지_않는다() {
         saveQuestionQ1();

@@ -70,6 +70,18 @@ class QueryPlannerTest {
 
         ResolutionResult rr = assertInstanceOf(PlanResult.Unresolved.class, result).resolution();
         assertEquals(ResolutionState.UNVERIFIED, rr.state(), "비법령은 UNVERIFIED");
+        assertTrue(((PlanResult.Unresolved) result).offTopic(), "운영 집계는 법령 질문이 아닌 것을 따로 센다(D83)");
+    }
+
+    @Test
+    void 해소_실패는_법령_질문이_아님으로_세지_않는다() {
+        AnalysisQueryDraft draft = new AnalysisQueryDraft(
+                QueryType.SUMMARY, Set.of(QueryType.SUMMARY), true, TargetKind.REFERENCE,
+                "가상의무슨법", null, List.of(), List.of(), List.of(), "요약");
+
+        PlanResult result = plannerFor(draft).plan("가상의무슨법 바뀌면 어떻게 돼?", null, false);
+
+        assertFalse(assertInstanceOf(PlanResult.Unresolved.class, result).offTopic());
     }
 
     @Test
