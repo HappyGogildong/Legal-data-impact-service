@@ -140,8 +140,8 @@ LIA의 RAG는 일반적인 "검색한 조각으로 답하기"와 다르다. 벡�
 
 - **`kind`:** `ANSWERABLE`(답이 있음), `NO_MATCH`(관련 법령 없음), `REFUSE`(비법령·조작 법명 등).
 - **`acceptableLawIds`:** 정답은 아니지만 후보로 나와도 잘못이 아닌 법령. 무관 후보율의 분모를 정직하게 만든다.
-- **작성:** 실제 법령을 보고 초안을 쓰고 사람이 검토한다. 첫 세트는 약 30문항이다.
-- **만료:** 시행일이 지난 법령은 시행예정 검색에서 빠진다. 평가 시점에 대상이 아닌 문항은 집계에서 빼고, 뺀 건수를 보고서에 적는다.
+- **작성:** 실제 법령을 보고 초안을 쓰고 사람이 검토한다. 지금 세트(`eval/offline-gold.json`)는 39문항 — 법령 지목 14(조문 5, 차원마다 3 이상), 주제 14, 관련 법령 없음 5, 거부 6. 오래 유효하도록 주로 2027-04 이후 시행 법령으로 썼다. 형식·최소 문항 수는 `OfflineGoldTest` 가 CI 에서 지킨다.
+- **만료:** 시행일이 지난 법령은 시행예정 검색에서 빠진다. 정답 법령에 시행예정본이 하나도 없는 답 있는 문항은 평가하지 않고(유료 호출도 하지 않는다), 뺀 수를 보고서 `excludedCases` 에 적고 질문을 로그에 남긴다. 많이 빠지면 정답 세트를 갱신한다.
 
 ### 5.2 회귀 게이트
 
@@ -227,11 +227,11 @@ Prometheus만으로는 부족하다. 일회성 배치는 긁히지 않는데 가
 
 | 대상 | 상태 |
 |---|---|
-| `EvalCase`, `GoldenSet` | §5.1 형식. 실제 정답 세트(`eval/offline-gold.json`)는 3단계에서 쓴다 — 지금은 테스트용 합성 문항만 있다 |
+| `EvalCase`, `GoldenSet` | §5.1 형식. 정답 세트 초안 39문항(`eval/offline-gold.json`) — 사람 검토 전 |
 | `OfflineEvaluator` | 질문을 `QueryPlanner` → `LawDiscovery`로 돌린다. 비슷한 이름의 법이 있는 경우는 해소 후보(거부 아님)로 센다 |
 | `OfflineMetrics` | §2.1의 법령·조문 정확성, 무관 후보율, 관련 법령 없음 후보율, 거부 재현율·과잉 거부율, 의도 분류 |
 | `RegressionGate`, `EvalReport` | 지표 방향과 한 문항 허용 오차로 기준선과 비교. 보고서 = 기준선 형식(JSON) |
-| `OfflineEvalRunner`, `EvalConfig` | `eval` 프로파일 실행. 배포 래퍼 연결은 3단계 |
+| `OfflineEvalRunner`, `EvalConfig` | `eval` 프로파일 실행, 시행일이 지난 문항 제외. 운영은 `ops/deploy/lia eval`([[cloud-infra]] 런북 15) |
 | `RagConfig` | 법령 발견 설정 3개만 |
 | `FaithfulnessGate` | 유지. 런타임 불변식이지 품질 지표가 아니다 |
 | 제거 | `Retriever`, `ChunkStoreRetriever`, `RagEvalRunner`, `SelfRetrievalGold`, `RefusalMetric`, `RagEvalLiveTest`, 옛 정답 파일 2개, Recall·nDCG |
@@ -256,6 +256,6 @@ Prometheus만으로는 부족하다. 일회성 배치는 긁히지 않는데 가
 |---|---|---|---|
 | 1 ✅ | 평가 경로 수리(§9), 결정적 지표 테스트, 게이트 연결 | 없음 | — |
 | 2 | LLM 호출 기록, 질의 이벤트, §2.4 대시보드 | 없음 | — |
-| 3 | 정답 세트 작성·검토, 오프라인 기준선 | 임베딩·Haiku 소액 | 운영 전체 색인 |
+| 3 🟡 | 정답 세트 작성 ✅·검토, 운영 래퍼 연결 ✅, 오프라인 기준선 | 임베딩·Haiku 소액 | 운영 전체 색인 |
 | 4 | 처리방침 갱신, 표본 수집, eval 컨테이너 | 없음 | 법무 검토(#35) |
 | 5 | 표본 판정, 판정 지표 기준선 | 없음 (Layer B 표본은 실제 요청에서, Layer A는 저장본에서) | 운영 `summarize` 실행 |
