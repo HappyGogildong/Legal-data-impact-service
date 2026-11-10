@@ -19,6 +19,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.lia.core.domain.law.Law;
+import com.lia.core.observability.llm.LlmCallRecorder;
 import com.lia.core.pipeline.connector.LawConnector;
 import com.lia.core.pipeline.diff.DiffBuilder;
 import com.lia.core.pipeline.embed.Embedder;
@@ -125,8 +126,8 @@ public class PipelineConfig {
 
     /** 자연어 → AnalysisQueryDraft 번역(D46) — 유일한 LLM 자유도. Haiku 4.5. */
     @Bean
-    public QueryTranslator queryTranslator(AnthropicChatModel anthropicChatModel) {
-        return new SpringAiQueryTranslator(anthropicChatModel, com.lia.core.observability.llm.LlmCallRecorder.NONE);
+    public QueryTranslator queryTranslator(AnthropicChatModel anthropicChatModel, LlmCallRecorder llmCallRecorder) {
+        return new SpringAiQueryTranslator(anthropicChatModel, llmCallRecorder);
     }
 
     /** 자연어 → PlanResult. 번역 후 결정론(해소·게이팅·fail-closed, D46). */
@@ -151,10 +152,11 @@ public class PipelineConfig {
         return new SpringAiReasoner(anthropicChatModel);
     }
 
-    /** 조립→추론→인용검증→재생성(≤N)→폴백. 검색 없음(정합화). */
+    /** 조립→추론→인용검증→재생성(≤N)→폴백. 검색 없음(정합화). 시도마다 호출 기록(D83). */
     @Bean
-    public AnalysisEngine analysisEngine(ContextBuilder contextBuilder, Reasoner reasoner) {
-        return new AnalysisEngine(contextBuilder, reasoner, ANALYZE_MAX_ATTEMPTS);
+    public AnalysisEngine analysisEngine(ContextBuilder contextBuilder, Reasoner reasoner,
+                                         LlmCallRecorder llmCallRecorder) {
+        return new AnalysisEngine(contextBuilder, reasoner, ANALYZE_MAX_ATTEMPTS, llmCallRecorder);
     }
 
     /** 쉬운 요약 저장소(D67) — 지금 프롬프트 버전으로 유효성을 가린다. */

@@ -12,6 +12,9 @@ spring:
         max-interval: 10s
 
 lia:
+  llm-calls:
+    async: false               # 한 번 돌고 끝나는 프로세스 — 동기로 써서 종료 때 잃지 않는다
+    embedding-purpose: INDEX_EMBED
   batch:
     workers: 2                 # 공용 워커 풀 크기(백필 때 올린다)
     law-api-interval: 500ms    # 국가법령정보 최소 호출 간격 — 공식 한도 확인 전 보수적으로
