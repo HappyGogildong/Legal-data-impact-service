@@ -101,6 +101,8 @@ Grafana `http://localhost:3001`(익명 Admin) · Prometheus `:9090` · Tempo `:3
 
 **토큰·비용(D83).** 토큰은 Prometheus 지표가 아니라 **호출마다 DB 한 행**으로 남긴다. 일회성 배치는 긁히지 않는데 가장 큰 지출이 `summarize`이고 Prometheus 보존도 15일이기 때문이다. 필드와 지표는 [[rag-evaluation-framework]] §2.4·§8, 기록 경로는 [[LlmCallRecorder]]. 대시보드 `LIA · Token & Cost`(`lia-token-cost.json`)가 `lia-postgres` 로 `llm_call_costs` 를 읽는다. 기록하지 못한 호출은 `lia.records.dropped{record=llm_call, reason}`(queue_full · write_failed)로 센다.
 
+**질의 이벤트(D83).** 분석·재생성 요청 1건마다 결과의 모양(상태·미해소 사유·차원별 못 채운 사유·후보 수)을 `query_events` 한 행으로 남긴다. 원문·`user_id`·법령ID 는 없다. 대시보드 `LIA · Requests`(`lia-requests.json`)가 거부율·Layer A 저장본 없음 비율·발견 후보 0건 비율·한도 도달을 보여 준다. 누락은 `lia.records.dropped{record=query_event}`. 계약: [[QueryEventRecorder]].
+
 ---
 
 ## 3. 트레이싱 — 시간이 어디로 가나

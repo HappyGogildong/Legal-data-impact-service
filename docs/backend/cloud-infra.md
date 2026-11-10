@@ -100,9 +100,9 @@ AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
   GRANT CONNECT ON DATABASE lia TO grafana_reader;
   GRANT USAGE ON SCHEMA public TO grafana_reader;
   ```
-- **`grafana_reader`에는 `ingest_runs`·`ingest_tasks`·`ingest_task_attempts`와 호출 기록 `llm_calls`·`llm_prices`·`llm_call_costs`(D83)의 SELECT만** — 계정·프로필 테이블(알림 이메일 포함)은 읽지 못한다. 관측 경로가 최소수집(D41)의 뒷문이 되지 않게(호출 기록에는 사용자 식별값·내용이 없다). 테이블이 생긴 뒤(첫 배포 후) 런북 단계로:
+- **`grafana_reader`에는 `ingest_runs`·`ingest_tasks`·`ingest_task_attempts`와 호출 기록 `llm_calls`·`llm_prices`·`llm_call_costs`, 질의 이벤트 `query_events`(D83)의 SELECT만** — 계정·프로필 테이블(알림 이메일 포함)은 읽지 못한다. 관측 경로가 최소수집(D41)의 뒷문이 되지 않게(호출 기록·질의 이벤트에는 사용자 식별값·내용이 없다). 테이블이 생긴 뒤(첫 배포 후) 런북 단계로:
   ```sql
-  GRANT SELECT ON ingest_runs, ingest_tasks, ingest_task_attempts, llm_calls, llm_prices, llm_call_costs TO grafana_reader;
+  GRANT SELECT ON ingest_runs, ingest_tasks, ingest_task_attempts, llm_calls, llm_prices, llm_call_costs, query_events TO grafana_reader;
   ```
 - 앱의 `CREATE EXTENSION IF NOT EXISTS vector`(PgVectorStore `initialize-schema`)는 확장이 이미 있으면 통과한다.
 
@@ -152,7 +152,7 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 
 **데이터 소스 `lia-postgres`** — 프로비저닝 파일 하나에 환경변수(`$LIA_DB_HOST`·`$LIA_DB_USER`·`$GRAFANA_DB_PASSWORD`)로 두고 로컬·운영이 값만 달리 준다.
 - 로컬: `db:5432` / `lia` (관측 오버레이에서도 같은 패널 동작).
-- 운영: RDS 엔드포인트 / `grafana_reader`(§2 — `ingest_*` 세 테이블과 `llm_*` 호출 기록 SELECT만).
+- 운영: RDS 엔드포인트 / `grafana_reader`(§2 — `ingest_*` 세 테이블, `llm_*` 호출 기록, `query_events` SELECT만).
 
 **대시보드 `LIA · Batch`** (`ops/observability/grafana/provisioning/dashboards/lia-batch.json`, Overview와 별도)
 
@@ -212,11 +212,11 @@ AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운
 9. **최초 SQL** — SSM 원격 포트 포워딩으로 RDS 접속, §2의 확장·계정 SQL 실행(관리자 계정).
    - 9-1. **Vercel·Google·Discord** — Vercel 에 `web/` 프로젝트를 만들고(루트 디렉터리 `web`) 환경변수 `LIA_API_ORIGIN` = `https://<API 이름>` 을 넣는다. Google Cloud 콘솔 OAuth 클라이언트에 리다이렉트 URI `<웹 주소>/login/oauth2/code/google` 을 등록하고 ID·비밀값을 Parameter Store 에. Discord 채널 웹훅을 만들어 `DISCORD_WEBHOOK_URL` 로.
 10. **첫 배포** — `ops/deploy/lia up <커밋 SHA>` → Flyway·PgVectorStore가 스키마 생성.
-11. **읽기 권한** — `GRANT SELECT ON ingest_runs, ingest_tasks, ingest_task_attempts, llm_calls, llm_prices, llm_call_costs TO grafana_reader;` 그리고 `llm_prices` 에 단가를 넣는다([[cost-policy]] "단가 넣는 법").
+11. **읽기 권한** — `GRANT SELECT ON ingest_runs, ingest_tasks, ingest_task_attempts, llm_calls, llm_prices, llm_call_costs, query_events TO grafana_reader;` 그리고 `llm_prices` 에 단가를 넣는다([[cost-policy]] "단가 넣는 법").
 12. **cron** — `ops/deploy/crontab` 설치, logrotate 설정.
 13. **확인**
     - `https://<도메인>/actuator/health` → `{"status":"UP"}`, `https://<도메인>/actuator/prometheus` → 차단.
-    - SSM 포트 포워딩으로 Grafana 접속 → `LIA · Overview`·`LIA · Batch`·`LIA · Token & Cost` 표시.
+    - SSM 포트 포워딩으로 Grafana 접속 → `LIA · Overview`·`LIA · Batch`·`LIA · Token & Cost`·`LIA · Requests` 표시.
     - 경보 연락처 시험 발송 → Discord 수신.
     - `ops/deploy/lia ingest run --dry-run` → `ingest_runs`에 기록, 배치 패널 반영.
     - `https://<API 이름>/api/v1/auth/providers` → `{"providers":["google"]}`, 웹에서 구글 로그인 왕복 → 동의 화면(S08).
