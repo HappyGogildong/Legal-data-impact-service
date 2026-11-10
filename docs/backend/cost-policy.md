@@ -26,6 +26,8 @@ related: ["adr/decision-log.md", "backend/observability.md", "components/batch/I
 | 온라인 Layer A | 저장본만 읽는다(비용 0). 없으면 `NOT_PRECOMPUTED`, Opus 호출 없음. 로컬 개발에서만 켠다 | `lia.analysis.layer-a-live`(`LIA_ANALYSIS_LAYER_A_LIVE`) false | D80 |
 | 익명 분석 하루 상한 | 서비스 전체·서울 날짜, 분류 전에 차감, 넘으면 429. 로그인 사용자는 세지 않음 | `lia.analysis.anonymous-daily-limit`(`LIA_ANALYSIS_ANONYMOUS_DAILY_LIMIT`) 1000(잠정) | D81 |
 | 오프라인 회귀 평가 | 정답 세트로 수동 실행 — 문항마다 Haiku 1회, 주제 질문마다 임베딩 1회. 프롬프트·모델·검색 설정을 바꾸기 전에 돌린다 | `eval` 프로파일 · `lia.eval.gold`·`lia.eval.baseline`·`lia.eval.tolerance`(0.02) | D83 |
+| 호출 기록 | 유료 호출마다 `llm_calls` 한 행(토큰·목적·재시도). 웹은 비동기로 쓰고 넘치면 버린다(`lia.llm.calls.dropped`) | `lia.llm-calls.async`(웹 true, 배치·평가 false) · `lia.llm-calls.queue-capacity` 1000 · `lia.llm-calls.embedding-purpose`(웹 DISCOVERY_EMBED, 배치 INDEX_EMBED) | D83 |
+| 단가 표 | `llm_prices` 에 모델·토큰 종류(`input`·`output`·`cache_read`·`cache_write`)별 100만 토큰당 달러와 적용 시작일. 공식 가격표를 보고 사람이 넣는다 — 기억으로 채우지 않는다 | 표(아래 "단가 넣는 법") | D83 |
 | 운영 배치 평가 | 집계와 표본 추출만 하고 LLM 을 부르지 않는다(판정은 사람). 판정 지표는 이미 만든 답을 쓴다 | 구현 전 — 설정 키는 구현 때 이 표에 적는다 | D83 |
 
 ### 바꾸는 법
@@ -33,6 +35,15 @@ related: ["adr/decision-log.md", "backend/observability.md", "components/batch/I
 - **설정 키가 있는 항목**은 환경변수(또는 `application.yml`)만 바꾸고 재시작한다. 개인화 하루 한도는 첫 Layer B 와 상황 재생성이 같은 한도를 공유하므로, 재생성이 너무 빨리 한도를 소진하면 이 값을 올린다.
 - **"코드"로 표시된 항목**(모델·분류 모델·재시도 횟수)은 코드 상수라 바꾸면 결과가 달라진다 — 변경은 결정 기록(D번호)과 프롬프트·평가 확인을 함께 한다(D68).
 - 새 기능이 호출을 늘리면 위 표에 한 줄 추가하고, 한도를 공유할지(예: D71) 따로 둘지를 그 행에 적는다.
+
+### 단가 넣는 법
+
+공식 가격표에서 모델별 단가를 확인해 넣는다. 모델 ID 는 응답이 알려 준 값과 같아야 한다 — 대시보드 "분류·임베딩 호출" 표와 `SELECT DISTINCT model FROM llm_calls` 로 확인한다. 단가가 바뀌면 행을 고치지 않고 새 `effective_from` 으로 한 행을 더한다(지난 호출은 그날의 단가로 계산된다).
+
+```sql
+INSERT INTO llm_prices (model, token_kind, usd_per_million, effective_from)
+VALUES ('<모델 ID>', 'input', <단가>, '<적용 시작일>');   -- output · cache_read · cache_write 도 같은 방식
+```
 
 ## 운영 원칙
 
@@ -45,4 +56,4 @@ related: ["adr/decision-log.md", "backend/observability.md", "components/batch/I
 - **요청 빈도 제한** — IP별 제한은 입력 공격 일괄 작업에서 함께 다룬다(현재는 개인화 하루 한도와 익명 전체 상한만 있고, 로그인 사용자의 분류 호출에는 상한이 없다).
 - **온라인 재시도 설정** — Spring AI 기본 재시도가 프록시 120초를 넘길 수 있다. 재시도 횟수·간격을 설정으로 노출하고 프록시 제한과 맞춘다.
 - **`ANALYZE_MAX_ATTEMPTS` 설정값화** — 지금은 코드 상수(3).
-- **토큰 실측** — 지금은 토큰을 기록하지 않아 위 참고치가 실측을 대체하지 못한다. LLM 호출 기록([[rag-evaluation-framework]] §8)이 생기면 참고치를 실측값으로 바꾸고 예산 경보를 정한다.
+- **토큰 실측** — 호출 기록([[LlmCallRecorder]])과 대시보드 `LIA · Token & Cost` 가 생겼다. 운영에서 단가를 넣고 쌓인 뒤 위 참고치를 실측값으로 바꾸고 예산 경보를 정한다.
