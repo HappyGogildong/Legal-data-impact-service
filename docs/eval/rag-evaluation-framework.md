@@ -178,7 +178,7 @@ cron ─▶ eval 컨테이너 ─────────────┘
 ### 6.2 비동기 수집
 
 - 응답 경로 밖에서 크기 제한이 있는 큐로 DB에 쓴다. 기록 실패가 사용자 응답을 막지 않는다.
-- 큐가 차면 버리고 `lia.eval.log.dropped`로 센다. 버려진 건수가 많으면 비용·품질 집계를 믿지 않는다.
+- 큐가 차면 버리고 `lia.records.dropped{record, reason}`로 센다(쓰기 장치 `RecordWriter`). 버려진 건수가 많으면 비용·품질 집계를 믿지 않는다.
 - 일회성 `ingest`는 종료 때 유실되지 않게 호출 기록을 동기로 쓴다.
 - Kafka·Loki를 두지 않는다. 트래픽을 아직 모르고 서버도 한 대다. 컨테이너 로그는 `run --rm`과 함께 사라지므로 쓰지 않는다.
 
@@ -243,7 +243,7 @@ Prometheus만으로는 부족하다. 일회성 배치는 긁히지 않는데 가
 | `OfflineEvalRunner`, `EvalConfig` | `eval` 프로파일 실행, 시행일이 지난 문항 제외. 운영은 `ops/deploy/lia eval`([[cloud-infra]] 런북 15) |
 | `RagConfig` | 법령 발견 설정 3개만 |
 | `FaithfulnessGate` | 유지. 런타임 불변식이지 품질 지표가 아니다 |
-| `com.lia.core.observability.llm` | 2단계 호출 기록(§8) — `LlmCallRecorder`·`UsageCaptureAdvisor`·`RecordingEmbeddingModel`·`LlmCallWriter` |
+| `com.lia.core.observability.llm` | 2단계 호출 기록(§8) — `LlmCallRecorder`·`UsageCaptureAdvisor`·`RecordingEmbeddingModel`(쓰기 장치는 `observability.RecordWriter`) |
 | 제거 | `Retriever`, `ChunkStoreRetriever`, `RagEvalRunner`, `SelfRetrievalGold`, `RefusalMetric`, `RagEvalLiveTest`, 옛 정답 파일 2개, Recall·nDCG |
 | 후속 | 문턱값 구간별 정답률 — `SourceAnalyzer`가 점수를 밖으로 내주지 않는다 |
 

@@ -9,9 +9,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
+import com.lia.core.observability.RecordWriter;
 import com.lia.core.observability.llm.JdbcLlmCallRecorder;
+import com.lia.core.observability.llm.LlmCall;
 import com.lia.core.observability.llm.LlmCallRecorder;
-import com.lia.core.observability.llm.LlmCallWriter;
 import com.lia.core.observability.llm.LlmPurpose;
 import com.lia.core.observability.llm.RecordingEmbeddingModel;
 
@@ -25,13 +26,20 @@ import io.micrometer.core.instrument.MeterRegistry;
 @Configuration
 public class LlmCallConfig {
 
-    /** 기록 포트의 유일한 구현 — 닫을 때 비동기 대기열을 잠시 비운다. */
+    /** 호출 기록 쓰기 장치 — 닫을 때 비동기 대기열을 잠시 비운다. */
     @Bean(destroyMethod = "close")
-    public LlmCallWriter llmCallRecorder(JdbcClient jdbcClient, MeterRegistry registry,
-                                         @Value("${lia.llm-calls.async}") boolean async,
-                                         @Value("${lia.llm-calls.queue-capacity}") int queueCapacity) {
+    public RecordWriter<LlmCall> llmCallWriter(JdbcClient jdbcClient, MeterRegistry registry,
+                                              @Value("${lia.llm-calls.async}") boolean async,
+                                              @Value("${lia.llm-calls.queue-capacity}") int queueCapacity) {
         JdbcLlmCallRecorder store = new JdbcLlmCallRecorder(jdbcClient);
-        return async ? LlmCallWriter.async(store, queueCapacity, registry) : LlmCallWriter.sync(store, registry);
+        return async ? RecordWriter.async("llm_call", store::record, queueCapacity, registry)
+                : RecordWriter.sync("llm_call", store::record, registry);
+    }
+
+    /** 기록 포트 — 본 처리를 막거나 실패시키지 않는다. */
+    @Bean
+    public LlmCallRecorder llmCallRecorder(RecordWriter<LlmCall> llmCallWriter) {
+        return llmCallWriter::write;
     }
 
     /**

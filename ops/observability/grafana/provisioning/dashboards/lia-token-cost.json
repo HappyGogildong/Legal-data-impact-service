@@ -560,7 +560,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(lia_llm_calls_dropped_total[$__range])) or vector(0)",
+          "expr": "sum(increase(lia_records_dropped_total{record=\"llm_call\"}[$__range])) or vector(0)",
           "instant": true
         }
       ],
