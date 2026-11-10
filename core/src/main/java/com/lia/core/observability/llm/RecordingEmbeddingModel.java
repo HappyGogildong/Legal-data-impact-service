@@ -59,4 +59,9 @@ public class RecordingEmbeddingModel implements EmbeddingModel {
     public int dimensions() {
         return delegate.dimensions();
     }
+
+    /** 기록할 목적 — 실행 모드로 정해진다(lia.llm-calls.embedding-purpose). */
+    public LlmPurpose purpose() {
+        return purpose;
+    }
 }

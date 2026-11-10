@@ -126,7 +126,7 @@ public class PipelineConfig {
     /** 자연어 → AnalysisQueryDraft 번역(D46) — 유일한 LLM 자유도. Haiku 4.5. */
     @Bean
     public QueryTranslator queryTranslator(AnthropicChatModel anthropicChatModel) {
-        return new SpringAiQueryTranslator(anthropicChatModel);
+        return new SpringAiQueryTranslator(anthropicChatModel, com.lia.core.observability.llm.LlmCallRecorder.NONE);
     }
 
     /** 자연어 → PlanResult. 번역 후 결정론(해소·게이팅·fail-closed, D46). */

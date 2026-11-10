@@ -4,6 +4,8 @@ import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 
+import com.lia.core.observability.llm.LlmCallRecorder;
+
 /**
  * {@link QueryTranslator}의 Spring AI 구현 — 자연어를 {@link AnalysisQueryDraft}로 번역(D46).
  *
@@ -35,7 +37,7 @@ public class SpringAiQueryTranslator implements QueryTranslator {
      * {@code ChatModel}을 명시 주입한다 — openai(임베딩)·anthropic 두 채팅 모델이 공존해
      * 자동설정 {@code ChatClient.Builder}가 모호하므로, 호출부가 Anthropic 모델을 골라 넘긴다.
      */
-    public SpringAiQueryTranslator(ChatModel chatModel) {
+    public SpringAiQueryTranslator(ChatModel chatModel, LlmCallRecorder recorder) {
         this.chat = ChatClient.builder(chatModel)
                 .defaultOptions(AnthropicChatOptions.builder().model(MODEL))
                 .defaultSystem(SYSTEM)

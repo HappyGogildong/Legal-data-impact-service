@@ -7,6 +7,9 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
+import org.springframework.ai.chat.metadata.DefaultUsage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
@@ -14,6 +17,8 @@ import org.springframework.ai.chat.prompt.Prompt;
 
 import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.observability.llm.LlmUsage;
+import com.lia.core.observability.llm.UsageCapture;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.profile.HousingType;
 import com.lia.core.profile.Sido;
@@ -58,6 +63,38 @@ class SpringAiReasonerTest {
 
         assertEquals("절차가 짧아져요", out.summary());
         assertEquals(List.of("LAW:A@2027-01-01:art:18"), out.claims().get(0).citations());
+    }
+
+    /** 사용량 메타데이터가 붙은 실제 모양 — [thinking, 본문(종료 사유)] + 모델·토큰. */
+    private static ChatModel replyingWithUsage(String json) {
+        Generation body = new Generation(AssistantMessage.builder().content(json).build(),
+                ChatGenerationMetadata.builder().finishReason("end_turn").build());
+        ChatResponse response = new ChatResponse(List.of(thinking(""), body), ChatResponseMetadata.builder()
+                .model("claude-opus-5-5-20261001").usage(new DefaultUsage(900, 120, 1020, null, 40L, 0L)).build());
+        return new ChatModel() {
+            @Override
+            public ChatResponse call(Prompt prompt) {
+                return response;
+            }
+        };
+    }
+
+    @Test
+    void 사용량_기록판은_응답의_모델_토큰_종료_사유를_담는다() {
+        UsageCapture capture = new UsageCapture();
+
+        ImpactResult out = new SpringAiReasoner(replyingWithUsage(JSON)).reason(context(), capture);
+
+        assertEquals("절차가 짧아져요", out.summary());
+        assertEquals(new LlmUsage("claude-opus-5-5-20261001", 900, 120, 40, 0, "end_turn"), capture.usage());
+    }
+
+    @Test
+    void 요청_모델과_프롬프트_버전을_알린다() {
+        SpringAiReasoner reasoner = new SpringAiReasoner(replying(text(JSON)));
+
+        assertEquals(SpringAiReasoner.MODEL, reasoner.model());
+        assertEquals(SpringAiReasoner.PROMPT_VERSION, reasoner.promptVersion());
     }
 
     @Test
