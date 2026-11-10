@@ -13,10 +13,12 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * @param config      평가 당시 법령 발견 설정
  * @param indexedLaws 색인된 법령 수 — 경쟁 법령이 적으면 점수가 부풀려지므로 함께 본다
- * @param cases       정답 세트 문항 수
+ * @param cases         평가한 문항 수
+ * @param excludedCases 정답 법령이 더 이상 시행예정이 아니어서 뺀 문항 수
  * @param metrics     지표 키 → 값·분모(키 순서 고정)
  */
-public record EvalReport(RagConfig config, long indexedLaws, int cases, Map<String, Measure> metrics) {
+public record EvalReport(RagConfig config, long indexedLaws, int cases, int excludedCases,
+                         Map<String, Measure> metrics) {
 
     private static final ObjectMapper JSON = JsonMapper.builder().build();
 

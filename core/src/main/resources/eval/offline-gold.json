@@ -1,0 +1,47 @@
+[
+  {"query": "약사법 제20조 뭐가 바뀌었어?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["001783"], "articleNo": "20", "expectedDimension": "DIFF"},
+  {"query": "저작권법 제25조 개정 전후로 뭐가 달라져?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["000798"], "articleNo": "25", "expectedDimension": "DIFF"},
+  {"query": "지방자치법 제134조의2 내용이 어떻게 바뀌어?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["001656"], "articleNo": "134의2", "expectedDimension": "DIFF"},
+  {"query": "식품위생법 제41조의2 바뀐 점 알려줘", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["001805"], "articleNo": "41의2", "expectedDimension": "DIFF"},
+  {"query": "정보통신망법 제45조의5 개정 내용 비교해 줘", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["000030"], "articleNo": "45의5", "expectedDimension": "DIFF"},
+
+  {"query": "결핵예방법이 어떻게 바뀌는지 요약해 줘", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["001791"], "expectedDimension": "SUMMARY"},
+  {"query": "마약류 관리에 관한 법률 개정 내용 알려줘", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["002025"], "expectedDimension": "SUMMARY"},
+  {"query": "자원봉사기본법 전부개정되면 뭐가 바뀌어?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["010001"], "expectedDimension": "SUMMARY"},
+
+  {"query": "기초연금법 바뀌면 나한테 어떤 영향이 있어?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["012045"], "expectedDimension": "IMPACT"},
+  {"query": "응급의료법 개정되면 나는 어떻게 달라져?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["000218"], "expectedDimension": "IMPACT"},
+  {"query": "국민연금법 개정이 내 연금에 영향 있어?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["001781"], "expectedDimension": "IMPACT"},
+
+  {"query": "화장품법 시행되면 맞춤형화장품 판매업자는 뭘 준비해야 해?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["002015"], "expectedDimension": "ACTION"},
+  {"query": "승강기 안전관리법 바뀌면 건물 관리자는 뭘 해야 해?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["001458"], "expectedDimension": "ACTION"},
+  {"query": "게임산업법 개정되면 해외 게임사는 뭘 해야 해?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["010196"], "expectedDimension": "ACTION"},
+
+  {"query": "잠복결핵이 있으면 회사가 채용을 거부해도 되나?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["001791"]},
+  {"query": "청소년도 노래방에 갈 수 있게 바뀌나?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["000815"]},
+  {"query": "스토킹 피해자가 법원에 직접 보호명령을 신청할 수 있게 되나?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["014070"]},
+  {"query": "환자의 권리를 정리한 기본법이 새로 생긴다던데?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["015115"], "acceptableLawIds": ["012242", "001788", "011358", "002029", "013572"]},
+  {"query": "장애인 평생교육을 지원하는 법이 따로 생기나?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["014971"], "acceptableLawIds": ["000851", "000187", "012046"]},
+  {"query": "산에 임도를 만들고 관리하는 기준이 법으로 정해지나?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["015121"], "acceptableLawIds": ["009641", "009294", "010005", "014829"]},
+  {"query": "문 닫은 학교 건물을 주민 시설로 쓸 수 있게 되나?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["002010"]},
+  {"query": "군 복무 중 생긴 트라우마가 전역 후에 진단돼도 보상받을 수 있어?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["013622"]},
+  {"query": "공항 주변을 경제권으로 묶어 개발하는 법이 생기나?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["015122"]},
+  {"query": "통신사 해킹 사고 이후 기업 정보보호 수준 평가가 생기나?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["000030"]},
+  {"query": "외국에 오래 살다 온 노인도 기초연금을 받을 수 있어?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["012045"]},
+  {"query": "보험사가 어린이 놀이시설 배상책임보험 가입을 거절하면 어떻게 돼?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["010384"], "acceptableLawIds": ["001458", "001015"]},
+  {"query": "목재의 날이 새로 생긴다던데 언제야?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["011620"]},
+  {"query": "인공지능 학습용 데이터를 한곳에서 제공하는 시스템이 생기나?", "kind": "ANSWERABLE", "lawNamed": false, "expectedLawIds": ["014820"], "acceptableLawIds": ["014168"]},
+
+  {"query": "전동킥보드 헬멧 안 쓰면 벌금이 오르나?", "kind": "NO_MATCH"},
+  {"query": "주 4일제가 법으로 도입되나?", "kind": "NO_MATCH"},
+  {"query": "아파트 층간소음 기준이 강화되나?", "kind": "NO_MATCH"},
+  {"query": "공매도 제도가 다시 바뀌나?", "kind": "NO_MATCH"},
+  {"query": "택시 합승이 다시 허용되나?", "kind": "NO_MATCH"},
+
+  {"query": "오늘 점심 뭐 먹지", "kind": "REFUSE"},
+  {"query": "지금 주식 사도 될까?", "kind": "REFUSE"},
+  {"query": "내일 서울 날씨 알려줘", "kind": "REFUSE"},
+  {"query": "가상의무슨법 바뀌면 어떻게 돼?", "kind": "REFUSE"},
+  {"query": "행복증진기본법 제3조 뭐가 바뀌었어?", "kind": "REFUSE"},
+  {"query": "우리 동네 맛집 추천해 줘", "kind": "REFUSE"}
+]

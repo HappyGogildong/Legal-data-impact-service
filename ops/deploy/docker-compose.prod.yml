@@ -57,6 +57,18 @@ services:
     restart: "no"
     stop_grace_period: 60s     # 종료 신호 후 진행 중 작업을 마치고 실행 기록을 남길 시간
 
+  # 오프라인 회귀 평가(D83) — 평소엔 안 뜬다. 사람이 `ops/deploy/lia eval` 로 수동 실행한다(유료: Haiku·임베딩).
+  # cron 에 넣지 않는다. 정답 세트·기준선은 이미지 안(eval/offline-gold.json · eval/offline-baseline.json).
+  eval:
+    image: ghcr.io/happygogildong/lia-core:${LIA_IMAGE_TAG:?}
+    profiles: ["eval"]
+    environment:
+      <<: *core-env
+      SPRING_PROFILES_ACTIVE: eval
+    healthcheck:
+      disable: true            # 웹 서버가 없어 이미지의 actuator 헬스체크가 의미 없다
+    restart: "no"
+
   prometheus:
     image: prom/prometheus:v2.55.1
     command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=15d"]

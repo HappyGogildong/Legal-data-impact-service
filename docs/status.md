@@ -72,7 +72,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | `domain/law` — `Law`·`Article`·`Addendum` | ✅ |
 | `DiffBuilder` — 변경 조문 ↔ 기준선 대조(신설·삭제 확정, `diffVsCurrent`) | ✅ |
 | 관측 환경(증분1) — Actuator·Micrometer→Prometheus·Tracing→Tempo·pg-exporter + 파이프라인 계측 | ✅ |
-| RAG 평가·회귀 프레임워크(D83) — 1단계: 서비스 경로(`QueryPlanner`→`LawDiscovery`)를 지나는 오프라인 평가 하네스·지표·회귀 게이트, `eval` 프로파일 실행 | 🟡 1단계 ✅(단위·가짜 데이터). 정답 세트·기준선(3단계)과 운영 배치(2·4·5단계)는 남음 |
+| RAG 평가·회귀 프레임워크(D83) — 1단계: 서비스 경로(`QueryPlanner`→`LawDiscovery`)를 지나는 오프라인 평가 하네스·지표·회귀 게이트, `eval` 프로파일 실행 | 🟡 1단계 ✅(단위·가짜 데이터). 3단계: 정답 세트 초안 39문항·운영 래퍼(`lia eval`) ✅, 사람 검토와 운영 기준선 측정은 남음. 운영 배치(2·4·5단계)는 남음 |
 | 컴포넌트 클래스 스펙 규약 + 핵심 4종(DiffBuilder·Normalizer·SourceAnalyzer·LawConnector) | ✅ |
 | Law Store — **near-term 구현**(`law_versions` upsert·find·findBaseline, Flyway V1, JdbcClient+JSONB) | ✅ 실 Postgres 통합테스트 통과(Testcontainers 3/3) |
 | `IngestService` — **적재 파이프라인 조립**(Normalizer→DiffBuilder→LawStore, `store`) | ✅ 실 Postgres 조립 통합테스트 통과(기준선·제정 2/2) |

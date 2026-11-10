@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
+import java.util.function.Predicate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,7 @@ public class OfflineEvalRunner implements ApplicationRunner, ExitCodeGenerator {
     private final Function<String, CaseOutcome> evaluate;
     private final RagConfig config;
     private final LongSupplier indexedLaws;
+    private final Predicate<String> pendingLaw;
     private final String goldPath;
     private final String baselinePath;
     private final RegressionGate gate;
@@ -46,16 +48,19 @@ public class OfflineEvalRunner implements ApplicationRunner, ExitCodeGenerator {
     /**
      * @param evaluate     질문 1건 → 결과({@link OfflineEvaluator#evaluate})
      * @param indexedLaws  색인된 법령 수
+     * @param pendingLaw   법령ID → 지금 시행예정본이 있는가. 정답 법령이 모두 아니면 그 문항은 평가하지 않는다
+     *                     (시행일이 지나면 발견 대상에서 빠지므로 틀린 것으로 세면 안 된다)
      * @param goldPath     정답 세트 위치 — 접두사 없으면 클래스패스, {@code file:} 이면 파일
      * @param baselinePath 기준선 위치(같은 규칙) — 없으면 비교하지 않는다
      * @param tolerance    회귀 허용 오차
      * @param out          보고서를 낼 곳(운영은 표준 출력)
      */
     public OfflineEvalRunner(Function<String, CaseOutcome> evaluate, RagConfig config, LongSupplier indexedLaws,
-                             String goldPath, String baselinePath, double tolerance, PrintStream out) {
+                             Predicate<String> pendingLaw, String goldPath, String baselinePath, double tolerance, PrintStream out) {
         this.evaluate = evaluate;
         this.config = config;
         this.indexedLaws = indexedLaws;
+        this.pendingLaw = pendingLaw;
         this.goldPath = goldPath;
         this.baselinePath = baselinePath;
         this.gate = new RegressionGate(tolerance, OfflineMetrics.LOWER_IS_BETTER);
@@ -65,9 +70,16 @@ public class OfflineEvalRunner implements ApplicationRunner, ExitCodeGenerator {
     public int execute() {
         EvalReport report;
         try {
-            List<EvalCase> cases = GoldenSet.cases(goldPath);
+            List<EvalCase> gold = GoldenSet.cases(goldPath);
+            List<EvalCase> cases = gold.stream().filter(this::stillPending).toList();
+            int excluded = gold.size() - cases.size();
+            if (excluded > 0) {
+                log.warn("[eval] 정답 법령이 더 이상 시행예정이 아닌 문항 {}개를 뺐다 — 정답 세트를 갱신할 때: {}", excluded,
+                        gold.stream().filter(c -> !stillPending(c)).map(EvalCase::query).toList());
+            }
             List<CaseOutcome> outcomes = cases.stream().map(c -> evaluate.apply(c.query())).toList();
-            report = new EvalReport(config, indexedLaws.getAsLong(), cases.size(), OfflineMetrics.score(cases, outcomes));
+            report = new EvalReport(config, indexedLaws.getAsLong(), cases.size(), excluded,
+                    OfflineMetrics.score(cases, outcomes));
         } catch (RuntimeException e) {
             log.error("[eval] 평가 실패 — 보고서를 내지 않는다", e);
             return FAILED;
@@ -93,6 +105,11 @@ public class OfflineEvalRunner implements ApplicationRunner, ExitCodeGenerator {
         }
         result.failures().forEach(failure -> log.warn("[eval] {}", failure));
         return REGRESSED;
+    }
+
+    /** 답 있는 문항은 정답 법령 중 하나라도 지금 시행예정이어야 잴 수 있다. 다른 종류는 늘 잰다. */
+    private boolean stillPending(EvalCase c) {
+        return c.kind() != EvalCase.Kind.ANSWERABLE || c.expectedLawIds().stream().anyMatch(pendingLaw);
     }
 
     private Optional<EvalReport> readBaseline() {

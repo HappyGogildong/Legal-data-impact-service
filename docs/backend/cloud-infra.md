@@ -222,6 +222,8 @@ AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운
     - `https://<API 이름>/api/v1/auth/providers` → `{"providers":["google"]}`, 웹에서 구글 로그인 왕복 → 동의 화면(S08).
 14. **백필** — `ops/deploy/lia ingest run`(시행예정 전체 수집·정규화·색인, D75·D76·D77 반영). 소요 시간·임베딩 비용·`DEAD` 건수를 #44 에 기록. 쉬운 요약은 `ops/deploy/lia ingest summarize --dry-run` 결과를 보고 따로 결정.
 
+15. **평가 기준선**(D83, 유료: 정답 세트 문항마다 Haiku 1회 + 주제 질문마다 임베딩 1회) — 백필로 전체 색인이 끝난 뒤 `ops/deploy/lia eval 2>&1 | tee eval.log`. 보고서는 `grep '^{"config"' eval.log` 한 줄이다. 처음엔 기준선이 없어 비교 없이 통과(0)한다. 이 줄을 `core/src/main/resources/eval/offline-baseline.json` 으로 PR 에 올려 커밋하면 다음 배포부터 회귀 비교(3 = 회귀)가 켜진다. 색인 법령 수·문항 수가 크게 바뀌면 다시 잰다([[rag-evaluation-framework]] §5.2).
+
 ### 검증 (구현 단계)
 - **로컬 관측 스택** — Grafana API로 `lia-postgres` 연결 상태, `LIA · Batch` 로드, 패널 쿼리가 로컬 DB의 실행 기록(샘플 데이터)에 결과를 내는지.
 - **경보 프로비저닝** — 가짜 웹훅으로 Grafana를 띄워 규칙 3개 로드 확인.

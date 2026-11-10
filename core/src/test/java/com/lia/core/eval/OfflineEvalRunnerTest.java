@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +30,11 @@ class OfflineEvalRunnerTest {
     }
 
     int run(Function<String, CaseOutcome> evaluate, String gold, String baseline) {
-        var runner = new OfflineEvalRunner(evaluate, CONFIG, () -> 123L, gold, baseline, 0.02,
+        return run(evaluate, gold, baseline, lawId -> true);
+    }
+
+    int run(Function<String, CaseOutcome> evaluate, String gold, String baseline, Predicate<String> pendingLaw) {
+        var runner = new OfflineEvalRunner(evaluate, CONFIG, () -> 123L, pendingLaw, gold, baseline, 0.02,
                 new PrintStream(buffer, true, StandardCharsets.UTF_8));
         return runner.execute();
     }
@@ -64,6 +70,22 @@ class OfflineEvalRunnerTest {
 
         assertEquals(OfflineEvalRunner.REGRESSED, code);
         assertEquals(1.0, EvalReport.fromJson(output()).metrics().get("refusal.over").value(), 1e-9);
+    }
+
+    @Test
+    @DisplayName("정답 법령이 더 이상 시행예정이 아닌 문항은 평가하지 않고 뺀 수를 싣는다")
+    void 시행일이_지난_문항은_뺀다() {
+        List<String> asked = new ArrayList<>();
+        int code = run(query -> {
+            asked.add(query);
+            return refusesOffTopic(query);
+        }, GOLD, "eval/no-such-baseline.json", lawId -> !lawId.equals("009999"));
+
+        assertEquals(OfflineEvalRunner.PASSED, code);
+        EvalReport report = EvalReport.fromJson(output());
+        assertEquals(3, report.cases());
+        assertEquals(1, report.excludedCases());
+        assertFalse(asked.contains("전세 보증금 돌려받는 제도가 어떻게 바뀌어?"), "뺀 문항은 유료 평가를 하지 않는다");
     }
 
     @Test
