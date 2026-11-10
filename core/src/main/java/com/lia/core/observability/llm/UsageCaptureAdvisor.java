@@ -14,7 +14,11 @@ public class UsageCaptureAdvisor implements CallAdvisor {
 
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
-        return chain.nextCall(request);
+        ChatClientResponse response = chain.nextCall(request);
+        if (request.context().get(UsageCapture.KEY) instanceof UsageCapture capture && response.chatResponse() != null) {
+            capture.capture(LlmUsage.of(response.chatResponse()));
+        }
+        return response;
     }
 
     @Override

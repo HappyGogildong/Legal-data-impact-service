@@ -1,7 +1,11 @@
 package com.lia.core.observability.llm;
 
+import java.time.Instant;
+import java.util.List;
+
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.embedding.EmbeddingOptions;
 import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.ai.embedding.EmbeddingResponse;
 
@@ -23,23 +27,36 @@ public class RecordingEmbeddingModel implements EmbeddingModel {
         this.recorder = recorder;
     }
 
+    /** 호출 1회 = 기록 1행. 실패하면 실패 행을 남기고 같은 예외를 다시 던진다. */
     @Override
     public EmbeddingResponse call(EmbeddingRequest request) {
-        return delegate.call(request);
+        Instant calledAt = Instant.now();
+        EmbeddingResponse response;
+        try {
+            response = delegate.call(request);
+        } catch (RuntimeException e) {
+            recorder.record(LlmCall.single(calledAt, purpose, null, false, LlmUsage.NONE));
+            throw e;
+        }
+        recorder.record(LlmCall.single(calledAt, purpose, null, true, LlmUsage.of(response)));
+        return response;
     }
 
     @Override
     public float[] embed(Document document) {
-        return delegate.embed(document);
+        EmbeddingResponse response = call(new EmbeddingRequest(List.of(getEmbeddingContent(document)),
+                EmbeddingOptions.builder().build()));
+        return response.getResults().isEmpty() ? new float[0] : response.getResults().get(0).getOutput();
+    }
+
+    /** 감싼 모델의 규칙(예: 메타데이터 포함 방식)을 그대로 쓴다. */
+    @Override
+    public String getEmbeddingContent(Document document) {
+        return delegate.getEmbeddingContent(document);
     }
 
     @Override
     public int dimensions() {
         return delegate.dimensions();
-    }
-
-    /** 감싼 모델 — 설정·진단용. */
-    public EmbeddingModel delegate() {
-        return delegate;
     }
 }
