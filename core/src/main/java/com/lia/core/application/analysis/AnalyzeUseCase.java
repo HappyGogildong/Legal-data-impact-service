@@ -1,6 +1,8 @@
 package com.lia.core.application.analysis;
 
+import java.time.Instant;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.UUID;
 
 import com.lia.core.application.profile.PersonalizationGate;
@@ -40,9 +42,24 @@ public class AnalyzeUseCase {
     private final LawViews views;
     private final PersonalizationGate gate;
     private final AnonymousAnalysisQuota anonymousQuota;
+    private final QueryEventRecorder events;
+    private final String promptVersion;
 
+    /** 질의 이벤트 없이 — 기록을 다루지 않는 테스트용. */
     public AnalyzeUseCase(QueryPlanner planner, QueryDispatcher dispatcher, LawViews views,
                           PersonalizationGate gate, AnonymousAnalysisQuota anonymousQuota) {
+        this(planner, dispatcher, views, gate, anonymousQuota, QueryEventRecorder.NONE, null);
+    }
+
+    /**
+     * @param events        요청마다 질의 이벤트 한 행(D83) — 응답을 막지 않는 구현을 넘긴다
+     * @param promptVersion 이벤트에 남길 분석 프롬프트 버전
+     */
+    public AnalyzeUseCase(QueryPlanner planner, QueryDispatcher dispatcher, LawViews views,
+                          PersonalizationGate gate, AnonymousAnalysisQuota anonymousQuota,
+                          QueryEventRecorder events, String promptVersion) {
+        this.events = events;
+        this.promptVersion = promptVersion;
         this.anonymousQuota = anonymousQuota;
         this.planner = planner;
         this.dispatcher = dispatcher;
@@ -61,6 +78,32 @@ public class AnalyzeUseCase {
      * @param profileSearch 법령 발견에서 프로필 라벨을 검색어에 붙일지(D70 — 프로필을 쓸 수 있을 때만 적용)
      */
     public AnalysisOutcome analyze(String query, LawRef explicitRef, Optional<UUID> userId, boolean profileSearch) {
+        Instant at = Instant.now();
+        boolean signedIn = userId.isPresent();
+        AnalysisOutcome outcome;
+        try {
+            outcome = analyzeOnce(query, explicitRef, userId, profileSearch);
+        } catch (AnonymousLimitException e) {
+            record(() -> QueryEvents.anonymousLimit(at, profileSearch, promptVersion));
+            throw e;
+        } catch (RuntimeException e) {
+            record(() -> QueryEvents.error(at, QueryEvent.Kind.ANALYZE, signedIn, profileSearch, promptVersion));
+            throw e;
+        }
+        record(() -> QueryEvents.analyzed(at, signedIn, profileSearch, promptVersion, outcome));
+        return outcome;
+    }
+
+    /** 질의 이벤트 한 행(D83) — 만들거나 넘기다 실패해도 응답은 그대로. */
+    private void record(Supplier<QueryEvent> event) {
+        try {
+            events.record(event.get());
+        } catch (RuntimeException e) {
+            log.warn("질의 이벤트 기록 실패 — 분석 응답에는 영향 없음: {}", e.toString());
+        }
+    }
+
+    private AnalysisOutcome analyzeOnce(String query, LawRef explicitRef, Optional<UUID> userId, boolean profileSearch) {
         // 분류(Haiku)도 비용이다 — 익명은 호출 전에 센다. 로그인 사용자는 세지 않는다(D81)
         if (userId.isEmpty() && !anonymousQuota.tryConsume()) {
             throw new AnonymousLimitException("오늘 비로그인 분석 횟수가 모두 찼어요. 로그인하면 계속 이용할 수 있어요.");
@@ -69,7 +112,7 @@ public class AnalyzeUseCase {
         boolean profilePresent = personalization instanceof Personalization.Usable;
         PlanResult plan = planner.plan(query, explicitRef, profilePresent);
         return switch (plan) {
-            case PlanResult.Unresolved u -> new AnalysisOutcome.Unresolved(u.resolution());
+            case PlanResult.Unresolved u -> new AnalysisOutcome.Unresolved(u.resolution(), u.offTopic());
             case PlanResult.Planned p -> {
                 AnalysisOutcome.Analyzed analyzed = new AnalysisOutcome.Analyzed(
                         p.query(), dispatcher.dispatch(p.query(), query, personalization, profileSearch), p.alternatives());

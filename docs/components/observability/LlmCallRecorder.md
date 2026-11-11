@@ -43,14 +43,14 @@ related:
 
 ## Invariants
 
-- 기록은 본 처리의 결과를 바꾸지 않는다. 기록 실패·대기열 초과는 삼키고 `lia.llm.calls.dropped{reason}` 를 올린다.
+- 기록은 본 처리의 결과를 바꾸지 않는다. 기록 실패·대기열 초과는 삼키고 `lia.records.dropped{record=llm_call, reason}` 를 올린다(쓰기 장치 `RecordWriter` 는 질의 이벤트([[QueryEventRecorder]])와 같이 쓴다).
 - 행에 사람을 식별하거나 내용을 되살릴 값이 없다.
 - 단가는 시점별로 쌓는다. 비용 = 호출 시점(서울 날짜)에 유효한 단가(`effective_from` 이 그날 이하인 것 중 최신) × 토큰 / 100만. 단가가 바뀌어도 기록을 고치지 않는다.
 
 ## Error Handling
 
 - 추론기·번역기·임베딩 호출이 던지면 실패 행을 남기고 같은 예외를 그대로 다시 던진다.
-- DB 쓰기 실패는 경고 로그(목적·모델만)와 `reason=write_failed` 로 끝난다.
+- DB 쓰기 실패는 경고 로그(기록 종류와 예외만 — 행 내용은 남기지 않는다)와 `reason=write_failed` 로 끝난다.
 
 ## Side Effects
 

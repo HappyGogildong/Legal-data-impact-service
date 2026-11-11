@@ -1,0 +1,676 @@
+{
+  "uid": "lia-requests",
+  "title": "LIA · Requests",
+  "description": "질의 이벤트(query_events)로 본 요청 결과 — 거부·미해소·못 채운 사유·한도 도달(D83). 원문 없음.",
+  "tags": [
+    "lia",
+    "eval",
+    "requests"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5m",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "분석 요청",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 0,
+        "y": 0
+      },
+      "description": "첫 분석 요청 수(익명 상한에 막힌 것·오류 포함). 재생성은 따로 센다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT count(*) AS requests FROM query_events WHERE $__timeFilter(occurred_at) AND kind = 'ANALYZE'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 2,
+      "title": "답한 비율",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 5,
+        "y": 0
+      },
+      "description": "차원을 1개 이상 채웠거나 발견 후보를 1건 이상 낸 요청의 비율.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT (count(*) FILTER (WHERE status = 'ANSWERED'))::numeric / NULLIF(count(*), 0) AS ratio FROM query_events WHERE $__timeFilter(occurred_at) AND kind = 'ANALYZE'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 3,
+      "title": "로그인 비율",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 10,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT (count(*) FILTER (WHERE signed_in))::numeric / NULLIF(count(*), 0) AS ratio FROM query_events WHERE $__timeFilter(occurred_at) AND kind = 'ANALYZE'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 4,
+      "title": "오류",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 15,
+        "y": 0
+      },
+      "description": "예외로 끝난 요청(입력 오류 포함). 원인은 로그·트레이스에서 본다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT count(*) AS errors FROM query_events WHERE $__timeFilter(occurred_at) AND status = 'ERROR'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 5,
+      "title": "기록 누락",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "description": "query_events 에 남기지 못한 요청(대기열 초과·쓰기 실패). 많으면 이 대시보드의 비율을 믿지 않는다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(lia_records_dropped_total{record=\"query_event\"}[$__range])) or vector(0)",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 6,
+      "title": "일별 요청 — 상태별",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT date_trunc('day', occurred_at AT TIME ZONE 'Asia/Seoul') AT TIME ZONE 'Asia/Seoul' AS time, kind || ' ' || status AS metric, count(*) AS requests FROM query_events WHERE $__timeFilter(occurred_at) GROUP BY 1, 2 ORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "normal"
+            },
+            "fillOpacity": 80
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "주 의도 분포",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 4
+      },
+      "description": "법령·경로를 정한 요청의 주 의도(화면이 먼저 보여 주는 차원). 여러 차원을 함께 물어도 한 번만 센다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT primary_type, count(*) AS requests, round(100.0 * count(*) / sum(count(*)) OVER (), 1) AS percent\nFROM query_events WHERE $__timeFilter(occurred_at) AND kind = 'ANALYZE' AND primary_type IS NOT NULL GROUP BY primary_type ORDER BY requests DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "미해소 사유",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 12
+      },
+      "description": "OFF_TOPIC = 법령 질문이 아님, AMBIGUOUS = 비슷한 이름 후보, NOT_FOUND_YET = 시행예정본 없음, UNVERIFIED = 없는 법 이름 등. percent_of_requests 는 전체 분석 요청 대비.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT resolution_state, count(*) AS requests,\n       round(100.0 * count(*) / NULLIF((SELECT count(*) FROM query_events WHERE $__timeFilter(occurred_at) AND kind = 'ANALYZE'), 0), 1) AS percent_of_requests\nFROM query_events WHERE $__timeFilter(occurred_at) AND kind = 'ANALYZE' AND status = 'UNRESOLVED' GROUP BY resolution_state ORDER BY requests DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "차원별 채운 비율",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 12
+      },
+      "description": "법령·경로를 정한 요청에서 차원별로 요청한 수와 채운 수. 발견(LOOKUP)은 후보 수로 따로 본다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH d AS (\n  SELECT dimension, (dimension = ANY (string_to_array(e.filled, ','))) AS filled, e.unmet ->> dimension AS reason\n  FROM query_events e CROSS JOIN LATERAL unnest(string_to_array(e.types, ',')) AS dimension\n  WHERE $__timeFilter(e.occurred_at) AND e.kind = 'ANALYZE' AND e.status IN ('ANSWERED', 'NOT_ANSWERED')\n)\nSELECT dimension, count(*) AS requested, count(*) FILTER (WHERE filled) AS filled,\n       round(100.0 * count(*) FILTER (WHERE filled) / count(*), 1) AS filled_percent\nFROM d WHERE dimension <> 'LOOKUP' GROUP BY dimension ORDER BY dimension"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "title": "못 채운 사유 — 차원별",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 12
+      },
+      "description": "NOT_PRECOMPUTED = Layer A 저장본 없음, PROFILE_REQUIRED·CONSENT_OUTDATED = 개인화 불가, DAILY_LIMIT = 개인화 하루 한도, INSUFFICIENT_GROUNDING = 인용 검증 끝까지 실패.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH d AS (\n  SELECT dimension, (dimension = ANY (string_to_array(e.filled, ','))) AS filled, e.unmet ->> dimension AS reason\n  FROM query_events e CROSS JOIN LATERAL unnest(string_to_array(e.types, ',')) AS dimension\n  WHERE $__timeFilter(e.occurred_at) AND e.kind = 'ANALYZE' AND e.status IN ('ANSWERED', 'NOT_ANSWERED')\n)\nSELECT dimension, reason, count(*) AS requests FROM d WHERE reason IS NOT NULL\nGROUP BY dimension, reason ORDER BY requests DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "title": "Layer A 저장본 없음 비율",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 19
+      },
+      "description": "요약·변경점 요청 중 저장본이 없어 못 채운 비율 — 1 − 선계산 커버리지. summarize 실행 범위를 정한다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH d AS (\n  SELECT dimension, (dimension = ANY (string_to_array(e.filled, ','))) AS filled, e.unmet ->> dimension AS reason\n  FROM query_events e CROSS JOIN LATERAL unnest(string_to_array(e.types, ',')) AS dimension\n  WHERE $__timeFilter(e.occurred_at) AND e.kind = 'ANALYZE' AND e.status IN ('ANSWERED', 'NOT_ANSWERED')\n)\nSELECT (count(*) FILTER (WHERE reason = 'NOT_PRECOMPUTED'))::numeric / NULLIF(count(*), 0) AS ratio\nFROM d WHERE dimension IN ('SUMMARY', 'DIFF')"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 12,
+      "title": "발견 후보 0건 비율",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 19
+      },
+      "description": "주제 검색에서 후보를 하나도 못 낸 비율. 높으면 유사도 하한(lia.discovery.min-similarity)이나 색인 범위를 본다.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT (count(*) FILTER (WHERE candidates = 0))::numeric / NULLIF(count(*), 0) AS ratio FROM query_events\nWHERE $__timeFilter(occurred_at) AND kind = 'ANALYZE' AND route = 'DISCOVERY'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 13,
+      "title": "익명 상한 도달",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 19
+      },
+      "description": "익명 하루 상한(lia.analysis.anonymous-daily-limit)에 막힌 요청.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT count(*) AS requests FROM query_events WHERE $__timeFilter(occurred_at) AND status = 'ANONYMOUS_LIMIT'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 14,
+      "title": "개인화 하루 한도 도달",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 19
+      },
+      "description": "첫 분석·재생성에서 개인화 하루 한도(lia.personalization.daily-limit)에 걸린 요청.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT count(*) AS requests FROM query_events WHERE $__timeFilter(occurred_at) AND unmet::text LIKE '%\"DAILY_LIMIT\"%'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 15,
+      "title": "상황 반영 재생성 결과",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "description": "SITUATION_EXPIRED = 세션의 상황 질문이 만료됨(다시 받아야 함).",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT status, unmet ->> 'ACTION' AS reason, count(*) AS requests FROM query_events\nWHERE $__timeFilter(occurred_at) AND kind = 'ACTION_REVISION' GROUP BY status, reason ORDER BY requests DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 16,
+      "title": "조문 지목 비율",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 24
+      },
+      "description": "법령을 지목한 요청 중 조문까지 지목한 비율.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT (count(*) FILTER (WHERE article_named))::numeric / NULLIF(count(*), 0) AS ratio FROM query_events\nWHERE $__timeFilter(occurred_at) AND kind = 'ANALYZE' AND route = 'REFERENCE'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 17,
+      "title": "프로필 기준 찾기 사용",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "lia-postgres"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 24
+      },
+      "description": "주제 검색에서 \"내 프로필 기준으로 찾기\"를 켠 비율.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "lia-postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT (count(*) FILTER (WHERE profile_search))::numeric / NULLIF(count(*), 0) AS ratio FROM query_events\nWHERE $__timeFilter(occurred_at) AND kind = 'ANALYZE' AND route = 'DISCOVERY'"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    }
+  ]
+}

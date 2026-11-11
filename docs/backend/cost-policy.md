@@ -26,7 +26,7 @@ related: ["adr/decision-log.md", "backend/observability.md", "components/batch/I
 | 온라인 Layer A | 저장본만 읽는다(비용 0). 없으면 `NOT_PRECOMPUTED`, Opus 호출 없음. 로컬 개발에서만 켠다 | `lia.analysis.layer-a-live`(`LIA_ANALYSIS_LAYER_A_LIVE`) false | D80 |
 | 익명 분석 하루 상한 | 서비스 전체·서울 날짜, 분류 전에 차감, 넘으면 429. 로그인 사용자는 세지 않음 | `lia.analysis.anonymous-daily-limit`(`LIA_ANALYSIS_ANONYMOUS_DAILY_LIMIT`) 1000(잠정) | D81 |
 | 오프라인 회귀 평가 | 정답 세트로 수동 실행 — 문항마다 Haiku 1회, 주제 질문마다 임베딩 1회. 프롬프트·모델·검색 설정을 바꾸기 전에 돌린다 | `eval` 프로파일 · `lia.eval.gold`·`lia.eval.baseline`·`lia.eval.tolerance`(0.02) | D83 |
-| 호출 기록 | 유료 호출마다 `llm_calls` 한 행(토큰·목적·재시도). 웹은 비동기로 쓰고 넘치면 버린다(`lia.llm.calls.dropped`) | `lia.llm-calls.async`(웹 true, 배치·평가 false) · `lia.llm-calls.queue-capacity` 1000 · `lia.llm-calls.embedding-purpose`(웹 DISCOVERY_EMBED, 배치 INDEX_EMBED) | D83 |
+| 호출 기록 | 유료 호출마다 `llm_calls` 한 행(토큰·목적·재시도). 웹은 비동기로 쓰고 넘치면 버린다(`lia.records.dropped{record=llm_call}`) | `lia.llm-calls.async`(웹 true, 배치·평가 false) · `lia.llm-calls.queue-capacity` 1000 · `lia.llm-calls.embedding-purpose`(웹 DISCOVERY_EMBED, 배치 INDEX_EMBED) | D83 |
 | 단가 표 | `llm_prices` 에 모델·토큰 종류(`input`·`output`·`cache_read`·`cache_write`)별 100만 토큰당 달러와 적용 시작일. 공식 가격표를 보고 사람이 넣는다 — 기억으로 채우지 않는다 | 표(아래 "단가 넣는 법") | D83 |
 | 운영 배치 평가 | 집계와 표본 추출만 하고 LLM 을 부르지 않는다(판정은 사람). 판정 지표는 이미 만든 답을 쓴다 | 구현 전 — 설정 키는 구현 때 이 표에 적는다 | D83 |
 

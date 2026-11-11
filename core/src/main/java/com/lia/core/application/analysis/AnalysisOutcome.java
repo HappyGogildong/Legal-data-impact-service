@@ -24,5 +24,10 @@ public sealed interface AnalysisOutcome permits AnalysisOutcome.Analyzed, Analys
         }
     }
 
-    record Unresolved(ResolutionResult resolution) implements AnalysisOutcome {}
+    /** @param offTopic 법령 질문이 아니어서 거부했다(응답 모양은 같다 — 운영 집계용, D83) */
+    record Unresolved(ResolutionResult resolution, boolean offTopic) implements AnalysisOutcome {
+        public Unresolved(ResolutionResult resolution) {
+            this(resolution, false);
+        }
+    }
 }

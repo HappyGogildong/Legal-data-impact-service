@@ -1,8 +1,13 @@
 package com.lia.core.application.analysis;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.domain.analysis.ConfirmedFact;
@@ -32,13 +37,26 @@ import com.lia.core.store.LawSource;
  */
 public class ActionRevisionUseCase {
 
+    private static final Logger log = LoggerFactory.getLogger(ActionRevisionUseCase.class);
+
     private final PersonalizationGate gate;
     private final LawSource laws;
     private final PersonalizationQuota quota;
     private final AnalysisEngine engine;
+    private final QueryEventRecorder events;
+    private final String promptVersion;
 
+    /** 질의 이벤트 없이 — 기록을 다루지 않는 테스트용. */
     public ActionRevisionUseCase(PersonalizationGate gate, LawSource laws, PersonalizationQuota quota,
                                  AnalysisEngine engine) {
+        this(gate, laws, quota, engine, QueryEventRecorder.NONE, null);
+    }
+
+    /** @param events 재생성 요청마다 질의 이벤트 한 행(D83) · @param promptVersion 이벤트에 남길 프롬프트 버전 */
+    public ActionRevisionUseCase(PersonalizationGate gate, LawSource laws, PersonalizationQuota quota,
+                                 AnalysisEngine engine, QueryEventRecorder events, String promptVersion) {
+        this.events = events;
+        this.promptVersion = promptVersion;
         this.gate = gate;
         this.laws = laws;
         this.quota = quota;
@@ -47,6 +65,30 @@ public class ActionRevisionUseCase {
 
     public RevisionOutcome revise(Optional<UUID> userId, LawRef ref, String setId, List<SituationAnswer> answers,
                                   SituationQuestions questions) {
+        Instant at = Instant.now();
+        boolean signedIn = userId.isPresent();
+        RevisionOutcome outcome;
+        try {
+            outcome = reviseOnce(userId, ref, setId, answers, questions);
+        } catch (RuntimeException e) {
+            record(() -> QueryEvents.error(at, QueryEvent.Kind.ACTION_REVISION, signedIn, null, promptVersion));
+            throw e;
+        }
+        record(() -> QueryEvents.revision(at, signedIn, promptVersion, outcome));
+        return outcome;
+    }
+
+    /** 질의 이벤트 한 행(D83) — 만들거나 넘기다 실패해도 응답은 그대로. */
+    private void record(Supplier<QueryEvent> event) {
+        try {
+            events.record(event.get());
+        } catch (RuntimeException e) {
+            log.warn("질의 이벤트 기록 실패 — 재생성 응답에는 영향 없음: {}", e.toString());
+        }
+    }
+
+    private RevisionOutcome reviseOnce(Optional<UUID> userId, LawRef ref, String setId, List<SituationAnswer> answers,
+                                       SituationQuestions questions) {
         Personalization personalization = gate.check(userId);
         if (personalization instanceof Personalization.Blocked blocked) {
             return notRevised(new Unmet(blocked.reason(), "개인화 불가 (상황 확인): " + blocked.reason()));

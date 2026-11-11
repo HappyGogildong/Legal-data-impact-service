@@ -36,9 +36,9 @@ public final class Obs {
     public static final String CACHE_MISS = "lia.analysis.cache.miss";
     public static final String INFLIGHT_DUP = "lia.analysis.inflight.duplicate";
 
-    // --- 호출 기록(D83 Token & Cost) ---
-    /** llm_calls 에 남기지 못한 호출 — 태그 {@link #TAG_REASON}(queue_full | write_failed). */
-    public static final String LLM_CALLS_DROPPED = "lia.llm.calls.dropped";
+    // --- 관측 기록(D83 호출 기록·질의 이벤트) ---
+    /** 남기지 못한 기록 — 태그 {@link #TAG_RECORD}(llm_call | query_event), {@link #TAG_REASON}(queue_full | write_failed). */
+    public static final String RECORDS_DROPPED = "lia.records.dropped";
 
     // --- 태그 키 (저카디널리티만) ---
     public static final String TAG_TARGET = "target";       // eflaw | current(현행 기준선, D76)
@@ -48,4 +48,5 @@ public final class Obs {
     public static final String TAG_DIMENSION = "dimension"; // LOOKUP|SUMMARY|DIFF|IMPACT|ACTION
     public static final String TAG_LAYER = "layer";         // A | B
     public static final String TAG_REASON = "reason";       // queue_full | write_failed
+    public static final String TAG_RECORD = "record";       // llm_call | query_event
 }

@@ -30,7 +30,7 @@ public class QueryPlanner {
         // 비법령·오프토픽 조기 거부(fail-closed) — 번역기의 법령의도 신호
         if (!draft.isLawQuery()) {
             return new PlanResult.Unresolved(
-                    ResolutionResult.unverified(List.of(), "법령에 관한 질의가 아닙니다."));
+                    ResolutionResult.unverified(List.of(), "법령에 관한 질의가 아닙니다."), true);
         }
 
         boolean reference = explicitRef != null || draft.targetKind() == TargetKind.REFERENCE;

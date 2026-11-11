@@ -178,13 +178,13 @@ cron ─▶ eval 컨테이너 ─────────────┘
 ### 6.2 비동기 수집
 
 - 응답 경로 밖에서 크기 제한이 있는 큐로 DB에 쓴다. 기록 실패가 사용자 응답을 막지 않는다.
-- 큐가 차면 버리고 `lia.eval.log.dropped`로 센다. 버려진 건수가 많으면 비용·품질 집계를 믿지 않는다.
+- 큐가 차면 버리고 `lia.records.dropped{record, reason}`로 센다(쓰기 장치 `RecordWriter`). 버려진 건수가 많으면 비용·품질 집계를 믿지 않는다.
 - 일회성 `ingest`는 종료 때 유실되지 않게 호출 기록을 동기로 쓴다.
 - Kafka·Loki를 두지 않는다. 트래픽을 아직 모르고 서버도 한 대다. 컨테이너 로그는 `run --rm`과 함께 사라지므로 쓰지 않는다.
 
 | 기록 | 내용 | 대상 | 보존 |
 |---|---|---|---|
-| 질의 이벤트 | 차원, 상태·거부 사유, 후보 수, 시도 횟수, 프롬프트 버전. **원문 없음** | 전체 요청 | 집계 후 정책 결정 |
+| 질의 이벤트 | 상태, 경로, 미해소 사유(법령 질문이 아님 포함), 요청·채운 차원, 못 채운 사유, 후보 수, 프롬프트 버전. **원문·`user_id`·법령ID 없음** — 시도 횟수는 호출 기록, 법령별 조회는 `law_views_daily`. 계약 [[QueryEventRecorder]], 대시보드 `LIA · Requests` | 전체 요청 | 집계 후 정책 결정 |
 | 평가 표본 | 마스킹한 질문, Layer B는 마스킹한 답, Layer A는 저장본 참조 | 표본만 | 30일 |
 | LLM 호출 | §8 | 전체 호출 | 집계 후 정책 결정 |
 | 판정 | 주장별 판정값. **원문 없음** | 판정한 표본 | 기준선 비교에 필요한 동안 |
@@ -243,7 +243,8 @@ Prometheus만으로는 부족하다. 일회성 배치는 긁히지 않는데 가
 | `OfflineEvalRunner`, `EvalConfig` | `eval` 프로파일 실행, 시행일이 지난 문항 제외. 운영은 `ops/deploy/lia eval`([[cloud-infra]] 런북 15) |
 | `RagConfig` | 법령 발견 설정 3개만 |
 | `FaithfulnessGate` | 유지. 런타임 불변식이지 품질 지표가 아니다 |
-| `com.lia.core.observability.llm` | 2단계 호출 기록(§8) — `LlmCallRecorder`·`UsageCaptureAdvisor`·`RecordingEmbeddingModel`·`LlmCallWriter` |
+| `QueryEvent`·`QueryEventStore` | 2단계 질의 이벤트(§6.2) — `AnalyzeUseCase`·`ActionRevisionUseCase` 가 요청마다 한 행 |
+| `com.lia.core.observability.llm` | 2단계 호출 기록(§8) — `LlmCallRecorder`·`UsageCaptureAdvisor`·`RecordingEmbeddingModel`(쓰기 장치는 `observability.RecordWriter`) |
 | 제거 | `Retriever`, `ChunkStoreRetriever`, `RagEvalRunner`, `SelfRetrievalGold`, `RefusalMetric`, `RagEvalLiveTest`, 옛 정답 파일 2개, Recall·nDCG |
 | 후속 | 문턱값 구간별 정답률 — `SourceAnalyzer`가 점수를 밖으로 내주지 않는다 |
 
@@ -265,7 +266,7 @@ Prometheus만으로는 부족하다. 일회성 배치는 긁히지 않는데 가
 | 단계 | 내용 | 유료 호출 | 전제 |
 |---|---|---|---|
 | 1 ✅ | 평가 경로 수리(§9), 결정적 지표 테스트, 게이트 연결 | 없음 | — |
-| 2 🟡 | LLM 호출 기록 ✅, §2.4 대시보드 ✅, 질의 이벤트 | 없음 | — |
+| 2 ✅ | LLM 호출 기록, §2.4 대시보드, 질의 이벤트와 대시보드 `LIA · Requests` | 없음 | — |
 | 3 🟡 | 정답 세트 작성 ✅·검토, 운영 래퍼 연결 ✅, 오프라인 기준선 | 임베딩·Haiku 소액 | 운영 전체 색인 |
 | 4 | 처리방침 갱신, 표본 수집, eval 컨테이너 | 없음 | 법무 검토(#35) |
 | 5 | 표본 판정, 판정 지표 기준선 | 없음 (Layer B 표본은 실제 요청에서, Layer A는 저장본에서) | 운영 `summarize` 실행 |
