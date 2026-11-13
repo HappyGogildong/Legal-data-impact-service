@@ -48,12 +48,6 @@ related:
 | 12 | **Verification Gate** | Spring/Py | 스키마·인용 존재성 검사, 실패 시 재생성/폴백 | 엔진 JSON + 주입 source_id 집합 | 통과 JSON 또는 "근거 부족" |
 | 13 | **Web Frontend** | TS | 검색·선택·결과 표시 | 사용자 액션 | Spring REST 호출/렌더 |
 
-### 비런타임(오프라인/CI)
-
-| # | 컴포넌트 | 역할 | 입력 | 출력 |
-|---|---|---|---|---|
-| 15 | **Evaluation Harness** *(post-MVP 이연, D36)* | 합성 페르소나 에이전트로 E2E 구동·회귀(§5) | 세그먼트 패널 + 법안셋 + `prompt_version` | smoke 결과 + UX 비평 + 커버리지 리포트 |
-
 > **계층 매핑(프롬프트 정의서):** Layer A(법안 사실)=`ImpactSummary`·`LawDiff`의 사실부, Layer B(해석)=`PersonaImpact`/`ActionPlan`. 컨텍스트 조립은 #8이 정의서 §1 입력계약대로 수행.
 > **#4 RAG Indexer·#6 Vector Index는 MVP에서 활성**(국가법령정보 현행법 임베딩 → LawDiff·영향분석 컨텍스트 검색).
 
@@ -114,13 +108,12 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 - LLM-judge 인용 뒷받침(MVP는 규칙 검증만)
 - MCP 어댑터(내부 전용·미노출 — 기정)
 - 인구분포 triage 가중치
-- **Evaluation Harness(합성 페르소나 E2E)** — 수직 슬라이스 완성 후 착수(**D36**). MVP 품질 앵커는 컴포넌트 단위 테스트 + 소량 사람검수 골든셋
 
 ---
 
-## 5. Evaluation Harness *(post-MVP 이연, D36)*
+## 5. ~~Evaluation Harness~~ — 폐지(D84)
 
-수직 슬라이스(#13) 완성 후 착수한다(완성된 E2E·프롬프트가 있어야 회귀·UX 비평 가치가 발동). 역할: 흐름 smoke/회귀·스키마·인용 누락 탐지·UX 비평·취약 케이스 발굴은 **채택**하되, **법적 정확성 판정은 금지**(정답 앵커는 규칙 검증 + 소규모 사람검수 골든셋). 상세는 착수 시점에 확정. 이슈 #16.
+합성 페르소나 E2E 하니스는 만들지 않는다. 회귀는 [[rag-evaluation-framework]](D83), 흐름 smoke 는 웹 E2E·컴포넌트 테스트가 맡는다.
 
 ---
 
@@ -143,4 +136,4 @@ MVP에서는 #2의 **URL/텍스트 분기를 인터페이스만 정의(스텁)**
 - [x] foundation 모델 픽 + 토큰 예산 → Opus 4.8 ([[component-specs]] §3.3)
 - [x] 현행법↔법안 조문 **정렬(alignment)** → **해소(D42)**. 두 버전이 동일 스키마·동일 조문번호라 매칭이 자명하고, `조문변경여부` 플래그가 대상을 지목한다
 - [ ] 한 법령에 시행예정본이 복수일 때 diff 기준 시점 (**D43**)
-- [ ] Evaluation Harness 패널 크기·골든셋 규모
+- [x] ~~Evaluation Harness 패널 크기·골든셋 규모~~ → 폐지(D84)

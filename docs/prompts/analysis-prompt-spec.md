@@ -191,7 +191,7 @@ Layer B 는 IMPACT·ACTION 을 한 호출로 만든다(요청 dimension=IMPACT).
 ## 7. 프롬프트 버저닝
 
 - 모든 프롬프트에 `prompt_version` 부여, 응답 `meta`에 기록.
-- 변경 시 새 버전 + 회귀 골든셋으로 비교(Evaluation Harness, post-MVP D36).
+- 변경 시 새 버전 + 회귀 비교([[rag-evaluation-framework]] — 오프라인 회귀·운영 표본 판정, D83).
 - 시스템/태스크/스키마를 별도 파일로 분리 관리(코드와 함께 버전관리).
 
 ---
