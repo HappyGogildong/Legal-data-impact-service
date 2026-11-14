@@ -77,6 +77,11 @@ public class Normalizer {
         return Observation.createNotStarted(Obs.NORMALIZE, observations).observe(() -> doNormalize(raw));
     }
 
+    /** 같은 (법령ID, 시행일)의 공포본 여럿을 하나로(D85). */
+    public Law normalizeAll(List<RawLaw> raws) {
+        throw new UnsupportedOperationException("D85 공포본 병합 — 미구현");
+    }
+
     private Law doNormalize(RawLaw raw) {
         Map<String, Object> root = raw.raw();
         Map<String, Object> info = LawEnvelope.basicInfo(root);
