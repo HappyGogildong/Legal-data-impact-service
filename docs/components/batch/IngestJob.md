@@ -125,7 +125,7 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
 - 등록 = `INSERT … ON CONFLICT (kind, law_id, effective_date) WHERE status IN (…) DO NOTHING` — 중복 등록은 조용히 무시.
 - **격리된 작업은 `requeue-dead`로만 풀린다.** 탐색이 매일 같은 실패를 반복 등록하지 않는다.
 - **보존:** `DONE`은 30일 뒤 실행 준비 단계에서 삭제(시도 행 함께). `DEAD`는 사람이 처리할 때까지 남긴다. `ingest_runs`는 지우지 않는다.
-- **식별 키:** 법령 버전 = `(law_id, effective_date)`(D43 — 시행예정본이 여럿이어도 시행일이 다르다는 실측). 같은 키가 목록에 둘 이상 오면 첫 행만 쓰고 `duplicateKeys` 건수·경고를 남긴다(키 가정이 깨졌다는 신호).
+- **식별 키:** 법령 버전 = `(law_id, effective_date)`(D43). 한 시행일에 공포가 둘 이상이면 목록에 같은 키가 MST 만 달리해 여럿 온다 — 버리지 않고 **MST 묶음으로 모아 한 SYNC 로 병합**한다(D85, 병합 규칙은 [[Normalizer]]). 작업·저장의 `mst` 는 MST 오름차순 쉼표 목록이고, 묶음이 달라지면(공포본 추가) 다시 SYNC 한다. MST 까지 같은 행이 반복되면 하나로 친다. 병합한 키 수는 `mergedKeys`(정보 — 경보 아님).
 
 ## Business Flow (실행 한 번)
 1. **잠금** — `pg_try_advisory_lock(hashtext('lia-ingest-job'))`(세션 잠금 — 잡의 전용 커넥션이 끝까지 보유). 실패하면 "이미 실행 중" 로그 후 종료 코드 0.
@@ -276,7 +276,7 @@ CREATE INDEX ingest_task_attempts_task ON ingest_task_attempts (task_id);
 | 트레이스(OTLP push → Tempo) | 실행 span 아래 작업 span(`kind` 태그), 그 아래 기존 `lia.ingest`·`lia.normalize`·`lia.diff` |
 | 구조화 로그 | 작업마다 한 줄: 종류·법령·결과·소요 시간·오류 |
 
-Pushgateway는 두지 않는다. **신호:** `DEAD ≥ 1` · 마지막 성공 실행이 26시간 넘게 없음 · 목록 미완주 연속 · `abandoned` 실행 · `duplicateKeys > 0` · 가장 오래된 `READY`의 나이 · 색인 지연(`READY` `INDEX` 수 = `deferred.INDEX`, 색인을 꺼 두면 늘어남).
+Pushgateway는 두지 않는다. **신호:** `DEAD ≥ 1` · 마지막 성공 실행이 26시간 넘게 없음 · 목록 미완주 연속 · `abandoned` 실행 · 가장 오래된 `READY`의 나이 · 색인 지연(`READY` `INDEX` 수 = `deferred.INDEX`, 색인을 꺼 두면 늘어남).
 
 ## Invariants
 - 한 시점에 배치는 **하나만** 돈다(advisory lock).

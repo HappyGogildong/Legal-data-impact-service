@@ -16,7 +16,7 @@ public class FakeLawFeed implements PendingLawFeed {
 
     private final List<RawLaw> heads = new ArrayList<>();
     private final Map<String, RawLaw> pendingByMst = new HashMap<>();
-    private final Map<String, RawLaw> currentByLawId = new HashMap<>();
+    private final Map<String, List<RawLaw>> currentByLawId = new HashMap<>();
     private final Map<String, RuntimeException> fetchFailures = new HashMap<>();
     private boolean listComplete = true;
     private RuntimeException listFailure;
@@ -48,7 +48,7 @@ public class FakeLawFeed implements PendingLawFeed {
     }
 
     public FakeLawFeed currentBody(String lawId, RawLaw raw) {
-        currentByLawId.put(lawId, raw);
+        currentByLawId.put(lawId, List.of(raw));
         return this;
     }
 
@@ -91,7 +91,7 @@ public class FakeLawFeed implements PendingLawFeed {
     }
 
     @Override
-    public RawLaw fetchCurrent(String lawId) {
-        return currentByLawId.get(lawId);
+    public List<RawLaw> fetchCurrent(String lawId) {
+        return currentByLawId.getOrDefault(lawId, List.of());
     }
 }

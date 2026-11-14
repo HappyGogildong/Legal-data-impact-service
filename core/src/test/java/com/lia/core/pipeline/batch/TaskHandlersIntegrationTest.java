@@ -28,6 +28,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.analyze.AnalysisContext;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.ContextBuilder;
@@ -145,6 +146,20 @@ class TaskHandlersIntegrationTest {
         assertEquals(Law.Status.시행예정, lawStore.find(LAW, EF).orElseThrow().status());
         assertEquals(LawFixtures.HOUSING_BASELINE_EFFECTIVE, lawStore.findBaseline(LAW).orElseThrow().effectiveDate());
         assertEquals(List.of("INDEX:001809@2026-08-04", "SUMMARIZE:001809@2026-08-04"), readyTasks());
+    }
+
+    @Test
+    @DisplayName("SYNC — MST 가 여럿이면 공포본마다 본문을 받아 하나로 병합 저장(D85)")
+    void sync_공포본_병합() {
+        RawLaw first = LawFixtures.raw(LawFixtures.HOUSING_PENDING, "시행예정");
+        RawLaw second = new RawLaw(first.lawId(), "283192", first.title(), first.status(), first.effectiveDate(),
+                first.promulgateDate(), "21999", first.raw());
+        feed.pendingBody("283192", second);
+
+        sync.handle(task(TaskKind.SYNC, LAW, EF, LawFixtures.HOUSING_MST + ",283192"));
+
+        assertEquals(2, feed.fetchCount(), "공포본마다 본문");
+        assertEquals(LawFixtures.HOUSING_MST + ",283192", lawStore.find(LAW, EF).orElseThrow().mst());
     }
 
     @Test

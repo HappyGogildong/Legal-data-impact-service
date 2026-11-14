@@ -108,7 +108,7 @@ public class LawConnector {
     List<RawLaw> listPending(LocalDate from, LocalDate to, int limit);   // target=eflaw + efYd
     List<RawLaw> searchPending(String query, LocalDate from, LocalDate to, int limit);
     RawLaw fetchPending(String mst, LocalDate effectiveDate);            // target=eflaw + MST
-    RawLaw fetchCurrent(String lawId);                                   // eflaw 목록 LID+nw=3 → 본문 MST+efYd (D76)
+    List<RawLaw> fetchCurrent(String lawId);                             // eflaw 목록 LID+nw=3 → 본문 MST+efYd (D76), 같은 시행일 공포본이면 여럿 (D85)
 }
 
 // 봉투 파싱 순수 함수 — 단위 테스트 대상

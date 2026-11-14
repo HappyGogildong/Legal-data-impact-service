@@ -10,10 +10,10 @@ import java.util.Map;
  * @param planned       종류별 계획 건수(dry-run 에서도 채워짐)
  * @param enqueued      종류별 실제 등록 건수(중복은 제외)
  * @param markedMissing 첫 미확인으로 missing_since 를 기록한 건수
- * @param duplicateKeys 같은 (lawId, 시행일)이 목록에 또 나온 건수 — 0 이 아니면 식별 키 가정(D43)이 깨졌다
+ * @param mergedKeys    같은 (lawId, 시행일)에 MST 가 둘 이상이라 공포본을 묶은 키 수(D85) — 정보, 경보 아님
  * @param malformedRows lawId·시행일·MST 중 하나라도 없어 건너뛴 행 수 — 0 이 아니면 목록을 미완주로 본다
  */
 public record DiscoveryResult(int listed, boolean listComplete, Map<TaskKind, Integer> planned,
-                              Map<TaskKind, Integer> enqueued, int markedMissing, int duplicateKeys,
+                              Map<TaskKind, Integer> enqueued, int markedMissing, int mergedKeys,
                               int malformedRows) {
 }

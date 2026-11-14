@@ -77,6 +77,22 @@ public class Normalizer {
         return Observation.createNotStarted(Obs.NORMALIZE, observations).observe(() -> doNormalize(raw));
     }
 
+    /**
+     * 같은 (법령ID, 시행일)의 공포본 여럿을 각각 정규화한 뒤 하나로 병합한다(D85). 하나면 {@link #normalize}와 같다.
+     *
+     * @throws IllegalArgumentException 비었거나, 법령ID·시행일이 다르거나, 조문 본문이 공포본끼리 다를 때
+     */
+    public Law normalizeAll(List<RawLaw> raws) {
+        if (raws == null || raws.isEmpty()) {
+            throw new IllegalArgumentException("공포본이 하나도 없다.");
+        }
+        if (raws.size() == 1) {
+            return normalize(raws.getFirst());
+        }
+        Law merged = PromulgationMerge.merge(raws.stream().map(this::normalize).toList());
+        return merged.withRevision(computeRevision(merged));
+    }
+
     private Law doNormalize(RawLaw raw) {
         Map<String, Object> root = raw.raw();
         Map<String, Object> info = LawEnvelope.basicInfo(root);

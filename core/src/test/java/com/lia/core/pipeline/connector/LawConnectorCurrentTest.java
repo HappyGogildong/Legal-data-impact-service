@@ -88,7 +88,7 @@ class LawConnectorCurrentTest {
         listResponse = list(1, currentRow("289171", "20260908"));
         bodyResponse = body("20260908");
 
-        RawLaw current = connector.fetchCurrent("001809");
+        RawLaw current = connector.fetchCurrent("001809").getFirst();
 
         assertEquals(LocalDate.of(2026, 9, 8), current.effectiveDate(), "시행일 기준 현행(공포본의 마지막 시행일이 아님)");
         assertEquals("289171", current.mst());
@@ -109,17 +109,31 @@ class LawConnectorCurrentTest {
     }
 
     @Test
-    @DisplayName("현행 행 0건 → null(제정 = 기준선 없음), 본문은 부르지 않는다")
+    @DisplayName("현행 행 0건 → 빈 목록(제정 = 기준선 없음), 본문은 부르지 않는다")
     void 현행행_없음_제정() {
         listResponse = """
                 {"LawSearch":{"totalCnt":"0"}}""";
 
-        assertNull(connector.fetchCurrent("015136"));
+        assertTrue(connector.fetchCurrent("015136").isEmpty());
         assertEquals(1, requests.size(), "목록만");
     }
 
     @Test
-    @DisplayName("현행 행 2건 이상 → 예외(추측해 고르지 않는다)")
+    @DisplayName("현행 행이 여럿이고 시행일이 같으면 행마다 본문을 받는다 — 같은 날 시행된 공포본(D85)")
+    void 현행행_같은시행일_공포본() {
+        listResponse = list(2, currentRow("289171", "20260908") + "," + currentRow("289172", "20260908"));
+        bodyResponse = body("20260908");
+
+        List<RawLaw> currents = connector.fetchCurrent("001809");
+
+        assertEquals(2, currents.size());
+        assertEquals(3, requests.size(), "목록 1 + 본문 2");
+        assertEquals("289171", requests.get(1).get("MST"));
+        assertEquals("289172", requests.get(2).get("MST"));
+    }
+
+    @Test
+    @DisplayName("현행 행의 시행일이 서로 다르면 예외(추측해 고르지 않는다)")
     void 현행행_복수() {
         listResponse = list(2, currentRow("289171", "20260908") + "," + currentRow("283191", "20260804"));
 

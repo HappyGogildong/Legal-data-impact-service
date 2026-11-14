@@ -140,7 +140,7 @@ public class IngestJob {
                     listComplete = discovery.listComplete();
                     counts.put("listed", discovery.listed());
                     counts.put("markedMissing", discovery.markedMissing());
-                    counts.put("duplicateKeys", discovery.duplicateKeys());
+                    counts.put("mergedKeys", discovery.mergedKeys());
                     counts.put("malformedRows", discovery.malformedRows());
                     discovery.planned().forEach((kind, n) -> counts.put("planned." + kind, n));
                     discovery.enqueued().forEach((kind, n) -> counts.put("enqueued." + kind, n));

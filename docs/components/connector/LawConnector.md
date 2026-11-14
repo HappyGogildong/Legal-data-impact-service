@@ -24,19 +24,19 @@ related: ["components/component-specs.md", "components/connector/SourceConnector
 - `listAllPending(from, to) → PendingList` — 배치용 전량 + 완주 여부(D62). `listPending` 과 같은 요청.
 - `searchPending(query, from, to, limit) → RawLaw[]` — 법령명 검색(해소용, `nw=2`).
 - `fetchPending(mst, efYd) → RawLaw` — 시행예정 본문(`target=eflaw`). 본문 없으면 예외.
-- `fetchCurrent(lawId) → RawLaw | null` — **시행일 기준** 현행 본문(D76). 목록 `target=eflaw&LID={lawId}&nw=3` 으로 현행 행을 찾고, 그 행의 `법령일련번호`·`시행일자`로 `fetchPending` 과 같은 본문 경로를 부른다(호출 2회, 상태 `시행중`). **현행 행이 0건이면 `null`**(제정 = diff 기준선 부재, [[law-domain-basics]] §3) — 본문은 부르지 않는다.
+- `fetchCurrent(lawId) → List<RawLaw>` — **시행일 기준** 현행 본문(D76). 목록 `target=eflaw&LID={lawId}&nw=3` 으로 현행 행을 찾고, 그 행의 `법령일련번호`·`시행일자`로 `fetchPending` 과 같은 본문 경로를 부른다(상태 `시행중`). **현행 행이 0건이면 빈 목록**(제정 = diff 기준선 부재, [[law-domain-basics]] §3) — 본문은 부르지 않는다. 현행 행이 여럿이면 **시행일이 모두 같을 때만** 행마다 본문을 받아 모두 돌려준다(같은 날 시행된 공포본 여럿, D85 — 병합은 [[Normalizer]]). 시행일이 다르면 예외.
 
 ## External API Contract
 | target | 용도 | 조회키 | 본문 루트 |
 |---|---|---|---|
 | `eflaw` | 시행예정(분석 대상) | `MST` | `법령` |
-| `eflaw` 목록 `nw=3` | 현행 행 찾기(diff 기준선) | **`LID`**(법령ID; MST 아님) | `LawSearch` — 현행 1행, 제정이면 `totalCnt=0` |
+| `eflaw` 목록 `nw=3` | 현행 행 찾기(diff 기준선) | **`LID`**(법령ID; MST 아님) | `LawSearch` — 현행 1행(같은 시행일 공포본이면 여럿, D85), 제정이면 `totalCnt=0` |
 | `eflaw` 본문 | 현행 본문(diff 기준선) | 현행 행의 `MST`+`efYd` | `법령` |
 
 > **`target=law` 는 쓰지 않는다(D76).** API 안내서상 "현행법령(**공포일**)"이라, 단계적 시행 법령이면 일부만 시행 중인 공포본을 **마지막 시행일 기준 본문**으로 준다(아직 시행되지 않은 조문 포함). `eflaw&ID=`(efYd 생략) 단독 조회는 제정 법령에 HTML "미신청된 목록/본문" 페이지를 줘 권한 오류와 구분되지 않는다([[troubleshooting/006-current-law-by-promulgation-date|006]]).
 
 - 목록: `GET /DRF/lawSearch.do?target=eflaw&nw=2&efYd=..&sort=efasc&display=..` → `LawSearch.law[]` (`nw=2` = 시행예정만)
-- 현행 행: `GET /DRF/lawSearch.do?target=eflaw&LID=..&nw=3` → `LawSearch.law` 0~1건
+- 현행 행: `GET /DRF/lawSearch.do?target=eflaw&LID=..&nw=3` → `LawSearch.law` 0건 이상(여럿이면 같은 시행일 공포본)
 - 본문: `GET /DRF/lawService.do?target=eflaw&MST=..&efYd=..` → `법령` 블록
 
 ## 봉투·오류 규약

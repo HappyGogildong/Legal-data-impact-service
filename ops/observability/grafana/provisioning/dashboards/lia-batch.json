@@ -118,7 +118,7 @@
           "format": "table",
           "rawQuery": true,
           "editorMode": "code",
-          "rawSql": "SELECT started_at, command, outcome, list_complete, counts->>'done' AS done, counts->>'failed' AS failed, counts->>'dead' AS dead, counts->>'deferred.INDEX' AS deferred_index, counts->>'malformedRows' AS malformed, counts->>'duplicateKeys' AS duplicate_keys, counts->>'notified' AS notified FROM ingest_runs ORDER BY started_at DESC LIMIT 20"
+          "rawSql": "SELECT started_at, command, outcome, list_complete, counts->>'done' AS done, counts->>'failed' AS failed, counts->>'dead' AS dead, counts->>'deferred.INDEX' AS deferred_index, counts->>'malformedRows' AS malformed, counts->>'mergedKeys' AS merged_keys, counts->>'notified' AS notified FROM ingest_runs ORDER BY started_at DESC LIMIT 20"
         }
       ]
     },
