@@ -1,6 +1,7 @@
 package com.lia.core.pipeline.ingest;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.stereotype.Component;
 
@@ -47,9 +48,19 @@ public class IngestService {
      *         upsert 가 같은 키의 시행예정 행을 시행중으로 덮어쓴다. 아무것도 쓰지 않고 던진다.
      */
     public IngestResult store(RawLaw pendingRaw, RawLaw baselineRaw) {
+        return store(List.of(pendingRaw), baselineRaw == null ? List.of() : List.of(baselineRaw));
+    }
+
+    /**
+     * 같은 시행일 공포본 여럿을 하나로 병합해 저장한다(D85, {@link Normalizer#normalizeAll}).
+     *
+     * @param pendingRaws  시행예정 공포본 1개 이상
+     * @param baselineRaws 시행중 공포본 — 비면 제정(기준선 없음)
+     */
+    public IngestResult store(List<RawLaw> pendingRaws, List<RawLaw> baselineRaws) {
         return Observation.createNotStarted(Obs.INGEST, observations).observe(() -> {
-            Law pending = normalizer.normalize(pendingRaw);
-            Law baseline = baselineRaw == null ? null : normalizer.normalize(baselineRaw);
+            Law pending = normalizer.normalizeAll(pendingRaws);
+            Law baseline = baselineRaws.isEmpty() ? null : normalizer.normalizeAll(baselineRaws);
             if (baseline != null && !baseline.effectiveDate().isBefore(pending.effectiveDate())) {
                 throw new IllegalArgumentException("기준선 시행일 " + baseline.effectiveDate()
                         + " 이 시행예정본 " + pending.effectiveDate() + " 보다 늦지 않다: 법령ID " + pending.lawId());

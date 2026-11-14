@@ -2,6 +2,7 @@ package com.lia.core.pipeline.batch;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -58,9 +59,9 @@ public class SyncHandler implements TaskHandler {
             return;
         }
         RawLaw pending = feed.fetchPending(task.mst(), task.effectiveDate());   // 외부 API — 트랜잭션 밖
-        RawLaw baseline = feed.fetchCurrent(task.lawId());                      // null = 제정
+        List<RawLaw> baseline = feed.fetchCurrent(task.lawId());                // 비면 제정
         transactions.executeWithoutResult(status -> {
-            IngestResult result = ingest.store(pending, baseline);
+            IngestResult result = ingest.store(List.of(pending), baseline);
             if (result.baselineEffectiveDate() != null && result.baselineEffectiveDate().isAfter(LocalDate.now(clock))) {
                 throw new IllegalArgumentException("기준선 시행일 " + result.baselineEffectiveDate()
                         + " 이 오늘 이후다(미래본): 법령ID " + result.lawId());

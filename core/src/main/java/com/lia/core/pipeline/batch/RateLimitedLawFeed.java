@@ -1,6 +1,7 @@
 package com.lia.core.pipeline.batch;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import com.lia.core.pipeline.connector.PendingLawFeed;
 import com.lia.core.pipeline.connector.RawLaw;
@@ -30,7 +31,7 @@ public class RateLimitedLawFeed implements PendingLawFeed {
     }
 
     @Override
-    public RawLaw fetchCurrent(String lawId) {
+    public List<RawLaw> fetchCurrent(String lawId) {
         limiter.acquire();
         return delegate.fetchCurrent(lawId);
     }

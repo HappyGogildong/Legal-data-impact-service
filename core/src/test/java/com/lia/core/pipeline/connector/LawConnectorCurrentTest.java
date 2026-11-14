@@ -88,7 +88,7 @@ class LawConnectorCurrentTest {
         listResponse = list(1, currentRow("289171", "20260908"));
         bodyResponse = body("20260908");
 
-        RawLaw current = connector.fetchCurrent("001809");
+        RawLaw current = connector.fetchCurrent("001809").getFirst();
 
         assertEquals(LocalDate.of(2026, 9, 8), current.effectiveDate(), "시행일 기준 현행(공포본의 마지막 시행일이 아님)");
         assertEquals("289171", current.mst());
@@ -109,12 +109,12 @@ class LawConnectorCurrentTest {
     }
 
     @Test
-    @DisplayName("현행 행 0건 → null(제정 = 기준선 없음), 본문은 부르지 않는다")
+    @DisplayName("현행 행 0건 → 빈 목록(제정 = 기준선 없음), 본문은 부르지 않는다")
     void 현행행_없음_제정() {
         listResponse = """
                 {"LawSearch":{"totalCnt":"0"}}""";
 
-        assertNull(connector.fetchCurrent("015136"));
+        assertTrue(connector.fetchCurrent("015136").isEmpty());
         assertEquals(1, requests.size(), "목록만");
     }
 

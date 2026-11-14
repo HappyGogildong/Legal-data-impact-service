@@ -99,12 +99,13 @@ class LawLiveSmokeTest {
     void 법령ID로_시행중_기준선을_가져온다() {
         RawLaw pending = connector.listPending(FROM, TO, 1).get(0);
 
-        RawLaw current = connector.fetchCurrent(pending.lawId());
+        List<RawLaw> currents = connector.fetchCurrent(pending.lawId());
 
-        if (current == null) {   // 제정 법령 — 현행본 없음(diff 기준선 부재 = 전부 신설). 정상 상태.
+        if (currents.isEmpty()) {   // 제정 법령 — 현행본 없음(diff 기준선 부재 = 전부 신설). 정상 상태.
             System.out.printf("[live] %s — 현행본 없음(제정 → 기준선 없이 전부 신설)%n", pending.title());
             return;
         }
+        RawLaw current = currents.getFirst();
         assertEquals(pending.lawId(), current.lawId(), "법령ID가 연결키로 동작하지 않는다");
         assertTrue(current.hasBody(), "시행중본에 조문이 없다");
         assertTrue(current.effectiveDate().isBefore(pending.effectiveDate().plusDays(1)),

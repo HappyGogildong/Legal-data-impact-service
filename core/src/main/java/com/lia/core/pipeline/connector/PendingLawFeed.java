@@ -15,8 +15,8 @@ public interface PendingLawFeed {
     /** 시행예정 본문(MST 로 특정). */
     RawLaw fetchPending(String mst, LocalDate effectiveDate);
 
-    /** 시행중 본문(diff 기준선). 없으면 null(제정). */
-    RawLaw fetchCurrent(String lawId);
+    /** 시행중 본문(diff 기준선). 비면 제정. 같은 시행일 공포본이면 여럿(D85 — 병합은 Normalizer). */
+    List<RawLaw> fetchCurrent(String lawId);
 
     /**
      * @param heads    목록 행(본문 없음 — lawId·mst·시행일)
