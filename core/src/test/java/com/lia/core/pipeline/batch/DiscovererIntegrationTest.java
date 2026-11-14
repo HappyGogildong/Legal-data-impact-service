@@ -176,15 +176,54 @@ class DiscovererIntegrationTest {
         assertNull(lawStore.findPendingVersions("A").get(0).missingSince());
     }
 
+    private String taskMst(String lawId) {
+        return jdbc.sql("SELECT mst FROM ingest_tasks WHERE kind = 'SYNC' AND law_id = :id").param("id", lawId)
+                .query(String.class).single();
+    }
+
     @Test
-    @DisplayName("같은 (법령, 시행일)이 목록에 둘 — 첫 행만 쓰고 건수를 남긴다(키 가정 위반 신호)")
-    void 중복키() {
-        feed.head("A", "M1", FUTURE).head("A", "M2", FUTURE);
+    @DisplayName("같은 (법령, 시행일)이 MST 만 달리해 둘 — MST 묶음 하나로 SYNC, 병합 건수를 남긴다(D85)")
+    void 같은_시행일_공포본_묶음() {
+        feed.head("A", "M2", FUTURE).head("A", "M1", FUTURE);
 
         DiscoveryResult r = discoverer.discover(false, false);
 
-        assertEquals(1, r.duplicateKeys());
+        assertEquals(1, r.mergedKeys());
         assertEquals(List.of("SYNC:A@2027-01-01"), tasks());
+        assertEquals("M1,M2", taskMst("A"), "MST 오름차순 쉼표 목록");
+    }
+
+    @Test
+    @DisplayName("저장된 MST 묶음과 같으면 SYNC 하지 않는다(D85)")
+    void 같은_묶음은_건너뜀() {
+        lawStore.upsert(TestLaws.law("A", "M1,M2", Law.Status.시행예정, FUTURE));
+        feed.head("A", "M2", FUTURE).head("A", "M1", FUTURE);
+
+        discoverer.discover(false, false);
+
+        assertEquals(List.of(), tasks());
+    }
+
+    @Test
+    @DisplayName("같은 시행일 공포본이 하나 더 생기면 다시 SYNC 한다(D85)")
+    void 공포본_추가() {
+        lawStore.upsert(TestLaws.law("A", "M1", Law.Status.시행예정, FUTURE));
+        feed.head("A", "M1", FUTURE).head("A", "M2", FUTURE);
+
+        discoverer.discover(false, false);
+
+        assertEquals("M1,M2", taskMst("A"));
+    }
+
+    @Test
+    @DisplayName("MST 까지 같은 행이 반복되면 하나로 친다 — 병합 아님")
+    void 같은_행_반복() {
+        feed.head("A", "M1", FUTURE).head("A", "M1", FUTURE);
+
+        DiscoveryResult r = discoverer.discover(false, false);
+
+        assertEquals(0, r.mergedKeys());
+        assertEquals("M1", taskMst("A"));
     }
 
     @Test
