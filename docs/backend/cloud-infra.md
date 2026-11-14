@@ -160,7 +160,7 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 |---|---|---|
 | 마지막 실행 | 명령·결과·시작/종료·소요 시간 | `ingest_runs` 최신 행 |
 | 마지막 성공 이후 경과 | 시간 단위, 26시간 기준선 | `max(finished_at) WHERE outcome='SUCCESS'` |
-| 최근 실행 20건 | 결과·`list_complete`·`done`·`failed`·`dead`·`deferred.INDEX`·`malformedRows`·`duplicateKeys` | `ingest_runs.counts` |
+| 최근 실행 20건 | 결과·`list_complete`·`done`·`failed`·`dead`·`deferred.INDEX`·`malformedRows`·`mergedKeys` | `ingest_runs.counts` |
 | 작업 상태 | READY·RUNNING·DEAD 개수 | `ingest_tasks` |
 | DEAD 목록 | 종류·법령·시행일·시도 횟수·마지막 오류·시각 | `ingest_tasks WHERE status='DEAD'` |
 | 색인 지연 | READY인 INDEX 수 · 가장 오래된 READY의 나이 | `ingest_tasks` |

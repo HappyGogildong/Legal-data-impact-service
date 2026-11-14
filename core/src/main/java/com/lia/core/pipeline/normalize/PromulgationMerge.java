@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import com.lia.core.domain.law.Addendum;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
+import com.lia.core.pipeline.connector.MstList;
 
 /**
  * 같은 (법령ID, 시행일)의 공포본 병합(D85) — 순수 함수. 규칙: docs/components/normalize/Normalizer.md {@code normalizeAll}.
@@ -39,8 +40,7 @@ final class PromulgationMerge {
                         + first.effectiveDate() + " ≠ " + law.lawId() + "@" + law.effectiveDate());
             }
         }
-        String mst = ordered.stream().map(Law::mst).sorted(Comparator.comparing(PromulgationMerge::number)
-                .thenComparing(Comparator.naturalOrder())).collect(Collectors.joining(","));
+        String mst = MstList.join(ordered.stream().map(Law::mst).toList());
         List<String> delegations = new ArrayList<>(ordered.stream()
                 .flatMap(law -> law.delegationClauses().stream())
                 .collect(Collectors.toCollection(LinkedHashSet::new)));

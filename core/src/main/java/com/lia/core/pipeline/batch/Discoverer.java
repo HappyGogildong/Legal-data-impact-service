@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -14,6 +15,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.lia.core.pipeline.connector.MstList;
 import com.lia.core.pipeline.connector.PendingLawFeed;
 import com.lia.core.pipeline.connector.PendingLawFeed.PendingList;
 import com.lia.core.pipeline.connector.RawLaw;
@@ -24,7 +26,8 @@ import com.lia.core.store.PendingVersion;
  * 탐색 — 시행예정 목록 ⟷ 저장 상태 비교 → 작업 등록(D62, IngestJob.md §탐색 분류 규칙).
  *
  * <ul>
- *   <li>목록에 있고 저장 안 됨 / 저장된 MST 와 다름(또는 {@code full}) → SYNC</li>
+ *   <li>목록에 있고 저장 안 됨 / 저장된 MST 묶음과 다름(또는 {@code full}) → SYNC. 같은 (lawId, 시행일)이 MST 만
+ *       달리해 여럿 오면(같은 시행일 공포본) 묶음 하나로 SYNC 한다 — {@link MstList} 표기(D85)</li>
  *   <li>저장된 시행예정본의 시행일 ≤ 오늘 → TRANSITION(날짜 기준 — 목록 실패여도)</li>
  *   <li>목록 완주 실행에서 안 보임 → 첫 번째는 missing_since 기록, <b>다른 날</b>의 두 번째는 PURGE
  *       (같은 날 재실행은 같은 API 상태라 새 증거가 아니다). 조회 범위 밖 버전은 판정하지 않는다</li>
@@ -76,28 +79,36 @@ public class Discoverer {
         PendingList list = fetchList(today, horizon);
         List<PlannedTask> plan = new ArrayList<>();
         Set<String> listed = new HashSet<>();
-        int duplicateKeys = 0;
+        int mergedKeys = 0;
         int malformedRows = 0;
         if (list != null) {
+            Map<String, RawLaw> firstHeads = new LinkedHashMap<>();
+            Map<String, Set<String>> mstsByKey = new LinkedHashMap<>();
             for (RawLaw head : list.heads()) {
                 if (malformed(head)) {
                     malformedRows++;                         // 등록하면 NOT NULL·mst CHECK 위반 — 탐색 전체가 실패한다
                     continue;
                 }
                 String key = key(head.lawId(), head.effectiveDate());
-                if (!listed.add(key)) {
-                    duplicateKeys++;                         // 식별 키 가정(D43) 위반 — 첫 행만 쓴다
-                    continue;
-                }
+                firstHeads.putIfAbsent(key, head);
+                mstsByKey.computeIfAbsent(key, k -> new LinkedHashSet<>()).add(head.mst().strip());
+            }
+            for (Map.Entry<String, RawLaw> entry : firstHeads.entrySet()) {
+                String key = entry.getKey();
+                RawLaw head = entry.getValue();
+                Set<String> msts = mstsByKey.get(key);
+                if (msts.size() > 1) mergedKeys++;           // 같은 시행일 공포본 — SYNC 가 병합한다(D85)
+                String mst = MstList.join(msts);
+                listed.add(key);
                 PendingVersion saved = stored.get(key);      // 시행예정만 — 철회된 행은 신규로 보여 SYNC 된다
-                if (full || saved == null || !Objects.equals(saved.mst(), head.mst())) {
-                    plan.add(new PlannedTask(TaskKind.SYNC, head.lawId(), head.effectiveDate(), head.mst()));
+                if (full || saved == null || !Objects.equals(saved.mst(), mst)) {
+                    plan.add(new PlannedTask(TaskKind.SYNC, head.lawId(), head.effectiveDate(), mst));
                 } else if (saved.missingSince() != null && !dryRun) {
                     lawStore.clearMissing(saved.lawId(), saved.effectiveDate());   // 보였다 = 확실한 증거(미완주여도)
                 }
             }
-            if (duplicateKeys > 0) {
-                log.warn("[batch] 같은 (lawId, 시행일)이 목록에 중복 {}건 — 식별 키 가정 확인 필요", duplicateKeys);
+            if (mergedKeys > 0) {
+                log.info("[batch] 같은 시행일 공포본이 여럿인 버전 {}건 — 공포본을 묶어 병합한다(D85)", mergedKeys);
             }
             if (malformedRows > 0) {
                 log.warn("[batch] lawId·시행일·MST 가 빠진 목록 행 {}건 건너뜀 — 목록 미완주로 취급(사라짐 판정 안 함)",
@@ -136,7 +147,7 @@ public class Discoverer {
             }
         }
         return new DiscoveryResult(list == null ? 0 : list.heads().size(), complete, planned, enqueued, markedMissing,
-                duplicateKeys, malformedRows);
+                mergedKeys, malformedRows);
     }
 
     /** 판정 대상(조회 범위 안·시행일 > 오늘) 중 안 보인 것이 비율을 넘으면(2건 이상) true — 원천 이상 의심. */

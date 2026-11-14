@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.lia.core.domain.law.Law;
+import com.lia.core.pipeline.connector.MstList;
 import com.lia.core.pipeline.connector.PendingLawFeed;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.ingest.IngestService;
@@ -58,10 +59,12 @@ public class SyncHandler implements TaskHandler {
         if (alreadyInForce(task)) {
             return;
         }
-        RawLaw pending = feed.fetchPending(task.mst(), task.effectiveDate());   // 외부 API — 트랜잭션 밖
+        List<RawLaw> pending = MstList.split(task.mst()).stream()                // 외부 API — 트랜잭션 밖
+                .map(mst -> feed.fetchPending(mst, task.effectiveDate()))           // 같은 시행일 공포본마다(D85)
+                .toList();
         List<RawLaw> baseline = feed.fetchCurrent(task.lawId());                // 비면 제정
         transactions.executeWithoutResult(status -> {
-            IngestResult result = ingest.store(List.of(pending), baseline);
+            IngestResult result = ingest.store(pending, baseline);
             if (result.baselineEffectiveDate() != null && result.baselineEffectiveDate().isAfter(LocalDate.now(clock))) {
                 throw new IllegalArgumentException("기준선 시행일 " + result.baselineEffectiveDate()
                         + " 이 오늘 이후다(미래본): 법령ID " + result.lawId());

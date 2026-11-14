@@ -176,7 +176,7 @@ public class LawConnector implements PendingLawFeed {
      *
      * @return 현행본. <b>비어 있으면 현행본 없음</b>(제정 법령 등) — diff 기준선이
      *         없다는 도메인 상태이며, DiffBuilder 가 전부 신설로 처리한다. 설계: docs/reference/law-domain-basics.md §3
-     * @throws LawApiException 현행 행이 여럿이거나 시행일이 없거나, 본문 시행일이 현행 행과 다를 때(추측해 고르지 않는다)
+     * @throws LawApiException 현행 행의 시행일이 서로 다르거나 없거나, 본문 시행일이 현행 행과 다를 때(추측해 고르지 않는다)
      */
     @Override
     public List<RawLaw> fetchCurrent(String lawId) {
@@ -193,23 +193,33 @@ public class LawConnector implements PendingLawFeed {
                     if (rows.isEmpty()) {
                         return List.<RawLaw>of();
                     }
-                    if (rows.size() > 1 || LawEnvelope.totalCount(payload) > 1) {
-                        throw new LawApiException("현행 행이 여럿이다: 법령ID " + lawId);
+                    if (LawEnvelope.totalCount(payload) > rows.size()) {
+                        throw new LawApiException("현행 행을 다 받지 못했다: 법령ID " + lawId);
                     }
-                    RawLaw row = fromListRow(rows.getFirst());
-                    if (row.mst() == null || row.effectiveDate() == null) {
-                        throw new LawApiException("현행 행에 법령일련번호·시행일자가 없다: 법령ID " + lawId);
+                    List<RawLaw> currentRows = rows.stream().map(this::fromListRow).toList();
+                    for (RawLaw row : currentRows) {
+                        if (row.mst() == null || row.effectiveDate() == null) {
+                            throw new LawApiException("현행 행에 법령일련번호·시행일자가 없다: 법령ID " + lawId);
+                        }
                     }
-                    var uri = UriComponentsBuilder.fromPath("/DRF/lawService.do")
-                            .queryParam("target", "eflaw")
-                            .queryParam("MST", row.mst())
-                            .queryParam("efYd", row.effectiveDate().format(YMD));
-                    RawLaw current = fromBody(request(uri), "시행중", row.mst());
-                    if (!row.effectiveDate().equals(current.effectiveDate())) {
-                        throw new LawApiException("현행 본문 시행일 " + current.effectiveDate()
-                                + " ≠ 현행 행 " + row.effectiveDate() + ": 법령ID " + lawId);
+                    // 여럿이면 같은 날 시행된 공포본이어야 한다(D85 — 병합은 Normalizer). 시행일이 다르면 고르지 않는다.
+                    if (currentRows.stream().map(RawLaw::effectiveDate).distinct().count() > 1) {
+                        throw new LawApiException("현행 행의 시행일이 서로 다르다: 법령ID " + lawId);
                     }
-                    return List.of(current);
+                    List<RawLaw> currents = new ArrayList<>();
+                    for (RawLaw row : currentRows) {
+                        var uri = UriComponentsBuilder.fromPath("/DRF/lawService.do")
+                                .queryParam("target", "eflaw")
+                                .queryParam("MST", row.mst())
+                                .queryParam("efYd", row.effectiveDate().format(YMD));
+                        RawLaw current = fromBody(request(uri), "시행중", row.mst());
+                        if (!row.effectiveDate().equals(current.effectiveDate())) {
+                            throw new LawApiException("현행 본문 시행일 " + current.effectiveDate()
+                                    + " ≠ 현행 행 " + row.effectiveDate() + ": 법령ID " + lawId);
+                        }
+                        currents.add(current);
+                    }
+                    return List.copyOf(currents);
                 });
     }
 
