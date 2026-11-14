@@ -21,8 +21,8 @@ related: ["components/batch/IngestJob.md", "components/component-specs.md", "com
 - 호출자: [[IngestJob]] `SyncHandler` · `SeedRunner`(dev 시드) · 통합 테스트.
 
 ## Business Flow
-**`store(pendingRaw, baselineRaw) → IngestResult`** — 조립 단위(API 불필요).
-1. `pending = normalize(pendingRaw)`, `baseline = baselineRaw==null ? null : normalize(baselineRaw)`.
+**`store(pendingRaws, baselineRaws) → IngestResult`** — 조립 단위(API 불필요). 공포본 하나짜리 `store(pendingRaw, baselineRaw)`(기준선 null = 제정)도 둔다.
+1. `pending = normalizeAll(pendingRaws)`, `baseline = baselineRaws 가 비면 null, 아니면 normalizeAll(baselineRaws)` — 같은 시행일 공포본 여럿을 하나로 병합한다(D85, [[Normalizer]]).
 2. `diffed = diffBuilder.build(pending, baseline)` — 기준선 null(제정)이면 변경 조문 전부 `신설`.
 3. 저장된 행의 `revision`·`status`와 비교 → **하나라도 다르거나 행이 없으면** `lawStore.upsert(diffed)`, 둘 다 같으면 생략. 시행예정본의 저장 revision은 **`<본문 revision>+<기준선 revision 또는 none>`** — diff가 기준선에도 의존하므로 기준선만 바뀌어도(시행 전환 등) 다시 저장된다. 상태까지 비교하는 이유: `철회`된 버전이 같은 내용으로 다시 나타나면 `시행예정`으로 복원돼야 한다.
 4. `baseline != null`이면 같은 방식으로 기준선(시행중 정본)도 비교 후 upsert → 이후 `findBaseline`으로 조회 가능.
@@ -36,7 +36,7 @@ related: ["components/batch/IngestJob.md", "components/component-specs.md", "com
 - `store()` 안의 두 upsert(시행예정·시행중)는 원자적 묶음이 **아니다** — 멱등이라 재실행으로 수렴하므로 분산 트랜잭션 불필요(D54 SSOT 모델).
 
 ## Business Rules
-- **제정 법령 = 기준선 없음** — `fetchCurrent`가 null(현행본 부재, [[law-domain-basics]] §3) → `DiffBuilder(baseline=null)` → 전부 신설, 시행중 정본 미저장 → `findBaseline` empty. 오류가 아니라 정상 경로.
+- **제정 법령 = 기준선 없음** — `fetchCurrent`가 빈 목록(현행본 부재, [[law-domain-basics]] §3) → `DiffBuilder(baseline=null)` → 전부 신설, 시행중 정본 미저장 → `findBaseline` empty. 오류가 아니라 정상 경로.
 - **기준선본도 저장한다** — diff의 기준이 된 시행중본을 함께 upsert해, 이후 `findBaseline`·정확 조회·context 조립에서 재사용.
 - **revision이 같으면 쓰지 않는다** — 불필요한 쓰기·색인·캐시 무효화를 막는다(두 번 돌아도 결과 동일, [[concurrency-and-reliability]] §2).
 - 정본 단위 = **`(lawId, effectiveDate)`**(D43).

@@ -24,6 +24,7 @@ related: ["components/component-specs.md", "components/domain/law/Law.md", "comp
 - **부칙은 제정 이후 이력 전체가 온다** — 실측 42개 중 이번 개정분은 1개. `promulgateNo == 법령.공포번호`로 필터하지 않으면 **10년 전 경과조치를 이번 개정으로 오인**한다([[Normalizer]] `parseAddenda`).
 - **`Kind.시행일` 부칙이 시행 시점의 근거** — `Law.effectiveClause()`가 이걸 찾아 `effectiveRule`("공포 후 6개월…")·`enforcementType`(단서조항 유무로 즉시/유예/단계적)을 도출. `ActionPlan`의 기한이 여기 의존.
 - 인용키 `LAW:{lawId}@{efYd}:addenda:{no}`는 [[Law]] `addendumSourceId(this)`가 생성(포맷 권위는 Law).
+- **같은 시행일 공포본이 여럿이면 번호에 공포번호가 붙는다** — `제21720호-제1조`. 공포본마다 `제1조`가 있어 병합하면 인용키가 겹친다(D85, [[Normalizer]] `normalizeAll`).
 
 ## Schema
 → [[component-specs]] §1.2. 재기술하지 않는다.
