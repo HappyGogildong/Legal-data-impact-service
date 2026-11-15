@@ -9,7 +9,7 @@ related: ["backend/deployment.md", "backend/observability.md", "components/auth/
 
 # 클라우드 인프라 (AWS · 저비용 운영)
 
-> 로컬 compose 자립 스택(D59)을 **개인 AWS 계정**에 상시 운영 형태로 올리는 계획. 목표는 **학습용이되 저비용·최소 구성** — Terraform·ALB·EventBridge·ECS 같은 실무 스택은 들이지 않고, 매니지드는 꼭 필요한 곳(DB)에만 쓴다. 근거: [[decision-log]] D63. 관련: [[deployment]] · [[observability]] · [[IngestJob]].
+> 로컬 compose 자립 스택(D59)을 **개인 AWS 계정**에 상시 운영 형태로 올리는 계획. 목표는 **학습용이되 저비용·최소 구성** — Terraform·ALB·EventBridge·ECS 같은 실무 스택은 들이지 않고, 매니지드는 꼭 필요한 곳(DB)에만 쓴다. 근거: [[decision-log]] D63. 관련: [[deployment]] · [[observability]] · [[IngestJob]]. 운영 중 쓰는 명령 모음은 [[ops-manual]].
 
 ## 1. 전체 구성
 
