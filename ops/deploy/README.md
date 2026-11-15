@@ -1,6 +1,6 @@
 # ops/deploy — 운영 배포 파일 (EC2 + RDS)
 
-설계와 AWS 구축 런북은 `docs/backend/cloud-infra.md` §5.
+설계와 AWS 구축 런북은 `docs/backend/cloud-infra.md` §5, 접속·배포·배치·DB 점검 명령 모음은 `docs/backend/ops-manual.md`.
 
 | 파일 | 역할 |
 |---|---|
