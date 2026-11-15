@@ -1,7 +1,7 @@
 ---
 title: 시작하기 — 온보딩 가이드
 status: Living
-date: 2026-07-21
+date: 2026-11-16
 tags: [onboarding, start-here, guide]
 ---
 
@@ -12,15 +12,15 @@ tags: [onboarding, start-here, guide]
 ## 이 프로젝트 한 줄
 **LIA(입법 영향 분석기)** — 아직 시행 전인(발의·심사·공포 단계) 법안이 *나에게 어떤 변화를 주는지, 무엇을 해야 하는지*를 일반 시민 언어로 알려주는 **웹앱**.
 
-**스택(v0.6, D35):** Java Spring **Boot 4.0 + Spring AI 2.0** 단일 애플리케이션(수집·해석 파이프라인+도메인+REST) + TypeScript 웹. 저장소는 단일 Postgres+pgvector. 추론=Claude Opus 4.8 API, 임베딩=외부 API(OpenAI vs Upstage 벤치 예정). ~~Python 파이프라인~~은 포팅 사양·벤치 도구로만 유지.
+**스택(v0.6, D35):** Java Spring **Boot 4.0 + Spring AI 2.0** 단일 애플리케이션(수집·해석 파이프라인+도메인+REST) + TypeScript 웹. 저장소는 단일 Postgres+pgvector. 추론=Claude Opus 5.5 API(D68), 임베딩=OpenAI `text-embedding-3-small`(D32). 운영은 AWS EC2+RDS(D63)와 Vercel 웹(D64).
 
-## 현재 스냅샷 (2026-07-21)
+## 현재 스냅샷 (2026-11-16)
 
 | 상태 | 내용 |
 |---|---|
-| ✅ 완료 | 설계 문서 체계(v0.1~v0.6, D01~D35) · Java 수집(열린국회 커넥터)+해소 4상태 SourceAnalyzer(테스트 11/11) · Boot 4.0+Spring AI 2.0 골격 · Python 참조 구현(실 API 검증) · pgvector 로컬 DB |
-| 🔜 다음 | Normalizer(신구조문대비표 파서, [#5](https://github.com/HappyGogildong/Legal-data-impact-service/issues/5)) → Embedder([#6](https://github.com/HappyGogildong/Legal-data-impact-service/issues/6)) → RAGIndexer([#7](https://github.com/HappyGogildong/Legal-data-impact-service/issues/7)) → 임베딩 벤치([#8](https://github.com/HappyGogildong/Legal-data-impact-service/issues/8)) |
-| 📋 트래킹 | GitHub Issues — 마일스톤 **M1 수집 → M2 RAG·임베딩 → M3 분석엔진·커맨드 → M4 수직슬라이스**. `gh issue list` 로 확인 |
+| ✅ 완료 | 수집·정규화·diff·색인 배치(D42·D62, 같은 시행일 공포본 병합 D85) · 분석 Layer A 선계산·Layer B 개인화(D67·D69) · 법령 발견(D70) · 대응 방안 상황 확인(D71) · 북마크·이력·구독 알림함(D72~D74) · 웹(Next.js) · 관측(Grafana 배치·호출 기록, D83) · **AWS 운영 투입**(EC2+RDS+Vercel, 백필·cron, 2026-11-16 — [[cloud-infra]]) |
+| 🔜 다음 | 평가 기준선(`lia eval`)·`llm_prices` 단가 → ⑦b 내 프로필 관련 구독 · ⑦c 이메일 발송(#32) · 개인정보처리방침(#35) |
+| 📋 트래킹 | 진척 상세는 [[status]], 열린 일은 `gh issue list`(마일스톤 M1~M4) |
 
 레포: **github.com/HappyGogildong/Legal-data-impact-service** (이 폴더가 메인 작업 폴더)
 
@@ -28,7 +28,7 @@ tags: [onboarding, start-here, guide]
 1. **이 문서** (지금)
 2. `CLAUDE.md` (레포 루트) — 개발 규약·명령어·함정 모음 (AI 세션은 자동 로드)
 3. [[ARCHITECTURE|아키텍처 색인]] → 최신 스냅샷 [[v0.6-spring-consolidation|v0.6]] — 전체 그림·데이터 흐름
-4. [[decision-log|결정 로그]] (D01~D35) — "왜 이렇게 됐나"를 한눈에
+4. [[decision-log|결정 로그]] (D01~D85) — "왜 이렇게 됐나"를 한눈에
 5. [[component-specs|컴포넌트 상세 스펙]] — 도메인 모델·계약·정합성
 6. [[analysis-prompt-spec|프롬프트 정의서]] — LLM 입력계약·응답 JSON·인용검증
 7. 참조: [[law-attributes|법령 속성]] · [[triage-policy|Triage]] · [[embedding-benchmark|임베딩 벤치]] · [[spring-migration|Spring 버전 변경점]]
@@ -46,7 +46,7 @@ tags: [onboarding, start-here, guide]
 |---|---|---|
 | `ARCHITECTURE.md` | 버전 색인 + ADR 매핑 + Changelog | living 색인 |
 | `architecture/` | 버전별 **동결 스냅샷**(현행 **v0.6**) | 수정 금지 |
-| `adr/` | ADR-001 + **decision-log**(D01~D35) | living |
+| `adr/` | ADR-001 + **decision-log**(D01~D85) | living |
 | `components/` | 상세 스펙 + 파이프라인 6종 설계(입출력·동작·결정 의도) | living |
 | `mvp/` | 컴포넌트 카탈로그·MVP 범위(IN/OUT)·수용 기준 | living |
 | `prompts/` | LLM 프롬프트 정의서(입력계약 12요소·JSON 스키마) | living |
@@ -69,13 +69,13 @@ tags: [onboarding, start-here, guide]
 
 ## 빠른 명령어
 ```bash
-# Java (메인)
-cd core && ./gradlew test              # 단위 테스트 (11종)
-# Python (참조·벤치)
-cd pipeline && ../.venv/Scripts/python.exe tests/test_pipeline.py   # 6종
-cd pipeline && ../.venv/Scripts/python.exe scripts/smoke_assembly.py 주택임대차  # 실 API
-# 인프라·문서
+# 백엔드 (core)
+cd core && ./gradlew test              # 단위 + 통합(Testcontainers — Docker 필요)
+# 웹 (web)
+cd web && pnpm test                    # vitest
+cd web && pnpm e2e                     # Playwright(모의 API)
+# 로컬 인프라·문서
 docker compose up -d db                # pgvector Postgres
 ../.venv/Scripts/python.exe -m mkdocs serve
-gh issue list --milestone "M1 수집 파이프라인"   # 할 일 확인
+gh issue list                          # 열린 일
 ```

@@ -110,7 +110,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 
 ### 구현 순서 (큐)
 
-… Query Planner ✅ · Analysis Engine Layer A ✅ · QueryDispatcher 차원핸들러 ✅ · 최소 수직 슬라이스(REST) ✅(#13) · **배포 자립 스택(compose+CI) ✅**(D59) → **인증·UserProfile(#12)** ①인증 ✅(D60) · ②프로필·동의 ✅(D61) → **③Layer B(프로필→프롬프트)** ✅ · **LawDiscovery(#19)** ✅ · **웹 UI**(#14) · 클라우드 인프라(D63) 설계 ✅ → 구현·구축.
+… Query Planner ✅ · Analysis Engine Layer A ✅ · QueryDispatcher 차원핸들러 ✅ · 최소 수직 슬라이스(REST) ✅(#13) · **배포 자립 스택(compose+CI) ✅**(D59) → **인증·UserProfile(#12)** ①인증 ✅(D60) · ②프로필·동의 ✅(D61) → **③Layer B(프로필→프롬프트)** ✅ · **LawDiscovery(#19)** ✅ · **웹 UI**(#14) · 클라우드 인프라(D63) 설계 ✅ → 저장소 산출물 ✅ → **AWS 구축·운영 투입 ✅**(2026-11-16, #44) → 평가 기준선(`lia eval`) · ⑦b · ⑦c.
 
 ---
 
