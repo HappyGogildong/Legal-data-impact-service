@@ -47,6 +47,8 @@ aws ssm start-session --region ap-northeast-2 --target <instance-id> --document-
 
 `Waiting for connections...` 가 나오면 브라우저에서 `http://localhost:3001`, `admin` / `GF_SECURITY_ADMIN_PASSWORD`. 창을 닫거나 Ctrl+C 면 터널이 끊긴다.
 
+Discord 경보의 링크(`Source`·`Silence`)도 `http://localhost:3001/…` 이다(`GF_SERVER_ROOT_URL`). 이 터널을 연 상태에서 누르면 열린다. Grafana 를 EIP 로 공개하지 않는다 — 보안 그룹은 80·443 만 연다.
+
 ### 1.4 DB — DBeaver 등 GUI (RDS 5432 → 로컬 15432) 🖥
 
 ```bash
