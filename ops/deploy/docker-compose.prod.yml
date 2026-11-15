@@ -90,6 +90,7 @@ services:
     ports: ["127.0.0.1:3001:3000"]    # 외부 비공개 — SSM 포트 포워딩으로만
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_ROOT_URL: http://localhost:3001   # 경보 링크 주소 — SSM 포트 포워딩의 로컬 포트와 같게(기본값 localhost:3000 은 열리지 않는다)
       GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?}
       LIA_DB_HOST: ${LIA_DB_HOST:?}
       LIA_DB_USER: grafana_reader
