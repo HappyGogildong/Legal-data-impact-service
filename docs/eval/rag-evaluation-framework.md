@@ -240,7 +240,7 @@ Prometheus만으로는 부족하다. 일회성 배치는 긁히지 않는데 가
 | `OfflineEvaluator` | 질문을 `QueryPlanner` → `LawDiscovery`로 돌린다. 비슷한 이름의 법이 있는 경우는 해소 후보(거부 아님)로 센다 |
 | `OfflineMetrics` | §2.1의 법령·조문 정확성, 무관 후보율, 관련 법령 없음 후보율, 거부 재현율·과잉 거부율, 의도 분류 |
 | `RegressionGate`, `EvalReport` | 지표 방향과 한 문항 허용 오차로 기준선과 비교. 보고서 = 기준선 형식(JSON) |
-| `OfflineEvalRunner`, `EvalConfig` | `eval` 프로파일 실행, 시행일이 지난 문항 제외. 운영은 `ops/deploy/lia eval`([[cloud-infra]] 런북 15) |
+| `OfflineEvalRunner`, `EvalConfig` | `eval` 프로파일 실행, 시행일이 지난 문항 제외. 운영은 `ops/deploy/lia eval`([[cloud-infra]] 런북 20) |
 | `RagConfig` | 법령 발견 설정 3개만 |
 | `FaithfulnessGate` | 유지. 런타임 불변식이지 품질 지표가 아니다 |
 | `QueryEvent`·`QueryEventStore` | 2단계 질의 이벤트(§6.2) — `AnalyzeUseCase`·`ActionRevisionUseCase` 가 요청마다 한 행 |

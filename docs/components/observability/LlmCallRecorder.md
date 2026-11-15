@@ -61,7 +61,7 @@ related:
 - `llm_calls`(V16) — 호출 1회 1행. 인덱스 `(called_at)` · `(purpose, called_at)` · 부분 인덱스 `(group_key) WHERE group_key IS NOT NULL`. 당분간 지우지 않는다(행이 작다) — 쌓이는 양을 본 뒤 보존 기간을 정한다.
 - `llm_prices`(V16) — PK `(model, token_kind, effective_from)`, `token_kind` ∈ `input`·`output`·`cache_read`·`cache_write`. 처음엔 비어 있다. 공식 가격표를 보고 사람이 넣는다([[cost-policy]]).
 - `llm_call_costs`(뷰) — `llm_calls` 행마다 토큰 종류별 단가를 붙인 `cost_usd`. 단가가 없는 토큰 종류가 있으면 `cost_usd` 는 NULL(0으로 꾸미지 않는다)이고 `priced = false`.
-- 운영 `grafana_reader` 에는 이 셋의 SELECT 만 준다([[cloud-infra]] 런북 11).
+- 운영 `grafana_reader` 에는 이 셋의 SELECT 만 준다([[cloud-infra]] 런북 15).
 
 ## Design Constraints
 
