@@ -1,8 +1,8 @@
 ---
 title: 클라우드 인프라 — 단일 EC2 + RDS (저비용 운영)
 status: Draft
-version: 0.2
-date: 2026-11-02
+version: 0.3
+date: 2026-11-16
 tags: [backend, infra, aws, deployment, ops, observability]
 related: ["backend/deployment.md", "backend/observability.md", "components/auth/Auth.md", "frontend/frontend-stack.md", "components/batch/IngestJob.md", "adr/decision-log.md", "adr/ADR-001-knowledge-store-sizing.md"]
 ---
@@ -73,14 +73,28 @@ AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
 | `lia-rds` | 5432 ← `lia-ec2`만 | RDS 퍼블릭 접근 끔 — 인터넷에서 DB 직접 접근 불가 |
 
 **서버 접근 — SSM Session Manager (키 페어 없음)**
-- 셸: `aws ssm start-session --target <instance-id>`.
-- Grafana: SSM 포트 포워딩(`AWS-StartPortForwardingSession`)으로 로컬 `localhost:3001`. Grafana는 EC2의 `127.0.0.1`에만 바인딩, 익명 Admin 끔.
-- DB 관리(최초 설정·수동 점검): `AWS-StartPortForwardingSessionToRemoteHost`로 RDS 5432를 로컬에 열고 `psql`.
+- 셸: 콘솔 EC2 → 연결 → Session Manager, 또는 로컬 `aws ssm start-session --region ap-northeast-2 --target <instance-id>`.
+- 로컬에서 쓰려면 AWS CLI v2 · Session Manager plugin · 관리자 IAM 사용자의 **액세스 키**가 필요하다. `aws configure` 의 Access Key ID 는 사용자 이름이 아니라 `AKIA…` 키다 — 틀리면 `StartSession` 이 `403 UnauthorizedRequest: Forbidden` 으로 실패한다. `aws sts get-caller-identity` 로 먼저 확인하고, 쓰지 않을 땐 키를 비활성화한다.
+- Grafana: EC2 의 `127.0.0.1:3001` 을 로컬로 연다. 익명 Admin 끔, 로그인 `admin` / `GF_SECURITY_ADMIN_PASSWORD`.
+  ```bash
+  aws ssm start-session --region ap-northeast-2 --target <instance-id> --document-name AWS-StartPortForwardingSession --parameters portNumber="3001",localPortNumber="3001"
+  ```
+- DB 관리
+  - **최초 설정·일회 점검 — EC2 안의 psql 컨테이너**(로컬 도구 불필요). 마스터 암호는 화면에 찍지 않고 변수로 넘긴다. SQL 여러 개를 한 번에 넘길 땐 `-it` 대신 `-i` 와 heredoc(`<<'SQL' … SQL`).
+    ```bash
+    PW=$(aws ssm get-parameters-by-path --region ap-northeast-2 --path /lia/prod/ --with-decryption --query "Parameters[?Name=='/lia/prod/DB_MASTER_PASSWORD'].Value" --output text)
+    sudo docker run --rm -it -e PGPASSWORD="$PW" postgres:16 psql "host=<RDS 엔드포인트> port=5432 dbname=lia user=postgres sslmode=require"
+    ```
+  - **GUI(DBeaver 등) — SSM 원격 포트 포워딩**. 로컬 docker Postgres(5432)와 겹치지 않게 로컬 15432 로 연다.
+    ```bash
+    aws ssm start-session --region ap-northeast-2 --target <instance-id> --document-name AWS-StartPortForwardingSessionToRemoteHost --parameters host="<RDS 엔드포인트>",portNumber="5432",localPortNumber="15432"
+    ```
+    `localhost:15432` · DB `lia` · `lia_app` · `sslmode=require`. 앱 계정이라 쓰기 권한이 있으므로 도구에서 **읽기 전용 연결**로 둔다. 계정·프로필 테이블은 열지 않는다(D41).
 - 계정 보안 기본: 루트 계정은 MFA·미사용, 콘솔 작업은 관리자 IAM 사용자.
 
 **IAM — EC2 인스턴스 역할 하나 (`lia-ec2-role`)**
 - `AmazonSSMManagedInstanceCore`(Session Manager).
-- `ssm:GetParametersByPath` — `arn:aws:ssm:ap-northeast-2:<account>:parameter/lia/prod/*`만. 암호화는 기본 키(`aws/ssm`), 별도 KMS 키 없음.
+- `ssm:GetParametersByPath` — `arn:aws:ssm:ap-northeast-2:<account>:parameter/lia/prod` 와 `…:parameter/lia/prod/*` 둘만. 경로로 조회하는 API 라 경로 자체의 ARN 이 빠지면 거부된다. 암호화는 기본 키(`aws/ssm`), 별도 KMS 키 없음.
 - 이후 SSM 방식 CD도 이 역할을 재사용한다.
 
 **비밀값 — SSM Parameter Store (SecureString, 기본 등급 무료)**
@@ -94,6 +108,7 @@ AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
   ```sql
   CREATE EXTENSION IF NOT EXISTS vector;                 -- 확장 생성은 rds_superuser 필요
   CREATE ROLE lia_app LOGIN PASSWORD '<SSM: SPRING_DATASOURCE_PASSWORD>';
+  GRANT lia_app TO postgres;                             -- RDS 마스터는 superuser 가 아니다 — 소유권을 넘기려면 받는 역할의 멤버여야 한다(PG16)
   ALTER DATABASE lia OWNER TO lia_app;
   ALTER SCHEMA public OWNER TO lia_app;                  -- Flyway·PgVectorStore 가 lia_app 으로 테이블 생성
   CREATE ROLE grafana_reader LOGIN PASSWORD '<SSM: GRAFANA_DB_PASSWORD>';
@@ -105,6 +120,7 @@ AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
   GRANT SELECT ON ingest_runs, ingest_tasks, ingest_task_attempts, llm_calls, llm_prices, llm_call_costs, query_events TO grafana_reader;
   ```
 - 앱의 `CREATE EXTENSION IF NOT EXISTS vector`(PgVectorStore `initialize-schema`)는 확장이 이미 있으면 통과한다.
+- psql 메타 명령(`\c`·`\du`·`\q`)은 **한 줄에 하나씩** 입력한다. SQL 과 섞어 여러 줄을 붙여 넣으면 뒤 줄이 메타 명령의 인자로 읽힌다(예: `\c lia` 뒤 줄이 접속 옵션으로 해석돼 `invalid integer value "IF" for connection option "port"`).
 
 **프록시 뒤 HTTPS 인식** — `server.forward-headers-strategy=native`. 앱이 Caddy의 `X-Forwarded-Proto`를 믿어 `Secure` 쿠키·OAuth 리다이렉트 URI가 https로 만들어진다(Tomcat은 기본적으로 사설망 대역 프록시만 신뢰 — 도커 네트워크 172.x 포함).
 
@@ -114,6 +130,7 @@ AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
 - main 병합 시 백엔드 CI(`.github/workflows/ci-core.yml`)가 테스트 후 `docker buildx`로 `linux/arm64`·`linux/amd64` 이미지를 빌드해 `ghcr.io/happygogildong/lia-core`에 push — 태그 `:<커밋 SHA>`·`:main`.
 - Dockerfile: 빌드 단계를 `FROM --platform=$BUILDPLATFORM`으로 — Gradle은 네이티브로, 런타임 단계만 대상 아키텍처.
 - 이미지에 비밀값이 없으므로 GHCR 패키지를 **공개**로 둬 EC2가 인증 없이 pull. 비공개여야 하면 읽기 전용 토큰을 Parameter Store에.
+- **배포 태그 = CI 가 이미지를 만든 커밋 SHA.** CI 는 경로 필터(`core/**` 등)라 `ops/`·`docs/` 만 바꾼 머지는 이미지를 만들지 않는다 — 그 SHA 로 `up` 하면 pull 이 실패한다. Actions 의 `ci-core` 실행이나 GHCR 태그 목록에서 마지막 이미지 SHA 를 고른다.
 
 **운영 compose — `ops/deploy/docker-compose.prod.yml`**
 
@@ -130,9 +147,10 @@ AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
 
 **배포 (수동, SSM 접속 후)**
 ```bash
-cd /opt/lia && git pull            # 운영 compose·Caddyfile·대시보드 등 설정 갱신
-ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pull → up -d
+cd /opt/lia && sudo git pull                 # 운영 compose·Caddyfile·대시보드·crontab 등 설정 갱신
+sudo /opt/lia/ops/deploy/lia up <커밋 SHA>    # Parameter Store → 환경변수 → pull → up -d
 ```
+- `lia up` 은 **이미지만** 바꾼다. `ops/` 파일은 `git pull` 로만 갱신되므로 둘 다 한다. `lia ingest`·`lia eval` 은 마지막 `up` 태그(`.image-tag`)를 쓴다.
 - 롤백: `ops/deploy/lia up <이전 SHA>`. **Flyway는 앞으로만** — 스키마가 바뀐 배포는 DB를 되돌리지 못하므로 그때는 RDS 스냅샷 복구.
 - 배치 시간대(04:00~05:00)에는 배포하지 않는다 — 실행 잠금으로 겹치진 않지만 배치 도중 마이그레이션 변경을 피한다.
 - **다음 단계 — SSM 방식 CD**: GitHub OIDC → IAM 역할 → `ssm send-command`로 위 두 줄을 Actions가 실행. 22번 포트를 열지 않는다.
@@ -143,10 +161,12 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 0 5 * * 0  /opt/lia/ops/deploy/lia ingest run --full >> /var/log/lia/ingest.log 2>&1
 ```
 - 래퍼가 Parameter Store를 읽고 `docker compose run --rm ingest …` 실행. 로그 파일은 logrotate 주 단위 정리 — 실행 결과의 기준은 `ingest_runs`.
+- **백필 뒤에 설치한다.** 먼저 설치하면 04:00 `run` 이 전체 수집·임베딩(유료)을 사람 없이 돈다.
+- 평소 비용은 바뀐 버전의 임베딩뿐이다 — revision 이 내용으로만 계산돼 `--full` 도 내용이 같으면 재색인하지 않는다. 단, **정규화 코드(`Normalizer`·revision 계산)를 바꾼 이미지로 배포하면** 다음 `--full` 이 모든 버전을 재색인(백필과 같은 임베딩량)하고, 요약이 켜져 있으면 요약도 전부 다시 만든다.
 
 **소셜 로그인 (#36, D78)** — 웹은 Vercel 이 API·로그인 경로를 rewrites로 이 EC2 에 전달한다(D64, [[frontend-stack]] §2). provider 콘솔과 앱의 OAuth `redirect-uri`는 `<웹 주소>/login/oauth2/code/{google|kakao|naver}`, `FRONTEND_URL` = 웹 주소. 운영은 `oauth` 프로파일을 켜고(`SPRING_PROFILES_ACTIVE=oauth`), **`client-id` 가 있는 provider 만 등록**된다 — 첫 배포는 구글만. 웹 로그인 화면은 `GET /api/v1/auth/providers` 의 목록만 버튼으로 그린다.
 
-**운영 첫 설정(`prod.env`)** — Layer A(요약·변경점) 배치 **꺼짐**(`LIA_BATCH_SUMMARY_ENABLED=false`, 유료 Opus — 백필 뒤 `summarize --dry-run` 으로 규모를 보고 따로 결정, D67·D78·D80. 돌리기 전까지 분석 화면의 요약·변경점은 준비 중으로 나온다), 익명 분석 하루 상한 1,000(`LIA_ANALYSIS_ANONYMOUS_DAILY_LIMIT`, 잠정, D81), 색인 켜짐(`LIA_BATCH_INDEX_ENABLED=true`, 임베딩 비용은 백필 전체가 1달러 미만 추정).
+**운영 첫 설정(`prod.env`)** — Layer A(요약·변경점) 배치 **꺼짐**(`LIA_BATCH_SUMMARY_ENABLED=false`, 유료 Opus — 백필 뒤 `summarize --dry-run` 으로 규모를 보고 따로 결정, D67·D78·D80. 돌리기 전까지 분석 화면의 요약·변경점은 준비 중으로 나온다), 익명 분석 하루 상한 1,000(`LIA_ANALYSIS_ANONYMOUS_DAILY_LIMIT`, 잠정, D81), 색인 켜짐(`LIA_BATCH_INDEX_ENABLED=true`, 백필 실측 `text-embedding-3-small` 1,122회 · 4,425,906 토큰 — 시행예정 877 버전, 2026-11-15).
 
 ## 4. 관측·배치 패널·경보
 
@@ -198,31 +218,40 @@ ops/deploy/lia up <커밋 SHA>        # Parameter Store → 환경변수 → pul
 
 ### AWS 구축 런북 (수동, 1회)
 
-AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운영 투입(#44)의 전제.
+AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운영 투입(#44)의 전제. 순서는 2026-11 첫 구축에서 실제로 밟은 순서다 — 뒤 단계에 들어갈 값을 앞 단계가 만든다.
 
 1. **계정 보안** — 루트 MFA, 관리자 IAM 사용자 생성 후 루트 미사용. 리전 `ap-northeast-2`.
 2. **예산 경보** — AWS Budgets: 월 $60·$80 이메일.
-   - 2-1. **GHCR 패키지 공개** — 이 작업이 main 에 병합되면 CI 가 `lia-core` 패키지를 만든다. 기본이 비공개이므로 GitHub 패키지 설정에서 Public 으로 바꾼다(이미지에 비밀값 없음, EC2 가 인증 없이 pull).
-3. **IAM 역할** `lia-ec2-role` — 신뢰 주체 EC2, `AmazonSSMManagedInstanceCore` + `/lia/prod/*` `ssm:GetParametersByPath` 인라인 정책. 인스턴스 프로파일로 연결.
-4. **보안 그룹** — `lia-ec2`(80·443), `lia-rds`(5432 ← `lia-ec2`).
-5. **RDS** — PostgreSQL 16, `db.t4g.micro`, gp3 20GB, 퍼블릭 접근 끔, `lia-rds`, 초기 DB `lia`, 자동 백업 7일, 관리자 비밀번호는 직접 지정.
-6. **Parameter Store** — `/lia/prod/` 아래 §2의 값들을 SecureString으로 등록.
-7. **EC2** — Amazon Linux 2023 arm64, `t4g.medium`, gp3 30GB, `lia-ec2`, `lia-ec2-role`, 키 페어 없음. 접속(SSM) 후 `ops/deploy/bootstrap.sh`.
-8. **Elastic IP + 주소** — Elastic IP 를 만들어 EC2 에 연결하고, §1.1 규칙으로 API 이름(`api.<EIP 점→하이픈>.sslip.io`)을 정한다. 웹 주소는 9-1의 Vercel 프로젝트 주소. `prod.env` 의 `LIA_DOMAIN`·`FRONTEND_URL`·`OAUTH2_REDIRECT_BASE_URL` 을 채워 커밋한다(비밀값 아님). 도메인을 샀다면 A 레코드를 EIP 로 두고 그 이름을 쓴다.
-9. **최초 SQL** — SSM 원격 포트 포워딩으로 RDS 접속, §2의 확장·계정 SQL 실행(관리자 계정).
-   - 9-1. **Vercel·Google·Discord** — Vercel 에 `web/` 프로젝트를 만들고(루트 디렉터리 `web`) 환경변수 `LIA_API_ORIGIN` = `https://<API 이름>` 을 넣는다. Google Cloud 콘솔 OAuth 클라이언트에 리다이렉트 URI `<웹 주소>/login/oauth2/code/google` 을 등록하고 ID·비밀값을 Parameter Store 에. Discord 채널 웹훅을 만들어 `DISCORD_WEBHOOK_URL` 로.
-10. **첫 배포** — `ops/deploy/lia up <커밋 SHA>` → Flyway·PgVectorStore가 스키마 생성.
-11. **읽기 권한** — `GRANT SELECT ON ingest_runs, ingest_tasks, ingest_task_attempts, llm_calls, llm_prices, llm_call_costs, query_events TO grafana_reader;` 그리고 `llm_prices` 에 단가를 넣는다([[cost-policy]] "단가 넣는 법").
-12. **cron** — `ops/deploy/crontab` 설치, logrotate 설정.
-13. **확인**
-    - `https://<도메인>/actuator/health` → `{"status":"UP"}`, `https://<도메인>/actuator/prometheus` → 차단.
-    - SSM 포트 포워딩으로 Grafana 접속 → `LIA · Overview`·`LIA · Batch`·`LIA · Token & Cost`·`LIA · Requests` 표시.
-    - 경보 연락처 시험 발송 → Discord 수신.
-    - `ops/deploy/lia ingest run --dry-run` → `ingest_runs`에 기록, 배치 패널 반영.
+3. **GHCR 패키지 공개** — CI 가 처음 main 이미지를 push 하면 `lia-core` 패키지가 생긴다. 기본이 비공개이므로 GitHub 패키지 설정에서 Public 으로 바꾼다(이미지에 비밀값 없음, EC2 가 인증 없이 pull).
+4. **IAM 역할** `lia-ec2-role` — 신뢰 주체 EC2, `AmazonSSMManagedInstanceCore` + `ssm:GetParametersByPath` 인라인 정책(리소스 `parameter/lia/prod` 와 `parameter/lia/prod/*`, §2). 인스턴스 프로파일로 연결.
+5. **보안 그룹** — `lia-ec2`(80·443), `lia-rds`(5432 ← `lia-ec2`).
+6. **RDS** — PostgreSQL 16, `db.t4g.micro`, gp3 20GB, 퍼블릭 접근 끔, `lia-rds`, 자동 백업 7일, 관리자 비밀번호는 직접 지정. **초기 DB 이름 `lia`** 는 콘솔 "추가 구성" 안에 있다 — 비워 두면 `postgres` DB 만 생기므로 12단계에서 `dbname=postgres` 로 접속해 `CREATE DATABASE lia;` 를 실행한 뒤 `dbname=lia` 로 다시 접속한다.
+7. **EC2** — Amazon Linux 2023 arm64, `t4g.medium`, gp3 30GB, `lia-ec2`, `lia-ec2-role`, 키 페어 없음. SSM 으로 접속해 `ops/deploy/bootstrap.sh` 실행(docker·cron·logrotate·시간대·스왑·`/var/log/lia`·`/opt/lia` clone).
+8. **Elastic IP + API 이름** — Elastic IP 를 만들어 EC2 에 연결하고 §1.1 규칙으로 API 이름(`api.<EIP 점→하이픈>.sslip.io`)을 정한다. 도메인을 샀다면 A 레코드를 EIP 로 두고 그 이름을 쓴다.
+9. **Vercel·Google·Discord** — Parameter Store 에 넣을 값이 여기서 나온다.
+   - Vercel 에 `web/` 프로젝트(루트 디렉터리 `web`), 환경변수 `LIA_API_ORIGIN` = `https://<API 이름>`(비밀 아님 — 일반 변수). **값을 바꾸면 재배포해야 반영된다**(반영 전에는 프록시가 502).
+   - Google Cloud 콘솔 OAuth 클라이언트에 리다이렉트 URI `<웹 주소>/login/oauth2/code/google` 등록.
+   - Discord 채널 웹훅 생성.
+10. **Parameter Store** — `/lia/prod/` 아래 §2의 값들을 SecureString 으로 등록(Google ID·비밀값, `DISCORD_WEBHOOK_URL` 포함).
+11. **주소 설정** — `prod.env` 의 `LIA_DOMAIN`(API 이름)·`FRONTEND_URL`·`OAUTH2_REDIRECT_BASE_URL`(웹 주소)·`LIA_DB_HOST`(RDS 엔드포인트)를 채워 커밋한다(비밀값 아님).
+12. **최초 SQL** — §2 "DB 관리"의 EC2 안 psql 로 마스터 접속, §2의 확장·계정 SQL 실행(`GRANT lia_app TO postgres` 포함).
+13. **법제처 IP 등록** — open.law.go.kr OPEN API 신청 정보의 서버 IP 에 EIP 를 추가한다. 등록 전에는 법령 API 가 JSON 대신 HTML("사용자 정보 검증에 실패")을 돌려줘 배치가 JSON 파싱 오류(`Unexpected character ('<' (code 60))`)로 실패한다. 반영까지 시간이 걸릴 수 있다 — EC2 에서 목록 API 를 한 번 호출해 JSON 이 오는지 본 뒤 다음 단계로.
+14. **첫 배포** — `cd /opt/lia && sudo git pull` 후 `sudo /opt/lia/ops/deploy/lia up <CI 이미지가 있는 커밋 SHA>`(§3) → Flyway·PgVectorStore 가 스키마 생성.
+15. **읽기 권한** — 테이블이 생긴 뒤 마스터로 `GRANT SELECT ON ingest_runs, ingest_tasks, ingest_task_attempts, llm_calls, llm_prices, llm_call_costs, query_events TO grafana_reader;`
+16. **확인**
+    - `https://<API 이름>/actuator/health` → `{"status":"UP"}`, `https://<API 이름>/actuator/prometheus` → 차단.
     - `https://<API 이름>/api/v1/auth/providers` → `{"providers":["google"]}`, 웹에서 구글 로그인 왕복 → 동의 화면(S08).
-14. **백필** — `ops/deploy/lia ingest run`(시행예정 전체 수집·정규화·색인, D75·D76·D77 반영). 소요 시간·임베딩 비용·`DEAD` 건수를 #44 에 기록. 쉬운 요약은 `ops/deploy/lia ingest summarize --dry-run` 결과를 보고 따로 결정.
-
-15. **평가 기준선**(D83, 유료: 정답 세트 문항마다 Haiku 1회 + 주제 질문마다 임베딩 1회) — 백필로 전체 색인이 끝난 뒤 `ops/deploy/lia eval 2>&1 | tee eval.log`. 보고서는 `grep '^{"config"' eval.log` 한 줄이다. 처음엔 기준선이 없어 비교 없이 통과(0)한다. 이 줄을 `core/src/main/resources/eval/offline-baseline.json` 으로 PR 에 올려 커밋하면 다음 배포부터 회귀 비교(3 = 회귀)가 켜진다. 색인 법령 수·문항 수가 크게 바뀌면 다시 잰다([[rag-evaluation-framework]] §5.2).
+    - `sudo /opt/lia/ops/deploy/lia ingest run --dry-run` → `SUCCESS`, `malformedRows=0`, `ingest_runs` 에 기록.
+    - SSM 포트 포워딩으로 Grafana 접속(§2) → `LIA · Overview`·`LIA · Batch`·`LIA · Token & Cost`·`LIA · Requests` 표시, 배치 패널에 dry-run 반영.
+    - 경보 연락처 `lia-discord` 시험 발송 → Discord 수신.
+17. **백필** — 시행예정 전체 수집·정규화·색인(유료 임베딩). SSM 세션이 끊겨도 계속 돌도록 `nohup`:
+    ```bash
+    sudo nohup /opt/lia/ops/deploy/lia ingest run > /tmp/backfill.log 2>&1 &
+    ```
+    끝나면 `/tmp/backfill.log` 마지막 줄의 `[batch] 실행 N …` 와 `ingest_runs`·`ingest_tasks`·`llm_calls`(`INDEX_EMBED`)로 소요 시간·임베딩 토큰·`DEAD` 건수를 #44 에 기록한다. 실측(2026-11-15): 20분 · SYNC·INDEX 각 877 · DEAD 0 · 4,425,906 토큰. 쉬운 요약은 `sudo /opt/lia/ops/deploy/lia ingest summarize --dry-run` 결과를 보고 따로 결정.
+18. **cron** — 백필이 끝난 뒤에(§3). `sudo crontab /opt/lia/ops/deploy/crontab` → `sudo crontab -l` 로 두 줄 확인. 다음 날 `ingest_runs` 에 04:00 `run` 이 생겼는지 본다.
+19. **단가** — `llm_prices` 에 실제 호출된 모델의 단가를 넣는다([[cost-policy]] "단가 넣는 법"). 모델 ID 는 `SELECT DISTINCT model FROM llm_calls`.
+20. **평가 기준선**(D83, 유료: 정답 세트 문항마다 Haiku 1회 + 주제 질문마다 임베딩 1회) — 백필로 전체 색인이 끝난 뒤 `sudo /opt/lia/ops/deploy/lia eval 2>&1 | tee eval.log`. 보고서는 `grep '^{"config"' eval.log` 한 줄이다. 처음엔 기준선이 없어 비교 없이 통과(0)한다. 이 줄을 `core/src/main/resources/eval/offline-baseline.json` 으로 PR 에 올려 커밋하면 다음 배포부터 회귀 비교(3 = 회귀)가 켜진다. 색인 법령 수·문항 수가 크게 바뀌면 다시 잰다([[rag-evaluation-framework]] §5.2).
 
 ### 검증 (구현 단계)
 - **로컬 관측 스택** — Grafana API로 `lia-postgres` 연결 상태, `LIA · Batch` 로드, 패널 쿼리가 로컬 DB의 실행 기록(샘플 데이터)에 결과를 내는지.
