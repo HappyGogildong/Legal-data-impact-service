@@ -31,6 +31,56 @@ aws ssm describe-instance-information --region ap-northeast-2 --query "InstanceI
 
 키는 `%USERPROFILE%\.aws\credentials` 에 평문으로 남는다. 쓰지 않을 땐 IAM 에서 비활성화한다.
 
+### 1.1.1 더블클릭 터널 스크립트 (로컬 전용) 🖥
+
+§1.3·§1.4 터널을 더블클릭으로 여는 Windows 배치 파일. **레포에 두지 않고** 각자 PC(예: 바탕 화면)에 만든다. 아래 내용을 메모장에 붙여 넣고 **인코딩 UTF-8** 로 `lia-grafana.cmd`·`lia-db.cmd` 로 저장한다.
+
+- 인스턴스 ID 는 파일에 적지 않고 실행할 때 EIP 로 찾는다(`ec2:DescribeInstances` — 관리자 IAM 키면 된다).
+- 창을 닫으면 터널이 끊긴다. AWS CLI·plugin 을 설치한 직후라면 탐색기를 새로 열고 실행한다(PATH 반영).
+- `lia-db.cmd` 는 시작할 때 `lia_app` 비밀번호를 클립보드에 복사할지 묻는다(10초 뒤 아니오). 값은 화면에 찍히지 않는다.
+
+`lia-grafana.cmd` — Grafana 터널(로컬 3001)을 열고 5초 뒤 브라우저로 `http://localhost:3001`.
+
+```bat
+@echo off
+chcp 65001 >nul
+setlocal
+set REGION=ap-northeast-2
+set EIP=15.165.252.201
+set LOCAL_PORT=3001
+where aws >nul 2>&1 || (echo [오류] AWS CLI 가 없다. & pause & exit /b 1)
+for /f "delims=" %%i in ('aws ec2 describe-instances --region %REGION% --filters Name^=ip-address^,Values^=%EIP% --query "Reservations[0].Instances[0].InstanceId" --output text') do set INSTANCE_ID=%%i
+if "%INSTANCE_ID%"=="" (echo [오류] 인스턴스를 찾지 못했다 — aws sts get-caller-identity 확인. & pause & exit /b 1)
+if "%INSTANCE_ID%"=="None" (echo [오류] EIP %EIP% 인스턴스 없음. & pause & exit /b 1)
+echo Grafana 터널 -^> http://localhost:%LOCAL_PORT% (admin / GF_SECURITY_ADMIN_PASSWORD). 끝내려면 창을 닫는다.
+start "" /b cmd /c "timeout /t 5 /nobreak >nul & start http://localhost:%LOCAL_PORT%"
+aws ssm start-session --region %REGION% --target %INSTANCE_ID% --document-name AWS-StartPortForwardingSession --parameters portNumber=3001,localPortNumber=%LOCAL_PORT%
+pause
+```
+
+`lia-db.cmd` — DB 터널(로컬 15432). DBeaver 설정은 §1.4.
+
+```bat
+@echo off
+chcp 65001 >nul
+setlocal
+set REGION=ap-northeast-2
+set EIP=15.165.252.201
+set RDS_HOST=lia-db.ctu4qekm26da.ap-northeast-2.rds.amazonaws.com
+set LOCAL_PORT=15432
+where aws >nul 2>&1 || (echo [오류] AWS CLI 가 없다. & pause & exit /b 1)
+for /f "delims=" %%i in ('aws ec2 describe-instances --region %REGION% --filters Name^=ip-address^,Values^=%EIP% --query "Reservations[0].Instances[0].InstanceId" --output text') do set INSTANCE_ID=%%i
+if "%INSTANCE_ID%"=="" (echo [오류] 인스턴스를 찾지 못했다 — aws sts get-caller-identity 확인. & pause & exit /b 1)
+if "%INSTANCE_ID%"=="None" (echo [오류] EIP %EIP% 인스턴스 없음. & pause & exit /b 1)
+choice /c YN /n /t 10 /d N /m "lia_app 비밀번호를 클립보드에 복사할까? [Y/N] (10초 뒤 N) "
+if errorlevel 2 goto :tunnel
+aws ssm get-parameter --region %REGION% --name /lia/prod/SPRING_DATASOURCE_PASSWORD --with-decryption --query Parameter.Value --output text | powershell -NoProfile -Command "$input | Set-Clipboard"
+:tunnel
+echo DB 터널 -^> localhost:%LOCAL_PORT% (lia · lia_app · sslmode=require · 읽기 전용). 끝내려면 창을 닫는다.
+aws ssm start-session --region %REGION% --target %INSTANCE_ID% --document-name AWS-StartPortForwardingSessionToRemoteHost --parameters host=%RDS_HOST%,portNumber=5432,localPortNumber=%LOCAL_PORT%
+pause
+```
+
 ### 1.2 EC2 셸
 
 - 콘솔: EC2 → 인스턴스 → 연결 → Session Manager.
