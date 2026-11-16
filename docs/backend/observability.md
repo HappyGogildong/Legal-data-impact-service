@@ -1,8 +1,8 @@
 ---
 title: 관측성·성능 측정 환경 (Observability)
 status: Draft
-version: 0.3
-date: 2026-11-07
+version: 0.4
+date: 2026-11-17
 tags: [backend, observability, metrics, tracing, load-test, performance]
 related:
   - "backend/concurrency-and-reliability.md"
@@ -57,10 +57,10 @@ Grafana `http://localhost:3001`(익명 Admin) · Prometheus `:9090` · Tempo `:3
 | Micrometer Tracing→OTel→**Tempo** | ✅ | Jaeger 대신 Grafana-native |
 | postgres-exporter | ✅ | DB lock/tx/conn |
 | **오프라인 파이프라인 계측** | ✅ | fetch·normalize·diff·resolve·ingest (§2 live) |
-| Grafana 대시보드(`lia-overview`) | ✅ | 파이프라인 지연·JVM·HTTP + hook 패널 |
+| Grafana 대시보드(`lia-overview`) | ✅ | 파이프라인 지연·JVM·HTTP. LLM 호출·비용은 `LIA · Token & Cost`, 분석 결과는 `LIA · Requests` 로 안내 |
 | 데모 러너(`@Profile("demo")`) | ✅ | 번들 fixture → normalize→diff, 베이스라인 생성 |
 | **Loki**(로그)·**k6**(부하) | ⬜ 증분 2 | 이번 "측정·추적 대상"이 아님 — 온라인 경로 landing 후 |
-| LLM/RAG/dimension 실측 | ⬜ hook | Embedder·Store·AnalysisEngine landing 시 발화 |
+| LLM 호출·토큰·비용 | ✅ DB 기록 | 호출 1회 = `llm_calls` 1행, 대시보드 `LIA · Token & Cost`(D83) — Prometheus 카운터 대신 |
 
 ---
 
@@ -81,18 +81,17 @@ Grafana `http://localhost:3001`(익명 Admin) · Prometheus `:9090` · Tempo `:3
 | `lia.resolve` | timer | `state` | 해소 지연(명칭매칭+의미검색) |
 | `lia.ingest` | timer | — | 적재 1건 end-to-end |
 
-**hook — 온라인 경로 landing 시 발화.**
+**계획 — 온라인 경로 지연(구현할 때 추가).**
 
 | 지표 | 타입 | 태그 | 무엇을 결정하나 |
 |---|---|---|---|
-| `lia.analysis.llm.calls` | counter | `model`,`dimension` | **비용.** Opus vs Haiku 호출량(ADR-001 비용 동인) |
-| `lia.analysis.cache.hit` / `.miss` | counter | `layer`,`dimension` | 캐시 적중률 → 스탬피드 판단 |
-| `lia.analysis.inflight.duplicate` | counter | `dimension` | **동시 중복 질의 → single-flight 트리거** |
 | `lia.query.latency` | timer | `endpoint`,`dimension` | p50/p95/p99 |
 | `lia.translate.latency` | timer | — | 번역기(Haiku) 지연 |
 | `lia.dimension.latency` | timer | `dimension` | 차원별 지연 — 어디서 시간 쓰나 |
 | `lia.rag.retrieve.latency` | timer | `namespace` | 벡터 검색 지연 |
 | `lia.ingest.duration` | timer | — | 적재 배치 시간 |
+
+> **폐지(2026-11-17)** — `lia.analysis.llm.calls` · `lia.analysis.cache.hit`/`.miss` · `lia.analysis.inflight.duplicate`. 이름만 정해 두고 발화하지 않던 hook 이었다. LLM 호출은 지표가 아니라 `llm_calls` 행으로 남기고(목적·모델·토큰·재시도·인용 검증 통과 — D83), **답변 캐시는 두지 않는다** — Layer A 는 배치가 미리 만든 저장본을 읽고(D67·D80, 저장본 유무는 `LIA · Requests` 의 "Layer A 저장본 없음 비율"), Layer B 는 저장하지 않는다(D69). 파사드 `LiaMetrics` 와 Overview 의 해당 패널을 지웠다.
 | `lia.ingest.upsert.conflict` | counter | — | **적재 동시성 신호**(feature 2) |
 | `lia.notify.delivery.lag` | timer | — | 통지 지연 |
 | `lia.notify.duplicate` | counter | — | **정확히 한 번 위반 감지**(feature 3) |
@@ -145,7 +144,7 @@ p99가 튀면 **어느 span인지** 바로 보인다 — Haiku 번역인지, RAG
 - **TTFT**(첫 토큰까지) ≈ 네트워크 + 큐 + **prefill**(프롬프트 처리)
 - **생성 시간**(첫~마지막 토큰) ≈ 실제 토큰 생성. `생성시간 / output_tokens` = **토큰/초 처리량**
 
-**우리 오버헤드는 자동으로 갈린다:** `총 − LLM span = RAG 검색 + 프롬프트 조립 + 인용검증`. `dimension` 태그로 Layer A(캐시, **추론 0**) vs Layer B(Opus) 구분. 포괄 질문은 `추론 계열 = Σ(llm.call span)`(IMPACT+ACTION).
+**우리 오버헤드는 자동으로 갈린다:** `총 − LLM span = RAG 검색 + 프롬프트 조립 + 인용검증`. `dimension` 태그로 Layer A(저장본, **추론 0**) vs Layer B(Opus) 구분. 포괄 질문은 `추론 계열 = Σ(llm.call span)`(IMPACT+ACTION).
 
 > **⚠️ 대기시간 ≠ 추론시간.** single-flight로 99요청이 1계산을 기다리면 그 99개의 *API 지연*은 크지만 *추론은 0*이다 — 그냥 기다린 것. 집계 지표(`query.latency`)만 보면 "느리다"로 오독한다. **`llm.singleflight.wait` span/지표를 `llm.call`과 분리**해야 "기다린 거지 추론이 느린 게 아니다"가 보인다.
 
@@ -191,8 +190,8 @@ p99가 튀면 **어느 span인지** 바로 보인다 — Haiku 번역인지, RAG
 
 | 시나리오 | 재현 | 측정 | 판정 |
 |---|---|---|---|
-| **캐시 스탬피드** | M VU가 **동일 질의**를 동시 발사(미캐시 상태) | `llm.calls` vs 요청 수 | 100요청→100호출이면 스탬피드 확정. single-flight 후 100→1이어야 함 |
-| **지속 부하** | 목표 RPS 유지 | `query.latency` p99, `llm.calls` 비용 | SLO 내인가 |
+| **캐시 스탬피드** | M VU가 **동일 질의**를 동시 발사(미캐시 상태) | `llm_calls` 행 수 vs 요청 수 | 100요청→100호출이면 스탬피드 확정. single-flight 후 100→1이어야 함 |
+| **지속 부하** | 목표 RPS 유지 | `query.latency` p99, `llm_call_costs` 비용 | SLO 내인가 |
 | **적재 중 조회** | 배치 실행 중 조회 병행 | 조회 정확성·`upsert.conflict` | 읽기 일관성·경합 |
 | **알림 팬아웃** | 시행일 도래 이벤트에 대량 구독 | `notify.duplicate`·`delivery.lag` | 정확히 한 번 지켜지나 |
 
@@ -204,10 +203,10 @@ p99가 튀면 **어느 span인지** 바로 보인다 — Haiku 번역인지, RAG
 
 | 기법 | 신호 | 초기 임계 |
 |---|---|---|
-| **single-flight** | `inflight.duplicate` / `cache.miss` | 동일 키 동시요청이 관측되고 중복 비율 > 5% |
+| **single-flight** | 같은 질의·법령·프로필의 동시 요청(`query_events`·`llm_calls` 시각 겹침 — 측정 방법은 도입할 때 정한다) | 동일 키 동시요청이 관측되고 중복 비율 > 5% |
 | **격리수준 상향** | `ingest.upsert.conflict` | 경합 > N/일 또는 이상 데이터 1건이라도 |
 | **outbox 강화** | `notify.duplicate` | > 0 (정확히 한 번은 타협 없음) |
-| **모델 티어 조정** | `llm.calls`(Opus) · 비용 | 예산 초과 추세 |
+| **모델 티어 조정** | `llm_call_costs`(Opus) · 비용 | 예산 초과 추세 |
 
 임계는 **가정이지 규정이 아니다.** 계기판이 서고 실측이 쌓이면 이 표를 갱신한다.
 
@@ -217,7 +216,7 @@ p99가 튀면 **어느 span인지** 바로 보인다 — Haiku 번역인지, RAG
 
 1. Actuator + Micrometer + Prometheus 지표 노출(Boot 기본 + 커스텀 4~5개).
 2. `docker-compose.observability.yml` — Prometheus·Grafana·postgres-exporter.
-3. Grafana 대시보드: 비용(LLM 호출)·지연(p99)·캐시 적중률.
+3. Grafana 대시보드: 지연(p99)·JVM(`LIA · Overview`), 비용은 `LIA · Token & Cost`(D83).
 4. Micrometer Tracing + OTLP → Tempo(요청 트레이스). 구조화 JSON 로그 → **Loki**(trace-id 상관).
 5. k6 스탬피드 시나리오 — 스탬피드 **관측**(기법 적용은 그 다음).
 

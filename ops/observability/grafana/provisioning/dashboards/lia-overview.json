@@ -59,26 +59,9 @@
       ]
     },
     {
-      "type": "row", "title": "온라인 경로 (hook · landing 시 채워짐)", "collapsed": true,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
-      "panels": [
-        {
-          "type": "timeseries", "title": "LLM 호출량 (비용) — hook",
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
-          "targets": [
-            { "refId": "A", "expr": "sum by (model) (rate(lia_analysis_llm_calls_total[5m]))", "legendFormat": "{{model}}" }
-          ]
-        },
-        {
-          "type": "timeseries", "title": "캐시 적중률 — hook",
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
-          "targets": [
-            { "refId": "A", "expr": "sum(rate(lia_analysis_cache_hit_total[5m])) / (sum(rate(lia_analysis_cache_hit_total[5m])) + sum(rate(lia_analysis_cache_miss_total[5m])))", "legendFormat": "hit ratio" }
-          ]
-        }
-      ]
+      "type": "text", "title": "LLM 호출·비용·분석 결과",
+      "gridPos": { "h": 3, "w": 24, "x": 0, "y": 18 },
+      "options": { "mode": "markdown", "content": "LLM 호출 수·토큰·비용은 **LIA · Token & Cost**(DB `llm_calls`), Layer A 저장본 유무와 분석 결과는 **LIA · Requests**(DB `query_events`)에서 본다(D83). 답변 캐시는 두지 않는다 — Layer A 는 배치 선계산(D67·D80), Layer B 는 저장하지 않는다(D69)." }
     }
   ]
 }
