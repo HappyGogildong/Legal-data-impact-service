@@ -50,6 +50,7 @@ plugins:
 nav:
   - 🚀 시작하기(온보딩): onboarding.md
   - 홈(색인): ARCHITECTURE.md
+  - 🏆 핵심 성과와 사례: achievements.md
   - 제품 (Product):
       - 기능 스펙: product/feature-spec.md
       - 화면 계획 (웹): product/screen-plan.md
