@@ -83,9 +83,9 @@ flowchart LR
 
 ## 품질을 지키는 방법
 
-- **테스트 약 590개** — 순수 단위 테스트를 두껍게, 실제 DB 제약·동시성은 Testcontainers(실 Postgres), HTTP 계약·인증·CSRF는 실제 `SecurityConfig`를 띄운 웹 슬라이스로 검증한다. 유료 외부 API 스모크는 키가 있을 때만 돈다.
+- **테스트 — 백엔드 869 · 웹 단위 278 · E2E 34** — 순수 단위 테스트를 두껍게, 실제 DB 제약·동시성은 Testcontainers(실 Postgres), HTTP 계약·인증·CSRF는 실제 `SecurityConfig`를 띄운 웹 슬라이스로 검증한다. 유료 외부 API 스모크는 키가 있을 때만 돈다.
 - **spec-first** — 행위가 있는 클래스는 코드보다 [컴포넌트 문서](docs/components/)를 먼저 쓰고, 그 계약이 구현을 이끈다.
-- **결정 기록** — 설계 판단 [72건](docs/adr/decision-log.md)을 근거·대안과 함께 남겼다.
+- **결정 기록** — 설계 판단 [85건](docs/adr/decision-log.md)을 근거·대안과 함께 남겼다.
 - **측정하지 않은 수치는 쓰지 않는다** — 성능 최적화는 지표로 병목을 확인한 뒤에만 적용한다([D48](docs/adr/decision-log.md)). 위의 수치(137 → 6)는 모두 실측이다.
 
 ## 기술 스택
@@ -114,7 +114,8 @@ cd web && npm install && npm run dev
 |---|---|
 | [기능 명세](docs/product/feature-spec.md) | 사용자 관점 기능 · 화면 |
 | [아키텍처](docs/ARCHITECTURE.md) | 설계 스냅샷과 변경 이력 |
-| [결정 로그](docs/adr/decision-log.md) | D01~D72 설계 결정과 근거 |
+| [핵심 성과와 사례](docs/achievements.md) | 운영 실측 수치 · 핵심 성과 · 대표 트러블슈팅 사례 |
+| [결정 로그](docs/adr/decision-log.md) | D01~D85 설계 결정과 근거 |
 | [트러블슈팅](docs/troubleshooting/README.md) | 실제로 부딪힌 문제의 원인 추적과 해결 |
 | [현황](docs/status.md) | 구현 상태 · 기술 스펙 |
 | [온보딩](docs/onboarding.md) | 처음 코드를 읽는 순서 |

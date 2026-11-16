@@ -85,9 +85,9 @@ flowchart LR
 
 ## How quality is maintained
 
-- **About 590 tests** — a thick layer of pure unit tests; real DB constraints and concurrency verified with Testcontainers (real Postgres); HTTP contracts, auth, and CSRF verified in a web slice running the actual `SecurityConfig`. Smoke tests against paid external APIs run only when keys are present.
+- **Tests — 869 backend · 278 web unit · 34 E2E** — a thick layer of pure unit tests; real DB constraints and concurrency verified with Testcontainers (real Postgres); HTTP contracts, auth, and CSRF verified in a web slice running the actual `SecurityConfig`. Smoke tests against paid external APIs run only when keys are present.
 - **Spec-first** — every class with behavior gets a [component spec](docs/components/) before code, and that contract drives the implementation.
-- **Decision records** — [72 design decisions](docs/adr/decision-log.md) recorded with rationale and alternatives.
+- **Decision records** — [85 design decisions](docs/adr/decision-log.md) recorded with rationale and alternatives.
 - **No unmeasured numbers** — performance optimizations are applied only after metrics confirm the bottleneck ([D48](docs/adr/decision-log.md)). The figure above (137 → 6) is measured.
 
 ## Tech stack
@@ -118,7 +118,8 @@ The design documents are written in Korean.
 |---|---|
 | [Feature spec](docs/product/feature-spec.md) | Features and screens from the user's perspective |
 | [Architecture](docs/ARCHITECTURE.md) | Design snapshots and change history |
-| [Decision log](docs/adr/decision-log.md) | Design decisions D01–D72 with rationale |
+| [Achievements and case studies](docs/achievements.md) | Production measurements · key achievements · troubleshooting cases (Korean) |
+| [Decision log](docs/adr/decision-log.md) | Design decisions D01–D85 with rationale |
 | [Troubleshooting](docs/troubleshooting/README.md) | Root-cause investigations of real problems |
 | [Status](docs/status.md) | Implementation status and tech spec |
 | [Onboarding](docs/onboarding.md) | Where to start reading the code |
