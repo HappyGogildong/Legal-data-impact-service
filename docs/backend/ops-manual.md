@@ -157,13 +157,13 @@ SQL
 **수동 절차** ☁ — Actions 가 하는 일과 같다.
 
 ```bash
-sudo bash /opt/lia/ops/deploy/cd-deploy.sh <커밋 SHA|current>   # 위와 같은 서버 단계(git pull 은 먼저 따로)
-cd /opt/lia && sudo git pull                 # ops/ 설정 파일 갱신 (compose·Caddyfile·대시보드·crontab)
-sudo /opt/lia/ops/deploy/lia up <커밋 SHA>    # 이미지 교체 — Parameter Store → 환경변수 → pull → up -d
+cd /opt/lia && sudo flock -w 600 /var/lock/lia-deploy.lock git pull --ff-only   # ops/ 설정 갱신 — 배포 잠금과 같은 파일
+sudo bash /opt/lia/ops/deploy/cd-deploy.sh <커밋 SHA 40자|current>             # 배치 대기 → 잠금 → lia up → crontab 경고 → DEPLOYED
 sudo /opt/lia/ops/deploy/lia ps              # 컨테이너 상태
 sudo /opt/lia/ops/deploy/lia logs core       # 최근 로그 200줄 (서비스: core · caddy · grafana …)
 ```
 
+- `cd-deploy.sh` 를 거치지 않는 최소 절차는 `sudo /opt/lia/ops/deploy/lia up <SHA>` 다. 이 경우 배치 대기·잠금이 없으므로 배치 시간대를 직접 피한다.
 - **태그는 CI 가 이미지를 만든 커밋 SHA(전체)** — `ops/`·`docs/` 만 바꾼 머지는 이미지가 없다. GitHub Actions 의 `ci-core` 실행에서 고른다.
 - `lia up` 은 이미지만 바꾼다. `ops/` 파일은 `git pull` 로만 바뀐다.
 - `lia ingest`·`lia eval` 은 마지막 `up` 태그(`ops/deploy/.image-tag`)를 쓴다.
@@ -172,14 +172,14 @@ sudo /opt/lia/ops/deploy/lia logs core       # 최근 로그 200줄 (서비스: 
 
 ### 2.1 자동 배포 준비(한 번) 🖥
 
-관리자 IAM 키로 로컬 Git Bash 에서. 자리값을 채운 정책 파일은 임시 폴더에만 만든다(레포에는 자리값 그대로).
+관리자 IAM 키로 로컬 Git Bash 에서. 자리값을 채운 정책 파일은 레포 루트의 `.tmp-cd/` 에 잠깐 만들고 지운다(커밋하지 않는다, 레포 파일은 자리값 그대로).
 
 ```bash
 export AWS_CLI_FILE_ENCODING=UTF-8      # Windows — 한글이 든 파일을 file:// 로 넘길 때
 REGION=ap-northeast-2
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 INSTANCE=$(aws ec2 describe-instances --region $REGION --filters Name=ip-address,Values=15.165.252.201 --query "Reservations[0].Instances[0].InstanceId" --output text)
-TMP=$(mktemp -d)
+TMP=.tmp-cd && mkdir -p $TMP   # 레포 루트 기준 상대 경로 — Windows aws CLI 가 file:// 로 읽는다. 끝나면 지운다
 sed "s/<account-id>/$ACCOUNT/g" ops/deploy/cd/trust-policy.json > $TMP/trust.json
 sed "s/<account-id>/$ACCOUNT/g; s/<instance-id>/$INSTANCE/g" ops/deploy/cd/deploy-policy.json > $TMP/policy.json
 
@@ -193,6 +193,7 @@ gh api -X PUT repos/$REPO/environments/production -F "deployment_branch_policy[p
 gh api -X POST repos/$REPO/environments/production/deployment-branch-policies -f name=main -f type=branch
 gh variable set AWS_DEPLOY_ROLE_ARN --env production --repo $REPO --body "arn:aws:iam::$ACCOUNT:role/lia-github-deploy"
 gh variable set LIA_INSTANCE_ID --env production --repo $REPO --body "$INSTANCE"
+rm -rf $TMP
 ```
 
 - OIDC 공급자 생성이 thumbprint 를 요구하면 `--thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1` 를 붙인다.
@@ -400,4 +401,5 @@ EC2 역할은 `GetParametersByPath` 만 허용하므로 EC2 에서는 `get-param
 | `Deploy` 가 `AccessDeniedException … ssm:SendCommand` | 권한 정책의 인스턴스 ID·계정 자리값이 틀림, 또는 인스턴스를 바꿈 | §2.1 정책을 다시 채워 `put-role-policy`, 변수 `LIA_INSTANCE_ID` 갱신 |
 | 서버 단계가 `git pull --ff-only` 에서 실패 | `/opt/lia` 에 손으로 고친 파일이 있음 | SSM 세션에서 `cd /opt/lia && sudo git status` 확인·정리 후 `Deploy` 수동 실행 |
 | 서버 단계가 "배치·평가가 60분 넘게 실행 중" | 백필·`--full`·`eval` 이 길게 돎 | 끝난 뒤 `Deploy` 수동 실행(같은 SHA) |
+| 서버 단계가 "다른 배포가 10분 넘게 진행 중" | 앞선 배포의 `lia up` 이 멈춤(이미지 pull 지연 등) 또는 손으로 잡은 잠금 | `sudo /opt/lia/ops/deploy/lia ps`·`logs core` 확인 후 `Deploy` 수동 실행(같은 SHA) |
 | 헬스체크 3분 초과 | 새 core 기동 실패(설정 누락·마이그레이션 오류) | `sudo /opt/lia/ops/deploy/lia logs core` 확인 → 이전 SHA 로 수동 실행 |

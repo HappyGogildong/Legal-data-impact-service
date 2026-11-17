@@ -43,3 +43,4 @@ docs/superpowers/
 
 # 운영 래퍼가 쓰는 현재 이미지 태그(비밀 아님)
 ops/deploy/.image-tag
+.tmp-cd/
