@@ -8,7 +8,7 @@ package com.lia.core.observability;
  *
  * <ul>
  *   <li><b>live-now</b> — 오프라인 파이프라인 단계. {@code Observation} 으로 감싸 <i>타이머 + span</i> 동시 생성.</li>
- *   <li><b>hook</b> — 온라인 경로(dispatch·AnalysisEngine) landing 시 {@link LiaMetrics} 가 발화.</li>
+ *   <li><b>기록</b> — LLM 호출·질의 이벤트는 지표가 아니라 DB 행으로 남기고(D83), 남기지 못한 건수만 지표로 센다.</li>
  * </ul>
  */
 public final class Obs {
@@ -30,12 +30,6 @@ public final class Obs {
     public static final String BATCH_TASK = "lia.batch.task";     // 작업 하나 — kind 태그
     // 임베딩 계측은 Spring AI 내장(gen_ai.client.operation, GenAI 컨벤션)에 위임 — lia.embed 두지 않음.
 
-    // --- hook: 온라인 경로 landing 시 발화 (LiaMetrics) ---
-    public static final String LLM_CALLS = "lia.analysis.llm.calls";
-    public static final String CACHE_HIT = "lia.analysis.cache.hit";
-    public static final String CACHE_MISS = "lia.analysis.cache.miss";
-    public static final String INFLIGHT_DUP = "lia.analysis.inflight.duplicate";
-
     // --- 관측 기록(D83 호출 기록·질의 이벤트) ---
     /** 남기지 못한 기록 — 태그 {@link #TAG_RECORD}(llm_call | query_event), {@link #TAG_REASON}(queue_full | write_failed). */
     public static final String RECORDS_DROPPED = "lia.records.dropped";
@@ -44,9 +38,6 @@ public final class Obs {
     public static final String TAG_TARGET = "target";       // eflaw | current(현행 기준선, D76)
     public static final String TAG_KIND = "kind";           // SYNC | INDEX | TRANSITION | PURGE
     public static final String TAG_STATE = "state";         // 해소 4상태
-    public static final String TAG_MODEL = "model";         // opus | haiku
-    public static final String TAG_DIMENSION = "dimension"; // LOOKUP|SUMMARY|DIFF|IMPACT|ACTION
-    public static final String TAG_LAYER = "layer";         // A | B
     public static final String TAG_REASON = "reason";       // queue_full | write_failed
     public static final String TAG_RECORD = "record";       // llm_call | query_event
 }

@@ -24,7 +24,7 @@ related:
 
 **문제.** 인기 법령에 **완전 동일 질의**(같은 답변 캐시 키 §3.4 — 질문·법령·프로필 모두 동일)가 **미캐시** 상태로 N명 동시에 오면, 같은 Opus 생성이 **N번** 돈다. 비용은 정확히 N배 — ADR-001의 "런타임 LLM 호출이 비용 동인"과 정면으로 충돌한다.
 
-**신호.** `cache.miss` 급증 + `inflight.duplicate`(동일 키 동시요청).
+**신호.** 동일 키 동시요청 — `query_events`·`llm_calls` 의 같은 질의 시각 겹침으로 본다(지표 `inflight.duplicate`·`cache.miss` 는 2026-11-17 폐지, [[observability]] §2).
 
 **기법 — Single-Flight(요청 병합).**
 - 캐시 키(`profileHash + law_ref + dimension`)마다 **첫 요청만 계산**하고, 진행 중이면 나머지는 그 결과를 **공유**한다.

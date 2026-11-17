@@ -33,7 +33,7 @@ related:
 
 | 유형 | 1차 감지 신호(계획) | 관련 |
 |---|---|---|
-| 캐시 스탬피드 (중복 LLM 호출) | `inflight.duplicate` / `cache.miss` + k6 100:100 | concurrency §1 |
+| 캐시 스탬피드 (중복 LLM 호출) | 같은 질의 동시 요청 수 vs `llm_calls` 행 수 + k6 100:100 | concurrency §1 |
 | Connection Pool starvation | HikariCP `active`/`pending`, `query.latency` p99 | observability §2 |
 | Lock / Deadlock | postgres_exporter `deadlocks`, `ingest.upsert.conflict` | concurrency §2 |
 | GC Pause / Memory | JVM gc pause, heap, `query.latency` p99 | observability §2 |
