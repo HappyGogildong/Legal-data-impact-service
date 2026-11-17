@@ -1,7 +1,7 @@
 ---
 title: 프로젝트 현황 · 기술 스펙 · 구현 체크리스트
 status: Living
-date: 2026-08-14
+date: 2026-11-18
 tags: [status, spec, roadmap]
 related: ["ARCHITECTURE.md", "backend/observability.md", "adr/decision-log.md"]
 ---
@@ -90,7 +90,7 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | 인증 — **슬라이스 ①**(D60): 소셜 OAuth2+세션-쿠키·`SecurityConfig`(API 401·`/error`·`csrf.spa()`·로그아웃 204)·`AccountStore`(경합 안전 findOrCreate)·`OAuth2LoginSuccessHandler`(fail-closed·프론트 리다이렉트) | ✅ PR #30. 실제 소셜 로그인 왕복은 provider 콘솔 등록 후 수동 확인 |
 | UserProfile — **슬라이스 ②**(D61): 프로필 도메인(enum 6종·age 14~120)·`UserProfileStore`(동의가 행을 만듦)·동의 모델(`/consents` 분리·현재 버전 동의 없으면 409·버전 기반 재동의)·알림 이메일은 동의 시에만 저장·계정 삭제 | ✅ 단위·통합·웹 슬라이스. ③ Layer B(프로필→프롬프트)는 후속. 실제 개인정보처리방침 문서는 법무 산출물로 별도 |
 | 적재·RAG 색인 배치(D62, #40): 1회성 잡 프로파일(`run`·`run --full`·`run --dry-run`·`sync`·`index`·`reindex-all`·`requeue-dead`, 색인 끄기 설정, compose `ingest` 서비스) + DB 작업 큐(`SYNC`·`INDEX`·`TRANSITION`·`PURGE`, `SKIP LOCKED`·법령 단위 직렬화·API별 호출 간격·실행 토큰 소유권)·2단 증분(MST·본문+기준선 revision, 상태 포함)·`과거`/`철회` 상태 보존(다른 날 두 번 미확인)·실행당 1회+3회 격리·시도 이력 `ingest_task_attempts`·`ingest_runs` 관측(열린 실행 정리)·SYNC 저장+등록 한 트랜잭션·색인 교체 한 트랜잭션 | ✅ 단위·통합(큐·탐색·핸들러·잡 전체·잠금). 실제 API 백필·정기 실행(cron) 등록은 운영 단계 |
-| 클라우드 인프라(D63): 개인 AWS 계정 단일 EC2(t4g.medium·compose: Caddy·core·ingest·관측) + RDS PostgreSQL 16 pgvector · SSM 접속·Parameter Store · GHCR 이미지 수동 배포 · 호스트 cron · Grafana 배치 대시보드·경보 3개(Discord) — [[cloud-infra]] | 🟡 저장소 산출물 ✅ · **AWS 구축·운영 투입 ✅(2026-11-16, #44)** — EC2·RDS·Vercel 웹 경유 API·구글 로그인 왕복·Grafana 대시보드 4개·Discord 경보 확인, 백필(시행예정 877 버전·DEAD 0·임베딩 4,425,906 토큰)·cron 설치. 런북은 실제 구축 순서로 보정(20단계). 다음: `llm_prices` 단가 · 평가 기준선(`lia eval`, 유료) |
+| 클라우드 인프라(D63): 개인 AWS 계정 단일 EC2(t4g.medium·compose: Caddy·core·ingest·관측) + RDS PostgreSQL 16 pgvector · SSM 접속·Parameter Store · GHCR 이미지 · main 머지 시 자동 배포(D86, OIDC → SSM 문서 `LIA-Deploy`) · 호스트 cron · Grafana 배치 대시보드·경보 3개(Discord) — [[cloud-infra]] | 🟡 저장소 산출물 ✅ · **AWS 구축·운영 투입 ✅(2026-11-16, #44)** — EC2·RDS·Vercel 웹 경유 API·구글 로그인 왕복·Grafana 대시보드 4개·Discord 경보 확인, 백필(시행예정 877 버전·DEAD 0·임베딩 4,425,906 토큰)·cron 설치. 런북은 실제 구축 순서로 보정(20단계). **자동 배포 ✅(2026-11-18, #92·#93)** — 첫 실행에서 secret 미전달·헬스 판정 2건을 고쳐 `CI core` → 배포 `DEPLOYED`·헬스 UP 확인(런북 21단계). 다음: `llm_prices` 단가 · 평가 기준선(`lia eval`, 유료) |
 | 웹 1단계 백엔드 전제(#14): 분석 응답 typed DTO(`AnalysisApiResponse` — 법령 헤더·다른 시행일·근거 원문 `sources`(현행 원문 포함), camelCase) · 미충족 사유 코드(`Unmet`) · 데이터 현황 API `GET /api/v1/data-status` · springdoc OpenAPI + `api/openapi.json` 스냅샷 · OAuth 리다이렉트 `OAUTH2_REDIRECT_BASE_URL`·로그인 착지 `/login/done` | ✅ 단위·통합·스냅샷. 웹 화면은 계획 2·3 |
 | 웹 1단계 — 웹 기반·익명 흐름(#14): `web/` Next.js 16(Vercel 대상)·시각 방향 A 토큰·shadcn · S01 홈 질문창 · S02 결과(접이식 카드·조문 대비·근거 패널/시트·후속 질문) · S03 해소 안내 · S15 데이터 현황 · S16 오류 · CI `web`(타입 동기·린트·단위·E2E) | ✅ 단위·E2E(모의 API). 로그인 흐름은 계획 3 |
 | 웹 1단계 — 로그인 흐름(#14): S07 로그인·착지(`/login/done`)·S08 동의(재동의·만 14세 미만)·S09 프로필(409 재동의 대화상자)·S10 내 정보(이메일 알림 동의·계정 삭제) · 결과 "내 영향" → 로그인·프로필 → 복귀 · 프로필 선택지 동기 테스트 | ✅ 단위·E2E(모의 API). 실제 소셜 로그인은 미점검(provider 콘솔 로컬 콜백 등록 후 사용자 점검) |
