@@ -41,6 +41,7 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "배포 태그: $tag"
 
+  # 직렬화는 서버 잠금(/var/lock/lia-deploy.lock) — GitHub concurrency 는 대기 실행을 하나만 남기고 취소한다
   deploy:
     needs: plan
     if: needs.plan.outputs.tag != 'skip'
@@ -49,9 +50,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
     env:
       AWS_REGION: ap-northeast-2
       HEALTH_URL: https://api.15-165-252-201.sslip.io/actuator/health

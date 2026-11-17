@@ -13,5 +13,5 @@ mainSteps:
       runCommand:
         - set -euo pipefail
         - cd /opt/lia
-        - git pull --ff-only
+        - flock -w 600 /var/lock/lia-deploy.lock git pull --ff-only
         - exec bash /opt/lia/ops/deploy/cd-deploy.sh "{{ tag }}"

@@ -58,6 +58,19 @@ check "같으면 경고 없음" test -z "$(warn_crontab_drift)"
 crontab() { printf '0 13 * * * run\n'; }
 check "다르면 CRONTAB_DRIFT" grep -q '^CRONTAB_DRIFT' <<<"$(warn_crontab_drift)"
 
-rm -rf "$STATE" "$DEPLOY"
+# --- 배포 잠금: flock 을 함수로(Git Bash 에는 없다). 잠금 함수가 exec 9> 를 쓰므로 서브셸에서 시험 ---
+LOCK_FILE="$(mktemp)"
+FLOCK_LOG="$(mktemp)"
+FLOCK_RESULT=0
+flock() { echo "$*" >> "$FLOCK_LOG"; return "$FLOCK_RESULT"; }
+LOCK_WAIT_SECONDS=600
+FLOCK_RESULT=0; : > "$FLOCK_LOG"
+( acquire_deploy_lock ) ; check "flock 성공 시 성공" test $? -eq 0
+check "flock 을 -w 600 9 로 부른다" test "$(cat "$FLOCK_LOG")" = "-w 600 9"
+FLOCK_RESULT=1
+( acquire_deploy_lock ) 2>/dev/null; check "flock 실패 시 실패" test $? -ne 0
+check "잠금 실패 메시지" grep -q '10분 넘게' <<<"$( ( acquire_deploy_lock ) 2>&1 )"
+
+rm -rf "$STATE" "$DEPLOY" "$LOCK_FILE" "$FLOCK_LOG"
 echo "실패 $fails"
 (( fails == 0 ))
