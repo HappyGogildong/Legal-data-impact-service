@@ -48,7 +48,7 @@ jobs:
     if: needs.plan.outputs.tag != 'skip'
     runs-on: ubuntu-latest
     environment: production        # 배포 브랜치 main 만 — OIDC sub 가 environment:production 이어야 역할을 받는다
-    # environment secret(AWS_DEPLOY_ROLE_ARN·LIA_INSTANCE_ID)은 environment 를 선언한 호출된 job 에서 바로 읽힌다 — ci-core 의 secrets: inherit 불필요
+    # environment secret(AWS_DEPLOY_ROLE_ARN·LIA_INSTANCE_ID) — ci-core 에서 workflow_call 로 부를 때는 호출자가 secrets: inherit 로 넘겨야 한다
     permissions:
       id-token: write
       contents: read
