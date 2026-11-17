@@ -1,8 +1,8 @@
 ---
 title: 운영 명령 매뉴얼 — 접속·배포·배치·DB 점검
 status: Living
-version: 0.1
-date: 2026-11-16
+version: 0.2
+date: 2026-11-17
 tags: [backend, ops, runbook, aws, batch]
 related: ["backend/cloud-infra.md", "backend/cost-policy.md", "components/batch/IngestJob.md", "troubleshooting/008-same-day-promulgations.md"]
 ---
@@ -214,10 +214,17 @@ sudo crontab -l                                                # 0 4 * * * · 0 
 sudo ls -l --time-style=full-iso /var/spool/cron/root          # 설치 시각 — 그 뒤 첫 04:00 이 첫 실행
 systemctl is-active crond                                      # active
 date                                                           # KST 여야 한다(bootstrap 이 Asia/Seoul 로 맞춤)
-sudo journalctl -u crond --since "today 03:50" --no-pager      # 04:00 에 CMD (… lia ingest run …) 줄
+systemctl show crond -p ActiveEnterTimestamp                   # crond 시작 시각 — 시간대를 바꾼 뒤여야 한다(아래)
+sudo grep "\[batch\] 실행" /var/log/lia/ingest.log | tail -n 3 # 실행 요약 줄. 로그 시각은 UTC(Z) — 04:00 KST = 전날 19:00Z
 ls -la /var/log/lia/                                           # 폴더가 없으면 리다이렉트 실패로 배치가 시작조차 안 된다
 sudo crontab -r                                                # 해제(root 예약 전체 삭제)
+sudo systemctl restart crond                                   # 시간대를 바꾸기 전에 뜬 crond 를 KST 로
 ```
+
+**시간대 함정(2026-11-17 실측)** — `bootstrap.sh` 가 crond 를 시간대 설정보다 먼저 띄워, `date` 는 KST 인데 crond 는 UTC 기준으로 예약을 돌렸다. 첫 정기 실행(run 5)이 04:00 KST 가 아니라 **13:00 KST(04:00 UTC)** 에 돌았다. crond 시작 시각이 시간대 변경보다 앞이면 `sudo systemctl restart crond`. 지금 `bootstrap.sh` 는 시간대를 먼저 맞추고 crond 를 재시작한다.
+
+- 시각을 볼 때 단위를 맞춘다 — 배치 로그는 UTC(`…Z`), `ingest_runs.started_at` 도 psql 세션이 UTC 면 `+00` 으로 보인다. KST 로 보려면 `started_at AT TIME ZONE 'Asia/Seoul'`.
+- `journalctl --since "today 03:50"` 은 이 서버에서 `Failed to parse timestamp` 로 실패한다. 실행 확인은 위 로그 요약 줄과 `ingest_runs`(§5.1)로 한다.
 
 로그 파일 `/var/log/lia/ingest.log` 는 첫 실행 때 생긴다. logrotate(`/etc/logrotate.d/lia`)는 bootstrap 이 설치했다.
 
@@ -343,4 +350,5 @@ EC2 역할은 `GetParametersByPath` 만 허용하므로 EC2 에서는 `get-param
 | 구글 로그인 `invalid_client` | `GOOGLE_CLIENT_ID` 오타 | Parameter Store 수정 후 `lia up <현재 SHA>` |
 | 로컬 `StartSession` 이 `403 UnauthorizedRequest: Forbidden` | `aws configure` 에 사용자 이름 등 잘못된 키 | 액세스 키 다시 발급·입력, `aws sts get-caller-identity` |
 | DBeaver `password authentication failed`(값이 맞는데) | 포트가 5432 라 로컬 docker DB 로 감 | 포트 `15432`, 터널 창이 열려 있는지 |
-| cron 이 돌지 않은 것 같음 | 설치 시각이 그날 04:00 이후 / 로그 폴더 없음 / 시간대 UTC | §4 의 설치 시각·journal·`ls /var/log/lia`·`date` |
+| cron 이 돌지 않은 것 같음 | 설치 시각이 그날 04:00 이후 / 로그 폴더 없음 / crond 가 UTC 로 예약 계산 | §4 의 설치 시각·crond 시작 시각·실행 요약 줄·`ls /var/log/lia`·`date` |
+| cron 이 04:00 이 아니라 13:00 KST 에 돈다 | crond 가 시간대 변경 전에 떠서 UTC 기준으로 돈다(bootstrap 순서, 2026-11-17 수정) | `sudo systemctl restart crond` — §4 시간대 함정 |
