@@ -61,6 +61,7 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ap-northeast-2
+          role-duration-seconds: 5400   # 대기 최대 75분 + 헬스 3분 — 기본 1시간이면 도중에 만료된다(역할 최대 세션 7200)
 
       - name: 배포 명령 보내기
         id: send
@@ -77,9 +78,21 @@ jobs:
           COMMAND_ID: ${{ steps.send.outputs.command_id }}
         run: |
           invocation() { aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query "$1" --output text; }
+          # 명령 없음(보낸 직후)만 대기로 본다 — 만료·권한·잘못된 ID 는 삼키지 않고 즉시 실패
+          invocation_status() {
+            local out
+            if out="$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query Status --output text 2>&1)"; then
+              echo "$out"
+            elif grep -q InvocationDoesNotExist <<<"$out"; then
+              echo Pending                      # 보낸 직후엔 아직 없다
+            else
+              echo "::error::명령 상태 조회 실패: $out" >&2
+              return 1
+            fi
+          }
           deadline=$((SECONDS + 75 * 60))
           while :; do
-            status="$(invocation Status 2>/dev/null || echo Pending)"   # 직후엔 InvocationDoesNotExist
+            status="$(invocation_status)"
             case "$status" in Pending|InProgress|Delayed) ;; *) break ;; esac
             if (( SECONDS >= deadline )); then
               echo "::error::75분 안에 끝나지 않았다 — 서버에서 명령이 계속 돌 수 있다. SSM 명령 $COMMAND_ID 확인"
@@ -89,8 +102,12 @@ jobs:
           done
           out="$(invocation StandardOutputContent)"
           err="$(invocation StandardErrorContent)"
+          # 서버 출력이 ::명령:: 으로 해석되지 않게 감싼다
+          token="$(openssl rand -hex 16)"
+          echo "::stop-commands::$token"
           echo "$out"
-          if [[ -n "$err" && "$err" != None ]]; then echo "--- 표준 오류(compose 진행 표시 포함)"; echo "$err"; fi
+          [[ -n "$err" && "$err" != None ]] && { echo "--- 표준 오류(compose 진행 표시 포함)"; echo "$err"; }
+          echo "::$token::"
           while IFS= read -r line; do echo "::warning::$line"; done < <(grep '^CRONTAB_DRIFT' <<<"$out" || true)
           echo "deployed=$(grep -m1 '^DEPLOYED' <<<"$out" || true)" >> "$GITHUB_OUTPUT"
           echo "elapsed=$((SECONDS / 60))분 $((SECONDS % 60))초" >> "$GITHUB_OUTPUT"
@@ -100,7 +117,7 @@ jobs:
         run: |
           for _ in $(seq 1 18); do
             body="$(curl -fsS --max-time 5 "$HEALTH_URL" || true)"
-            if grep -q '"status":"UP"' <<<"$body"; then echo "헬스 UP: $body"; exit 0; fi
+            if grep -q '^{"status":"UP"' <<<"$body"; then echo "헬스 UP: $body"; exit 0; fi
             sleep 10
           done
           echo "::error::3분 안에 헬스 UP 이 아니다 — 롤백은 Deploy 수동 실행에 이전 SHA(자동 롤백 없음, Flyway 는 앞으로만)"
