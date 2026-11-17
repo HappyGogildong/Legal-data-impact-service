@@ -151,7 +151,7 @@ cd /opt/lia && sudo git pull                 # 운영 compose·Caddyfile·대시
 sudo /opt/lia/ops/deploy/lia up <커밋 SHA>    # Parameter Store → 환경변수 → pull → up -d
 ```
 - `lia up` 은 **이미지만** 바꾼다. `ops/` 파일은 `git pull` 로만 갱신되므로 둘 다 한다. `lia ingest`·`lia eval` 은 마지막 `up` 태그(`.image-tag`)를 쓴다.
-- 롤백: `ops/deploy/lia up <이전 SHA>`. **Flyway는 앞으로만** — 스키마가 바뀐 배포는 DB를 되돌리지 못하므로 그때는 RDS 스냅샷 복구.
+- 롤백: GitHub Actions `Deploy` 수동 실행에 이전 SHA(서버에서 `manual` — 배치 대기·잠금 포함). 손으로는 `sudo bash /opt/lia/ops/deploy/cd-deploy.sh <이전 SHA> manual`. **Flyway는 앞으로만** — 스키마가 바뀐 배포는 DB를 되돌리지 못하므로 그때는 RDS 스냅샷 복구.
 - 수동으로 `lia up` 할 때는 배치 시간대(04:00~05:30)를 피한다 — 실행 잠금으로 겹치진 않지만 배치 도중 마이그레이션 변경을 피한다. 자동 배포는 `cd-deploy.sh` 가 배치가 끝나길 기다린다.
 - **자동 배포(D86)** — 위 두 줄을 GitHub Actions 가 대신 한다. 사람이 하는 건 롤백·장애 때뿐이다.
   - main 머지 → `ci-core` 가 이미지를 올린 뒤 `Deploy` 워크플로를 그 SHA 로 호출한다. `ops/deploy`·`ops/observability` 만 바뀐 머지는 `Deploy` 가 `current`(지금 이미지)로 ops 를 반영한다.
