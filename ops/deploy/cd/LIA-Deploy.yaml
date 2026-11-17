@@ -17,6 +17,7 @@ mainSteps:
       timeoutSeconds: "5400"
       runCommand:
         - set -euo pipefail
+        - export HOME=/root
         - cd /opt/lia
-        - flock -w 600 /var/lock/lia-deploy.lock git pull --ff-only
+        - flock -w 600 /var/lock/lia-deploy.lock git pull --ff-only -q
         - exec bash /opt/lia/ops/deploy/cd-deploy.sh "{{ tag }}" "{{ mode }}"
