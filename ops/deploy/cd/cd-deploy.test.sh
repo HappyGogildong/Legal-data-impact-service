@@ -24,6 +24,7 @@ check "빈 값 거부" not valid_tag ""
 
 # --- 배치·평가 대기: docker 를 함수로 ---
 STATE="$(mktemp)"            # "<컨테이너 이름 조각> <남은 실행 중 조회 횟수>"
+trap 'rm -rf "${STATE:-}" "${REAL_DEPLOY:-}" "${DEPLOY:-}" "${ROOT_TEST:-}" "${LOCK_FILE:-}" "${FLOCK_LOG:-}" "${ORDER:-}"' EXIT
 docker() {
   local job left
   read -r job left < "$STATE"
@@ -74,6 +75,7 @@ check "잠금 실패 메시지" grep -q '10분 넘게' <<<"$( ( acquire_deploy_l
 # --- main: 서버 2차 확인(auto 는 이미 배포된 것보다 옛 SHA 를 건너뜀). 임시 git 레포 + lia 대역 ---
 REAL_DEPLOY="$DEPLOY"
 ROOT="$(mktemp -d)"
+ROOT_TEST="$ROOT"
 git -C "$ROOT" init -q
 git -C "$ROOT" config core.autocrlf false
 git -C "$ROOT" config user.name test
@@ -82,6 +84,7 @@ git -C "$ROOT" commit -q --allow-empty -m A
 COMMIT_A="$(git -C "$ROOT" rev-parse HEAD)"
 git -C "$ROOT" commit -q --allow-empty -m B
 COMMIT_B="$(git -C "$ROOT" rev-parse HEAD)"
+git -C "$ROOT" branch -M main   # 서버 클론처럼 main 브랜치가 실제로 있다(.image-tag=main 사례)
 DEPLOY="$(mktemp -d)"
 ORDER="$(mktemp)"
 LIA_LOG="$DEPLOY/lia.log"
@@ -96,6 +99,8 @@ printf '0 4 * * * run\n' > "$DEPLOY/crontab"
 crontab() { printf '0 4 * * * run\n'; }
 wait_for_jobs() { echo wait >> "$ORDER"; }
 acquire_deploy_lock() { echo lock >> "$ORDER"; }
+eval "orig_$(declare -f is_older_than_deployed)"
+is_older_than_deployed() { echo check >> "$ORDER"; orig_is_older_than_deployed "$@"; }
 reset_main() { : > "$LIA_LOG"; : > "$ORDER"; rm -f "$DEPLOY/.image-tag"; }
 run_main() { ( main "$@" ) 2>&1; }
 
@@ -131,7 +136,26 @@ check "모드 기본값은 manual(롤백 허용)" test "$(cat "$LIA_LOG")" = "up
 
 reset_main; echo "$COMMIT_A" > "$DEPLOY/.image-tag"
 run_main "$COMMIT_B" auto > /dev/null
-check "순서: wait → lock → lia" test "$(tr '\n' ' ' < "$ORDER")" = "wait lock lia "
+check "순서: wait → lock → check → lia" test "$(tr '\n' ' ' < "$ORDER")" = "wait lock check lia "
+
+reset_main; echo "$COMMIT_B" > "$DEPLOY/.image-tag"
+run_main "$COMMIT_A" auto > /dev/null
+check "순서(SKIPPED): wait → lock → check, lia 없음" test "$(tr '\n' ' ' < "$ORDER")" = "wait lock check "
+
+reset_main; echo main > "$DEPLOY/.image-tag"
+out="$(run_main "$COMMIT_A" auto)"; code=$?
+check ".image-tag=main + auto 는 실패" test "$code" -ne 0
+check ".image-tag=main + auto 는 lia 미호출" test ! -s "$LIA_LOG"
+check ".image-tag=main + auto 는 SKIPPED 아님" not grep -q '^SKIPPED' <<<"$out"
+
+reset_main; echo "$COMMIT_A" > "$DEPLOY/.image-tag"
+out="$(run_main "$COMMIT_A" auto)"
+check "auto: 같은 SHA 는 DEPLOYED" grep -q "^DEPLOYED tag=$COMMIT_A " <<<"$out"
+check "auto: 같은 SHA 는 lia up" test "$(cat "$LIA_LOG")" = "up $COMMIT_A"
+
+reset_main
+out="$(run_main "$COMMIT_A" auto)"
+check "auto: .image-tag 없으면 DEPLOYED" grep -q "^DEPLOYED tag=$COMMIT_A " <<<"$out"
 
 reset_main; echo "$COMMIT_B" > "$DEPLOY/.image-tag"
 out="$(run_main current auto)"
@@ -144,6 +168,5 @@ run_main "$unknown" auto > /dev/null; code=$?
 check "커밋이 클론에 없으면 실패(fail-closed)" test "$code" -ne 0
 check "커밋이 클론에 없으면 lia 미호출" test ! -s "$LIA_LOG"
 
-rm -rf "$STATE" "$REAL_DEPLOY" "$DEPLOY" "$ROOT" "$LOCK_FILE" "$FLOCK_LOG" "$ORDER"
 echo "실패 $fails"
 (( fails == 0 ))

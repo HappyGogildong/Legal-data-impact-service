@@ -65,6 +65,8 @@ is_older_than_deployed() {
   local tag="$1" deployed rc=0
   [[ -s "$DEPLOY/.image-tag" ]] || return 1
   deployed="$(cat "$DEPLOY/.image-tag")"
+  # main 같은 브랜치명이면 서버 클론의 main 이 최신이라 어떤 SHA 든 조상이 되어 전부 SKIPPED 가 된다
+  [[ "$deployed" =~ ^[0-9a-f]{40}$ ]] || { echo ".image-tag 가 커밋 SHA 40자가 아니다: '$deployed' — Deploy 수동 실행(manual)으로 SHA 를 배포해 바로잡는다" >&2; return 2; }
   [[ "$tag" != "$deployed" ]] || return 1
   git -C "$ROOT" merge-base --is-ancestor "$tag" "$deployed" 2>/dev/null || rc=$?
   case "$rc" in
