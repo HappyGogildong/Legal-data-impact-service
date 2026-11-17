@@ -1,0 +1,160 @@
+name: Deploy
+
+# 운영 배포(D86) — GitHub OIDC → IAM 역할 lia-github-deploy → SSM 문서 LIA-Deploy(git pull → cd-deploy.sh → lia up).
+# 호출 경로: ci-core(이미지 빌드 뒤, tag=SHA) · ops 만 바뀐 main 푸시(tag=current) · 수동 실행(tag=SHA|current — 롤백 포함).
+# 같은 푸시에 ci-core 경로가 있으면 이 워크플로의 push 실행은 건너뛴다(ci-core 가 새 이미지로 배포한다).
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+  push:
+    branches: [main]
+    paths: ["ops/deploy/**", "ops/observability/**", ".github/workflows/deploy.yml"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "커밋 SHA 40자(롤백·재배포) 또는 current(지금 이미지로 ops 만 반영)"
+        type: string
+        default: current
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # 푸시 범위 diff 용
+          persist-credentials: false
+      - name: 태그 결정
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # ci-core 가 부른 SHA 는 그 뒤 main 에 core 변경이 있으면 건너뜀(옛 이미지가 새 이미지를 덮지 않게)
+          tag="$(bash ops/deploy/cd/resolve-tag.sh "$GITHUB_EVENT_NAME" "$INPUT_TAG" "$BEFORE" "$GITHUB_SHA")"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "배포 태그: $tag"
+
+  # 직렬화는 서버 잠금(/var/lock/lia-deploy.lock) — GitHub concurrency 는 대기 실행을 하나만 남기고 취소한다
+  deploy:
+    needs: plan
+    if: needs.plan.outputs.tag != 'skip'
+    runs-on: ubuntu-latest
+    environment: production        # 배포 브랜치 main 만 — OIDC sub 가 environment:production 이어야 역할을 받는다
+    # environment secret(AWS_DEPLOY_ROLE_ARN·LIA_INSTANCE_ID)은 environment 를 선언한 호출된 job 에서 바로 읽힌다 — ci-core 의 secrets: inherit 불필요
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: ap-northeast-2
+      HEALTH_URL: https://api.15-165-252-201.sslip.io/actuator/health
+      INSTANCE_ID: ${{ secrets.LIA_INSTANCE_ID }}
+      TAG: ${{ needs.plan.outputs.tag }}
+      MODE: ${{ github.event_name == 'workflow_dispatch' && 'manual' || 'auto' }}   # 수동 실행은 롤백 허용, 자동은 서버에서 옛 SHA 를 건너뜀
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          mask-aws-account-id: true
+          aws-region: ap-northeast-2
+          role-duration-seconds: 5400   # 대기 최대 75분 + 헬스 3분 — 기본 1시간이면 도중에 만료된다(역할 최대 세션 7200)
+
+      - name: 배포 명령 보내기
+        id: send
+        run: |
+          id="$(aws ssm send-command --document-name LIA-Deploy --instance-ids "$INSTANCE_ID" \
+                --parameters "tag=$TAG,mode=$MODE" --comment "github run $GITHUB_RUN_ID" \
+                --query Command.CommandId --output text)"
+          echo "command_id=$id" >> "$GITHUB_OUTPUT"
+          echo "SSM 명령 $id (tag=$TAG mode=$MODE)"
+
+      - name: 서버 배포 완료 대기(배치 대기 포함 최대 75분)
+        id: wait
+        env:
+          COMMAND_ID: ${{ steps.send.outputs.command_id }}
+        run: |
+          invocation() { aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query "$1" --output text; }
+          # 명령 없음(보낸 직후)만 대기로 본다 — 만료·권한·잘못된 ID 는 삼키지 않고 즉시 실패
+          invocation_status() {
+            local out
+            if out="$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query Status --output text 2>&1)"; then
+              echo "$out"
+            elif grep -q InvocationDoesNotExist <<<"$out"; then
+              echo Pending                      # 보낸 직후엔 아직 없다
+            else
+              echo "::error::명령 상태 조회 실패: $out" >&2
+              return 1
+            fi
+          }
+          deadline=$((SECONDS + 75 * 60))
+          while :; do
+            status="$(invocation_status)"
+            case "$status" in Pending|InProgress|Delayed) ;; *) break ;; esac
+            if (( SECONDS >= deadline )); then
+              echo "::error::75분 안에 끝나지 않았다 — 서버에서 명령이 계속 돌 수 있다. SSM 명령 $COMMAND_ID 확인"
+              exit 1
+            fi
+            sleep 15
+          done
+          out="$(invocation StandardOutputContent)"
+          err="$(invocation StandardErrorContent)"
+          # 서버 출력이 ::명령:: 으로 해석되지 않게 감싼다
+          token="$(openssl rand -hex 16)"
+          echo "::stop-commands::$token"
+          echo "$out"
+          [[ -n "$err" && "$err" != None ]] && { echo "--- 표준 오류(compose 진행 표시 포함)"; echo "$err"; }
+          echo "::$token::"
+          while IFS= read -r line; do echo "::warning::$line"; done < <(grep '^CRONTAB_DRIFT' <<<"$out" || true)
+          deployed="$(grep -m1 '^DEPLOYED' <<<"$out" || true)"
+          skipped="$(grep -m1 '^SKIPPED' <<<"$out" || true)"
+          echo "deployed=$deployed" >> "$GITHUB_OUTPUT"
+          echo "skipped=$skipped" >> "$GITHUB_OUTPUT"
+          echo "elapsed=$((SECONDS / 60))분 $((SECONDS % 60))초" >> "$GITHUB_OUTPUT"
+          [[ "$status" == Success ]] || { echo "::error::서버 배포 실패 — 상태 $status"; exit 1; }
+          if [[ -n "$skipped" ]]; then
+            echo "::notice::$skipped"
+          elif [[ -n "$deployed" ]]; then
+            # 요청한 SHA 가 실제로 배포됐는지(서버 스크립트가 다른 태그를 올리지 않았는지)
+            if [[ "$TAG" =~ ^[0-9a-f]{40}$ && "$deployed" != "DEPLOYED tag=$TAG "* ]]; then
+              echo "::error::요청 태그 $TAG 와 서버 출력이 다르다: $deployed"
+              exit 1
+            fi
+          else
+            echo "::error::상태는 Success 인데 DEPLOYED·SKIPPED 줄이 없다 — 서버 cd-deploy.sh 가 기대와 다르다"
+            exit 1
+          fi
+
+      - name: 헬스체크(최대 3분)
+        run: |
+          for _ in $(seq 1 18); do
+            body="$(curl -fsS --max-time 5 "$HEALTH_URL" || true)"
+            if grep -q '^{"status":"UP"' <<<"$body"; then echo "헬스 UP: $body"; exit 0; fi
+            sleep 10
+          done
+          echo "::error::3분 안에 헬스 UP 이 아니다 — 롤백은 Deploy 수동 실행에 이전 SHA(자동 롤백 없음, Flyway 는 앞으로만)"
+          exit 1
+
+      - name: 요약
+        if: always()
+        env:
+          DEPLOYED: ${{ steps.wait.outputs.deployed }}
+          SKIPPED: ${{ steps.wait.outputs.skipped }}
+          ELAPSED: ${{ steps.wait.outputs.elapsed }}
+        run: |
+          {
+            echo "### 운영 배포"
+            echo "- 요청 태그: \`$TAG\`"
+            if [[ -n "$SKIPPED" ]]; then
+              echo "- 서버: ${SKIPPED} (건너뜀 — 정상)"
+            else
+              echo "- 서버: ${DEPLOYED:-(DEPLOYED 줄 없음)}"
+            fi
+            echo "- 서버 단계 소요: ${ELAPSED:-?}"
+          } >> "$GITHUB_STEP_SUMMARY"

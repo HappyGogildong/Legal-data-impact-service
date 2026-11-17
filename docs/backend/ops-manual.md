@@ -1,7 +1,7 @@
 ---
 title: 운영 명령 매뉴얼 — 접속·배포·배치·DB 점검
 status: Living
-version: 0.2
+version: 0.3
 date: 2026-11-17
 tags: [backend, ops, runbook, aws, batch]
 related: ["backend/cloud-infra.md", "backend/cost-policy.md", "components/batch/IngestJob.md", "troubleshooting/008-same-day-promulgations.md"]
@@ -139,22 +139,70 @@ SQL
 - psql 메타 명령(`\c`·`\du`·`\dx`·`\q`)은 한 줄에 하나씩. `/q` 처럼 잘못 치면 `\r` 로 입력 버퍼를 비운다.
 - 앱 계정으로 들어가려면 `DB_MASTER_PASSWORD` 대신 `SPRING_DATASOURCE_PASSWORD`, `user=lia_app`.
 
-## 2. 배포 ☁
+## 2. 배포
+
+**보통은 자동이다(D86)** — main 머지가 끝나면 GitHub Actions `Deploy` 가 운영에 반영한다. 사람이 하는 건 아래 경우뿐이다.
+
+| 하고 싶은 것 | 방법 |
+|---|---|
+| 배포 결과 보기 | Actions → `CI core`(이미지 + 배포) 또는 `Deploy`(ops 만) 실행 → `deploy` 잡 로그·요약의 `DEPLOYED tag=… commit=…` |
+| 롤백·특정 커밋 재배포 | Actions → `Deploy` → Run workflow → `tag` 에 커밋 SHA 40자(이미지가 있는 커밋). 수동 실행은 서버에서 `manual` 모드라 옛 SHA 도 배포하고, 배치 대기·잠금도 거친다 |
+| 이미지는 두고 ops 만 다시 반영 | 같은 수동 실행에 `tag` = `current` |
+| 출력에 `SKIPPED` | 이미 더 새 이미지가 배포돼 자동 배포가 건너뜀 — 정상(서버가 잠금을 잡은 뒤 한 번 더 확인한다) |
+| crontab 경고(`CRONTAB_DRIFT`) | 레포 crontab 이 바뀐 것 — 확인 후 §4 로 사람이 설치 |
+| Actions 를 못 쓸 때 | 아래 수동 절차(SSM 세션) |
+
+- 배치·평가가 돌고 있으면 서버가 최대 60분 기다렸다 배포한다. 넘으면 배포가 실패하니 배치가 끝난 뒤 수동 실행한다.
+- 자동 롤백은 없다. 헬스체크가 실패하면 이전 SHA 로 수동 실행한다. Flyway 는 앞으로만이라 스키마가 바뀐 배포는 RDS 스냅샷을 판단한다.
+- 롤백은 이미지만 되돌린다. ops 파일(compose·대시보드 등)은 main 그대로라, ops 변경을 되돌리려면 revert PR 을 머지한다.
+
+**수동 절차** ☁ — Actions 가 하는 일과 같다.
 
 ```bash
-cd /opt/lia && sudo git pull                 # ops/ 설정 파일 갱신 (compose·Caddyfile·대시보드·crontab)
-sudo /opt/lia/ops/deploy/lia up <커밋 SHA>    # 이미지 교체 — Parameter Store → 환경변수 → pull → up -d
+cd /opt/lia && sudo flock -w 600 /var/lock/lia-deploy.lock git pull --ff-only   # ops/ 설정 갱신 — 배포 잠금과 같은 파일
+sudo bash /opt/lia/ops/deploy/cd-deploy.sh <커밋 SHA 40자|current> manual      # 배치 대기 → 잠금 → lia up → crontab 경고 → DEPLOYED (auto 는 옛 SHA 를 SKIPPED)
 sudo /opt/lia/ops/deploy/lia ps              # 컨테이너 상태
 sudo /opt/lia/ops/deploy/lia logs core       # 최근 로그 200줄 (서비스: core · caddy · grafana …)
 ```
 
+- `cd-deploy.sh` 를 거치지 않는 최소 절차는 `sudo /opt/lia/ops/deploy/lia up <SHA>` 다. 이 경우 배치 대기·잠금이 없으므로 배치 시간대를 직접 피한다.
 - **태그는 CI 가 이미지를 만든 커밋 SHA(전체)** — `ops/`·`docs/` 만 바꾼 머지는 이미지가 없다. GitHub Actions 의 `ci-core` 실행에서 고른다.
 - `lia up` 은 이미지만 바꾼다. `ops/` 파일은 `git pull` 로만 바뀐다.
 - `lia ingest`·`lia eval` 은 마지막 `up` 태그(`ops/deploy/.image-tag`)를 쓴다.
-- 롤백 `lia up <이전 SHA>` — Flyway 는 앞으로만이라 스키마가 바뀐 배포는 RDS 스냅샷으로 되돌린다.
-- 배치 시간대(04:00~05:30)에는 배포하지 않는다.
+- 롤백은 `Deploy` 수동 실행이 권장 경로다(서버에서 `manual` 모드, 배치 대기·잠금 포함). 손으로 할 때는 `sudo bash /opt/lia/ops/deploy/cd-deploy.sh <SHA> manual` — Flyway 는 앞으로만이라 스키마가 바뀐 배포는 RDS 스냅샷으로 되돌린다.
+- 손으로 배포할 때도 배치 시간대(04:00~05:30)는 피한다 — `cd-deploy.sh` 는 기다려 주지만 `lia up` 을 바로 치면 기다리지 않는다.
 
-**배포 뒤 확인** 🖥
+### 2.1 자동 배포 준비(한 번) 🖥
+
+관리자 IAM 키로 로컬 Git Bash 에서. 자리값을 채운 정책 파일은 레포 루트의 `.tmp-cd/` 에 잠깐 만들고 지운다(커밋하지 않는다, 레포 파일은 자리값 그대로).
+
+```bash
+export AWS_CLI_FILE_ENCODING=UTF-8      # Windows — 한글이 든 파일을 file:// 로 넘길 때
+REGION=ap-northeast-2
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+INSTANCE=$(aws ec2 describe-instances --region $REGION --filters Name=ip-address,Values=15.165.252.201 --query "Reservations[0].Instances[0].InstanceId" --output text)
+POLICY_DIR=.tmp-cd && mkdir -p $POLICY_DIR   # 레포 루트 기준 상대 경로 — Windows aws CLI 가 file:// 로 읽는다. 끝나면 지운다
+sed "s/<account-id>/$ACCOUNT/g" ops/deploy/cd/trust-policy.json > $POLICY_DIR/trust.json
+sed "s/<account-id>/$ACCOUNT/g; s/<instance-id>/$INSTANCE/g" ops/deploy/cd/deploy-policy.json > $POLICY_DIR/policy.json
+
+aws iam create-open-id-connect-provider --url https://token.actions.githubusercontent.com --client-id-list sts.amazonaws.com
+aws iam create-role --role-name lia-github-deploy --max-session-duration 7200 --assume-role-policy-document file://$POLICY_DIR/trust.json
+aws iam put-role-policy --role-name lia-github-deploy --policy-name lia-deploy --policy-document file://$POLICY_DIR/policy.json
+aws ssm create-document --region $REGION --name LIA-Deploy --document-type Command --document-format YAML --content file://ops/deploy/cd/LIA-Deploy.yaml
+
+REPO=HappyGogildong/Legal-data-impact-service
+gh api -X PUT repos/$REPO/environments/production -F "deployment_branch_policy[protected_branches]=false" -F "deployment_branch_policy[custom_branch_policies]=true"
+gh api -X POST repos/$REPO/environments/production/deployment-branch-policies -f name=main -f type=branch
+gh secret set AWS_DEPLOY_ROLE_ARN --env production --repo $REPO --body "arn:aws:iam::$ACCOUNT:role/lia-github-deploy"
+gh secret set LIA_INSTANCE_ID --env production --repo $REPO --body "$INSTANCE"
+rm -rf $POLICY_DIR
+```
+
+- 역할 ARN·인스턴스 ID 는 variable 이 아니라 **secret** 이다 — 저장소가 공개라 Actions 로그에 계정 ID 가 드러나는데, secret 이라 로그에 `***` 로 가려진다. 준비 명령의 변수 이름 `POLICY_DIR` 은 Git Bash 의 기존 임시 폴더 환경변수를 덮지 않으려는 것이다.
+- OIDC 공급자 생성이 thumbprint 를 요구하면 `--thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1` 를 붙인다.
+- 문서를 고쳤으면: `aws ssm update-document --region $REGION --name LIA-Deploy --document-format YAML --content file://ops/deploy/cd/LIA-Deploy.yaml --document-version '$LATEST'` → 출력의 새 버전으로 `aws ssm update-document-default-version --region $REGION --name LIA-Deploy --document-version <N>`.
+
+**배포 뒤 확인** 🖥 — 자동 배포도 헬스는 확인한다. 나머지 둘은 필요할 때.
 
 ```bash
 curl -s https://<API 이름>/actuator/health                 # {"status":"UP"}
@@ -352,3 +400,9 @@ EC2 역할은 `GetParametersByPath` 만 허용하므로 EC2 에서는 `get-param
 | DBeaver `password authentication failed`(값이 맞는데) | 포트가 5432 라 로컬 docker DB 로 감 | 포트 `15432`, 터널 창이 열려 있는지 |
 | cron 이 돌지 않은 것 같음 | 설치 시각이 그날 04:00 이후 / 로그 폴더 없음 / crond 가 UTC 로 예약 계산 | §4 의 설치 시각·crond 시작 시각·실행 요약 줄·`ls /var/log/lia`·`date` |
 | cron 이 04:00 이 아니라 13:00 KST 에 돈다 | crond 가 시간대 변경 전에 떠서 UTC 기준으로 돈다(bootstrap 순서, 2026-11-17 수정) | `sudo systemctl restart crond` — §4 시간대 함정 |
+| `Deploy` 가 `Not authorized to perform sts:AssumeRoleWithWebIdentity` | main 이 아닌 곳에서 실행, environment 이름·신뢰 정책 `sub` 불일치, OIDC 공급자 없음 | §2.1 — `sub` 는 `repo:HappyGogildong/Legal-data-impact-service:environment:production` |
+| `Deploy` 가 `AccessDeniedException … ssm:SendCommand` | 권한 정책의 인스턴스 ID·계정 자리값이 틀림, 또는 인스턴스를 바꿈 | §2.1 정책을 다시 채워 `put-role-policy`, secret `LIA_INSTANCE_ID` 갱신 |
+| 서버 단계가 `git pull --ff-only` 에서 실패 | `/opt/lia` 에 손으로 고친 파일이 있음 | SSM 세션에서 `cd /opt/lia && sudo git status` 확인·정리 후 `Deploy` 수동 실행 |
+| 서버 단계가 "배치·평가가 60분 넘게 실행 중" | 백필·`--full`·`eval` 이 길게 돎 | 끝난 뒤 `Deploy` 수동 실행(같은 SHA) |
+| 서버 단계가 "다른 배포가 10분 넘게 진행 중" | 앞선 배포의 `lia up` 이 멈춤(이미지 pull 지연 등) 또는 손으로 잡은 잠금 | `sudo /opt/lia/ops/deploy/lia ps`·`logs core` 확인 후 `Deploy` 수동 실행(같은 SHA) |
+| 헬스체크 3분 초과 | 새 core 기동 실패(설정 누락·마이그레이션 오류) | `sudo /opt/lia/ops/deploy/lia logs core` 확인 → 이전 SHA 로 수동 실행 |

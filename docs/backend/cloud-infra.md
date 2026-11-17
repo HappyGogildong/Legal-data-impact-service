@@ -1,7 +1,7 @@
 ---
 title: 클라우드 인프라 — 단일 EC2 + RDS (저비용 운영)
 status: Draft
-version: 0.4
+version: 0.5
 date: 2026-11-17
 tags: [backend, infra, aws, deployment, ops, observability]
 related: ["backend/deployment.md", "backend/observability.md", "components/auth/Auth.md", "frontend/frontend-stack.md", "components/batch/IngestJob.md", "adr/decision-log.md", "adr/ADR-001-knowledge-store-sizing.md"]
@@ -23,7 +23,7 @@ related: ["backend/deployment.md", "backend/observability.md", "components/auth/
                          │ 5432 (보안그룹: EC2→RDS만)
                     RDS PostgreSQL 16 db.t4g.micro + pgvector (비공개, 자동 백업 7일)
 외부 API: 국가법령정보 · OpenAI 임베딩 · Anthropic
-AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
+AWS 부가: SSM(접속·Parameter Store) · IAM 역할 2개(EC2 `lia-ec2-role` · 배포 `lia-github-deploy`) · GHCR(GitHub)
 ```
 
 | 결정 | 선택 | 이유 |
@@ -95,7 +95,7 @@ AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
 **IAM — EC2 인스턴스 역할 하나 (`lia-ec2-role`)**
 - `AmazonSSMManagedInstanceCore`(Session Manager).
 - `ssm:GetParametersByPath` — `arn:aws:ssm:ap-northeast-2:<account>:parameter/lia/prod` 와 `…:parameter/lia/prod/*` 둘만. 경로로 조회하는 API 라 경로 자체의 ARN 이 빠지면 거부된다. 암호화는 기본 키(`aws/ssm`), 별도 KMS 키 없음.
-- 이후 SSM 방식 CD도 이 역할을 재사용한다.
+- GitHub Actions 배포는 이 역할이 아니라 별도 역할 `lia-github-deploy` 를 쓴다(아래 "자동 배포", D86).
 
 **비밀값 — SSM Parameter Store (SecureString, 기본 등급 무료)**
 - 경로 `/lia/prod/` — `LAW_OC` · `OPENAI_API_KEY` · `ANTHROPIC_API_KEY` · `SPRING_DATASOURCE_PASSWORD`(앱 계정) · OAuth 클라이언트 값(`GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET` — 카카오·네이버는 키가 생기면 같은 규칙으로 추가, 없으면 그 provider 는 등록되지 않는다 D78) · `GF_SECURITY_ADMIN_PASSWORD` · `GRAFANA_DB_PASSWORD`(읽기 계정) · `DISCORD_WEBHOOK_URL` · `DB_MASTER_PASSWORD`(최초 설정용). 파라미터 이름의 마지막 부분이 곧 환경변수 이름이다.
@@ -151,9 +151,15 @@ cd /opt/lia && sudo git pull                 # 운영 compose·Caddyfile·대시
 sudo /opt/lia/ops/deploy/lia up <커밋 SHA>    # Parameter Store → 환경변수 → pull → up -d
 ```
 - `lia up` 은 **이미지만** 바꾼다. `ops/` 파일은 `git pull` 로만 갱신되므로 둘 다 한다. `lia ingest`·`lia eval` 은 마지막 `up` 태그(`.image-tag`)를 쓴다.
-- 롤백: `ops/deploy/lia up <이전 SHA>`. **Flyway는 앞으로만** — 스키마가 바뀐 배포는 DB를 되돌리지 못하므로 그때는 RDS 스냅샷 복구.
-- 배치 시간대(04:00~05:00)에는 배포하지 않는다 — 실행 잠금으로 겹치진 않지만 배치 도중 마이그레이션 변경을 피한다.
-- **다음 단계 — SSM 방식 CD**: GitHub OIDC → IAM 역할 → `ssm send-command`로 위 두 줄을 Actions가 실행. 22번 포트를 열지 않는다.
+- 롤백: GitHub Actions `Deploy` 수동 실행에 이전 SHA(서버에서 `manual` — 배치 대기·잠금 포함). 손으로는 `sudo bash /opt/lia/ops/deploy/cd-deploy.sh <이전 SHA> manual`. **Flyway는 앞으로만** — 스키마가 바뀐 배포는 DB를 되돌리지 못하므로 그때는 RDS 스냅샷 복구.
+- 수동으로 `lia up` 할 때는 배치 시간대(04:00~05:30)를 피한다 — 실행 잠금으로 겹치진 않지만 배치 도중 마이그레이션 변경을 피한다. 자동 배포는 `cd-deploy.sh` 가 배치가 끝나길 기다린다.
+- **자동 배포(D86)** — 위 두 줄을 GitHub Actions 가 대신 한다. 사람이 하는 건 롤백·장애 때뿐이다.
+  - main 머지 → `ci-core` 가 이미지를 올린 뒤 `Deploy` 워크플로를 그 SHA 로 호출한다. `ops/deploy`·`ops/observability` 만 바뀐 머지는 `Deploy` 가 `current`(지금 이미지)로 ops 를 반영한다.
+  - Actions 는 OIDC 로 역할 `lia-github-deploy` 를 받아 SSM 문서 `LIA-Deploy` 만 실행한다. 문서는 `git pull --ff-only` 후 `ops/deploy/cd-deploy.sh <tag>` — 배치·평가가 돌면 최대 60분 기다리고 서버 잠금(`/var/lock/lia-deploy.lock`)을 잡은 뒤 `lia up`, crontab 이 레포와 다르면 경고만 한다. 배포끼리의 직렬화는 이 잠금이 맡는다(GitHub concurrency 는 대기 실행을 취소해 쓰지 않음). ci-core 가 부른 SHA 는 그 뒤 main 에 core 변경이 있으면 건너뛴다.
+  - 서버 2차 확인 — flock 은 FIFO 가 아니라 배치 대기 중 순서가 바뀔 수 있어, 잠금을 잡은 뒤 `mode=auto` 면 `.image-tag` 배포본의 조상 SHA 는 `SKIPPED` 로 끝낸다. 수동 실행은 `manual` 이라 롤백을 허용한다.
+  - 러너가 명령 완료(최대 75분)와 `/actuator/health` UP(최대 3분)을 확인한다. 실패하면 워크플로가 실패하고 자동 롤백은 없다. 롤백은 `Deploy` 수동 실행에 이전 SHA.
+  - 정의는 `ops/deploy/cd/`(문서 YAML · 신뢰·권한 정책 JSON, 계정·인스턴스 ID 는 자리값). 준비는 런북 21단계. 22번 포트는 계속 닫혀 있고 GitHub 에 AWS 키를 두지 않는다.
+  - 단일 인스턴스라 core 를 다시 띄우는 수십 초 동안 API 가 502 를 낸다. 마운트 설정(Caddyfile·Prometheus)만 바뀐 경우는 컨테이너가 다시 뜨지 않으니 사람이 재시작한다.
 
 **정기 배치 — 호스트 cron (D62)**
 ```cron
@@ -252,6 +258,12 @@ AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운
 18. **cron** — 백필이 끝난 뒤에(§3). `sudo crontab /opt/lia/ops/deploy/crontab` → `sudo crontab -l` 로 두 줄 확인. `systemctl show crond -p ActiveEnterTimestamp` 가 시간대를 바꾼 뒤인지 보고, 아니면 `sudo systemctl restart crond` — 처음 구축한 서버는 crond 가 UTC 로 돌아 첫 정기 실행이 13:00 KST 에 났다([[ops-manual]] §4 시간대 함정). 다음 날 `ingest_runs` 에 04:00 KST(전날 19:00 UTC) `run` 이 생겼는지 본다.
 19. **단가** — `llm_prices` 에 실제 호출된 모델의 단가를 넣는다([[cost-policy]] "단가 넣는 법"). 모델 ID 는 `SELECT DISTINCT model FROM llm_calls`.
 20. **평가 기준선**(D83, 유료: 정답 세트 문항마다 Haiku 1회 + 주제 질문마다 임베딩 1회) — 백필로 전체 색인이 끝난 뒤 `sudo /opt/lia/ops/deploy/lia eval 2>&1 | tee eval.log`. 보고서는 `grep '^{"config"' eval.log` 한 줄이다. 처음엔 기준선이 없어 비교 없이 통과(0)한다. 이 줄을 `core/src/main/resources/eval/offline-baseline.json` 으로 PR 에 올려 커밋하면 다음 배포부터 회귀 비교(3 = 회귀)가 켜진다. 색인 법령 수·문항 수가 크게 바뀌면 다시 잰다([[rag-evaluation-framework]] §5.2).
+21. **자동 배포 준비**(D86, 한 번) — 관리자 IAM 키로 로컬에서. 명령 전문은 [[ops-manual]] §2.1.
+    - OIDC 공급자 `token.actions.githubusercontent.com`(대상 `sts.amazonaws.com`) — 계정에 하나.
+    - 역할 `lia-github-deploy`(최대 세션 2시간 — 러너가 90분 세션을 쓴다) — `ops/deploy/cd/trust-policy.json` · 인라인 정책 `lia-deploy` = `ops/deploy/cd/deploy-policy.json`(자리값 `<account-id>`·`<instance-id>` 를 채워서).
+    - SSM 문서 `LIA-Deploy` — `ops/deploy/cd/LIA-Deploy.yaml`. 문서를 고치면 `update-document` 후 기본 버전을 새 버전으로.
+    - GitHub environment `production` — 배포 브랜치 `main` 만, secret `AWS_DEPLOY_ROLE_ARN`·`LIA_INSTANCE_ID`(공개 로그에서 가려진다).
+    - 확인: 다음 main 머지(또는 `Deploy` 수동 실행 `current`)가 초록이고 요약에 `DEPLOYED` 가 찍히는지.
 
 ### 검증 (구현 단계)
 - **로컬 관측 스택** — Grafana API로 `lia-postgres` 연결 상태, `LIA · Batch` 로드, 패널 쿼리가 로컬 DB의 실행 기록(샘플 데이터)에 결과를 내는지.
@@ -260,4 +272,4 @@ AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운
 - **CI** — 병합 후 GHCR에 arm64·amd64 매니페스트 확인.
 
 ### 범위 밖 (필요해지면 다음 단계)
-- **SSM 방식 CD**(다음 단계로 명시) · Terraform/IaC · ALB · ECS · EventBridge · 오토스케일링·멀티 AZ · 웹 UI 호스팅(→ Vercel, D64 [[frontend-stack]]) · 로그 수집(Loki) · WAF.
+- Terraform/IaC · ALB · ECS · EventBridge · 오토스케일링·멀티 AZ · 웹 UI 호스팅(→ Vercel, D64 [[frontend-stack]]) · 로그 수집(Loki) · WAF.

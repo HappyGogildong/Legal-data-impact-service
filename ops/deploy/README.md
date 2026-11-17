@@ -11,5 +11,7 @@
 | `prometheus.prod.yml` · `tempo.prod.yaml` | 운영 관측 설정(보존 15일 · 72시간) |
 | `bootstrap.sh` | EC2 최초 준비(docker·compose·스왑·시간대·clone) |
 | `crontab` · `logrotate.conf` | 정기 배치(매일 04:00 `run`, 일요일 05:00 `run --full`)와 로그 정리 |
+| `cd-deploy.sh <tag> [auto\|manual]` | 자동 배포 서버 단계(D86) — 배치 대기(최대 60분) → 잠금 → `auto` 면 이미 배포된 것보다 옛 SHA 는 `SKIPPED` → `lia up <tag>` → crontab 차이 경고 → `DEPLOYED` 줄(`manual` 은 롤백 허용, 기본값). SSM 문서 `LIA-Deploy` 가 `git pull` 뒤 실행 |
+| `cd/` | 자동 배포 정의 — SSM 문서 `LIA-Deploy.yaml`, 역할 신뢰·권한 정책(자리값), 태그 결정 `resolve-tag.sh`, 시험 `*.test.sh` |
 
 `.image-tag` 는 래퍼가 쓰는 현재 이미지 태그다(비밀 아님, 커밋하지 않는다).
