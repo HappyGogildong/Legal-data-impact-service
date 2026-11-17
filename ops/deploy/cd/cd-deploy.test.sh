@@ -71,6 +71,79 @@ FLOCK_RESULT=1
 ( acquire_deploy_lock ) 2>/dev/null; check "flock 실패 시 실패" test $? -ne 0
 check "잠금 실패 메시지" grep -q '10분 넘게' <<<"$( ( acquire_deploy_lock ) 2>&1 )"
 
-rm -rf "$STATE" "$DEPLOY" "$LOCK_FILE" "$FLOCK_LOG"
+# --- main: 서버 2차 확인(auto 는 이미 배포된 것보다 옛 SHA 를 건너뜀). 임시 git 레포 + lia 대역 ---
+REAL_DEPLOY="$DEPLOY"
+ROOT="$(mktemp -d)"
+git -C "$ROOT" init -q
+git -C "$ROOT" config core.autocrlf false
+git -C "$ROOT" config user.name test
+git -C "$ROOT" config user.email test@example.invalid
+git -C "$ROOT" commit -q --allow-empty -m A
+COMMIT_A="$(git -C "$ROOT" rev-parse HEAD)"
+git -C "$ROOT" commit -q --allow-empty -m B
+COMMIT_B="$(git -C "$ROOT" rev-parse HEAD)"
+DEPLOY="$(mktemp -d)"
+ORDER="$(mktemp)"
+LIA_LOG="$DEPLOY/lia.log"
+cat > "$DEPLOY/lia" <<LIAEOF
+#!/usr/bin/env bash
+echo lia >> "$ORDER"
+echo "\$*" >> "$LIA_LOG"
+echo "\$2" > "$DEPLOY/.image-tag"
+LIAEOF
+chmod +x "$DEPLOY/lia"
+printf '0 4 * * * run\n' > "$DEPLOY/crontab"
+crontab() { printf '0 4 * * * run\n'; }
+wait_for_jobs() { echo wait >> "$ORDER"; }
+acquire_deploy_lock() { echo lock >> "$ORDER"; }
+reset_main() { : > "$LIA_LOG"; : > "$ORDER"; rm -f "$DEPLOY/.image-tag"; }
+run_main() { ( main "$@" ) 2>&1; }
+
+reset_main; echo "$COMMIT_B" > "$DEPLOY/.image-tag"
+out="$(run_main "$COMMIT_A" auto)"; code=$?
+check "auto: 옛 SHA 는 SKIPPED" grep -q "^SKIPPED tag=$COMMIT_A deployed=$COMMIT_B" <<<"$out"
+check "auto: 옛 SHA 는 lia 미호출" test ! -s "$LIA_LOG"
+check "auto: 옛 SHA 는 exit 0" test "$code" -eq 0
+
+reset_main; echo "$COMMIT_A" > "$DEPLOY/.image-tag"
+out="$(run_main "$COMMIT_B" auto)"
+check "auto: 새 SHA 는 lia up" test "$(cat "$LIA_LOG")" = "up $COMMIT_B"
+check "auto: 새 SHA 는 DEPLOYED" grep -q "^DEPLOYED tag=$COMMIT_B " <<<"$out"
+
+reset_main; echo "$COMMIT_B" > "$DEPLOY/.image-tag"
+out="$(run_main "$COMMIT_A" manual)"
+check "manual: 롤백 허용" test "$(cat "$LIA_LOG")" = "up $COMMIT_A"
+
+reset_main
+run_main "$COMMIT_A" bogus > /dev/null; code=$?
+check "모드 형식 오류는 64" test "$code" -eq 64
+run_main abc auto > /dev/null; code=$?
+check "태그 형식 오류는 64" test "$code" -eq 64
+
+reset_main; echo garbage > "$DEPLOY/.image-tag"
+run_main current auto > /dev/null; code=$?
+check ".image-tag 가 SHA 가 아니면 실패" test "$code" -ne 0
+check ".image-tag 가 SHA 가 아니면 lia 미호출" test ! -s "$LIA_LOG"
+
+reset_main; echo "$COMMIT_B" > "$DEPLOY/.image-tag"
+run_main "$COMMIT_A" > /dev/null
+check "모드 기본값은 manual(롤백 허용)" test "$(cat "$LIA_LOG")" = "up $COMMIT_A"
+
+reset_main; echo "$COMMIT_A" > "$DEPLOY/.image-tag"
+run_main "$COMMIT_B" auto > /dev/null
+check "순서: wait → lock → lia" test "$(tr '\n' ' ' < "$ORDER")" = "wait lock lia "
+
+reset_main; echo "$COMMIT_B" > "$DEPLOY/.image-tag"
+out="$(run_main current auto)"
+check "auto current 는 건너뛰지 않는다" test "$(cat "$LIA_LOG")" = "up $COMMIT_B"
+
+reset_main
+unknown=0123456789abcdef0123456789abcdef01234567
+echo "$COMMIT_B" > "$DEPLOY/.image-tag"
+run_main "$unknown" auto > /dev/null; code=$?
+check "커밋이 클론에 없으면 실패(fail-closed)" test "$code" -ne 0
+check "커밋이 클론에 없으면 lia 미호출" test ! -s "$LIA_LOG"
+
+rm -rf "$STATE" "$REAL_DEPLOY" "$DEPLOY" "$ROOT" "$LOCK_FILE" "$FLOCK_LOG" "$ORDER"
 echo "실패 $fails"
 (( fails == 0 ))

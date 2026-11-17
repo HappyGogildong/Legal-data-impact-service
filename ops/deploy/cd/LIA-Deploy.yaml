@@ -5,6 +5,11 @@ parameters:
     type: String
     description: "이미지 태그 — 커밋 SHA 40자 또는 current(지금 이미지로 ops 만 반영)"
     allowedPattern: "^([0-9a-f]{40}|current)$"
+  mode:
+    type: String
+    description: "auto(자동 배포 — 이미 배포된 것보다 옛 SHA 면 건너뜀) | manual(수동 실행 — 롤백 허용)"
+    allowedPattern: "^(auto|manual)$"
+    default: "auto"
 mainSteps:
   - action: aws:runShellScript
     name: deploy
@@ -14,4 +19,4 @@ mainSteps:
         - set -euo pipefail
         - cd /opt/lia
         - flock -w 600 /var/lock/lia-deploy.lock git pull --ff-only
-        - exec bash /opt/lia/ops/deploy/cd-deploy.sh "{{ tag }}"
+        - exec bash /opt/lia/ops/deploy/cd-deploy.sh "{{ tag }}" "{{ mode }}"

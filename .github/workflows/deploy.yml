@@ -55,6 +55,7 @@ jobs:
       HEALTH_URL: https://api.15-165-252-201.sslip.io/actuator/health
       INSTANCE_ID: ${{ vars.LIA_INSTANCE_ID }}
       TAG: ${{ needs.plan.outputs.tag }}
+      MODE: ${{ github.event_name == 'workflow_dispatch' && 'manual' || 'auto' }}   # 수동 실행은 롤백 허용, 자동은 서버에서 옛 SHA 를 건너뜀
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -66,10 +67,10 @@ jobs:
         id: send
         run: |
           id="$(aws ssm send-command --document-name LIA-Deploy --instance-ids "$INSTANCE_ID" \
-                --parameters "tag=$TAG" --comment "github run $GITHUB_RUN_ID" \
+                --parameters "tag=$TAG,mode=$MODE" --comment "github run $GITHUB_RUN_ID" \
                 --query Command.CommandId --output text)"
           echo "command_id=$id" >> "$GITHUB_OUTPUT"
-          echo "SSM 명령 $id (tag=$TAG)"
+          echo "SSM 명령 $id (tag=$TAG mode=$MODE)"
 
       - name: 서버 배포 완료 대기(배치 대기 포함 최대 75분)
         id: wait
@@ -108,9 +109,24 @@ jobs:
           [[ -n "$err" && "$err" != None ]] && { echo "--- 표준 오류(compose 진행 표시 포함)"; echo "$err"; }
           echo "::$token::"
           while IFS= read -r line; do echo "::warning::$line"; done < <(grep '^CRONTAB_DRIFT' <<<"$out" || true)
-          echo "deployed=$(grep -m1 '^DEPLOYED' <<<"$out" || true)" >> "$GITHUB_OUTPUT"
+          deployed="$(grep -m1 '^DEPLOYED' <<<"$out" || true)"
+          skipped="$(grep -m1 '^SKIPPED' <<<"$out" || true)"
+          echo "deployed=$deployed" >> "$GITHUB_OUTPUT"
+          echo "skipped=$skipped" >> "$GITHUB_OUTPUT"
           echo "elapsed=$((SECONDS / 60))분 $((SECONDS % 60))초" >> "$GITHUB_OUTPUT"
           [[ "$status" == Success ]] || { echo "::error::서버 배포 실패 — 상태 $status"; exit 1; }
+          if [[ -n "$skipped" ]]; then
+            echo "::notice::$skipped"
+          elif [[ -n "$deployed" ]]; then
+            # 요청한 SHA 가 실제로 배포됐는지(서버 스크립트가 다른 태그를 올리지 않았는지)
+            if [[ "$TAG" =~ ^[0-9a-f]{40}$ && "$deployed" != "DEPLOYED tag=$TAG "* ]]; then
+              echo "::error::요청 태그 $TAG 와 서버 출력이 다르다: $deployed"
+              exit 1
+            fi
+          else
+            echo "::error::상태는 Success 인데 DEPLOYED·SKIPPED 줄이 없다 — 서버 cd-deploy.sh 가 기대와 다르다"
+            exit 1
+          fi
 
       - name: 헬스체크(최대 3분)
         run: |
@@ -126,11 +142,16 @@ jobs:
         if: always()
         env:
           DEPLOYED: ${{ steps.wait.outputs.deployed }}
+          SKIPPED: ${{ steps.wait.outputs.skipped }}
           ELAPSED: ${{ steps.wait.outputs.elapsed }}
         run: |
           {
             echo "### 운영 배포"
             echo "- 요청 태그: \`$TAG\`"
-            echo "- 서버: ${DEPLOYED:-(DEPLOYED 줄 없음)}"
+            if [[ -n "$SKIPPED" ]]; then
+              echo "- 서버: ${SKIPPED} (건너뜀 — 정상)"
+            else
+              echo "- 서버: ${DEPLOYED:-(DEPLOYED 줄 없음)}"
+            fi
             echo "- 서버 단계 소요: ${ELAPSED:-?}"
           } >> "$GITHUB_STEP_SUMMARY"
