@@ -42,7 +42,7 @@ jobs:
           context: ./core
           platforms: linux/amd64
           push: false
-      # main — arm64·amd64 → GHCR(D63). 태그: 커밋 SHA · main. 배포는 수동(ops/deploy/lia up <SHA>)
+      # main — arm64·amd64 → GHCR(D63). 태그: 커밋 SHA · main. 배포는 아래 deploy 잡(D86)
       - name: Log in to GHCR
         if: github.event_name == 'push'
         uses: docker/login-action@v3
@@ -60,3 +60,14 @@ jobs:
           tags: |
             ghcr.io/happygogildong/lia-core:${{ github.sha }}
             ghcr.io/happygogildong/lia-core:main
+
+  # 운영 배포(D86) — main 푸시에서 이미지가 올라간 뒤 그 SHA 로. PR 에서는 돌지 않는다.
+  deploy:
+    needs: docker-build
+    if: github.event_name == 'push'
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/deploy.yml
+    with:
+      tag: ${{ github.sha }}
