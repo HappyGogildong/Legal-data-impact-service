@@ -1,7 +1,7 @@
 ---
 title: 시작하기 — 온보딩 가이드
 status: Living
-date: 2026-11-16
+date: 2026-11-18
 tags: [onboarding, start-here, guide]
 ---
 
@@ -14,11 +14,11 @@ tags: [onboarding, start-here, guide]
 
 **스택(v0.6, D35):** Java Spring **Boot 4.0 + Spring AI 2.0** 단일 애플리케이션(수집·해석 파이프라인+도메인+REST) + TypeScript 웹. 저장소는 단일 Postgres+pgvector. 추론=Claude Opus 5.5 API(D68), 임베딩=OpenAI `text-embedding-3-small`(D32). 운영은 AWS EC2+RDS(D63)와 Vercel 웹(D64).
 
-## 현재 스냅샷 (2026-11-16)
+## 현재 스냅샷 (2026-11-18)
 
 | 상태 | 내용 |
 |---|---|
-| ✅ 완료 | 수집·정규화·diff·색인 배치(D42·D62, 같은 시행일 공포본 병합 D85) · 분석 Layer A 선계산·Layer B 개인화(D67·D69) · 법령 발견(D70) · 대응 방안 상황 확인(D71) · 북마크·이력·구독 알림함(D72~D74) · 웹(Next.js) · 관측(Grafana 배치·호출 기록, D83) · **AWS 운영 투입**(EC2+RDS+Vercel, 백필·cron, 2026-11-16 — [[cloud-infra]]) |
+| ✅ 완료 | 수집·정규화·diff·색인 배치(D42·D62, 같은 시행일 공포본 병합 D85) · 분석 Layer A 선계산·Layer B 개인화(D67·D69) · 법령 발견(D70) · 대응 방안 상황 확인(D71) · 북마크·이력·구독 알림함(D72~D74) · 웹(Next.js) · 관측(Grafana 배치·호출 기록, D83) · **AWS 운영 투입**(EC2+RDS+Vercel, 백필·cron, 2026-11-16 — [[cloud-infra]]) · **자동 배포**(main 머지 → OIDC → SSM, D86, 2026-11-18) |
 | 🔜 다음 | 평가 기준선(`lia eval`)·`llm_prices` 단가 → ⑦b 내 프로필 관련 구독 · ⑦c 이메일 발송(#32) · 개인정보처리방침(#35) |
 | 📋 트래킹 | 진척 상세는 [[status]], 열린 일은 `gh issue list`(마일스톤 M1~M4) |
 
@@ -28,7 +28,7 @@ tags: [onboarding, start-here, guide]
 1. **이 문서** (지금)
 2. `CLAUDE.md` (레포 루트) — 개발 규약·명령어·함정 모음 (AI 세션은 자동 로드)
 3. [[ARCHITECTURE|아키텍처 색인]] → 최신 스냅샷 [[v0.6-spring-consolidation|v0.6]] — 전체 그림·데이터 흐름
-4. [[decision-log|결정 로그]] (D01~D85) — "왜 이렇게 됐나"를 한눈에
+4. [[decision-log|결정 로그]] (D01~D86) — "왜 이렇게 됐나"를 한눈에
 5. [[component-specs|컴포넌트 상세 스펙]] — 도메인 모델·계약·정합성
 6. [[analysis-prompt-spec|프롬프트 정의서]] — LLM 입력계약·응답 JSON·인용검증
 7. 참조: [[law-attributes|법령 속성]] · [[triage-policy|Triage]] · [[embedding-benchmark|임베딩 벤치]] · [[spring-migration|Spring 버전 변경점]]
@@ -46,7 +46,7 @@ tags: [onboarding, start-here, guide]
 |---|---|---|
 | `ARCHITECTURE.md` | 버전 색인 + ADR 매핑 + Changelog | living 색인 |
 | `architecture/` | 버전별 **동결 스냅샷**(현행 **v0.6**) | 수정 금지 |
-| `adr/` | ADR-001 + **decision-log**(D01~D85) | living |
+| `adr/` | ADR-001 + **decision-log**(D01~D86) | living |
 | `components/` | 상세 스펙 + 파이프라인 6종 설계(입출력·동작·결정 의도) | living |
 | `mvp/` | 컴포넌트 카탈로그·MVP 범위(IN/OUT)·수용 기준 | living |
 | `prompts/` | LLM 프롬프트 정의서(입력계약 12요소·JSON 스키마) | living |

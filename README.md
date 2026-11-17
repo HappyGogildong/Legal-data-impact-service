@@ -115,7 +115,7 @@ cd web && npm install && npm run dev
 | [기능 명세](docs/product/feature-spec.md) | 사용자 관점 기능 · 화면 |
 | [아키텍처](docs/ARCHITECTURE.md) | 설계 스냅샷과 변경 이력 |
 | [핵심 성과와 사례](docs/achievements.md) | 운영 실측 수치 · 핵심 성과 · 대표 트러블슈팅 사례 |
-| [결정 로그](docs/adr/decision-log.md) | D01~D85 설계 결정과 근거 |
+| [결정 로그](docs/adr/decision-log.md) | D01~D86 설계 결정과 근거 |
 | [트러블슈팅](docs/troubleshooting/README.md) | 실제로 부딪힌 문제의 원인 추적과 해결 |
 | [현황](docs/status.md) | 구현 상태 · 기술 스펙 |
 | [온보딩](docs/onboarding.md) | 처음 코드를 읽는 순서 |
