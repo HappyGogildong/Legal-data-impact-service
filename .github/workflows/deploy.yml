@@ -36,7 +36,8 @@ jobs:
           INPUT_TAG: ${{ inputs.tag }}
           BEFORE: ${{ github.event.before }}
         run: |
-          tag="$(bash ops/deploy/cd/resolve-tag.sh "$INPUT_TAG" "$BEFORE" "$GITHUB_SHA")"
+          # ci-core 가 부른 SHA 는 그 뒤 main 에 core 변경이 있으면 건너뜀(옛 이미지가 새 이미지를 덮지 않게)
+          tag="$(bash ops/deploy/cd/resolve-tag.sh "$GITHUB_EVENT_NAME" "$INPUT_TAG" "$BEFORE" "$GITHUB_SHA")"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "배포 태그: $tag"
 
