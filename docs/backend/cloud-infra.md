@@ -23,7 +23,7 @@ related: ["backend/deployment.md", "backend/observability.md", "components/auth/
                          │ 5432 (보안그룹: EC2→RDS만)
                     RDS PostgreSQL 16 db.t4g.micro + pgvector (비공개, 자동 백업 7일)
 외부 API: 국가법령정보 · OpenAI 임베딩 · Anthropic
-AWS 부가: SSM(접속·Parameter Store) · IAM 역할 1개 · GHCR(GitHub)
+AWS 부가: SSM(접속·Parameter Store) · IAM 역할 2개(EC2 `lia-ec2-role` · 배포 `lia-github-deploy`) · GHCR(GitHub)
 ```
 
 | 결정 | 선택 | 이유 |
@@ -156,6 +156,7 @@ sudo /opt/lia/ops/deploy/lia up <커밋 SHA>    # Parameter Store → 환경변�
 - **자동 배포(D86)** — 위 두 줄을 GitHub Actions 가 대신 한다. 사람이 하는 건 롤백·장애 때뿐이다.
   - main 머지 → `ci-core` 가 이미지를 올린 뒤 `Deploy` 워크플로를 그 SHA 로 호출한다. `ops/deploy`·`ops/observability` 만 바뀐 머지는 `Deploy` 가 `current`(지금 이미지)로 ops 를 반영한다.
   - Actions 는 OIDC 로 역할 `lia-github-deploy` 를 받아 SSM 문서 `LIA-Deploy` 만 실행한다. 문서는 `git pull --ff-only` 후 `ops/deploy/cd-deploy.sh <tag>` — 배치·평가가 돌면 최대 60분 기다리고 서버 잠금(`/var/lock/lia-deploy.lock`)을 잡은 뒤 `lia up`, crontab 이 레포와 다르면 경고만 한다. 배포끼리의 직렬화는 이 잠금이 맡는다(GitHub concurrency 는 대기 실행을 취소해 쓰지 않음). ci-core 가 부른 SHA 는 그 뒤 main 에 core 변경이 있으면 건너뛴다.
+  - 서버 2차 확인 — flock 은 FIFO 가 아니라 배치 대기 중 순서가 바뀔 수 있어, 잠금을 잡은 뒤 `mode=auto` 면 `.image-tag` 배포본의 조상 SHA 는 `SKIPPED` 로 끝낸다. 수동 실행은 `manual` 이라 롤백을 허용한다.
   - 러너가 명령 완료(최대 75분)와 `/actuator/health` UP(최대 3분)을 확인한다. 실패하면 워크플로가 실패하고 자동 롤백은 없다. 롤백은 `Deploy` 수동 실행에 이전 SHA.
   - 정의는 `ops/deploy/cd/`(문서 YAML · 신뢰·권한 정책 JSON, 계정·인스턴스 ID 는 자리값). 준비는 런북 21단계. 22번 포트는 계속 닫혀 있고 GitHub 에 AWS 키를 두지 않는다.
   - 단일 인스턴스라 core 를 다시 띄우는 수십 초 동안 API 가 502 를 낸다. 마운트 설정(Caddyfile·Prometheus)만 바뀐 경우는 컨테이너가 다시 뜨지 않으니 사람이 재시작한다.
@@ -261,7 +262,7 @@ AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운
     - OIDC 공급자 `token.actions.githubusercontent.com`(대상 `sts.amazonaws.com`) — 계정에 하나.
     - 역할 `lia-github-deploy`(최대 세션 2시간 — 러너가 90분 세션을 쓴다) — `ops/deploy/cd/trust-policy.json` · 인라인 정책 `lia-deploy` = `ops/deploy/cd/deploy-policy.json`(자리값 `<account-id>`·`<instance-id>` 를 채워서).
     - SSM 문서 `LIA-Deploy` — `ops/deploy/cd/LIA-Deploy.yaml`. 문서를 고치면 `update-document` 후 기본 버전을 새 버전으로.
-    - GitHub environment `production` — 배포 브랜치 `main` 만, 변수 `AWS_DEPLOY_ROLE_ARN`·`LIA_INSTANCE_ID`.
+    - GitHub environment `production` — 배포 브랜치 `main` 만, secret `AWS_DEPLOY_ROLE_ARN`·`LIA_INSTANCE_ID`(공개 로그에서 가려진다).
     - 확인: 다음 main 머지(또는 `Deploy` 수동 실행 `current`)가 초록이고 요약에 `DEPLOYED` 가 찍히는지.
 
 ### 검증 (구현 단계)
