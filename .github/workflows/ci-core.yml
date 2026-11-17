@@ -69,5 +69,7 @@ jobs:
       id-token: write
       contents: read
     uses: ./.github/workflows/deploy.yml
+    # 호출된 워크플로는 environment secret 이라도 호출자가 넘겨야 읽힌다(첫 운영 실행에서 빈 값 — 2026-11-18)
+    secrets: inherit
     with:
       tag: ${{ github.sha }}

@@ -48,7 +48,7 @@ jobs:
     if: needs.plan.outputs.tag != 'skip'
     runs-on: ubuntu-latest
     environment: production        # 배포 브랜치 main 만 — OIDC sub 가 environment:production 이어야 역할을 받는다
-    # environment secret(AWS_DEPLOY_ROLE_ARN·LIA_INSTANCE_ID)은 environment 를 선언한 호출된 job 에서 바로 읽힌다 — ci-core 의 secrets: inherit 불필요
+    # environment secret(AWS_DEPLOY_ROLE_ARN·LIA_INSTANCE_ID) — ci-core 에서 workflow_call 로 부를 때는 호출자가 secrets: inherit 로 넘겨야 한다
     permissions:
       id-token: write
       contents: read
@@ -135,7 +135,8 @@ jobs:
         run: |
           for _ in $(seq 1 18); do
             body="$(curl -fsS --max-time 5 "$HEALTH_URL" || true)"
-            if grep -q '^{"status":"UP"' <<<"$body"; then echo "헬스 UP: $body"; exit 0; fi
+            # 응답은 {"groups":[…],"status":"UP"} — 키 순서에 기대지 않고 최상위 status 를 JSON 으로 읽는다
+            if jq -e '.status == "UP"' <<<"$body" > /dev/null 2>&1; then echo "헬스 UP: $body"; exit 0; fi
             sleep 10
           done
           echo "::error::3분 안에 헬스 UP 이 아니다 — 롤백은 Deploy 수동 실행에 이전 SHA(자동 롤백 없음, Flyway 는 앞으로만)"
