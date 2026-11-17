@@ -5,14 +5,17 @@ set -euo pipefail
 COMPOSE_VERSION="v2.39.4"
 
 dnf install -y docker git cronie logrotate
+
+# 시간대를 crond 보다 먼저 — 이미 떠 있던 crond 는 바뀐 시간대를 따르지 않아
+# 04:00 예약이 04:00 UTC(13:00 KST)에 돌았다(2026-11-17 실측). 재실행 때도 맞도록 재시작한다.
+timedatectl set-timezone Asia/Seoul
 systemctl enable --now docker crond
+systemctl restart crond
 
 mkdir -p /usr/local/lib/docker/cli-plugins
 curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-aarch64" \
   -o /usr/local/lib/docker/cli-plugins/docker-compose
 chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-
-timedatectl set-timezone Asia/Seoul
 
 if ! swapon --show | grep -q /swapfile; then    # 메모리 안전판 2GB
   fallocate -l 2G /swapfile

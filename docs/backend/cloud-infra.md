@@ -1,8 +1,8 @@
 ---
 title: 클라우드 인프라 — 단일 EC2 + RDS (저비용 운영)
 status: Draft
-version: 0.3
-date: 2026-11-16
+version: 0.4
+date: 2026-11-17
 tags: [backend, infra, aws, deployment, ops, observability]
 related: ["backend/deployment.md", "backend/observability.md", "components/auth/Auth.md", "frontend/frontend-stack.md", "components/batch/IngestJob.md", "adr/decision-log.md", "adr/ADR-001-knowledge-store-sizing.md"]
 ---
@@ -249,7 +249,7 @@ AWS 리소스는 계정 소유자가 직접 만든다(자격증명·비용). 운
     sudo nohup /opt/lia/ops/deploy/lia ingest run > /tmp/backfill.log 2>&1 &
     ```
     끝나면 `/tmp/backfill.log` 마지막 줄의 `[batch] 실행 N …` 와 `ingest_runs`·`ingest_tasks`·`llm_calls`(`INDEX_EMBED`)로 소요 시간·임베딩 토큰·`DEAD` 건수를 #44 에 기록한다. 실측(2026-11-15): 20분 · SYNC·INDEX 각 877 · DEAD 0 · 4,425,906 토큰. 쉬운 요약은 `sudo /opt/lia/ops/deploy/lia ingest summarize --dry-run` 결과를 보고 따로 결정.
-18. **cron** — 백필이 끝난 뒤에(§3). `sudo crontab /opt/lia/ops/deploy/crontab` → `sudo crontab -l` 로 두 줄 확인. 다음 날 `ingest_runs` 에 04:00 `run` 이 생겼는지 본다.
+18. **cron** — 백필이 끝난 뒤에(§3). `sudo crontab /opt/lia/ops/deploy/crontab` → `sudo crontab -l` 로 두 줄 확인. `systemctl show crond -p ActiveEnterTimestamp` 가 시간대를 바꾼 뒤인지 보고, 아니면 `sudo systemctl restart crond` — 처음 구축한 서버는 crond 가 UTC 로 돌아 첫 정기 실행이 13:00 KST 에 났다([[ops-manual]] §4 시간대 함정). 다음 날 `ingest_runs` 에 04:00 KST(전날 19:00 UTC) `run` 이 생겼는지 본다.
 19. **단가** — `llm_prices` 에 실제 호출된 모델의 단가를 넣는다([[cost-policy]] "단가 넣는 법"). 모델 ID 는 `SELECT DISTINCT model FROM llm_calls`.
 20. **평가 기준선**(D83, 유료: 정답 세트 문항마다 Haiku 1회 + 주제 질문마다 임베딩 1회) — 백필로 전체 색인이 끝난 뒤 `sudo /opt/lia/ops/deploy/lia eval 2>&1 | tee eval.log`. 보고서는 `grep '^{"config"' eval.log` 한 줄이다. 처음엔 기준선이 없어 비교 없이 통과(0)한다. 이 줄을 `core/src/main/resources/eval/offline-baseline.json` 으로 PR 에 올려 커밋하면 다음 배포부터 회귀 비교(3 = 회귀)가 켜진다. 색인 법령 수·문항 수가 크게 바뀌면 다시 잰다([[rag-evaluation-framework]] §5.2).
 
