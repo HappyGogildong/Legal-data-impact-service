@@ -135,7 +135,8 @@ jobs:
         run: |
           for _ in $(seq 1 18); do
             body="$(curl -fsS --max-time 5 "$HEALTH_URL" || true)"
-            if grep -q '^{"status":"UP"' <<<"$body"; then echo "헬스 UP: $body"; exit 0; fi
+            # 응답은 {"groups":[…],"status":"UP"} — 키 순서에 기대지 않고 최상위 status 를 JSON 으로 읽는다
+            if jq -e '.status == "UP"' <<<"$body" > /dev/null 2>&1; then echo "헬스 UP: $body"; exit 0; fi
             sleep 10
           done
           echo "::error::3분 안에 헬스 UP 이 아니다 — 롤백은 Deploy 수동 실행에 이전 SHA(자동 롤백 없음, Flyway 는 앞으로만)"
