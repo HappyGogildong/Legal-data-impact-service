@@ -36,7 +36,7 @@ LABELS = {
     "refusal.recall": ("거부할 질문 거부", "법령과 무관하거나 없는 법을 물은 질문을 거부한 비율"),
     "refusal.over": ("답할 질문 거부", "답이 있는 질문을 잘못 거부한 비율"),
     "nomatch.candidate_rate": ("관련 없는 질문에 후보", "관련 법령이 없는 질문에 후보를 하나라도 낸 비율"),
-    "intent.macro_f1": ("의도 분류 평균 F1", "요약·변경점·내 영향·대응 분류 F1 의 차원 평균"),
+    "intent.macro_f1": ("의도 분류 평균 F1", "정답에 등장하는 의도 차원들의 F1 평균"),
 }
 DIMENSIONS = {"SUMMARY": "요약", "DIFF": "변경점", "IMPACT": "내 영향", "ACTION": "대응", "LOOKUP": "찾기"}
 INTENT_PARTS = ("precision", "recall", "f1")
@@ -52,7 +52,10 @@ def load_report(path: Path) -> dict:
     if not path.is_file():
         raise ReportError(f"파일이 없다: {path}")
     try:
-        report = json.loads(path.read_text(encoding="utf-8-sig"))
+        raw = path.read_bytes()
+        # Windows PowerShell 5.1 의 `>` 는 UTF-16 LE(BOM) 로 쓴다
+        encoding = "utf-16" if raw[:2] in (b"\xff\xfe", b"\xfe\xff") else "utf-8-sig"
+        report = json.loads(raw.decode(encoding))
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
         raise ReportError(f"JSON 이 아니다: {path} ({e})") from e
     metrics = report.get("metrics") if isinstance(report, dict) else None
@@ -191,7 +194,8 @@ def intent_table(metrics: dict, base: dict, tolerance: float) -> str:
             state, note = compare(key, now, was, tolerance)
             value = "지표 없음" if now is None else fmt_value(key, now)
             title = f' title="{esc(note)}"' if note else ""
-            cells.append(f'<td class="{state}"{title}>{esc(value)}</td>')
+            detail = f'<br><span class="note">{esc(note)}</span>' if note else ""
+            cells.append(f'<td class="{state}"{title}>{esc(value)}{detail}</td>')
         rows.append(f"<tr><th>{esc(DIMENSIONS.get(dim, dim))} <span class=\"key\">{esc(dim)}</span></th>{''.join(cells)}</tr>")
     return ('<section><h2>의도 분류 — 차원별</h2><div class="table-wrap"><table>'
             "<thead><tr><th>차원</th><th>정밀도</th><th>재현율</th><th>F1</th></tr></thead>"

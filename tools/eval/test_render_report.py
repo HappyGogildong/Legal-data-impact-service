@@ -71,6 +71,7 @@ class RenderTest(unittest.TestCase):
         baseline = report({"article.match": {"value": 1.0, "n": 5}})
         page = rr.render_html(report(METRICS), baseline, 0.02, "x")
         self.assertIn('class="verdict regressed"', page)
+        self.assertIn('class="card regressed"', page)
         self.assertIn("지표 없음", page)
 
     def test_설정이_다르면_경고(self):
@@ -94,6 +95,11 @@ class RenderTest(unittest.TestCase):
         page = rr.render_html(report(METRICS), None, 0.02, "x")
         self.assertIn("변경점", page)
         self.assertIn("0.800", page)
+
+    def test_의도_표에_기준선_변화가_셀_안에_보인다(self):
+        baseline = report({"intent.DIFF.f1": {"value": 0.9, "n": 5}})
+        page = rr.render_html(report(METRICS), baseline, 0.02, "x")
+        self.assertIn('<br><span class="note">기준선 0.900', page)
 
     def test_비율과_점수_표기(self):
         page = rr.render_html(report(METRICS), None, 0.02, "x")
@@ -119,6 +125,10 @@ class MainTest(unittest.TestCase):
 
     def test_BOM_있는_파일도_읽는다(self):
         src = self.write("a.json", json.dumps(report(METRICS)), encoding="utf-8-sig")
+        self.assertEqual(0, rr.main([str(src)]))
+
+    def test_UTF16_파일도_읽는다(self):
+        src = self.write("a.json", json.dumps(report(METRICS)), encoding="utf-16")
         self.assertEqual(0, rr.main([str(src)]))
 
     def test_기준선과_함께(self):
