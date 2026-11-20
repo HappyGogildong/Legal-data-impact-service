@@ -103,7 +103,7 @@ flowchart TB
 
 | 컴포넌트 | 역할 | 담당 파일 (역할) | 상태 |
 |---|---|---|---|
-| **SourceAnalyzer** | 입력 → 시행예정 법령 ref 해소(fail-closed 4상태). 약매칭 시 `ChunkStore` 의미검색 | `pipeline/resolve/SourceAnalyzer.java`·`LawLookup.java`·`Resolution*` — 검색 포트(ChunkStore) 주입은 색인 landing 후 | ✅ (검색 포트 미주입) |
+| **SourceAnalyzer** | 입력 → 시행예정 법령 ref 해소(fail-closed 4상태). 약매칭 시 `ChunkStore` 의미검색 | `pipeline/resolve/SourceAnalyzer.java`·`LawLookup.java`·`Resolution*`·`store/LawStoreLookup.java` — 검색 포트(ChunkStore) 주입은 색인 landing 후 | ✅ (검색 포트 미주입) |
 | **AnalysisEngine** | RAG 검색 결과 + 정본 context로 LLM 추론, 인용검증 게이트 | (미구현) | ⬜ |
 
 ## 4. 데이터 흐름 한 줄 요약

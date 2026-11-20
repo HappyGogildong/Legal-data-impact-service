@@ -27,7 +27,7 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 `LawStore`가 구현하는 **좁은 읽기 포트**(`store.LawSource`) — `find(lawId, efYd)`(시행예정 정본)·`findBaseline(lawId)`(시행중 기준선) 두 계약만 노출한다.
 
 - **왜 포트인가:** 소비자([[QueryDispatcher]])를 `LawStore` 전체가 아니라 **필요한 조회 계약**에만 결합시키고, 단위 테스트 시임(Fake)을 준다. 의존 방향은 dispatch → store(정방향).
-- **`resolve.LawLookup`과 다른 관심사** — 그쪽은 *커넥터 기반 해소*(이름→ref), 이쪽은 **저장된 정본 읽기**. 벡터 검색이 아니다(Discovery 전용, D56).
+- **`resolve.LawLookup`과 다른 관심사** — 그쪽은 *이름으로 후보 찾기*(해소, 같은 `law_versions` 를 제목으로 검색 — `LawStoreLookup`), 이쪽은 **저장된 정본 읽기**. 벡터 검색이 아니다(Discovery 전용, D56).
 - **계약:** `find`는 미적재면 empty, `findBaseline`은 제정이라 없으면 empty(정상, D42).
 
 ## 저장 모델 (JSONB 정본 + pgvector chunks)

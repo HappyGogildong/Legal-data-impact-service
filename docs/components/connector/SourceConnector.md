@@ -106,7 +106,6 @@ GET {law.base}/DRF/lawService.do?OC=..&target=eflaw&MST=289171&efYd=20260908&typ
 // ★ MVP 수집 경로 — 구현 완료 ✅ (이슈 #11)
 public class LawConnector {
     List<RawLaw> listPending(LocalDate from, LocalDate to, int limit);   // target=eflaw + efYd
-    List<RawLaw> searchPending(String query, LocalDate from, LocalDate to, int limit);
     RawLaw fetchPending(String mst, LocalDate effectiveDate);            // target=eflaw + MST
     List<RawLaw> fetchCurrent(String lawId);                             // eflaw 목록 LID+nw=3 → 본문 MST+efYd (D76), 같은 시행일 공포본이면 여럿 (D85)
 }
@@ -118,7 +117,7 @@ public final class LawEnvelope {
 }
 ```
 
-**해소(resolve)와의 경계 — `LawLookup` 포트.** `SourceAnalyzer`는 커넥터를 직접 부르지 않는다. 아키텍처 v0.8 §3.2에서 해소는 **Law Store·Vector Index(오프라인 적재분)** 를 읽기 때문이다. 현재는 `PipelineConfig`가 `LawConnector`를 어댑터로 꽂아 두고, 저장소가 생기면 구현만 교체한다(`SourceAnalyzer` 무수정).
+**해소(resolve)와의 경계 — `LawLookup` 포트.** `SourceAnalyzer`는 커넥터를 직접 부르지 않는다. 아키텍처 v0.8 §3.2에서 해소는 **Law Store·Vector Index(오프라인 적재분)** 를 읽기 때문이다. 그래서 해소는 커넥터를 부르지 않는다 — `LawLookup` 구현은 저장소(`LawStoreLookup`, D87)다.
 
 ```java
 public interface LawLookup {                       // com.lia.core.pipeline.resolve

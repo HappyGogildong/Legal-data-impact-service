@@ -22,7 +22,6 @@ related: ["components/component-specs.md", "components/connector/SourceConnector
 ## Contract
 - `listPending(from, to, limit) → RawLaw[]` — `efYd` 범위 시행예정 목록(본문 없음, `nw=2`). `limit≤0`=전량.
 - `listAllPending(from, to) → PendingList` — 배치용 전량 + 완주 여부(D62). `listPending` 과 같은 요청.
-- `searchPending(query, from, to, limit) → RawLaw[]` — 법령명 검색(해소용, `nw=2`).
 - `fetchPending(mst, efYd) → RawLaw` — 시행예정 본문(`target=eflaw`). 본문 없으면 예외.
 - `fetchCurrent(lawId) → List<RawLaw>` — **시행일 기준** 현행 본문(D76). 목록 `target=eflaw&LID={lawId}&nw=3` 으로 현행 행을 찾고, 그 행의 `법령일련번호`·`시행일자`로 `fetchPending` 과 같은 본문 경로를 부른다(상태 `시행중`). **현행 행이 0건이면 빈 목록**(제정 = diff 기준선 부재, [[law-domain-basics]] §3) — 본문은 부르지 않는다. 현행 행이 여럿이면 **시행일이 모두 같을 때만** 행마다 본문을 받아 모두 돌려준다(같은 날 시행된 공포본 여럿, D85 — 병합은 [[Normalizer]]). 시행일이 다르면 예외.
 
