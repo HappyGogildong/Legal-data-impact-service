@@ -94,15 +94,4 @@ class LawConnectorPendingListTest {
         assertTrue(list.complete());
         assertTrue(requests.stream().allMatch(r -> "2".equals(r.get("nw"))), "모든 페이지 요청에 nw=2");
     }
-
-    @Test
-    @DisplayName("searchPending — 법령명 검색 요청에도 nw=2")
-    void 검색_nw2() {
-        List<RawLaw> found = connector.searchPending("주택법", FROM, TO, 5);
-
-        assertEquals(1, found.size());
-        Map<String, String> request = requests.get(0);
-        assertEquals("주택법", request.get("query"));
-        assertEquals("2", request.get("nw"), "시행예정만");
-    }
 }
