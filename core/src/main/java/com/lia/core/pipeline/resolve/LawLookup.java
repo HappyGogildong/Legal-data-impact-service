@@ -12,6 +12,6 @@ import com.lia.core.pipeline.connector.RawLaw;
  */
 public interface LawLookup {
 
-    /** 법령명·키워드로 시행예정 법령 후보 검색. 실패 시 빈 목록(fail-closed). */
+    /** 법령명·키워드로 시행예정 법령 후보 검색. 조회 실패는 예외로 알린다 — 빈 목록으로 삼키지 않는다(D87). */
     List<RawLaw> searchByName(String query, int limit);
 }
