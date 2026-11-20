@@ -1,8 +1,8 @@
 ---
 title: 운영 명령 매뉴얼 — 접속·배포·배치·DB 점검
 status: Living
-version: 0.3
-date: 2026-11-17
+version: 0.4
+date: 2026-11-21
 tags: [backend, ops, runbook, aws, batch]
 related: ["backend/cloud-infra.md", "backend/cost-policy.md", "components/batch/IngestJob.md", "troubleshooting/008-same-day-promulgations.md"]
 ---
@@ -251,6 +251,20 @@ grep "\[batch\] 실행" /var/log/lia/ingest.log | tail -3                  # 실
 ```bash
 sudo bash -c 'PATH=/usr/local/bin:/usr/bin:/bin /opt/lia/ops/deploy/lia ingest run --dry-run >> /var/log/lia/ingest.log 2>&1'; sudo tail -n 3 /var/log/lia/ingest.log
 ```
+
+### 3.1 RAG 오프라인 평가 💰
+
+문항마다 Haiku 1회, 주제 질문마다 임베딩 1회 — 수동으로만, cron 금지(D83). 배포 직후·배치 시간대(04:00~05:30)는 피한다.
+
+```bash
+sudo /opt/lia/ops/deploy/lia eval              # 종료 코드 0 통과(기준선 없음 포함) · 1 실패 · 3 회귀
+sudo ls -l /var/lib/lia/eval/                   # 보고서 사본 <KST 날짜>-<태그7>.json
+sudo cat /var/lib/lia/eval/<이름>.json          # 출력을 로컬 docs/eval/reports/<이름>.json 으로 저장(아래)
+```
+
+로컬로 옮기기 🖥 — 위 출력을 로컬 `docs/eval/reports/<이름>.json` 에 **UTF-8** 로 저장한다(편집기에서 저장하거나 `Out-File -Encoding utf8`). Windows PowerShell 5.1 의 `>` 는 UTF-16 으로 쓴다 — 도구는 읽지만 UTF-8 을 권한다.
+
+로컬에서 HTML 만들기 🖥 — **서버 게이트가 쓴 것과 같은 입력**으로 만든다. 기준선은 평가한 이미지에 들어 있던 파일이다: `git show <이미지 태그>:core/src/main/resources/eval/offline-baseline.json > <임시 파일>` 후 `python tools/eval/render_report.py docs/eval/reports/<이름>.json --baseline <임시 파일>`(작업 트리의 기준선 파일과는 main 이 평가한 태그이고 그 뒤 커밋이 없을 때만 같다). 서버 실행에 `--lia.eval.tolerance=` 를 줬다면 `--tolerance` 에 같은 값(기본 0.02). HTML 판정이 `lia eval` 종료 코드와 맞는지 확인한다 — 0 = 통과·기준선 없음, 3 = 회귀. 다르면 입력이 다르다. 산출물·순서: [[rag-evaluation-framework]] §5.3.
 
 ## 4. cron ☁
 

@@ -80,5 +80,7 @@ class RegressionGateTest {
 
         assertEquals(original, EvalReport.fromJson(original.toJson()));
         assertFalse(original.toJson().contains("\n"), "한 줄 JSON — 로그에서 잘라 쓰기 쉽게");
+        // ops/deploy/eval-report.sh 가 이 접두사로 보고서 줄을 찾는다(Jackson 속성 순서 = 레코드 선언 순서)
+        assertTrue(original.toJson().startsWith("{\"config\""), "보고서 줄은 {\"config\" 로 시작해야 배포 스크립트가 찾는다");
     }
 }
