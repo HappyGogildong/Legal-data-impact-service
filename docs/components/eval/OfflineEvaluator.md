@@ -61,7 +61,7 @@ related:
 
 ## Side Effects
 
-- 유료 API 호출(Haiku·임베딩). DB 는 읽기만 한다. 파일을 쓰지 않는다 — 일회성 컨테이너가 지워져도 남도록 보고서는 표준 출력으로 낸다.
+- 유료 API 호출(Haiku·임베딩). DB 는 읽기만 한다. 파일을 쓰지 않는다 — 일회성 컨테이너가 지워져도 남도록 보고서는 표준 출력으로 낸다. 서버 사본(`lia eval` → `/var/lib/lia/eval/`)과 HTML 변환(`tools/eval/render_report.py`)은 래퍼와 도구의 몫이다([[rag-evaluation-framework]] §5.3).
 
 ## Design Constraints
 

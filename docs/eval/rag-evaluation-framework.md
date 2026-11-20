@@ -1,8 +1,8 @@
 ---
 title: RAG 평가·회귀 프레임워크
 status: Draft
-version: 0.3
-date: 2026-11-20
+version: 0.4
+date: 2026-11-21
 tags: [eval, rag, regression, testing, quality, cost]
 related:
   - "backend/observability.md"
@@ -170,6 +170,23 @@ LIA의 RAG는 일반적인 "검색한 조각으로 답하기"와 다르다. 벡�
 - **분모가 작은 지표:** 허용 오차가 `1/분모` 이상이라 분모가 1~2인 지표는 사실상 회귀를 잡지 못한다. 정답 세트에는 종류(거부, 관련 법령 없음, 조문 지목, 의도 차원)마다 문항을 충분히 둔다.
 - **CI:** 유료 호출이 없는 가짜 데이터로 게이트 로직만 검증한다. 실제 측정은 수동이다.
 - **실행:** `eval` 프로파일(`--spring.profiles.active=eval`)로 한 번 돌고 끝난다. 정답 세트 `lia.eval.gold`(기본 `eval/offline-gold.json`), 기준선 `lia.eval.baseline`(기본 `eval/offline-baseline.json`)은 클래스패스 또는 `file:` 경로다. 보고서는 표준 출력에 JSON 한 줄, 종료 코드는 0 통과 · 1 실행 실패 · 3 회귀. 계약: [[OfflineEvaluator]].
+
+### 5.3 실행·산출물
+
+| 산출물 | 위치 | 만드는 것 |
+|---|---|---|
+| 보고서 JSON | 서버 `/var/lib/lia/eval/<이름>.json` → 레포 `docs/eval/reports/<이름>.json` | `lia eval`(사본은 `ops/deploy/eval-report.sh`) |
+| 보고서 HTML | `docs/eval/reports/<이름>.html` — JSON 과 같은 폴더·같은 이름 | `tools/eval/render_report.py` |
+| 기준선 | `core/src/main/resources/eval/offline-baseline.json`(이미지 안 — 게이트가 읽는다) | 기준선으로 삼을 보고서를 복사해 커밋 |
+
+- **이름:** `YYYY-MM-DD-<이미지 태그 앞 7자>`(날짜 KST). 같은 이름이 있으면 `-HHMMSS` 를 붙인다.
+- **순서:**
+  1. 서버 `sudo /opt/lia/ops/deploy/lia eval` 💰 — 표준 오류에 `eval-report: 보고서 사본 <경로>`.
+  2. 그 JSON 을 `docs/eval/reports/` 로 가져온다.
+  3. `python tools/eval/render_report.py docs/eval/reports/<이름>.json --baseline core/src/main/resources/eval/offline-baseline.json`(기준선이 없으면 `--baseline` 없이 — 판정 "기준선 없음").
+  4. JSON·HTML(첫 측정이면 기준선 파일도)을 커밋한다.
+- **HTML:** 판정(기준선 없음·통과·회귀), 색인 규모·설정, 영역별 지표 카드(값·분모·방향·기준선 대비 변화 — 회귀 빨강, 개선 초록), 의도 차원 표, 설정·규모 경고, 지표 설명, 원본 JSON. 파일 하나라 더블클릭으로 브라우저에서 열린다(오프라인). GitHub 은 HTML 을 소스로만 보여 준다 — 웹 링크가 필요하면 claude.ai Artifact 로 올린다.
+- **판정 일치:** HTML 의 회귀 판정은 실행기 `RegressionGate` 와 같은 규칙이다. 두 쪽 시험(`RegressionGateParityTest`·`tools/eval/test_render_report.py`)이 `core/src/test/resources/eval/gate-parity.json` 을 함께 쓴다. Python 시험은 로컬에서 `python -m unittest discover -s tools/eval -v`.
 
 ## 6. 운영 배치
 
