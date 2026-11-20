@@ -7,10 +7,8 @@ import com.lia.core.pipeline.connector.RawLaw;
 /**
  * 해소(resolve)가 법령을 찾을 때 쓰는 <b>아웃바운드 포트</b>.
  *
- * <p>SourceAnalyzer 를 커넥터에서 떼어내기 위한 경계다. 아키텍처 v0.8 §3.2 에서
- * 해소는 <b>Law Store·Vector Index(오프라인 적재분)</b> 를 읽는 것이지 출처 API 를
- * 직접 부르는 것이 아니다. 저장소가 생기기 전까지는 LawConnector 를 어댑터로 꽂고,
- * 이후 구현만 갈아끼우면 SourceAnalyzer 는 손대지 않는다.
+ * <p>아키텍처 v0.8 §3.2 — 해소는 출처 API 가 아니라 <b>적재분</b>(Law Store)을 읽는다.
+ * 구현은 {@code store.LawStoreLookup}(시행예정본 제목 검색, D87). SourceAnalyzer 는 구현을 모른다.
  */
 public interface LawLookup {
 

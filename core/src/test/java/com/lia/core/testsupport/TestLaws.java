@@ -12,7 +12,11 @@ public final class TestLaws {
     private TestLaws() {}
 
     public static Law law(String lawId, String mst, Law.Status status, LocalDate effectiveDate) {
-        return new Law(lawId, mst, "테스트법", status, Law.AmendKind.일부개정, Law.LawType.법률, "부처",
+        return law(lawId, mst, "테스트법", status, effectiveDate);
+    }
+
+    public static Law law(String lawId, String mst, String title, Law.Status status, LocalDate effectiveDate) {
+        return new Law(lawId, mst, title, status, Law.AmendKind.일부개정, Law.LawType.법률, "부처",
                 LocalDate.of(2026, 1, 1), "1", effectiveDate, "공포 후 시행", Law.EnforcementType.유예,
                 "개정이유", "개정문", List.of(), List.of(), List.of(), null, "url", "rev-" + mst, Instant.now());
     }

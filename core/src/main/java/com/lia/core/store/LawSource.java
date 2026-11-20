@@ -10,7 +10,7 @@ import com.lia.core.domain.law.Law;
  * {@code lawId}로 시행중 기준선을 읽는다. 벡터 검색이 아니다(그건 Discovery 전용, D56).
  *
  * <p>테스트 시임 + 소비자(QueryDispatcher)와 {@link LawStore} 구현의 결합 분리를 위한 좁은 포트다.
- * {@code resolve.LawLookup}(커넥터 기반 해소)과는 다른 관심사 — 이쪽은 저장된 정본 읽기.
+ * {@code resolve.LawLookup}(이름으로 후보 찾기 — 해소)과는 다른 관심사 — 이쪽은 저장된 정본 읽기.
  */
 public interface LawSource {
 
