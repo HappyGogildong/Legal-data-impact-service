@@ -7,7 +7,7 @@
 
   {"query": "결핵예방법이 어떻게 바뀌는지 요약해 줘", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["001791"], "expectedDimension": "SUMMARY"},
   {"query": "마약류 관리에 관한 법률 개정 내용 알려줘", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["002025"], "expectedDimension": "SUMMARY"},
-  {"query": "자원봉사기본법 전부개정되면 뭐가 바뀌어?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["010001"], "expectedDimension": "SUMMARY"},
+  {"query": "자원봉사기본법 전부개정 내용 요약해 줘", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["010001"], "expectedDimension": "SUMMARY"},
 
   {"query": "기초연금법 바뀌면 나한테 어떤 영향이 있어?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["012045"], "expectedDimension": "IMPACT"},
   {"query": "응급의료법 개정되면 나는 어떻게 달라져?", "kind": "ANSWERABLE", "lawNamed": true, "expectedLawIds": ["000218"], "expectedDimension": "IMPACT"},
