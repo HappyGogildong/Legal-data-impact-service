@@ -182,9 +182,10 @@ LIA의 RAG는 일반적인 "검색한 조각으로 답하기"와 다르다. 벡�
 - **이름:** `YYYY-MM-DD-<이미지 태그 앞 7자>`(날짜 KST). 같은 이름이 있으면 `-HHMMSS` 를 붙인다.
 - **순서:**
   1. 서버 `sudo /opt/lia/ops/deploy/lia eval` 💰 — 표준 오류에 `eval-report: 보고서 사본 <경로>`.
-  2. 그 JSON 을 `docs/eval/reports/` 로 가져온다.
-  3. `python tools/eval/render_report.py docs/eval/reports/<이름>.json --baseline core/src/main/resources/eval/offline-baseline.json`(기준선이 없으면 `--baseline` 없이 — 판정 "기준선 없음").
-  4. JSON·HTML(첫 측정이면 기준선 파일도)을 커밋한다.
+  2. 그 JSON 을 `docs/eval/reports/` 로 가져온다 — 서버에서 `sudo cat /var/lib/lia/eval/<이름>.json` 으로 출력해 로컬 `docs/eval/reports/<이름>.json` 에 **UTF-8** 로 저장한다(편집기에서 저장하거나 `Out-File -Encoding utf8`). Windows PowerShell 5.1 의 `>` 는 UTF-16 으로 쓴다 — 도구는 읽지만 UTF-8 을 권한다.
+  3. 기준선은 **서버 게이트가 쓴 것과 같은 것**으로 맞춘다 — 평가한 이미지에 들어 있던 파일: `git show <이미지 태그>:core/src/main/resources/eval/offline-baseline.json > <임시 파일>` 후 `python tools/eval/render_report.py docs/eval/reports/<이름>.json --baseline <임시 파일>`(기준선이 없으면 `--baseline` 없이 — 판정 "기준선 없음"). 작업 트리의 기준선 파일과는 main 이 평가한 태그이고 그 뒤 커밋이 없을 때만 같다. 서버 실행에 `--lia.eval.tolerance=` 를 줬다면 `--tolerance` 에 같은 값을 준다(기본 0.02).
+  4. HTML 판정이 `lia eval` 종료 코드와 맞는지 확인한다 — 0 = 통과·기준선 없음, 3 = 회귀. 다르면 입력(기준선·허용 오차)이 다르다.
+  5. JSON·HTML(첫 측정이면 기준선 파일도)을 커밋한다.
 - **HTML:** 판정(기준선 없음·통과·회귀), 색인 규모·설정, 영역별 지표 카드(값·분모·방향·기준선 대비 변화 — 회귀 빨강, 개선 초록), 의도 차원 표, 설정·규모 경고, 지표 설명, 원본 JSON. 파일 하나라 더블클릭으로 브라우저에서 열린다(오프라인). GitHub 은 HTML 을 소스로만 보여 준다 — 웹 링크가 필요하면 claude.ai Artifact 로 올린다.
 - **판정 일치:** HTML 의 회귀 판정은 실행기 `RegressionGate` 와 같은 규칙이다. 두 쪽 시험(`RegressionGateParityTest`·`tools/eval/test_render_report.py`)이 `core/src/test/resources/eval/gate-parity.json` 을 함께 쓴다. Python 시험은 로컬에서 `python -m unittest discover -s tools/eval -v`.
 
