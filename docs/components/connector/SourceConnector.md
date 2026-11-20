@@ -117,7 +117,7 @@ public final class LawEnvelope {
 }
 ```
 
-**해소(resolve)와의 경계 — `LawLookup` 포트.** `SourceAnalyzer`는 커넥터를 직접 부르지 않는다. 아키텍처 v0.8 §3.2에서 해소는 **Law Store·Vector Index(오프라인 적재분)** 를 읽기 때문이다. 그래서 해소는 커넥터를 부르지 않는다 — `LawLookup` 구현은 저장소(`LawStoreLookup`, D87)다.
+**해소(resolve)와의 경계 — `LawLookup` 포트.** `SourceAnalyzer`는 커넥터를 직접 부르지 않는다. 아키텍처 v0.8 §3.2에서 해소는 **Law Store·Vector Index(오프라인 적재분)** 를 읽기 때문이다 — `LawLookup` 구현은 저장소(`LawStoreLookup`, D87)다.
 
 ```java
 public interface LawLookup {                       // com.lia.core.pipeline.resolve
