@@ -81,7 +81,7 @@ com.lia.core
 
 1. **의존 방향은 `pipeline → domain` 단방향.** `domain`은 파이프라인을 import하지 않는다. 도메인 타입은 천천히 변하고 단계는 자주 변하므로, 섞으면 안정된 것이 불안정한 것에 딸려 움직인다.
 2. **`Raw*`는 도메인이 아니다.** `RawLaw`는 출처 원형을 담은 커넥터 지역 DTO(`Map raw` 보유)이고 `connector/`에 산다. `RawLaw → Law` 변환이 **Anti-Corruption Layer**이며, 출처 API의 기벽은 전부 이 층에 가둔다(원칙 ② 수집과 해석의 분리).
-3. **포트는 교체가 실제로 예정된 것만.** `LawLookup`은 Law Store 완성 후 구현을 갈아끼울 것이므로 포트다. 저장소는 Postgres 하나로 고정(D04)이라 Repository 추상화를 따로 두지 않는다.
+3. **포트는 교체가 실제로 예정된 것만.** `LawLookup`은 커넥터 → Law Store 로 구현을 실제로 갈아끼웠다(D87, `LawStoreLookup`). 저장소는 Postgres 하나로 고정(D04)이라 Repository 추상화를 따로 두지 않는다.
 4. **`domain`은 빈약(anemic)해도 된다 — 단, 우리가 만든 판정은 예외.** `Law`·`Article`은 우리가 저작하지 않는 외부 권위 사실이라 강제할 불변식이 없다. 반면 **우리가 산출한 판정에는 있다**: `ResolutionResult`의 fail-closed 4상태(D23)는 생성자에서 강제한다. 인용 없는 주장 차단(D08)도 타입이 알아야 한다 — #13에서 같은 방식으로.
 
 > 도입하지 않는 것(현 단계에서 순수 비용): Aggregate Root(`Law`는 통째로 읽고 쓰는 불변 스냅샷), Repository 추상화, Domain Event, Spring Modulith, Value Object 남발.
