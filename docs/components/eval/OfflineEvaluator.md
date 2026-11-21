@@ -33,7 +33,9 @@ related:
   - `Unresolved` + `AMBIGUOUS` → 해소 후보 목록(순서 유지)을 후보로, 거부 아님.
   - `Planned` + 참조 → 해소된 법령 1개, 조문 번호, 차원.
   - `Planned` + 발견 → `LawDiscovery.discover` 후보 목록(순서 유지). 후보 0건은 거부가 아니라 "후보 없음".
+  - 결과에는 경로(`route` — `RESOLVED`·`DISCOVERY`·`AMBIGUOUS`·`NOT_FOUND_YET`·`UNVERIFIED`·`OFF_TOPIC`)와 번역기가 낸 법령 이름(`lawName`)이 함께 실린다. 플래너는 서비스와 같은 번역기·해소기로 평가기가 직접 만들고, 문항마다 번역 초안을 기억한다(문항은 차례로 돈다).
 - **`OfflineMetrics.score(cases, outcomes)`** — 지표마다 비율과 분모를 함께 낸다. 분모가 0인 지표는 싣지 않는다(없는 값을 0이나 1로 꾸미지 않는다).
+- **`OfflineMetrics.passed(case, outcome)`** — 문항 하나의 통과 판정. `score` 와 같은 판정이다: 법령 지목=정답으로 해소, 주제=정답이 상위 3 안, `NO_MATCH`=후보 없음, `REFUSE`=거부.
 
 | 지표 키 | 분모 | 방향 |
 |---|---|---|
@@ -53,6 +55,7 @@ related:
 
 - 평가는 서비스 경로의 빈을 그대로 쓴다. 평가 전용 검색·해소 구현을 두지 않는다.
 - 보고서에는 지표 값, 분모, 발견 설정(`chunkFetch`·`maxCandidates`·`minSimilarity`), 색인된 법령 수, 문항 수가 함께 실린다 — 색인 규모가 다른 기준선과 비교하지 않으려면 사람이 이 값을 본다.
+- 보고서의 `caseResults` 는 평가 순서대로 문항별 결과(질문·종류·정답·통과 여부·경로·번역 법령명·후보·거부·조문·차원)를 싣는다 — 지표 합계만으로는 어느 문항이 왜 틀렸는지 알 수 없어서다. 회귀 판정은 `metrics` 만 보고, 기준선 파일에는 없어도 된다. 보고서는 여전히 `{"config"` 로 시작하는 한 줄이다(`eval-report.sh` 가 이 접두어로 찾는다).
 
 ## Error Handling
 
