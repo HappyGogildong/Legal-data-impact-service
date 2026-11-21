@@ -39,6 +39,9 @@ LABELS = {
     "intent.macro_f1": ("의도 분류 평균 F1", "정답에 등장하는 의도 차원들의 F1 평균"),
 }
 DIMENSIONS = {"SUMMARY": "요약", "DIFF": "변경점", "IMPACT": "내 영향", "ACTION": "대응", "LOOKUP": "찾기"}
+ROUTES = {"RESOLVED": "해소", "AMBIGUOUS": "모호(후보 여럿)", "NOT_FOUND_YET": "미등록", "UNVERIFIED": "확인 불가",
+          "OFF_TOPIC": "비법령", "DISCOVERY": "발견"}
+CANDIDATES_SHOWN = 5
 INTENT_PARTS = ("precision", "recall", "f1")
 INTENT_KEY = re.compile(r"^intent\.([A-Z]+)\.(precision|recall|f1)$")
 NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})-([0-9a-f]{7})(?:-(\d{6}))?$")
@@ -202,6 +205,42 @@ def intent_table(metrics: dict, base: dict, tolerance: float) -> str:
             f"<tbody>{''.join(rows)}</tbody></table></div></section>")
 
 
+def kind_label(row: dict) -> str:
+    kind = row.get("kind")
+    if kind == "ANSWERABLE":
+        return "법령 지목" if row.get("lawNamed") else "주제"
+    return {"NO_MATCH": "관련 법령 없음", "REFUSE": "거부 대상"}.get(kind, str(kind))
+
+
+def candidates_text(ids: list) -> str:
+    shown = ", ".join(str(i) for i in ids[:CANDIDATES_SHOWN])
+    rest = len(ids) - CANDIDATES_SHOWN
+    return f"{shown} 외 {rest}" if rest > 0 else shown
+
+
+def case_table(rows: list) -> str:
+    """문항별 결과 — 실패 행을 강조한다. 옛 보고서(caseResults 없음)면 그리지 않는다."""
+    if not rows:
+        return ""
+    failed = sum(1 for r in rows if not r.get("passed"))
+    lines = []
+    for i, r in enumerate(rows, 1):
+        route = r.get("route")
+        route_text = f"{esc(ROUTES.get(route, route))} <span class=\"key\">{esc(route)}</span>" if route else ""
+        lines.append(
+            f'<tr class="{"pass" if r.get("passed") else "fail"}"><td>{i}</td>'
+            f'<td>{"통과" if r.get("passed") else "실패"}</td><td class="wrap">{esc(r.get("query", ""))}</td>'
+            f"<td>{esc(kind_label(r))}</td><td>{esc(', '.join(r.get('expectedLawIds') or []))}</td>"
+            f"<td>{esc(r.get('lawName') or '')}</td><td>{route_text}</td>"
+            f"<td>{esc(candidates_text(r.get('candidateLawIds') or []))}</td></tr>")
+    return ("<h2>문항별 결과</h2>"
+            f'<p class="sub">실패 {failed}건 / {len(rows)}건 — 판정은 지표와 같다(법령 지목=정답으로 해소, 주제=상위 3, '
+            "관련 법령 없음=후보 없음, 거부 대상=거부)</p>"
+            '<div class="table-wrap"><table><thead><tr><th>#</th><th>판정</th><th>질문</th><th>종류</th><th>정답</th>'
+            "<th>번역 법령명</th><th>경로</th><th>후보</th></tr></thead><tbody>"
+            + "".join(lines) + "</tbody></table></div>")
+
+
 def verdict(report: dict, baseline: dict | None, tolerance: float) -> tuple[str, str, str]:
     if baseline is None:
         return "none", "기준선 없음", "비교할 기준선이 없다 — 이 보고서를 기준선으로 삼을 수 있다"
@@ -256,6 +295,8 @@ code{font-family:ui-monospace,Consolas,monospace}
 .table-wrap{overflow-x:auto}
 table{border-collapse:collapse;width:100%;background:var(--surface);border-radius:12px;overflow:hidden}
 th,td{padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+tr.fail td{background:var(--bad-bg)}tr.fail td:nth-child(2){color:var(--bad);font-weight:600}
+td.wrap{white-space:normal;min-width:220px}
 td.regressed{color:var(--bad);font-weight:600}td.improved{color:var(--good);font-weight:600}td.empty{color:var(--muted)}
 details{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin:10px 0}
 summary{cursor:pointer;font-weight:600}
@@ -286,6 +327,7 @@ def render_html(report: dict, baseline: dict | None, tolerance: float, name: str
     body += [section(t, keys, metrics, base, tolerance) for t, keys in GROUPS]
     body.append(intent_table(metrics, base, tolerance))
     body.append(section("기타", others, metrics, base, tolerance))
+    body.append(case_table(report.get("caseResults") or []))
     glossary = "".join(f"<dt>{esc(label)} <span class=\"key\">{esc(key)}</span></dt><dd>{esc(desc)}</dd>"
                        for key, (label, desc) in LABELS.items())
     body.append("<details><summary>지표 설명·판정 규칙</summary><dl class=\"glossary\">" + glossary + "</dl>"

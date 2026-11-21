@@ -11,9 +11,12 @@ import com.lia.core.eval.OfflineEvaluator;
 import com.lia.core.eval.RagConfig;
 import com.lia.core.pipeline.discover.LawDiscovery;
 import com.lia.core.pipeline.plan.QueryPlanner;
+import com.lia.core.pipeline.plan.QueryTranslator;
+import com.lia.core.pipeline.resolve.SourceAnalyzer;
 
 /**
- * 오프라인 회귀 평가({@code eval} 프로파일, D83) — 서비스의 {@link QueryPlanner}·{@link LawDiscovery} 빈을 그대로 쓴다.
+ * 오프라인 회귀 평가({@code eval} 프로파일, D83) — 서비스의 번역기·해소기·{@link LawDiscovery} 빈을 그대로 쓴다
+ * ({@link QueryPlanner} 는 평가기가 같은 방식으로 만든다 — 번역 초안을 문항별 결과에 싣기 위해).
  * 웹 서버 없이 한 번 돌고 종료 코드를 남긴다. 유료 호출(Haiku·임베딩)이 있어 사람이 수동으로 실행한다.
  */
 @Configuration
@@ -29,8 +32,9 @@ public class EvalConfig {
             "SELECT EXISTS (SELECT 1 FROM law_versions WHERE law_id = ? AND status = '시행예정')";
 
     @Bean
-    public OfflineEvaluator offlineEvaluator(QueryPlanner queryPlanner, LawDiscovery lawDiscovery) {
-        return new OfflineEvaluator(queryPlanner, lawDiscovery);
+    public OfflineEvaluator offlineEvaluator(QueryTranslator queryTranslator, SourceAnalyzer sourceAnalyzer,
+                                             LawDiscovery lawDiscovery) {
+        return new OfflineEvaluator(queryTranslator, sourceAnalyzer, lawDiscovery);
     }
 
     @Bean

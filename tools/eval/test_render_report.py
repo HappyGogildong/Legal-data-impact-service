@@ -107,6 +107,36 @@ class RenderTest(unittest.TestCase):
         self.assertIn("0.750 (n=14)", page)
 
 
+CASE_ROWS = [
+    {"query": "주택법 바뀌어?", "kind": "ANSWERABLE", "lawNamed": True, "expectedLawIds": ["001809"],
+     "passed": True, "route": "RESOLVED", "lawName": "주택법", "candidateLawIds": ["001809"], "refused": False},
+    {"query": "응급의료법 바뀌어?", "kind": "ANSWERABLE", "lawNamed": True, "expectedLawIds": ["000218"],
+     "passed": False, "route": "AMBIGUOUS", "lawName": "응급<b>법",
+     "candidateLawIds": ["A1", "A2", "A3", "A4", "A5", "A6"], "refused": False},
+]
+
+
+class CaseTableTest(unittest.TestCase):
+    def test_문항별_결과_표(self):
+        page = rr.render_html(report(METRICS, caseResults=CASE_ROWS), None, 0.02, "x")
+        self.assertIn("문항별 결과", page)
+        self.assertIn("실패 1건 / 2건", page)
+        self.assertIn('<tr class="fail">', page)
+        self.assertIn("법령 지목", page)
+        self.assertIn("모호", page)
+        self.assertIn("응급&lt;b&gt;법", page)
+        self.assertNotIn("응급<b>법", page)
+
+    def test_후보는_앞_5개와_나머지_수(self):
+        page = rr.render_html(report(METRICS, caseResults=CASE_ROWS), None, 0.02, "x")
+        self.assertIn("A1, A2, A3, A4, A5 외 1", page)
+        self.assertNotIn("A6", page.split("원본 JSON")[0])
+
+    def test_문항별_결과가_없으면_표_없음(self):
+        page = rr.render_html(report(METRICS), None, 0.02, "x")
+        self.assertNotIn("문항별 결과", page)
+
+
 class MainTest(unittest.TestCase):
 
     def setUp(self):

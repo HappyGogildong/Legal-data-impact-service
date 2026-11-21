@@ -57,6 +57,42 @@ class OfflineEvalRunnerTest {
     }
 
     @Test
+    @DisplayName("보고서에 문항별 결과가 문항 순서대로 실린다")
+    void 문항별_결과() {
+        run(query -> query.contains("점심")
+                ? new CaseOutcome(true, List.of(), false, null, null, "OFF_TOPIC", null)
+                : new CaseOutcome(false, List.of(), false, null, null, "NOT_FOUND_YET", "주택법"), GOLD, BASELINE);
+
+        assertTrue(output().startsWith("{\"config\""), "eval-report.sh 는 이 접두어로 보고서 줄을 찾는다");
+        List<CaseResult> rows = EvalReport.fromJson(output()).caseResults();
+
+        assertEquals(4, rows.size());
+        CaseResult first = rows.get(0);
+        assertEquals("주택법 제18조 뭐가 바뀌었어?", first.query());
+        assertEquals(EvalCase.Kind.ANSWERABLE, first.kind());
+        assertTrue(first.lawNamed());
+        assertEquals(List.of("001809"), first.expectedLawIds());
+        assertEquals("18", first.expectedArticleNo());
+        assertEquals("NOT_FOUND_YET", first.route());
+        assertEquals("주택법", first.lawName());
+        assertFalse(first.passed());
+        CaseResult last = rows.get(3);
+        assertEquals("오늘 점심 뭐 먹지", last.query());
+        assertTrue(last.refused());
+        assertTrue(last.passed());
+    }
+
+    @Test
+    @DisplayName("문항별 결과가 없는 보고서(기준선 파일)도 읽힌다")
+    void 문항별_결과_없는_보고서() {
+        EvalReport baseline = EvalReport.fromJson("""
+                {"config":{"chunkFetch":40,"maxCandidates":10,"minSimilarity":0.3},"indexedLaws":1,"cases":1,
+                 "excludedCases":0,"metrics":{"refusal.over":{"value":0.0,"n":1}}}""");
+
+        assertEquals(List.of(), baseline.caseResults());
+    }
+
+    @Test
     @DisplayName("기준선을 지키면 통과한다")
     void 기준선_통과() {
         assertEquals(OfflineEvalRunner.PASSED, run(OfflineEvalRunnerTest::refusesOffTopic, GOLD, BASELINE));

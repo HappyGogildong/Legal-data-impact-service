@@ -38,6 +38,20 @@ class OfflineMetricsTest {
         return new CaseOutcome(true, List.of(), false, null, null);
     }
 
+    @Test
+    @DisplayName("문항 통과 판정은 종류별 지표 판정과 같다")
+    void 문항_통과_판정() {
+        assertTrue(OfflineMetrics.passed(named("A", null, null), resolved("A", null, null)));
+        assertFalse(OfflineMetrics.passed(named("A", null, null), resolved("B", null, null)), "다른 법령으로 해소");
+        assertFalse(OfflineMetrics.passed(named("A", null, null), found("A")), "후보만 내고 해소하지 못함");
+        assertTrue(OfflineMetrics.passed(topic("C"), found("X", "Y", "C")), "상위 3 안");
+        assertFalse(OfflineMetrics.passed(topic("C"), found("X", "Y", "Z", "C")), "상위 3 밖");
+        assertTrue(OfflineMetrics.passed(of(Kind.NO_MATCH), found()));
+        assertFalse(OfflineMetrics.passed(of(Kind.NO_MATCH), found("X")));
+        assertTrue(OfflineMetrics.passed(of(Kind.REFUSE), refused()));
+        assertFalse(OfflineMetrics.passed(of(Kind.REFUSE), found()));
+    }
+
     static void assertMeasure(Map<String, Measure> scores, String key, double value, int n) {
         Measure m = scores.get(key);
         assertNotNull(m, key + " 없음: " + scores.keySet());

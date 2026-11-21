@@ -21,7 +21,6 @@ import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.discover.LawDiscovery;
 import com.lia.core.pipeline.plan.AnalysisQueryDraft;
 import com.lia.core.pipeline.plan.AnalysisQueryDraft.TargetKind;
-import com.lia.core.pipeline.plan.QueryPlanner;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
@@ -43,7 +42,7 @@ class OfflineEvaluatorTest {
 
     OfflineEvaluator evaluator(Function<String, List<RawLaw>> semanticSearch) {
         LawLookup lookup = (query, limit) -> query != null && query.contains("주택법") ? List.of(HOUSING) : List.of();
-        QueryPlanner planner = new QueryPlanner(drafts::get, new SourceAnalyzer(lookup, semanticSearch, 88.0, 60.0));
+        SourceAnalyzer analyzer = new SourceAnalyzer(lookup, semanticSearch, 88.0, 60.0);
         ChunkStore chunks = new ChunkStore() {
             @Override public void replaceVersion(String lawId, String efYd, List<Chunk> c) {}
             @Override public List<Chunk> search(String query, int topK, double minSimilarity) { return hits; }
@@ -56,7 +55,7 @@ class OfflineEvaluatorTest {
         };
         LawDiscovery discovery = new LawDiscovery(chunks, source, law -> Optional.empty(),
                 new LawDiscovery.Settings(40, 10, 0.3, 20, Set.of(Law.Status.시행예정)));
-        return new OfflineEvaluator(planner, discovery);
+        return new OfflineEvaluator(drafts::get, analyzer, discovery);
     }
 
     static AnalysisQueryDraft reference(String lawName, String articleNo, QueryType type) {
@@ -100,6 +99,8 @@ class OfflineEvaluatorTest {
         assertEquals(List.of("001809"), o.candidateLawIds());
         assertEquals("18", o.articleNo());
         assertEquals(QueryType.DIFF, o.primaryType());
+        assertEquals("RESOLVED", o.route());
+        assertEquals("주택법", o.lawName(), "번역기가 낸 법령 이름");
     }
 
     @Test
@@ -117,6 +118,8 @@ class OfflineEvaluatorTest {
         assertFalse(o.resolved());
         assertEquals(List.of("B", "A"), o.candidateLawIds());
         assertEquals(QueryType.LOOKUP, o.primaryType());
+        assertEquals("DISCOVERY", o.route());
+        assertNull(o.lawName());
     }
 
     @Test
@@ -140,6 +143,7 @@ class OfflineEvaluatorTest {
         assertTrue(o.refused());
         assertEquals(List.of(), o.candidateLawIds());
         assertNull(o.primaryType());
+        assertEquals("OFF_TOPIC", o.route());
     }
 
     @Test
@@ -151,6 +155,8 @@ class OfflineEvaluatorTest {
 
         assertTrue(o.refused());
         assertFalse(o.resolved());
+        assertEquals("NOT_FOUND_YET", o.route());
+        assertEquals("가상의무슨법", o.lawName());
     }
 
     @Test
@@ -164,5 +170,7 @@ class OfflineEvaluatorTest {
         assertFalse(o.resolved());
         assertEquals(List.of("001809", "002000"), o.candidateLawIds());
         assertNull(o.primaryType());
+        assertEquals("AMBIGUOUS", o.route());
+        assertEquals("집 구하는 법", o.lawName());
     }
 }
