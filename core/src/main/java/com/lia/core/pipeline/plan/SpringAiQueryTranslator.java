@@ -33,6 +33,9 @@ public class SpringAiQueryTranslator implements QueryTranslator {
             - primaryType 과 types(집합): LOOKUP(발견)·SUMMARY(요약)·DIFF(변경점)·IMPACT(내 영향)·ACTION(대응).
               포괄 질의는 여러 개. 애매하면 REFERENCE는 SUMMARY, DISCOVERY는 LOOKUP을 기본으로.
             - REFERENCE면 lawName(과 있으면 articleNo)을 뽑는다. DISCOVERY면 keywords·conditions·domains를 뽑는다.
+            - lawName 은 정식 법령명으로 쓴다. 약칭·줄임말은 정식 명칭으로 푼다
+              (예: 공정거래법 → 독점규제 및 공정거래에 관한 법률). 정식 명칭을 확실히 모르면 사용자가 쓴 그대로 둔다.
+              시행령·시행규칙은 사용자가 말했을 때만 붙인다.
             - intentSummary: 사용자가 알고 싶은 것 한 줄.
             해소·검색은 하지 않는다 — 오직 질의를 분류·추출한다.
             """;

@@ -65,7 +65,7 @@ AnalysisQuery {
 ### 이번 증분 (계획까지)
 
 - **`QueryTranslator`** (포트) — `AnalysisQueryDraft translate(String query)`. **유일한 LLM 자유도**를 인터페이스로 격리한다. *포트를 두는 이유는 "교체 예정"이 아니라 **테스트 심***: 플래너의 결정론 로직을 LLM 없이(비용 0·결정론) 검증하려면 번역 결과를 가짜로 주입해야 한다(`ChatClient` 목은 플루언트 체인이라 지저분하고 행위 대신 구현을 테스트).
-- **`SpringAiQueryTranslator`** (구현) — `ChatClient.prompt().user(nl).call().entity(AnalysisQueryDraft.class)`. **모델 Haiku 4.5**(추출·분류는 저비용; Opus는 실제 분석 생성용 — 티어링, [[component-specs]] §3.3).
+- **`SpringAiQueryTranslator`** (구현) — `ChatClient.prompt().user(nl).call().entity(AnalysisQueryDraft.class)`. **모델 Haiku 4.5**(추출·분류는 저비용; Opus는 실제 분석 생성용 — 티어링, [[component-specs]] §3.3). `lawName` 은 **정식 법령명**으로 낸다 — 약칭은 풀고, 확실히 모르면 사용자가 쓴 그대로, 시행령·시행규칙은 사용자가 말했을 때만(D89, 해소가 적재 제목 글자 그대로 검색이라).
 - **`AnalysisQueryDraft`** (번역기 LLM 출력) — `primaryType·types·`**`isLawQuery`**`(법령의도 신호)·targetKind(REFERENCE|DISCOVERY)·lawName?·articleNo?·keywords·conditions·domains·intentSummary`. 플래너가 해소 후 `AnalysisQuery`로 매핑.
 - **`QueryPlanner`** — `plan(query, explicitLawRef?, profilePresent) → PlanResult`:
   1. `translate` → draft.

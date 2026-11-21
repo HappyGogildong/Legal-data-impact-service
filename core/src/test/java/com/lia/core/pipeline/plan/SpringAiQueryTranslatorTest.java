@@ -54,6 +54,25 @@ class SpringAiQueryTranslatorTest {
     }
 
     @Test
+    void 지시문은_약칭을_정식_법령명으로_풀라고_한다() {   // D88 — 해소는 적재 제목 글자 그대로 검색이라 약칭은 못 찾는다
+        List<Prompt> seen = new ArrayList<>();
+        ChatModel model = new ChatModel() {
+            @Override
+            public ChatResponse call(Prompt prompt) {
+                seen.add(prompt);
+                return new ChatResponse(List.of(new Generation(AssistantMessage.builder().content(DRAFT).build())));
+            }
+        };
+
+        new SpringAiQueryTranslator(model, calls::add).translate("공정거래법 바뀐 거 알려줘");
+
+        String system = seen.get(0).getSystemMessage().getText();
+        assertTrue(system.contains("정식 법령명"), system);
+        assertTrue(system.contains("공정거래법 → 독점규제 및 공정거래에 관한 법률"), "약칭을 푸는 예시");
+        assertTrue(system.contains("그대로"), "정식 명칭을 모르면 지어내지 말고 사용자가 쓴 이름을 둔다");
+    }
+
+    @Test
     void 호출이_실패하면_실패_행을_남기고_같은_예외를_다시_던진다() {
         RuntimeException boom = new IllegalStateException("529 overloaded");
         ChatModel failing = new ChatModel() {
