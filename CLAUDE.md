@@ -81,7 +81,7 @@ com.lia.core
 
 1. **의존 방향은 `pipeline → domain` 단방향.** `domain`은 파이프라인을 import하지 않는다. 도메인 타입은 천천히 변하고 단계는 자주 변하므로, 섞으면 안정된 것이 불안정한 것에 딸려 움직인다.
 2. **`Raw*`는 도메인이 아니다.** `RawLaw`는 출처 원형을 담은 커넥터 지역 DTO(`Map raw` 보유)이고 `connector/`에 산다. `RawLaw → Law` 변환이 **Anti-Corruption Layer**이며, 출처 API의 기벽은 전부 이 층에 가둔다(원칙 ② 수집과 해석의 분리).
-3. **포트는 교체가 실제로 예정된 것만.** `LawLookup`은 Law Store 완성 후 구현을 갈아끼울 것이므로 포트다. 저장소는 Postgres 하나로 고정(D04)이라 Repository 추상화를 따로 두지 않는다.
+3. **포트는 교체가 실제로 예정된 것만.** `LawLookup`은 커넥터 → Law Store 로 구현을 실제로 갈아끼웠다(D87, `LawStoreLookup`). 저장소는 Postgres 하나로 고정(D04)이라 Repository 추상화를 따로 두지 않는다.
 4. **`domain`은 빈약(anemic)해도 된다 — 단, 우리가 만든 판정은 예외.** `Law`·`Article`은 우리가 저작하지 않는 외부 권위 사실이라 강제할 불변식이 없다. 반면 **우리가 산출한 판정에는 있다**: `ResolutionResult`의 fail-closed 4상태(D23)는 생성자에서 강제한다. 인용 없는 주장 차단(D08)도 타입이 알아야 한다 — #13에서 같은 방식으로.
 
 > 도입하지 않는 것(현 단계에서 순수 비용): Aggregate Root(`Law`는 통째로 읽고 쓰는 불변 스냅샷), Repository 추상화, Domain Event, Spring Modulith, Value Object 남발.
@@ -107,7 +107,7 @@ com.lia.core
 
 ## 현재 상태 (2026-11-18 기준)
 
-MVP 기능 구현과 **AWS 운영 투입 완료**(EC2+RDS+Vercel, [`docs/backend/cloud-infra.md`](docs/backend/cloud-infra.md)), **main 머지 시 자동 배포**(D86 — OIDC → SSM 문서 `LIA-Deploy`, 롤백은 Actions `Deploy` 수동 실행) — 시행예정 법령 수집·정규화·diff·색인 배치(D62, cron 매일 04:00·일요일 `--full`, 같은 시행일 공포본 병합 D85), 분석 Layer A 선계산(운영 일괄 요약은 꺼 둠)·Layer B 개인화(D69), 법령 발견(D70)·상황 확인(D71)·북마크·이력·구독 알림함(D72~D74), 웹(Next.js). 세부 진척은 [`docs/status.md`](docs/status.md), 결정은 decision-log(D01~D86). 다음: 평가 기준선(`lia eval`)·단가 입력 → ⑦b 프로필 관련 구독 · ⑦c 이메일. `mcp/`는 아직 PoC 스텁.
+MVP 기능 구현과 **AWS 운영 투입 완료**(EC2+RDS+Vercel, [`docs/backend/cloud-infra.md`](docs/backend/cloud-infra.md)), **main 머지 시 자동 배포**(D86 — OIDC → SSM 문서 `LIA-Deploy`, 롤백은 Actions `Deploy` 수동 실행) — 시행예정 법령 수집·정규화·diff·색인 배치(D62, cron 매일 04:00·일요일 `--full`, 같은 시행일 공포본 병합 D85), 분석 Layer A 선계산(운영 일괄 요약은 꺼 둠)·Layer B 개인화(D69), 법령 발견(D70)·상황 확인(D71)·북마크·이력·구독 알림함(D72~D74), 웹(Next.js). 세부 진척은 [`docs/status.md`](docs/status.md), 결정은 decision-log(D01~D87). 다음: 평가 기준선(`lia eval`)·단가 입력 → ⑦b 프로필 관련 구독 · ⑦c 이메일. `mcp/`는 아직 PoC 스텁.
 
 **MVP 수집 경로(D42, 2026-08-02):** 분석 대상은 의안이 아니라 **공포 후 시행 대기 법령**(`target=eflaw`). 전문·개정문·제개정이유·부칙이 모두 제공되므로 D38(법안 본문 갭)은 해소됐고, 의안 경로는 post-MVP로 강등돼 **코드에서 삭제**했다(`SourceConnector`·`RawBill`·`Assembly*`). 계약은 `docs/components/ingest/SourceConnector.md`에 보존.
 

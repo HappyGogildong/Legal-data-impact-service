@@ -393,7 +393,7 @@ Layer A(SUMMARY·DIFF) 프롬프트에는 질문이 들어가지 않는다 — �
   | `LawConnector` | 국가법령정보 `eflaw` 현행 행(`nw=3`, D76) | `RawLaw` | 시행중 법령 = **diff 기준선** | ✅ 구현 |
   | `MolegNoticeConnector` | 법제처 입법예고 | `RawBill[]` | 정부입법 의안 | post-MVP |
   | `AssemblyBillsConnector` | 열린국회정보 | `RawBill[]` | 의원발의 의안(통과율 ~20%) | post-MVP |
-- 입력: `listPending(from,to,limit)` · `searchPending(query,from,to,limit)` · `fetchPending(mst,efYd)` · `fetchCurrent(lawId)`
+- 입력: `listPending(from,to,limit)` · `fetchPending(mst,efYd)` · `fetchCurrent(lawId)`
 - 출력: `RawLaw[]` — `lawId·mst·title·status·시행일·공포일·공포번호` + 원본 블록(`법령 > {기본정보,조문,부칙,개정문,제개정이유}`)
 - 동작: API 호출 → 봉투 검사 → 페이지 순회 → 매핑. **연결키는 `법령ID`**(MST는 버전마다 다름).
 - 의존: `LAW_OC` 자격증명.
@@ -409,7 +409,7 @@ Layer A(SUMMARY·DIFF) 프롬프트에는 질문이 들어가지 않는다 — �
   2. 매칭 약하면 → **의미검색**(Vector Index `pending` 네임스페이스, 요약·LawFacts 임베딩) → 후보 도출.
   3. 상태 판정. 모호 입력은 보통 `AMBIGUOUS`(후보 명확화).
   4. **의안번호 분기는 없다**(D42) — 법령에 의안번호가 없고 사용자가 법령ID(`001809`)를 입력하지도 않는다.
-- 의존: `LawLookup` 포트 → (현재) LawConnector · (예정) Law Store + Vector Index `pending` ns.
+- 의존: `LawLookup` 포트 → Law Store(`LawStoreLookup`, D87) + 의미검색 폴백 `ChunkStore` `pending` ns.
 
 **해소 상태 (ResolutionState):**
 

@@ -93,12 +93,13 @@ class SourceAnalyzerTest {
     }
 
     @Test
-    void 조회가_예외를_던져도_fail_closed로_떨어진다() {
-        LawLookup broken = (q, n) -> { throw new IllegalStateException("LAW_OC 미설정"); };
-        var sa2 = new SourceAnalyzer(broken);
+    void 조회가_예외를_던지면_그대로_전파된다() {
+        LawLookup broken = (q, n) -> { throw new IllegalStateException("DB 연결 실패"); };
+        var analyzer = new SourceAnalyzer(broken);
 
-        assertEquals(ResolutionState.NOT_FOUND_YET, sa2.resolve("주택법").state(),
-                "출처 장애가 예외로 새어나가면 안 된다");
+        var thrown = assertThrows(IllegalStateException.class, () -> analyzer.resolve("주택법"));
+        assertEquals("DB 연결 실패", thrown.getMessage(),
+                "저장소 장애를 '그런 법 없음'으로 답하면 장애가 가려진다(D87)");
     }
 
     @Test

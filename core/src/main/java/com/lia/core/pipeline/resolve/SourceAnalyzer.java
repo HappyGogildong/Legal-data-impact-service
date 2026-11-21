@@ -146,12 +146,8 @@ public class SourceAnalyzer {
 
     private List<RawLaw> search(String query) {
         if (lookup == null) return List.of();
-        try {
-            List<RawLaw> found = lookup.searchByName(query, 10);
-            return found == null ? List.of() : found;
-        } catch (RuntimeException e) {
-            return List.of();   // 무키·오프라인에서도 fail-closed 로 떨어지게
-        }
+        List<RawLaw> found = lookup.searchByName(query, 10);
+        return found == null ? List.of() : found;
     }
 
     private static List<RawLaw> top(List<RawLaw> list) {
