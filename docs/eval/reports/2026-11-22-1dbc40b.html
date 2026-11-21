@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RAG 평가 보고서 2026-11-22-1dbc40b</title><style>
+:root{--bg:#f6f6f4;--surface:#ffffff;--text:#1d1d1f;--muted:#6b6b70;--border:#e0e0dc;--bar:#4a6fa5;--track:#ececea;
+--good:#1f7a4d;--good-bg:#e6f4ec;--bad:#b42318;--bad-bg:#fdecea;--none:#5b5b62;--none-bg:#ececea;--warn-bg:#fff6e0;--warn:#8a5a00}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141416;--surface:#1e1e21;--text:#ececef;
+--muted:#9a9aa2;--border:#34343a;--bar:#7aa2e3;--track:#2a2a2f;--good:#5cc28d;--good-bg:#16301f;--bad:#f07167;
+--bad-bg:#3a1c1a;--none:#b4b4bc;--none-bg:#2a2a2f;--warn-bg:#33290f;--warn:#e8b94a}}
+:root[data-theme="dark"]{--bg:#141416;--surface:#1e1e21;--text:#ececef;--muted:#9a9aa2;--border:#34343a;--bar:#7aa2e3;
+--track:#2a2a2f;--good:#5cc28d;--good-bg:#16301f;--bad:#f07167;--bad-bg:#3a1c1a;--none:#b4b4bc;--none-bg:#2a2a2f;
+--warn-bg:#33290f;--warn:#e8b94a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.4rem;margin:0 0 4px}h2{font-size:1.05rem;margin:28px 0 10px}h3{font-size:.98rem;margin:0}
+code{font-family:ui-monospace,Consolas,monospace}
+.sub{color:var(--muted);margin:0 0 16px}
+.verdict{border-radius:12px;padding:14px 16px;margin:12px 0;border:1px solid var(--border)}
+.verdict strong{font-size:1.15rem;display:block}
+.verdict.none{background:var(--none-bg);color:var(--none)}
+.verdict.passed{background:var(--good-bg);color:var(--good)}
+.verdict.regressed{background:var(--bad-bg);color:var(--bad)}
+.meta{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:12px 0}
+.meta div{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 12px}
+.meta dt{color:var(--muted);font-size:.8rem}.meta dd{margin:0;font-weight:600}
+.warn{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 14px;margin:8px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:12px;padding:12px 14px}
+.card.regressed{border-left-color:var(--bad)}.card.improved{border-left-color:var(--good)}
+.key{color:var(--muted);font-size:.78rem;margin:2px 0 6px;overflow-wrap:anywhere}
+.value{font-size:1.25rem;font-weight:700;margin:4px 0}
+.bar{height:6px;background:var(--track);border-radius:3px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--bar)}
+.note{font-size:.82rem;margin:8px 0 0}.card.regressed .note{color:var(--bad)}.card.improved .note{color:var(--good)}
+.desc{color:var(--muted);font-size:.8rem;margin:6px 0 0}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;background:var(--surface);border-radius:12px;overflow:hidden}
+th,td{padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
+tr.fail td{background:var(--bad-bg)}tr.fail td:nth-child(2){color:var(--bad);font-weight:600}
+td.wrap{white-space:normal;min-width:220px}
+td.regressed{color:var(--bad);font-weight:600}td.improved{color:var(--good);font-weight:600}td.empty{color:var(--muted)}
+details{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin:10px 0}
+summary{cursor:pointer;font-weight:600}
+pre{overflow-x:auto;font-size:.8rem;margin:10px 0 0}
+dl.glossary dt{font-weight:600;margin-top:8px}dl.glossary dd{margin:0;color:var(--muted)}
+</style></head><body><main>
+<h1>RAG 평가 보고서</h1><p class="sub">2026-11-22 · 이미지 <code>1dbc40b</code></p>
+<div class="verdict passed"><strong>통과</strong>모든 지표가 허용 오차(설정 0.02와 1/분모 중 큰 값) 안</div>
+<dl class="meta"><div><dt>색인 법령</dt><dd>612</dd></div><div><dt>평가 문항</dt><dd>39</dd></div><div><dt>제외 문항</dt><dd>0</dd></div><div><dt>후보 전 청크 수</dt><dd>40</dd></div><div><dt>최대 후보</dt><dd>10</dd></div><div><dt>유사도 하한</dt><dd>0.3</dd></div></dl>
+<section><h2>법령 찾기</h2>
+<div class="grid">
+<article class="card improved">
+<h3>법령 이름 해소</h3>
+<p class="key">law.resolution · ↑ 높을수록 좋음</p>
+<p class="value">92.9% (13/14)</p>
+<div class="bar"><span style="width:92.9%"></span></div>
+<p class="note">기준선 57.1% → 변화 +35.7%p (허용 7.1%p)</p>
+<p class="desc">법령 이름을 댄 질문에서 정답 법령 하나로 정한 비율</p>
+</article>
+<article class="card steady">
+<h3>주제 검색 상위 3</h3>
+<p class="key">discovery.hit@3 · ↑ 높을수록 좋음</p>
+<p class="value">85.7% (12/14)</p>
+<div class="bar"><span style="width:85.7%"></span></div>
+<p class="note">기준선 92.9% → 변화 -7.1%p (허용 7.1%p)</p>
+<p class="desc">주제만 말한 질문에서 정답 법령이 후보 상위 3개 안에 든 비율</p>
+</article>
+<article class="card steady">
+<h3>정답 순위 점수(MRR)</h3>
+<p class="key">discovery.mrr · ↑ 높을수록 좋음</p>
+<p class="value">0.821 (n=14)</p>
+<div class="bar"><span style="width:82.1%"></span></div>
+<p class="note">기준선 0.893 → 변화 -0.071 (허용 0.071)</p>
+<p class="desc">정답 법령 순위의 역수 평균 — 1위 1, 2위 0.5, 못 찾으면 0</p>
+</article>
+<article class="card steady">
+<h3>엉뚱한 후보</h3>
+<p class="key">discovery.irrelevant · ↓ 낮을수록 좋음</p>
+<p class="value">74.3% (75/101)</p>
+<div class="bar"><span style="width:74.3%"></span></div>
+<p class="note">기준선 73.5% → 변화 +0.7%p (허용 2.0%p)</p>
+<p class="desc">주제 질문이 낸 후보 중 정답도 허용 법령도 아닌 비율</p>
+</article>
+</div></section>
+<section><h2>조문</h2>
+<div class="grid">
+<article class="card improved">
+<h3>조문 번호</h3>
+<p class="key">article.match · ↑ 높을수록 좋음</p>
+<p class="value">100.0% (5/5)</p>
+<div class="bar"><span style="width:100.0%"></span></div>
+<p class="note">기준선 40.0% → 변화 +60.0%p (허용 20.0%p)</p>
+<p class="desc">질문이 지목한 조문 번호를 맞게 뽑은 비율</p>
+</article>
+</div></section>
+<section><h2>거부·관련 없음</h2>
+<div class="grid">
+<article class="card steady">
+<h3>거부할 질문 거부</h3>
+<p class="key">refusal.recall · ↑ 높을수록 좋음</p>
+<p class="value">66.7% (4/6)</p>
+<div class="bar"><span style="width:66.7%"></span></div>
+<p class="note">기준선 83.3% → 변화 -16.7%p (허용 16.7%p)</p>
+<p class="desc">법령과 무관하거나 없는 법을 물은 질문을 거부한 비율</p>
+</article>
+<article class="card steady">
+<h3>답할 질문 거부</h3>
+<p class="key">refusal.over · ↓ 낮을수록 좋음</p>
+<p class="value">3.6% (1/28)</p>
+<div class="bar"><span style="width:3.6%"></span></div>
+<p class="note">기준선 0.0% → 변화 +3.6%p (허용 3.6%p)</p>
+<p class="desc">답이 있는 질문을 잘못 거부한 비율</p>
+</article>
+<article class="card steady">
+<h3>관련 없는 질문에 후보</h3>
+<p class="key">nomatch.candidate_rate · ↓ 낮을수록 좋음</p>
+<p class="value">100.0% (5/5)</p>
+<div class="bar"><span style="width:100.0%"></span></div>
+<p class="note">기준선 100.0% → 변화 +0.0%p (허용 20.0%p)</p>
+<p class="desc">관련 법령이 없는 질문에 후보를 하나라도 낸 비율</p>
+</article>
+</div></section>
+<section><h2>의도 분류</h2>
+<div class="grid">
+<article class="card improved">
+<h3>의도 분류 평균 F1</h3>
+<p class="key">intent.macro_f1 · ↑ 높을수록 좋음</p>
+<p class="value">0.692 (n=14)</p>
+<div class="bar"><span style="width:69.2%"></span></div>
+<p class="note">기준선 0.542 → 변화 +0.151 (허용 0.071)</p>
+<p class="desc">정답에 등장하는 의도 차원들의 F1 평균</p>
+</article>
+</div></section>
+<section><h2>의도 분류 — 차원별</h2><div class="table-wrap"><table><thead><tr><th>차원</th><th>정밀도</th><th>재현율</th><th>F1</th></tr></thead><tbody><tr><th>요약 <span class="key">SUMMARY</span></th><td class="steady" title="기준선 100.0% → 변화 +0.0%p (허용 100.0%p)">100.0% (1/1)<br><span class="note">기준선 100.0% → 변화 +0.0%p (허용 100.0%p)</span></td><td class="steady" title="기준선 33.3% → 변화 +0.0%p (허용 33.3%p)">33.3% (1/3)<br><span class="note">기준선 33.3% → 변화 +0.0%p (허용 33.3%p)</span></td><td class="steady" title="기준선 0.500 → 변화 +0.000 (허용 0.333)">0.500 (n=3)<br><span class="note">기준선 0.500 → 변화 +0.000 (허용 0.333)</span></td></tr><tr><th>변경점 <span class="key">DIFF</span></th><td class="steady" title="기준선 66.7% → 변화 -4.2%p (허용 12.5%p)">62.5% (5/8)<br><span class="note">기준선 66.7% → 변화 -4.2%p (허용 12.5%p)</span></td><td class="improved" title="기준선 40.0% → 변화 +60.0%p (허용 20.0%p)">100.0% (5/5)<br><span class="note">기준선 40.0% → 변화 +60.0%p (허용 20.0%p)</span></td><td class="improved" title="기준선 0.500 → 변화 +0.269 (허용 0.200)">0.769 (n=5)<br><span class="note">기준선 0.500 → 변화 +0.269 (허용 0.200)</span></td></tr><tr><th>내 영향 <span class="key">IMPACT</span></th><td class="improved" title="기준선 66.7% → 변화 +33.3%p (허용 33.3%p)">100.0% (3/3)<br><span class="note">기준선 66.7% → 변화 +33.3%p (허용 33.3%p)</span></td><td class="improved" title="기준선 66.7% → 변화 +33.3%p (허용 33.3%p)">100.0% (3/3)<br><span class="note">기준선 66.7% → 변화 +33.3%p (허용 33.3%p)</span></td><td class="improved" title="기준선 0.667 → 변화 +0.333 (허용 0.333)">1.000 (n=3)<br><span class="note">기준선 0.667 → 변화 +0.333 (허용 0.333)</span></td></tr><tr><th>대응 <span class="key">ACTION</span></th><td class="steady" title="기준선 100.0% → 변화 +0.0%p (허용 100.0%p)">100.0% (1/1)<br><span class="note">기준선 100.0% → 변화 +0.0%p (허용 100.0%p)</span></td><td class="steady" title="기준선 33.3% → 변화 +0.0%p (허용 33.3%p)">33.3% (1/3)<br><span class="note">기준선 33.3% → 변화 +0.0%p (허용 33.3%p)</span></td><td class="steady" title="기준선 0.500 → 변화 +0.000 (허용 0.333)">0.500 (n=3)<br><span class="note">기준선 0.500 → 변화 +0.000 (허용 0.333)</span></td></tr></tbody></table></div></section>
+<h2>문항별 결과</h2><p class="sub">실패 10건 / 39건 — 판정은 지표와 같다(법령 지목=정답으로 해소, 주제=상위 3, 관련 법령 없음=후보 없음, 거부 대상=거부)</p><div class="table-wrap"><table><thead><tr><th>#</th><th>판정</th><th>질문</th><th>종류</th><th>정답</th><th>번역 법령명</th><th>경로</th><th>후보</th></tr></thead><tbody><tr class="pass"><td>1</td><td>통과</td><td class="wrap">약사법 제20조 뭐가 바뀌었어?</td><td>법령 지목</td><td>001783</td><td>약사법</td><td>해소 <span class="key">RESOLVED</span></td><td>001783</td></tr><tr class="pass"><td>2</td><td>통과</td><td class="wrap">저작권법 제25조 개정 전후로 뭐가 달라져?</td><td>법령 지목</td><td>000798</td><td>저작권법</td><td>해소 <span class="key">RESOLVED</span></td><td>000798</td></tr><tr class="pass"><td>3</td><td>통과</td><td class="wrap">지방자치법 제134조의2 내용이 어떻게 바뀌어?</td><td>법령 지목</td><td>001656</td><td>지방자치법</td><td>해소 <span class="key">RESOLVED</span></td><td>001656</td></tr><tr class="pass"><td>4</td><td>통과</td><td class="wrap">식품위생법 제41조의2 바뀐 점 알려줘</td><td>법령 지목</td><td>001805</td><td>식품위생법</td><td>해소 <span class="key">RESOLVED</span></td><td>001805</td></tr><tr class="pass"><td>5</td><td>통과</td><td class="wrap">정보통신망법 제45조의5 개정 내용 비교해 줘</td><td>법령 지목</td><td>000030</td><td>정보통신망 이용촉진 및 정보보호 등에 관한 법률</td><td>해소 <span class="key">RESOLVED</span></td><td>000030</td></tr><tr class="pass"><td>6</td><td>통과</td><td class="wrap">결핵예방법이 어떻게 바뀌는지 요약해 줘</td><td>법령 지목</td><td>001791</td><td>결핵예방법</td><td>해소 <span class="key">RESOLVED</span></td><td>001791</td></tr><tr class="pass"><td>7</td><td>통과</td><td class="wrap">마약류 관리에 관한 법률 개정 내용 알려줘</td><td>법령 지목</td><td>002025</td><td>마약류 관리에 관한 법률</td><td>해소 <span class="key">RESOLVED</span></td><td>002025</td></tr><tr class="pass"><td>8</td><td>통과</td><td class="wrap">자원봉사기본법 전부개정 내용 요약해 줘</td><td>법령 지목</td><td>010001</td><td>자원봉사기본법</td><td>해소 <span class="key">RESOLVED</span></td><td>010001</td></tr><tr class="pass"><td>9</td><td>통과</td><td class="wrap">기초연금법 바뀌면 나한테 어떤 영향이 있어?</td><td>법령 지목</td><td>012045</td><td>기초연금법</td><td>해소 <span class="key">RESOLVED</span></td><td>012045</td></tr><tr class="pass"><td>10</td><td>통과</td><td class="wrap">응급의료법 개정되면 나는 어떻게 달라져?</td><td>법령 지목</td><td>000218</td><td>응급의료에 관한 법률</td><td>해소 <span class="key">RESOLVED</span></td><td>000218</td></tr><tr class="pass"><td>11</td><td>통과</td><td class="wrap">국민연금법 개정이 내 연금에 영향 있어?</td><td>법령 지목</td><td>001781</td><td>국민연금법</td><td>해소 <span class="key">RESOLVED</span></td><td>001781</td></tr><tr class="pass"><td>12</td><td>통과</td><td class="wrap">화장품법 시행되면 맞춤형화장품 판매업자는 뭘 준비해야 해?</td><td>법령 지목</td><td>002015</td><td>화장품법</td><td>해소 <span class="key">RESOLVED</span></td><td>002015</td></tr><tr class="pass"><td>13</td><td>통과</td><td class="wrap">승강기 안전관리법 바뀌면 건물 관리자는 뭘 해야 해?</td><td>법령 지목</td><td>001458</td><td>승강기 안전관리법</td><td>해소 <span class="key">RESOLVED</span></td><td>001458</td></tr><tr class="fail"><td>14</td><td>실패</td><td class="wrap">게임산업법 개정되면 해외 게임사는 뭘 해야 해?</td><td>법령 지목</td><td>010196</td><td>게임산업법</td><td>모호(후보 여럿) <span class="key">AMBIGUOUS</span></td><td>010196, 013682, 001486, 015207, 013683</td></tr><tr class="pass"><td>15</td><td>통과</td><td class="wrap">잠복결핵이 있으면 회사가 채용을 거부해도 되나?</td><td>주제</td><td>001791</td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>001791, 013679, 014070, 010485, 015114 외 5</td></tr><tr class="pass"><td>16</td><td>통과</td><td class="wrap">청소년도 노래방에 갈 수 있게 바뀌나?</td><td>주제</td><td>000815</td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>000815, 005206, 000816, 009382, 015116 외 5</td></tr><tr class="pass"><td>17</td><td>통과</td><td class="wrap">스토킹 피해자가 법원에 직접 보호명령을 신청할 수 있게 되나?</td><td>주제</td><td>014070</td><td>스토킹범죄의처벌등에관한법률</td><td>모호(후보 여럿) <span class="key">AMBIGUOUS</span></td><td>014070, 009245, 001119, 001159</td></tr><tr class="pass"><td>18</td><td>통과</td><td class="wrap">환자의 권리를 정리한 기본법이 새로 생긴다던데?</td><td>주제</td><td>015115</td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>015115, 012242, 002029, 001788, 013572 외 5</td></tr><tr class="pass"><td>19</td><td>통과</td><td class="wrap">장애인 평생교육을 지원하는 법이 따로 생기나?</td><td>주제</td><td>014971</td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>012046, 014971, 000851, 000187, 015133 외 1</td></tr><tr class="pass"><td>20</td><td>통과</td><td class="wrap">산에 임도를 만들고 관리하는 기준이 법으로 정해지나?</td><td>주제</td><td>015121</td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>015121, 009641, 014829, 009294, 010162 외 1</td></tr><tr class="fail"><td>21</td><td>실패</td><td class="wrap">문 닫은 학교 건물을 주민 시설로 쓸 수 있게 되나?</td><td>주제</td><td>002010</td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>015202, 015200, 000894, 013478, 012805 외 5</td></tr><tr class="pass"><td>22</td><td>통과</td><td class="wrap">군 복무 중 생긴 트라우마가 전역 후에 진단돼도 보상받을 수 있어?</td><td>주제</td><td>013622</td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>013622, 001627, 011460, 001325, 015152 외 2</td></tr><tr class="pass"><td>23</td><td>통과</td><td class="wrap">공항 주변을 경제권으로 묶어 개발하는 법이 생기나?</td><td>주제</td><td>015122</td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>015122, 009294, 013663, 000243, 009595 외 5</td></tr><tr class="pass"><td>24</td><td>통과</td><td class="wrap">통신사 해킹 사고 이후 기업 정보보호 수준 평가가 생기나?</td><td>주제</td><td>000030</td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>000030, 012401, 010485, 001460, 000088 외 5</td></tr><tr class="pass"><td>25</td><td>통과</td><td class="wrap">외국에 오래 살다 온 노인도 기초연금을 받을 수 있어?</td><td>주제</td><td>012045</td><td>기초연금법</td><td>해소 <span class="key">RESOLVED</span></td><td>012045</td></tr><tr class="pass"><td>26</td><td>통과</td><td class="wrap">보험사가 어린이 놀이시설 배상책임보험 가입을 거절하면 어떻게 돼?</td><td>주제</td><td>010384</td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>010384, 001458, 010575, 011374, 011016 외 5</td></tr><tr class="fail"><td>27</td><td>실패</td><td class="wrap">목재의 날이 새로 생긴다던데 언제야?</td><td>주제</td><td>011620</td><td></td><td>비법령 <span class="key">OFF_TOPIC</span></td><td></td></tr><tr class="pass"><td>28</td><td>통과</td><td class="wrap">인공지능 학습용 데이터를 한곳에서 제공하는 시스템이 생기나?</td><td>주제</td><td>014820</td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>014820, 015144, 015145, 013792, 013909 외 2</td></tr><tr class="fail"><td>29</td><td>실패</td><td class="wrap">전동킥보드 헬멧 안 쓰면 벌금이 오르나?</td><td>관련 법령 없음</td><td></td><td>도로교통법</td><td>해소 <span class="key">RESOLVED</span></td><td>001638</td></tr><tr class="fail"><td>30</td><td>실패</td><td class="wrap">주 4일제가 법으로 도입되나?</td><td>관련 법령 없음</td><td></td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>015121, 002015, 001590, 001744, 002025 외 5</td></tr><tr class="fail"><td>31</td><td>실패</td><td class="wrap">아파트 층간소음 기준이 강화되나?</td><td>관련 법령 없음</td><td></td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>006189, 013478, 004083</td></tr><tr class="fail"><td>32</td><td>실패</td><td class="wrap">공매도 제도가 다시 바뀌나?</td><td>관련 법령 없음</td><td></td><td>자본시장과 금융투자업에 관한 법률</td><td>해소 <span class="key">RESOLVED</span></td><td>010513</td></tr><tr class="fail"><td>33</td><td>실패</td><td class="wrap">택시 합승이 다시 허용되나?</td><td>관련 법령 없음</td><td></td><td></td><td>발견 <span class="key">DISCOVERY</span></td><td>001754, 001749, 003425, 010161, 000998 외 5</td></tr><tr class="pass"><td>34</td><td>통과</td><td class="wrap">오늘 점심 뭐 먹지</td><td>거부 대상</td><td></td><td></td><td>비법령 <span class="key">OFF_TOPIC</span></td><td></td></tr><tr class="pass"><td>35</td><td>통과</td><td class="wrap">지금 주식 사도 될까?</td><td>거부 대상</td><td></td><td></td><td>비법령 <span class="key">OFF_TOPIC</span></td><td></td></tr><tr class="pass"><td>36</td><td>통과</td><td class="wrap">내일 서울 날씨 알려줘</td><td>거부 대상</td><td></td><td></td><td>비법령 <span class="key">OFF_TOPIC</span></td><td></td></tr><tr class="fail"><td>37</td><td>실패</td><td class="wrap">가상의무슨법 바뀌면 어떻게 돼?</td><td>거부 대상</td><td></td><td>가상의무슨법</td><td>모호(후보 여럿) <span class="key">AMBIGUOUS</span></td><td>001584, 010294, 003608, 014612, 009290</td></tr><tr class="fail"><td>38</td><td>실패</td><td class="wrap">행복증진기본법 제3조 뭐가 바뀌었어?</td><td>거부 대상</td><td></td><td>행복증진기본법</td><td>모호(후보 여럿) <span class="key">AMBIGUOUS</span></td><td>010595, 015004, 015136, 015115, 001791</td></tr><tr class="pass"><td>39</td><td>통과</td><td class="wrap">우리 동네 맛집 추천해 줘</td><td>거부 대상</td><td></td><td></td><td>비법령 <span class="key">OFF_TOPIC</span></td><td></td></tr></tbody></table></div>
+<details><summary>지표 설명·판정 규칙</summary><dl class="glossary"><dt>법령 이름 해소 <span class="key">law.resolution</span></dt><dd>법령 이름을 댄 질문에서 정답 법령 하나로 정한 비율</dd><dt>주제 검색 상위 3 <span class="key">discovery.hit@3</span></dt><dd>주제만 말한 질문에서 정답 법령이 후보 상위 3개 안에 든 비율</dd><dt>정답 순위 점수(MRR) <span class="key">discovery.mrr</span></dt><dd>정답 법령 순위의 역수 평균 — 1위 1, 2위 0.5, 못 찾으면 0</dd><dt>엉뚱한 후보 <span class="key">discovery.irrelevant</span></dt><dd>주제 질문이 낸 후보 중 정답도 허용 법령도 아닌 비율</dd><dt>조문 번호 <span class="key">article.match</span></dt><dd>질문이 지목한 조문 번호를 맞게 뽑은 비율</dd><dt>거부할 질문 거부 <span class="key">refusal.recall</span></dt><dd>법령과 무관하거나 없는 법을 물은 질문을 거부한 비율</dd><dt>답할 질문 거부 <span class="key">refusal.over</span></dt><dd>답이 있는 질문을 잘못 거부한 비율</dd><dt>관련 없는 질문에 후보 <span class="key">nomatch.candidate_rate</span></dt><dd>관련 법령이 없는 질문에 후보를 하나라도 낸 비율</dd><dt>의도 분류 평균 F1 <span class="key">intent.macro_f1</span></dt><dd>정답에 등장하는 의도 차원들의 F1 평균</dd></dl><p>회귀 = 기준선보다 나빠진 양이 허용 오차를 넘음. 허용 오차 = 설정(0.02)과 1/분모 중 큰 값 — 문항이 적은 지표는 한 문항 차이를 우연으로 본다. 기준선에 있던 지표가 사라져도 회귀다.</p></details>
+<details><summary>원본 JSON</summary><pre>{
+  &quot;config&quot;: {
+    &quot;chunkFetch&quot;: 40,
+    &quot;maxCandidates&quot;: 10,
+    &quot;minSimilarity&quot;: 0.3
+  },
+  &quot;indexedLaws&quot;: 612,
+  &quot;cases&quot;: 39,
+  &quot;excludedCases&quot;: 0,
+  &quot;metrics&quot;: {
+    &quot;article.match&quot;: {
+      &quot;value&quot;: 1.0,
+      &quot;n&quot;: 5
+    },
+    &quot;discovery.hit@3&quot;: {
+      &quot;value&quot;: 0.8571428571428571,
+      &quot;n&quot;: 14
+    },
+    &quot;discovery.irrelevant&quot;: {
+      &quot;value&quot;: 0.7425742574257426,
+      &quot;n&quot;: 101
+    },
+    &quot;discovery.mrr&quot;: {
+      &quot;value&quot;: 0.8214285714285714,
+      &quot;n&quot;: 14
+    },
+    &quot;intent.ACTION.f1&quot;: {
+      &quot;value&quot;: 0.5,
+      &quot;n&quot;: 3
+    },
+    &quot;intent.ACTION.precision&quot;: {
+      &quot;value&quot;: 1.0,
+      &quot;n&quot;: 1
+    },
+    &quot;intent.ACTION.recall&quot;: {
+      &quot;value&quot;: 0.3333333333333333,
+      &quot;n&quot;: 3
+    },
+    &quot;intent.DIFF.f1&quot;: {
+      &quot;value&quot;: 0.7692307692307693,
+      &quot;n&quot;: 5
+    },
+    &quot;intent.DIFF.precision&quot;: {
+      &quot;value&quot;: 0.625,
+      &quot;n&quot;: 8
+    },
+    &quot;intent.DIFF.recall&quot;: {
+      &quot;value&quot;: 1.0,
+      &quot;n&quot;: 5
+    },
+    &quot;intent.IMPACT.f1&quot;: {
+      &quot;value&quot;: 1.0,
+      &quot;n&quot;: 3
+    },
+    &quot;intent.IMPACT.precision&quot;: {
+      &quot;value&quot;: 1.0,
+      &quot;n&quot;: 3
+    },
+    &quot;intent.IMPACT.recall&quot;: {
+      &quot;value&quot;: 1.0,
+      &quot;n&quot;: 3
+    },
+    &quot;intent.SUMMARY.f1&quot;: {
+      &quot;value&quot;: 0.5,
+      &quot;n&quot;: 3
+    },
+    &quot;intent.SUMMARY.precision&quot;: {
+      &quot;value&quot;: 1.0,
+      &quot;n&quot;: 1
+    },
+    &quot;intent.SUMMARY.recall&quot;: {
+      &quot;value&quot;: 0.3333333333333333,
+      &quot;n&quot;: 3
+    },
+    &quot;intent.macro_f1&quot;: {
+      &quot;value&quot;: 0.6923076923076923,
+      &quot;n&quot;: 14
+    },
+    &quot;law.resolution&quot;: {
+      &quot;value&quot;: 0.9285714285714286,
+      &quot;n&quot;: 14
+    },
+    &quot;nomatch.candidate_rate&quot;: {
+      &quot;value&quot;: 1.0,
+      &quot;n&quot;: 5
+    },
+    &quot;refusal.over&quot;: {
+      &quot;value&quot;: 0.03571428571428571,
+      &quot;n&quot;: 28
+    },
+    &quot;refusal.recall&quot;: {
+      &quot;value&quot;: 0.6666666666666666,
+      &quot;n&quot;: 6
+    }
+  },
+  &quot;caseResults&quot;: [
+    {
+      &quot;query&quot;: &quot;약사법 제20조 뭐가 바뀌었어?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;001783&quot;
+      ],
+      &quot;expectedArticleNo&quot;: &quot;20&quot;,
+      &quot;expectedDimension&quot;: &quot;DIFF&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;약사법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;001783&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: &quot;20&quot;,
+      &quot;primaryType&quot;: &quot;DIFF&quot;
+    },
+    {
+      &quot;query&quot;: &quot;저작권법 제25조 개정 전후로 뭐가 달라져?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;000798&quot;
+      ],
+      &quot;expectedArticleNo&quot;: &quot;25&quot;,
+      &quot;expectedDimension&quot;: &quot;DIFF&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;저작권법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;000798&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: &quot;25&quot;,
+      &quot;primaryType&quot;: &quot;DIFF&quot;
+    },
+    {
+      &quot;query&quot;: &quot;지방자치법 제134조의2 내용이 어떻게 바뀌어?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;001656&quot;
+      ],
+      &quot;expectedArticleNo&quot;: &quot;134의2&quot;,
+      &quot;expectedDimension&quot;: &quot;DIFF&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;지방자치법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;001656&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: &quot;134의2&quot;,
+      &quot;primaryType&quot;: &quot;DIFF&quot;
+    },
+    {
+      &quot;query&quot;: &quot;식품위생법 제41조의2 바뀐 점 알려줘&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;001805&quot;
+      ],
+      &quot;expectedArticleNo&quot;: &quot;41의2&quot;,
+      &quot;expectedDimension&quot;: &quot;DIFF&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;식품위생법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;001805&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: &quot;41의2&quot;,
+      &quot;primaryType&quot;: &quot;DIFF&quot;
+    },
+    {
+      &quot;query&quot;: &quot;정보통신망법 제45조의5 개정 내용 비교해 줘&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;000030&quot;
+      ],
+      &quot;expectedArticleNo&quot;: &quot;45의5&quot;,
+      &quot;expectedDimension&quot;: &quot;DIFF&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;정보통신망 이용촉진 및 정보보호 등에 관한 법률&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;000030&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: &quot;45의5&quot;,
+      &quot;primaryType&quot;: &quot;DIFF&quot;
+    },
+    {
+      &quot;query&quot;: &quot;결핵예방법이 어떻게 바뀌는지 요약해 줘&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;001791&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: &quot;SUMMARY&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;결핵예방법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;001791&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;DIFF&quot;
+    },
+    {
+      &quot;query&quot;: &quot;마약류 관리에 관한 법률 개정 내용 알려줘&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;002025&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: &quot;SUMMARY&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;마약류 관리에 관한 법률&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;002025&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;DIFF&quot;
+    },
+    {
+      &quot;query&quot;: &quot;자원봉사기본법 전부개정 내용 요약해 줘&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;010001&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: &quot;SUMMARY&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;자원봉사기본법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;010001&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;SUMMARY&quot;
+    },
+    {
+      &quot;query&quot;: &quot;기초연금법 바뀌면 나한테 어떤 영향이 있어?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;012045&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: &quot;IMPACT&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;기초연금법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;012045&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;IMPACT&quot;
+    },
+    {
+      &quot;query&quot;: &quot;응급의료법 개정되면 나는 어떻게 달라져?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;000218&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: &quot;IMPACT&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;응급의료에 관한 법률&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;000218&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;IMPACT&quot;
+    },
+    {
+      &quot;query&quot;: &quot;국민연금법 개정이 내 연금에 영향 있어?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;001781&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: &quot;IMPACT&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;국민연금법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;001781&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;IMPACT&quot;
+    },
+    {
+      &quot;query&quot;: &quot;화장품법 시행되면 맞춤형화장품 판매업자는 뭘 준비해야 해?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;002015&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: &quot;ACTION&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;화장품법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;002015&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;ACTION&quot;
+    },
+    {
+      &quot;query&quot;: &quot;승강기 안전관리법 바뀌면 건물 관리자는 뭘 해야 해?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;001458&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: &quot;ACTION&quot;,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;승강기 안전관리법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;001458&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;DIFF&quot;
+    },
+    {
+      &quot;query&quot;: &quot;게임산업법 개정되면 해외 게임사는 뭘 해야 해?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: true,
+      &quot;expectedLawIds&quot;: [
+        &quot;010196&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: &quot;ACTION&quot;,
+      &quot;passed&quot;: false,
+      &quot;route&quot;: &quot;AMBIGUOUS&quot;,
+      &quot;lawName&quot;: &quot;게임산업법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;010196&quot;,
+        &quot;013682&quot;,
+        &quot;001486&quot;,
+        &quot;015207&quot;,
+        &quot;013683&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: null
+    },
+    {
+      &quot;query&quot;: &quot;잠복결핵이 있으면 회사가 채용을 거부해도 되나?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;001791&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;001791&quot;,
+        &quot;013679&quot;,
+        &quot;014070&quot;,
+        &quot;010485&quot;,
+        &quot;015114&quot;,
+        &quot;001765&quot;,
+        &quot;000128&quot;,
+        &quot;014126&quot;,
+        &quot;003967&quot;,
+        &quot;013114&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;청소년도 노래방에 갈 수 있게 바뀌나?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;000815&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;000815&quot;,
+        &quot;005206&quot;,
+        &quot;000816&quot;,
+        &quot;009382&quot;,
+        &quot;015116&quot;,
+        &quot;010197&quot;,
+        &quot;002044&quot;,
+        &quot;015101&quot;,
+        &quot;014862&quot;,
+        &quot;009933&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;스토킹 피해자가 법원에 직접 보호명령을 신청할 수 있게 되나?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;014070&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;AMBIGUOUS&quot;,
+      &quot;lawName&quot;: &quot;스토킹범죄의처벌등에관한법률&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;014070&quot;,
+        &quot;009245&quot;,
+        &quot;001119&quot;,
+        &quot;001159&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: null
+    },
+    {
+      &quot;query&quot;: &quot;환자의 권리를 정리한 기본법이 새로 생긴다던데?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;015115&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;015115&quot;,
+        &quot;012242&quot;,
+        &quot;002029&quot;,
+        &quot;001788&quot;,
+        &quot;013572&quot;,
+        &quot;011358&quot;,
+        &quot;015136&quot;,
+        &quot;001792&quot;,
+        &quot;015133&quot;,
+        &quot;002019&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;장애인 평생교육을 지원하는 법이 따로 생기나?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;014971&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;012046&quot;,
+        &quot;014971&quot;,
+        &quot;000851&quot;,
+        &quot;000187&quot;,
+        &quot;015133&quot;,
+        &quot;010449&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;산에 임도를 만들고 관리하는 기준이 법으로 정해지나?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;015121&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;015121&quot;,
+        &quot;009641&quot;,
+        &quot;014829&quot;,
+        &quot;009294&quot;,
+        &quot;010162&quot;,
+        &quot;015060&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;문 닫은 학교 건물을 주민 시설로 쓸 수 있게 되나?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;002010&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: false,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;015202&quot;,
+        &quot;015200&quot;,
+        &quot;000894&quot;,
+        &quot;013478&quot;,
+        &quot;012805&quot;,
+        &quot;015201&quot;,
+        &quot;000899&quot;,
+        &quot;001823&quot;,
+        &quot;015150&quot;,
+        &quot;001809&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;군 복무 중 생긴 트라우마가 전역 후에 진단돼도 보상받을 수 있어?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;013622&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;013622&quot;,
+        &quot;001627&quot;,
+        &quot;011460&quot;,
+        &quot;001325&quot;,
+        &quot;015152&quot;,
+        &quot;010595&quot;,
+        &quot;000222&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;공항 주변을 경제권으로 묶어 개발하는 법이 생기나?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;015122&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;015122&quot;,
+        &quot;009294&quot;,
+        &quot;013663&quot;,
+        &quot;000243&quot;,
+        &quot;009595&quot;,
+        &quot;000894&quot;,
+        &quot;014456&quot;,
+        &quot;015200&quot;,
+        &quot;015202&quot;,
+        &quot;010162&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;통신사 해킹 사고 이후 기업 정보보호 수준 평가가 생기나?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;000030&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;000030&quot;,
+        &quot;012401&quot;,
+        &quot;010485&quot;,
+        &quot;001460&quot;,
+        &quot;000088&quot;,
+        &quot;013909&quot;,
+        &quot;010916&quot;,
+        &quot;011357&quot;,
+        &quot;001766&quot;,
+        &quot;001638&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;외국에 오래 살다 온 노인도 기초연금을 받을 수 있어?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;012045&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;기초연금법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;012045&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;SUMMARY&quot;
+    },
+    {
+      &quot;query&quot;: &quot;보험사가 어린이 놀이시설 배상책임보험 가입을 거절하면 어떻게 돼?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;010384&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;010384&quot;,
+        &quot;001458&quot;,
+        &quot;010575&quot;,
+        &quot;011374&quot;,
+        &quot;011016&quot;,
+        &quot;009195&quot;,
+        &quot;014953&quot;,
+        &quot;001988&quot;,
+        &quot;001781&quot;,
+        &quot;001015&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;목재의 날이 새로 생긴다던데 언제야?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;011620&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: false,
+      &quot;route&quot;: &quot;OFF_TOPIC&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [],
+      &quot;refused&quot;: true,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: null
+    },
+    {
+      &quot;query&quot;: &quot;인공지능 학습용 데이터를 한곳에서 제공하는 시스템이 생기나?&quot;,
+      &quot;kind&quot;: &quot;ANSWERABLE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [
+        &quot;014820&quot;
+      ],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;014820&quot;,
+        &quot;015144&quot;,
+        &quot;015145&quot;,
+        &quot;013792&quot;,
+        &quot;013909&quot;,
+        &quot;011357&quot;,
+        &quot;014168&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;전동킥보드 헬멧 안 쓰면 벌금이 오르나?&quot;,
+      &quot;kind&quot;: &quot;NO_MATCH&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: false,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;도로교통법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;001638&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;SUMMARY&quot;
+    },
+    {
+      &quot;query&quot;: &quot;주 4일제가 법으로 도입되나?&quot;,
+      &quot;kind&quot;: &quot;NO_MATCH&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: false,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;015121&quot;,
+        &quot;002015&quot;,
+        &quot;001590&quot;,
+        &quot;001744&quot;,
+        &quot;002025&quot;,
+        &quot;009514&quot;,
+        &quot;001872&quot;,
+        &quot;009353&quot;,
+        &quot;015148&quot;,
+        &quot;014612&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;아파트 층간소음 기준이 강화되나?&quot;,
+      &quot;kind&quot;: &quot;NO_MATCH&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: false,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;006189&quot;,
+        &quot;013478&quot;,
+        &quot;004083&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;공매도 제도가 다시 바뀌나?&quot;,
+      &quot;kind&quot;: &quot;NO_MATCH&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: false,
+      &quot;route&quot;: &quot;RESOLVED&quot;,
+      &quot;lawName&quot;: &quot;자본시장과 금융투자업에 관한 법률&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;010513&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;DIFF&quot;
+    },
+    {
+      &quot;query&quot;: &quot;택시 합승이 다시 허용되나?&quot;,
+      &quot;kind&quot;: &quot;NO_MATCH&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: false,
+      &quot;route&quot;: &quot;DISCOVERY&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;001754&quot;,
+        &quot;001749&quot;,
+        &quot;003425&quot;,
+        &quot;010161&quot;,
+        &quot;000998&quot;,
+        &quot;015200&quot;,
+        &quot;014483&quot;,
+        &quot;011350&quot;,
+        &quot;013994&quot;,
+        &quot;012522&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: &quot;LOOKUP&quot;
+    },
+    {
+      &quot;query&quot;: &quot;오늘 점심 뭐 먹지&quot;,
+      &quot;kind&quot;: &quot;REFUSE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;OFF_TOPIC&quot;,
+      &quot;lawName&quot;: null,
+      &quot;candidateLawIds&quot;: [],
+      &quot;refused&quot;: true,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: null
+    },
+    {
+      &quot;query&quot;: &quot;지금 주식 사도 될까?&quot;,
+      &quot;kind&quot;: &quot;REFUSE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;OFF_TOPIC&quot;,
+      &quot;lawName&quot;: null,
+      &quot;candidateLawIds&quot;: [],
+      &quot;refused&quot;: true,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: null
+    },
+    {
+      &quot;query&quot;: &quot;내일 서울 날씨 알려줘&quot;,
+      &quot;kind&quot;: &quot;REFUSE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;OFF_TOPIC&quot;,
+      &quot;lawName&quot;: null,
+      &quot;candidateLawIds&quot;: [],
+      &quot;refused&quot;: true,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: null
+    },
+    {
+      &quot;query&quot;: &quot;가상의무슨법 바뀌면 어떻게 돼?&quot;,
+      &quot;kind&quot;: &quot;REFUSE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: false,
+      &quot;route&quot;: &quot;AMBIGUOUS&quot;,
+      &quot;lawName&quot;: &quot;가상의무슨법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;001584&quot;,
+        &quot;010294&quot;,
+        &quot;003608&quot;,
+        &quot;014612&quot;,
+        &quot;009290&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: null
+    },
+    {
+      &quot;query&quot;: &quot;행복증진기본법 제3조 뭐가 바뀌었어?&quot;,
+      &quot;kind&quot;: &quot;REFUSE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: false,
+      &quot;route&quot;: &quot;AMBIGUOUS&quot;,
+      &quot;lawName&quot;: &quot;행복증진기본법&quot;,
+      &quot;candidateLawIds&quot;: [
+        &quot;010595&quot;,
+        &quot;015004&quot;,
+        &quot;015136&quot;,
+        &quot;015115&quot;,
+        &quot;001791&quot;
+      ],
+      &quot;refused&quot;: false,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: null
+    },
+    {
+      &quot;query&quot;: &quot;우리 동네 맛집 추천해 줘&quot;,
+      &quot;kind&quot;: &quot;REFUSE&quot;,
+      &quot;lawNamed&quot;: false,
+      &quot;expectedLawIds&quot;: [],
+      &quot;expectedArticleNo&quot;: null,
+      &quot;expectedDimension&quot;: null,
+      &quot;passed&quot;: true,
+      &quot;route&quot;: &quot;OFF_TOPIC&quot;,
+      &quot;lawName&quot;: &quot;&quot;,
+      &quot;candidateLawIds&quot;: [],
+      &quot;refused&quot;: true,
+      &quot;articleNo&quot;: null,
+      &quot;primaryType&quot;: null
+    }
+  ]
+}</pre></details>
+</main></body></html>
