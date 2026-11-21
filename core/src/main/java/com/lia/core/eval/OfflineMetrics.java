@@ -59,9 +59,9 @@ public final class OfflineMetrics {
                     Set<String> expected = Set.copyOf(c.expectedLawIds());
                     overRefusal.add(o.refused());
                     if (c.lawNamed()) {
-                        resolution.add(o.resolved() && expected.contains(o.candidateLawIds().get(0)));
+                        resolution.add(resolvedCorrectly(c, o));
                     } else {
-                        hit.add(RetrievalMetrics.hitAtK(o.candidateLawIds(), expected, HIT_CUTOFF) == 1.0);
+                        hit.add(hitWithinCutoff(c, o));
                         reciprocalRankSum += RetrievalMetrics.reciprocalRank(o.candidateLawIds(), expected);
                         Set<String> allowed = new HashSet<>(expected);
                         allowed.addAll(c.acceptableLawIds());
@@ -86,6 +86,27 @@ public final class OfflineMetrics {
         overRefusal.putInto(out, REFUSAL_OVER);
         intent(intents, out);
         return out;
+    }
+
+    /**
+     * 문항 하나가 지표 판정을 통과했는가 — 보고서 문항별 결과용. {@link #score} 와 같은 판정을 쓴다:
+     * 법령을 댄 문항은 정답 법령으로 해소, 주제 문항은 정답이 상위 3 안, 관련 법령 없음은 후보 없음, 거부 문항은 거부.
+     */
+    public static boolean passed(EvalCase c, CaseOutcome o) {
+        return switch (c.kind()) {
+            case ANSWERABLE -> c.lawNamed() ? resolvedCorrectly(c, o) : hitWithinCutoff(c, o);
+            case NO_MATCH -> o.candidateLawIds().isEmpty();
+            case REFUSE -> o.refused();
+        };
+    }
+
+    private static boolean resolvedCorrectly(EvalCase c, CaseOutcome o) {
+        return o.resolved() && !o.candidateLawIds().isEmpty()
+                && c.expectedLawIds().contains(o.candidateLawIds().get(0));
+    }
+
+    private static boolean hitWithinCutoff(EvalCase c, CaseOutcome o) {
+        return RetrievalMetrics.hitAtK(o.candidateLawIds(), Set.copyOf(c.expectedLawIds()), HIT_CUTOFF) == 1.0;
     }
 
     /**

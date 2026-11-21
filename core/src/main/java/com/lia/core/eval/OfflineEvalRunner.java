@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -78,8 +79,10 @@ public class OfflineEvalRunner implements ApplicationRunner, ExitCodeGenerator {
                         gold.stream().filter(c -> !stillPending(c)).map(EvalCase::query).toList());
             }
             List<CaseOutcome> outcomes = cases.stream().map(c -> evaluate.apply(c.query())).toList();
+            List<CaseResult> rows = new ArrayList<>(cases.size());
+            for (int i = 0; i < cases.size(); i++) rows.add(CaseResult.of(cases.get(i), outcomes.get(i)));
             report = new EvalReport(config, indexedLaws.getAsLong(), cases.size(), excluded,
-                    OfflineMetrics.score(cases, outcomes));
+                    OfflineMetrics.score(cases, outcomes), rows);
         } catch (RuntimeException e) {
             log.error("[eval] 평가 실패 — 보고서를 내지 않는다", e);
             return FAILED;
