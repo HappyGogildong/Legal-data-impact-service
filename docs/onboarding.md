@@ -28,7 +28,7 @@ tags: [onboarding, start-here, guide]
 1. **이 문서** (지금)
 2. `CLAUDE.md` (레포 루트) — 개발 규약·명령어·함정 모음 (AI 세션은 자동 로드)
 3. [[ARCHITECTURE|아키텍처 색인]] → 최신 스냅샷 [[v0.6-spring-consolidation|v0.6]] — 전체 그림·데이터 흐름
-4. [[decision-log|결정 로그]] (D01~D87) — "왜 이렇게 됐나"를 한눈에
+4. [[decision-log|결정 로그]] (D01~D88) — "왜 이렇게 됐나"를 한눈에
 5. [[component-specs|컴포넌트 상세 스펙]] — 도메인 모델·계약·정합성
 6. [[analysis-prompt-spec|프롬프트 정의서]] — LLM 입력계약·응답 JSON·인용검증
 7. 참조: [[law-attributes|법령 속성]] · [[triage-policy|Triage]] · [[embedding-benchmark|임베딩 벤치]] · [[spring-migration|Spring 버전 변경점]]
@@ -46,7 +46,7 @@ tags: [onboarding, start-here, guide]
 |---|---|---|
 | `ARCHITECTURE.md` | 버전 색인 + ADR 매핑 + Changelog | living 색인 |
 | `architecture/` | 버전별 **동결 스냅샷**(현행 **v0.6**) | 수정 금지 |
-| `adr/` | ADR-001 + **decision-log**(D01~D87) | living |
+| `adr/` | ADR-001 + **decision-log**(D01~D88) | living |
 | `components/` | 상세 스펙 + 파이프라인 6종 설계(입출력·동작·결정 의도) | living |
 | `mvp/` | 컴포넌트 카탈로그·MVP 범위(IN/OUT)·수용 기준 | living |
 | `prompts/` | LLM 프롬프트 정의서(입력계약 12요소·JSON 스키마) | living |

@@ -27,7 +27,7 @@ related: ["components/component-specs.md", "architecture/v0.8-pending-law-corpus
   - **보장:** 정확히 4상태 중 하나. **`RESOLVED`만 `analyzable()`=true**. 미해소는 절대 `resolved`를 담지 않고 안내 문구 필수(생성자 강제). 미해소(못 찾음)는 fail-closed 상태로 떨어진다. 조회 예외는 상태로 바뀌지 않고 전파된다(D87).
 
 ## Behavior (해소 3단계)
-1. **법령명 정확·퍼지 매칭**(`LawLookup`, 토큰 유사도) — 단일 강매칭→`RESOLVED` / **같은 `lawId` 복수→가장 이른 본 `RESOLVED`+`alternatives`**(D43) / 다른 법령 복수·약매칭→`AMBIGUOUS`.
+1. **법령명 정확·퍼지 매칭**(`LawLookup`, 토큰 유사도) — 강매칭 중 **제목이 이름과 같은 법령이 있으면 그것만** 본다(D88 — "저작권법"에 "저작권법 시행령"이 함께 잡혀도 본법) → 단일 강매칭→`RESOLVED` / **같은 `lawId` 복수→가장 이른 본 `RESOLVED`+`alternatives`**(D43) / 다른 법령 복수·약매칭→`AMBIGUOUS`.
 2. **의미검색**(`ChunkStoreLawSearch`, 색인 [[RAGIndexer]]) — 1 실패 시 모호 서술을 후보화. 색인이 비어 있으면 후보가 없어 3으로 간다.
 3. **fail-closed 판정** — 못 찾으면: 법령스러우면 `NOT_FOUND_YET`, 아니면 `UNVERIFIED`.
 - 임계: `confident=88`(단정), `ambiguous-min=60`(후보).
