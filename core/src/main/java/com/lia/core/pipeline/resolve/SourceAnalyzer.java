@@ -98,6 +98,11 @@ public class SourceAnalyzer {
 
             List<RawLaw> strong = scored.stream()
                     .filter(l -> TokenSimilarity.ratio(l.title(), q) >= confident).toList();
+            // 제목이 이름과 같은 법령이 있으면 그것만 본다 — "저작권법"에 90점인 "저작권법 시행령"이
+            // 함께 잡혀 모호로 끝나지 않게(D88). 시행령을 원하면 이름에 "시행령"이 들어온다.
+            List<RawLaw> exact = strong.stream()
+                    .filter(l -> TokenSimilarity.ratio(l.title(), q) == 100.0).toList();
+            if (!exact.isEmpty()) strong = exact;
 
             if (strong.size() == 1) return ResolutionResult.resolved(strong.get(0));
             if (strong.size() >= 2) {

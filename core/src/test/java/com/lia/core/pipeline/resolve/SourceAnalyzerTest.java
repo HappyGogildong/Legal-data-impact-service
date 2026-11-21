@@ -63,6 +63,31 @@ class SourceAnalyzerTest {
     }
 
     @Test
+    void 본법_이름이면_시행령과_겹쳐도_본법으로_해소한다() {   // D88
+        // 실측: "저작권법" 검색에 저작권법 시행령도 잡히고 둘 다 90점 이상이라 모호로 끝났다.
+        LawLookup withDecree = (q, n) -> List.of(
+                FakeLookup.law("000798", "300001", "저작권법", "20270101"),
+                FakeLookup.law("000798", "300002", "저작권법", "20270421"),
+                FakeLookup.law("004680", "300003", "저작권법 시행령", "20270101"));
+        var r = new SourceAnalyzer(withDecree).resolve("저작권법");
+
+        assertEquals(ResolutionState.RESOLVED, r.state());
+        assertEquals("000798", r.resolved().lawId());
+        assertEquals(LocalDate.of(2027, 1, 1), r.resolved().effectiveDate());
+        assertEquals(List.of("000798"), r.alternatives().stream().map(RawLaw::lawId).toList(),
+                "시행령은 같은 법령의 다른 시행예정본이 아니다");
+    }
+
+    @Test
+    void 제목이_같은_서로_다른_법령은_여전히_되묻는다() {
+        LawLookup homonyms = (q, n) -> List.of(
+                FakeLookup.law("100001", "300011", "동명법", "20270101"),
+                FakeLookup.law("100002", "300012", "동명법", "20270101"));
+
+        assertEquals(ResolutionState.AMBIGUOUS, new SourceAnalyzer(homonyms).resolve("동명법").state());
+    }
+
+    @Test
     void 미등록_법령표현은_NOT_FOUND_YET() {
         var r = sa.resolve("아직 공포 안 된 가상의 무슨무슨 법률");
 
