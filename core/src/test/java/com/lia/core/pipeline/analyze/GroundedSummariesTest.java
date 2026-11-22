@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
-import com.lia.core.store.LawSummaryStore;
+import com.lia.core.lawdata.LawSummaryStore;
 import com.lia.core.testsupport.TestLaws;
 
 /** 저장된 요약이 지금 조립되는 근거 집합 안에서만 인용하는지 — DB 없이 저장소를 대체해 확인한다. */

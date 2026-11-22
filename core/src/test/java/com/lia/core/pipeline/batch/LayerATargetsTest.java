@@ -13,9 +13,9 @@ import org.junit.jupiter.api.Test;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawDiffs;
+import com.lia.core.lawdata.LawSummaries;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.store.LawDiffs;
-import com.lia.core.store.LawSummaries;
 import com.lia.core.testsupport.TestLaws;
 
 class LayerATargetsTest {

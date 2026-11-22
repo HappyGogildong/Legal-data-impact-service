@@ -23,11 +23,11 @@ import org.testcontainers.utility.DockerImageName;
 import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.chunk.Chunk;
+import com.lia.core.lawdata.chunk.ChunkStore;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.normalize.Normalizer;
-import com.lia.core.store.Chunk;
-import com.lia.core.store.ChunkStore;
 
 /**
  * RAG 검색 경로 <b>실 왕복 스모크</b> — 실 OpenAI 임베딩 + 실 pgvector로 적재→검색이 진짜 되는지 실측.

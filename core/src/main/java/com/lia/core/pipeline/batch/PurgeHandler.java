@@ -5,9 +5,9 @@ import java.util.List;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.lia.core.domain.law.Law;
-import com.lia.core.store.ChunkStore;
-import com.lia.core.store.LawStore;
-import com.lia.core.store.PendingVersion;
+import com.lia.core.lawdata.LawStore;
+import com.lia.core.lawdata.PendingVersion;
+import com.lia.core.lawdata.chunk.ChunkStore;
 
 /**
  * PURGE — 목록에서 두 번 연속 사라진 시행예정본을 철회로, 색인 제거. 행은 남긴다(인용 추적, D62).

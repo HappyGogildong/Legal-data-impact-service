@@ -1,4 +1,4 @@
-package com.lia.core.application.bookmark;
+package com.lia.core.lawdata;
 
 /** 저장된 버전이 하나도 없는 법령을 북마크하려 함 — web 이 404 {@code not_found} 로 매핑. */
 public class UnknownLawException extends RuntimeException {

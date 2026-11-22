@@ -19,6 +19,13 @@ import org.springframework.transaction.support.TransactionTemplate;
 import io.micrometer.observation.ObservationRegistry;
 import tools.jackson.databind.ObjectMapper;
 
+import com.lia.core.lawdata.LawDiffs;
+import com.lia.core.lawdata.LawStore;
+import com.lia.core.lawdata.LawSummaries;
+import com.lia.core.lawdata.LawSummaryStore;
+import com.lia.core.lawdata.chunk.ChunkStore;
+import com.lia.core.pipeline.analyze.AnalysisEngine;
+import com.lia.core.pipeline.analyze.SpringAiReasoner;
 import com.lia.core.pipeline.batch.Discoverer;
 import com.lia.core.pipeline.batch.IndexHandler;
 import com.lia.core.pipeline.batch.IngestJob;
@@ -32,17 +39,10 @@ import com.lia.core.pipeline.batch.SyncHandler;
 import com.lia.core.pipeline.batch.TaskHandler;
 import com.lia.core.pipeline.batch.TaskQueue;
 import com.lia.core.pipeline.batch.TransitionHandler;
-import com.lia.core.pipeline.analyze.AnalysisEngine;
-import com.lia.core.pipeline.analyze.SpringAiReasoner;
 import com.lia.core.pipeline.connector.LawConnector;
 import com.lia.core.pipeline.connector.PendingLawFeed;
 import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.ingest.IngestService;
-import com.lia.core.store.ChunkStore;
-import com.lia.core.store.LawStore;
-import com.lia.core.store.LawDiffs;
-import com.lia.core.store.LawSummaries;
-import com.lia.core.store.LawSummaryStore;
 import com.lia.core.store.NotificationStore;
 
 /**

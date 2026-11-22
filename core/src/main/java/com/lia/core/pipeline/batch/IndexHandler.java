@@ -3,8 +3,8 @@ package com.lia.core.pipeline.batch;
 import java.util.Optional;
 
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawStore;
 import com.lia.core.pipeline.index.RAGIndexer;
-import com.lia.core.store.LawStore;
 
 /**
  * INDEX — 저장된 정본을 읽어 청킹·임베딩·색인 교체(재수집 없음). 그 사이 시행예정이 아니게 됐으면

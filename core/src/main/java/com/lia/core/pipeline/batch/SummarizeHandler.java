@@ -9,15 +9,15 @@ import org.slf4j.LoggerFactory;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawDiffs;
+import com.lia.core.lawdata.LawStore;
+import com.lia.core.lawdata.LawSummaries;
+import com.lia.core.lawdata.LawSummaryStore;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.AnalyzeRequest;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.analyze.InsufficientGroundingException;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.store.LawDiffs;
-import com.lia.core.store.LawStore;
-import com.lia.core.store.LawSummaries;
-import com.lia.core.store.LawSummaryStore;
 
 /**
  * SUMMARIZE — 저장된 시행예정 정본으로 Layer A(쉬운 요약 D67·변경점 D80)의 빠진 차원을 만들어 저장. 차원마다 Opus 1회,

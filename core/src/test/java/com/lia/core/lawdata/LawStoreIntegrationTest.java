@@ -1,4 +1,4 @@
-package com.lia.core.store;
+package com.lia.core.lawdata;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,8 +20,8 @@ import org.testcontainers.utility.DockerImageName;
 
 import tools.jackson.databind.ObjectMapper;
 
-import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
+import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
 
 /**

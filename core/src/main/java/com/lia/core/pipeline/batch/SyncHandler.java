@@ -7,12 +7,12 @@ import java.util.List;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawStore;
 import com.lia.core.pipeline.connector.MstList;
 import com.lia.core.pipeline.connector.PendingLawFeed;
 import com.lia.core.pipeline.connector.RawLaw;
-import com.lia.core.pipeline.ingest.IngestService;
 import com.lia.core.pipeline.ingest.IngestService.IngestResult;
-import com.lia.core.store.LawStore;
+import com.lia.core.pipeline.ingest.IngestService;
 
 /**
  * SYNC — 본문·기준선 fetch(트랜잭션 밖) → <b>한 트랜잭션</b>: 정본 조립(revision·상태 같으면 저장 생략) ·

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import com.lia.core.application.account.AccountNotFoundException;
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.UnknownLawException;
 import com.lia.core.store.LawBookmarkStore.BookmarkedLaw;
 import com.lia.core.testsupport.InMemoryAccountStore;
 import com.lia.core.testsupport.InMemoryLawBookmarkStore;

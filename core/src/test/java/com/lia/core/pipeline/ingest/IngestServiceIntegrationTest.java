@@ -25,10 +25,10 @@ import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawStore;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.diff.DiffBuilder;
 import com.lia.core.pipeline.normalize.Normalizer;
-import com.lia.core.store.LawStore;
 
 /**
  * 적재 파이프라인 조립 통합 테스트 — 실 Postgres(Testcontainers)에

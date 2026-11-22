@@ -11,9 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawSource;
+import com.lia.core.lawdata.LawSummaries;
 import com.lia.core.store.LawCatalogStore;
-import com.lia.core.store.LawSource;
-import com.lia.core.store.LawSummaries;
 
 /**
  * {@code /api/v1/laws} — 곧 시행되는 법령 목록·시행예정본 목록·법령 상세([[service-api-spec]] §3.1~3.3, D65).

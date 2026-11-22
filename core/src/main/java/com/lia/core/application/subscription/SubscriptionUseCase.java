@@ -5,9 +5,9 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.lia.core.application.account.AccountNotFoundException;
-import com.lia.core.application.bookmark.UnknownLawException;
-import com.lia.core.store.LawSubscriptionStore;
+import com.lia.core.lawdata.UnknownLawException;
 import com.lia.core.store.LawSubscriptionStore.SubscribedLaw;
+import com.lia.core.store.LawSubscriptionStore;
 
 /**
  * 법령 구독 유스케이스(D74) — 알림 시점 검증, 저장소 결과를 예외로. Spring 애노테이션 없음: {@code config/UserConfig} 의 {@code @Bean}.

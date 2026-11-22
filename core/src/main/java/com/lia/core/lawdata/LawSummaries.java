@@ -1,4 +1,4 @@
-package com.lia.core.store;
+package com.lia.core.lawdata;
 
 import java.util.Optional;
 

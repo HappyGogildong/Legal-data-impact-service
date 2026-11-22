@@ -10,10 +10,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.lia.core.application.account.AccountNotFoundException;
-import com.lia.core.application.bookmark.UnknownLawException;
+import com.lia.core.lawdata.UnknownLawException;
 import com.lia.core.testsupport.InMemoryAccountStore;
-import com.lia.core.testsupport.InMemoryLawSubscriptionStore;
 import com.lia.core.testsupport.InMemoryLawSubscriptionStore.KnownLaw;
+import com.lia.core.testsupport.InMemoryLawSubscriptionStore;
 
 /** 구독 유스케이스 — 시점 검증·결과→예외·멱등. */
 class SubscriptionUseCaseTest {

@@ -29,11 +29,11 @@ import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawDiffs;
+import com.lia.core.lawdata.LawStore;
+import com.lia.core.lawdata.LawSummaries;
+import com.lia.core.lawdata.PendingVersion;
 import com.lia.core.observability.Obs;
-import com.lia.core.store.LawStore;
-import com.lia.core.store.LawDiffs;
-import com.lia.core.store.LawSummaries;
-import com.lia.core.store.PendingVersion;
 
 /**
  * 배치 실행 한 번(D62) — 정리(열린 실행 닫기·중단된 작업 복구·DONE 정리) → 명령별 작업 등록(탐색 등) →

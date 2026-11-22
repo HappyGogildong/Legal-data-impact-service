@@ -18,6 +18,7 @@ import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
 import com.lia.core.domain.user.UserProfile;
+import com.lia.core.lawdata.LawSource;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.analyze.InsufficientGroundingException;
 import com.lia.core.pipeline.discover.DiscoveryResult;
@@ -28,7 +29,6 @@ import com.lia.core.pipeline.plan.DiscoveryCriteria;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.plan.Target;
-import com.lia.core.store.LawSource;
 
 /**
  * QueryDispatcher 단위 — <b>라우팅·부분성공 조립</b>을 FakeHandler·FakeLawSource로 검증.

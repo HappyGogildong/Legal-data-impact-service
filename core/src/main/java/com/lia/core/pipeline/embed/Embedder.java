@@ -16,7 +16,7 @@ public interface Embedder {
     /** 임베딩 모드. 분리 모델(Upstage 등)은 query/passage를 다르게 처리, 대칭 모델(OpenAI)은 흡수. */
     enum Mode { PASSAGE, QUERY }
 
-    /** 고정 차원(1536). {@link com.lia.core.store.LawStore} chunks(pgvector) 차원과 일치해야 한다. */
+    /** 고정 차원(1536). {@link com.lia.core.lawdata.LawStore} chunks(pgvector) 차원과 일치해야 한다. */
     int dim();
 
     /**

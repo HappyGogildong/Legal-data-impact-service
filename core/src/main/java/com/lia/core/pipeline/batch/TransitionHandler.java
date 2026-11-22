@@ -5,9 +5,9 @@ import java.util.List;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.lia.core.domain.law.Law;
-import com.lia.core.store.ChunkStore;
-import com.lia.core.store.LawStore;
-import com.lia.core.store.PendingVersion;
+import com.lia.core.lawdata.LawStore;
+import com.lia.core.lawdata.PendingVersion;
+import com.lia.core.lawdata.chunk.ChunkStore;
 
 /**
  * TRANSITION — 시행일이 지난 시행예정본을 시행중으로, 더 오래된 시행중본은 과거로, pending 색인 제거,

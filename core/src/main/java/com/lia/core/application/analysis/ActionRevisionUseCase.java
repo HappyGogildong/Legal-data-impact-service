@@ -15,18 +15,18 @@ import com.lia.core.domain.analysis.SituationAnswer;
 import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.analysis.SituationQuestionSet;
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawSource;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.AnalyzeRequest;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.analyze.InsufficientGroundingException;
 import com.lia.core.pipeline.dispatch.PersonalAdmission;
-import com.lia.core.pipeline.dispatch.PersonalizedHandler;
 import com.lia.core.pipeline.dispatch.Personalization;
 import com.lia.core.pipeline.dispatch.PersonalizationQuota;
+import com.lia.core.pipeline.dispatch.PersonalizedHandler;
 import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.store.LawSource;
 
 /**
  * 대응 방안 상황 확인 → 대응 방안만 재생성(D71). 게이트 순서: 개인화 → 세션 질문(없거나 요청 setId 와 묶음이 다르면 만료) → 답 검증(위조·형식 위반은 400)

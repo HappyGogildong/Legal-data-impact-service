@@ -23,6 +23,7 @@ import com.lia.core.domain.analysis.SituationQuestionSet;
 import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawSource;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.discover.DiscoveredLaw;
@@ -36,7 +37,6 @@ import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.plan.Target;
 import com.lia.core.pipeline.resolve.ResolutionResult;
-import com.lia.core.store.LawSource;
 
 /** AnalysisResponseMapper 단위 — 도메인 결과 → typed 응답(§3.0). 정본은 메모리 LawSource. */
 class AnalysisResponseMapperTest {

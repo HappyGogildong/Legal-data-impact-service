@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import com.lia.core.domain.law.Addendum;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
-import com.lia.core.store.LawSource;
+import com.lia.core.lawdata.LawSource;
 import com.lia.core.web.AnalysisApiResponse.CitedSource;
 
 /** 인용키 → 근거 라벨·원문. 정본은 메모리 LawSource. */

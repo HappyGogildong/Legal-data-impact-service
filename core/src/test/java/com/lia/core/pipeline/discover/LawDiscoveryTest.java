@@ -16,9 +16,9 @@ import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
 import com.lia.core.domain.user.HousingType;
 import com.lia.core.domain.user.UserProfile;
-import com.lia.core.store.Chunk;
-import com.lia.core.store.ChunkStore;
-import com.lia.core.store.LawSource;
+import com.lia.core.lawdata.LawSource;
+import com.lia.core.lawdata.chunk.Chunk;
+import com.lia.core.lawdata.chunk.ChunkStore;
 import org.junit.jupiter.api.Test;
 
 /** LawDiscovery 단위 — 가짜 ChunkStore·LawSource·LawSummaries. 임베딩·DB·LLM 없음. */

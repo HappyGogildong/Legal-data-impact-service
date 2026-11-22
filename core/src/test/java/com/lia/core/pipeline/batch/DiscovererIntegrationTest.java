@@ -20,7 +20,7 @@ import org.testcontainers.utility.DockerImageName;
 import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.domain.law.Law;
-import com.lia.core.store.LawStore;
+import com.lia.core.lawdata.LawStore;
 import com.lia.core.testsupport.FakeLawFeed;
 import com.lia.core.testsupport.TestDatabases;
 import com.lia.core.testsupport.TestLaws;

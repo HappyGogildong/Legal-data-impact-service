@@ -13,10 +13,10 @@ import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
 import com.lia.core.domain.user.UserProfile;
-import com.lia.core.store.Chunk;
-import com.lia.core.store.ChunkStore;
-import com.lia.core.store.LawSource;
-import com.lia.core.store.LawSummaries;
+import com.lia.core.lawdata.LawSource;
+import com.lia.core.lawdata.LawSummaries;
+import com.lia.core.lawdata.chunk.Chunk;
+import com.lia.core.lawdata.chunk.ChunkStore;
 
 /**
  * 법령 발견(LOOKUP, D70) — 법령명 없는 질문으로 시행예정 색인을 검색해 후보 카드를 만든다. LLM 없음.

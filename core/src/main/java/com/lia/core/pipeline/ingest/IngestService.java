@@ -9,11 +9,11 @@ import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawStore;
 import com.lia.core.observability.Obs;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.diff.DiffBuilder;
 import com.lia.core.pipeline.normalize.Normalizer;
-import com.lia.core.store.LawStore;
 
 /**
  * 법령 한 건의 정본 조립 — {@code Normalizer → DiffBuilder → LawStore upsert}.

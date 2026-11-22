@@ -4,8 +4,9 @@ import java.util.List;
 import java.util.UUID;
 
 import com.lia.core.application.account.AccountNotFoundException;
-import com.lia.core.store.LawBookmarkStore;
+import com.lia.core.lawdata.UnknownLawException;
 import com.lia.core.store.LawBookmarkStore.BookmarkedLaw;
+import com.lia.core.store.LawBookmarkStore;
 
 /**
  * 관심 법령 북마크 유스케이스(D72) — 저장소의 추가 결과를 예외로 바꾼다. 규칙(멱등·한도·잠금)은 저장소에 있다.

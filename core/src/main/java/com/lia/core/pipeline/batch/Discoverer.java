@@ -15,12 +15,12 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.lia.core.lawdata.LawStore;
+import com.lia.core.lawdata.PendingVersion;
 import com.lia.core.pipeline.connector.MstList;
-import com.lia.core.pipeline.connector.PendingLawFeed;
 import com.lia.core.pipeline.connector.PendingLawFeed.PendingList;
+import com.lia.core.pipeline.connector.PendingLawFeed;
 import com.lia.core.pipeline.connector.RawLaw;
-import com.lia.core.store.LawStore;
-import com.lia.core.store.PendingVersion;
 
 /**
  * 탐색 — 시행예정 목록 ⟷ 저장 상태 비교 → 작업 등록(D62, IngestJob.md §탐색 분류 규칙).

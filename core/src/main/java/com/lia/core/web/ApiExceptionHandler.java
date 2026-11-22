@@ -11,12 +11,12 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import com.lia.core.application.account.AccountNotFoundException;
 import com.lia.core.application.analysis.AnonymousLimitException;
 import com.lia.core.application.bookmark.BookmarkLimitException;
-import com.lia.core.application.bookmark.UnknownLawException;
 import com.lia.core.application.history.AnalysisExpiredException;
 import com.lia.core.application.history.HistoryLimitException;
 import com.lia.core.application.history.HistoryNotFoundException;
 import com.lia.core.application.profile.ConsentRequiredException;
 import com.lia.core.application.subscription.SubscriptionLimitException;
+import com.lia.core.lawdata.UnknownLawException;
 
 /**
  * API 오류 매핑([[service-api-spec]] §4.1 — <b>시스템 오류만 4xx/5xx</b>).

@@ -28,6 +28,7 @@ import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.analysis.Situation;
 import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawSource;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.discover.DiscoveredLaw;
 import com.lia.core.pipeline.discover.DiscoveryResult;
@@ -40,7 +41,6 @@ import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.plan.Target;
 import com.lia.core.pipeline.resolve.ResolutionResult;
-import com.lia.core.store.LawSource;
 
 /**
  * AnalysisController 단위 — 위임·상태·검증(빈 query)만 본다. AnalyzeUseCase는 목, 매핑은 실 매퍼(빈 정본).

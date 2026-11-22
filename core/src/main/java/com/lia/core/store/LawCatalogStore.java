@@ -15,7 +15,7 @@ import com.lia.core.domain.law.Law;
 
 /**
  * 법령 목록·시행예정본 목록 — {@code law_versions} 읽기 전용(홈 곧 시행·S06·S05 시행일 선택, D65).
- * 목록은 컬럼과 {@code payload->>} 필드만 읽는다(payload 전체를 역직렬화하지 않는다). 상세는 {@link LawSource}.
+ * 목록은 컬럼과 {@code payload->>} 필드만 읽는다(payload 전체를 역직렬화하지 않는다). 상세는 {@link com.lia.core.lawdata.LawSource}.
  * 오늘 = 서울 날짜({@code now() AT TIME ZONE 'Asia/Seoul'}). 설계: docs/components/web/LawCatalogApi.md
  */
 @Repository

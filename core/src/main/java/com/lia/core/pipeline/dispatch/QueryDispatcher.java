@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import com.lia.core.domain.law.Law;
 import com.lia.core.domain.user.UserProfile;
+import com.lia.core.lawdata.LawSource;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.analyze.InsufficientGroundingException;
 import com.lia.core.pipeline.discover.LawDiscovery;
@@ -17,7 +18,6 @@ import com.lia.core.pipeline.plan.AnalysisQuery;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.plan.Target;
-import com.lia.core.store.LawSource;
 
 /**
  * 검증된 {@link AnalysisQuery}를 차원별 핸들러로 라우팅·조립한다(§4#8, D47). 계획(QueryPlanner)과

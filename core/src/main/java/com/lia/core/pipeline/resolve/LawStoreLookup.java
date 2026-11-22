@@ -1,4 +1,4 @@
-package com.lia.core.store;
+package com.lia.core.pipeline.resolve;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -7,14 +7,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import com.lia.core.pipeline.connector.RawLaw;
-import com.lia.core.pipeline.resolve.LawLookup;
 
 /**
  * 해소용 법령명 조회 — 적재된 {@code law_versions} 의 시행예정본 제목에서 찾는다(아키텍처 v0.8 §3.2, D87).
  *
  * <p>제목에 검색어가 글자 그대로 들어 있는 오늘(서울) 이후 시행예정본을, 정확히 같은 제목 → 짧은 제목 →
  * 시행일 → lawId 순으로 {@code limit}개. 본문 없는 경량 후보다({@code raw = null}) — 본문은 해소 뒤
- * {@link LawSource} 가 읽는다. 설계: docs/components/resolve/SourceAnalyzer.md
+ * {@link com.lia.core.lawdata.LawSource} 가 읽는다. 설계: docs/components/resolve/SourceAnalyzer.md
  */
 @Repository
 public class LawStoreLookup implements LawLookup {

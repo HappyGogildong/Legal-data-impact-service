@@ -33,10 +33,10 @@ import com.lia.core.domain.analysis.SituationAnswer;
 import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawSource;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.LawRef;
-import com.lia.core.store.LawSource;
 
 /** ActionRevisionController 단위 — 위임(userId·도메인 lawRef·답·세션 어댑터)·응답 모양·검증. 유스케이스는 목. */
 class ActionRevisionControllerTest {

@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import com.lia.core.lawdata.chunk.Chunk;
+import com.lia.core.lawdata.chunk.ChunkStore;
 import com.lia.core.pipeline.connector.RawLaw;
-import com.lia.core.store.Chunk;
-import com.lia.core.store.ChunkStore;
 
 /**
  * {@link com.lia.core.pipeline.resolve.SourceAnalyzer}의 {@code semanticSearch} 훅 어댑터 —

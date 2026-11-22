@@ -23,6 +23,7 @@ import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
 import com.lia.core.domain.user.UserProfile;
+import com.lia.core.lawdata.LawSource;
 import com.lia.core.pipeline.analyze.AnalysisContext;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.ContextBuilder;
@@ -34,7 +35,6 @@ import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.profile.StoredProfile;
 import com.lia.core.profile.UserProfileStore;
-import com.lia.core.store.LawSource;
 
 /**
  * ActionRevisionUseCase 단위(D71) — 게이트 순서(개인화 → 세션 질문·묶음 → 답 검증 → 정본 → 기준선 → 한도 → 엔진)를

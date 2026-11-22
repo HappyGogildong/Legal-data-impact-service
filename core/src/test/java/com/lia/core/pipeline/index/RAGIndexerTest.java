@@ -9,11 +9,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
+import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
-import com.lia.core.store.Chunk;
-import com.lia.core.store.ChunkStore;
+import com.lia.core.lawdata.chunk.Chunk;
+import com.lia.core.lawdata.chunk.ChunkStore;
 
 /**
  * RAGIndexer 단위 — Fake ChunkStore가 upsert된 Chunk를 캡처. <b>순수 청킹 로직</b>만 본다
