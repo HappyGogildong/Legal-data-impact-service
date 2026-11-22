@@ -136,7 +136,7 @@ public class IngestJob {
             Boolean listComplete = null;
             switch (command.type()) {
                 case RUN -> {
-                    DiscoveryResult discovery = discoverer.discover(command.full(), command.dryRun());
+                    ScanResult discovery = discoverer.discover(command.full(), command.dryRun());
                     listComplete = discovery.listComplete();
                     counts.put("listed", discovery.listed());
                     counts.put("markedMissing", discovery.markedMissing());

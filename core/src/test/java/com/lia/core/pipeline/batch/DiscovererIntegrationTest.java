@@ -81,7 +81,7 @@ class DiscovererIntegrationTest {
     void 신규() {
         feed.head("A", "M1", FUTURE);
 
-        DiscoveryResult r = discoverer.discover(false, false);
+        ScanResult r = discoverer.discover(false, false);
 
         assertEquals(List.of("SYNC:A@2027-01-01"), tasks());
         assertEquals(1, r.listed());
@@ -119,7 +119,7 @@ class DiscovererIntegrationTest {
         lawStore.upsert(TestLaws.law("A", "M1", Law.Status.시행예정, TODAY));
         feed.failList(new IllegalStateException("목록 API 장애"));
 
-        DiscoveryResult r = discoverer.discover(false, false);
+        ScanResult r = discoverer.discover(false, false);
 
         assertEquals(List.of("TRANSITION:A@2026-07-01"), tasks());
         assertFalse(r.listComplete());
@@ -131,7 +131,7 @@ class DiscovererIntegrationTest {
     void 사라짐_두번() {
         lawStore.upsert(TestLaws.law("A", "M1", Law.Status.시행예정, FUTURE));
 
-        DiscoveryResult first = discoverer.discover(false, false);
+        ScanResult first = discoverer.discover(false, false);
         assertTrue(tasks().isEmpty(), "첫 미확인은 정리하지 않는다");
         assertEquals(1, first.markedMissing());
         assertEquals(TODAY, lawStore.findPendingVersions("A").get(0).missingSince());
@@ -146,7 +146,7 @@ class DiscovererIntegrationTest {
         lawStore.upsert(TestLaws.law("A", "M1", Law.Status.시행예정, FUTURE));
 
         discoverer.discover(false, false);
-        DiscoveryResult second = discoverer.discover(false, false);
+        ScanResult second = discoverer.discover(false, false);
 
         assertTrue(tasks().isEmpty());
         assertEquals(0, second.markedMissing());
@@ -158,7 +158,7 @@ class DiscovererIntegrationTest {
     void 범위밖_판정안함() {
         lawStore.upsert(TestLaws.law("FAR", "M9", Law.Status.시행예정, TODAY.plusYears(10).plusDays(1)));
 
-        DiscoveryResult r = discoverer.discover(false, false);
+        ScanResult r = discoverer.discover(false, false);
 
         assertEquals(0, r.markedMissing());
         assertNull(lawStore.findPendingVersions("FAR").get(0).missingSince());
@@ -186,7 +186,7 @@ class DiscovererIntegrationTest {
     void 같은_시행일_공포본_묶음() {
         feed.head("A", "M2", FUTURE).head("A", "M1", FUTURE);
 
-        DiscoveryResult r = discoverer.discover(false, false);
+        ScanResult r = discoverer.discover(false, false);
 
         assertEquals(1, r.mergedKeys());
         assertEquals(List.of("SYNC:A@2027-01-01"), tasks());
@@ -220,7 +220,7 @@ class DiscovererIntegrationTest {
     void 같은_행_반복() {
         feed.head("A", "M1", FUTURE).head("A", "M1", FUTURE);
 
-        DiscoveryResult r = discoverer.discover(false, false);
+        ScanResult r = discoverer.discover(false, false);
 
         assertEquals(0, r.mergedKeys());
         assertEquals("M1", taskMst("A"));
@@ -233,7 +233,7 @@ class DiscovererIntegrationTest {
         lawStore.upsert(TestLaws.law("GONE", "M9", Law.Status.시행예정, FUTURE));   // 목록에 없음
         feed.head("A", "M1", FUTURE).head(null, "MX", FUTURE).head("C", null, FUTURE).head("D", "MD", null);
 
-        DiscoveryResult r = discoverer.discover(false, false);
+        ScanResult r = discoverer.discover(false, false);
 
         assertEquals(List.of("SYNC:A@2027-01-01", "TRANSITION:DUE@2026-07-01"), tasks());
         assertFalse(r.listComplete(), "그 행이 어느 법령인지 몰라 사라짐 판정을 할 수 없다");
@@ -260,7 +260,7 @@ class DiscovererIntegrationTest {
         lawStore.markMissing("A", FUTURE, TODAY.minusDays(1));
         feed.listComplete(false);
 
-        DiscoveryResult r = discoverer.discover(false, false);
+        ScanResult r = discoverer.discover(false, false);
 
         assertTrue(tasks().isEmpty(), "미완주 목록으로 PURGE 금지");
         assertEquals(0, r.markedMissing());
@@ -273,7 +273,7 @@ class DiscovererIntegrationTest {
         storeAndList(10, 7);                                   // 3/10 안 보임 = 30%
         lawStore.markMissing("L9", FUTURE, TODAY.minusDays(1));  // 어제 미확인 — 평소라면 오늘 PURGE
 
-        DiscoveryResult r = discoverer.discover(false, false);
+        ScanResult r = discoverer.discover(false, false);
 
         assertTrue(tasks().isEmpty(), "PURGE 금지");
         assertEquals(0, r.markedMissing());
@@ -287,7 +287,7 @@ class DiscovererIntegrationTest {
     void 빈목록_판정안함() {
         storeAndList(3, 0);
 
-        DiscoveryResult r = discoverer.discover(false, false);
+        ScanResult r = discoverer.discover(false, false);
 
         assertEquals(0, r.markedMissing());
         assertFalse(r.listComplete());
@@ -299,7 +299,7 @@ class DiscovererIntegrationTest {
     void 비율이하_판정() {
         storeAndList(10, 8);
 
-        DiscoveryResult r = discoverer.discover(false, false);
+        ScanResult r = discoverer.discover(false, false);
 
         assertEquals(2, r.markedMissing());
         assertTrue(r.listComplete());
@@ -322,7 +322,7 @@ class DiscovererIntegrationTest {
         lawStore.upsert(TestLaws.law("GONE", "M0", Law.Status.시행예정, FUTURE));
         feed.head("A", "M1", FUTURE);
 
-        DiscoveryResult r = discoverer.discover(false, true);
+        ScanResult r = discoverer.discover(false, true);
 
         assertTrue(tasks().isEmpty());
         assertEquals(1, r.planned().get(TaskKind.SYNC));

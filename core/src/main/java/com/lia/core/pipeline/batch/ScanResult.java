@@ -13,7 +13,7 @@ import java.util.Map;
  * @param mergedKeys    같은 (lawId, 시행일)에 MST 가 둘 이상이라 공포본을 묶은 키 수(D85) — 정보, 경보 아님
  * @param malformedRows lawId·시행일·MST 중 하나라도 없어 건너뛴 행 수 — 0 이 아니면 목록을 미완주로 본다
  */
-public record DiscoveryResult(int listed, boolean listComplete, Map<TaskKind, Integer> planned,
+public record ScanResult(int listed, boolean listComplete, Map<TaskKind, Integer> planned,
                               Map<TaskKind, Integer> enqueued, int markedMissing, int mergedKeys,
                               int malformedRows) {
 }

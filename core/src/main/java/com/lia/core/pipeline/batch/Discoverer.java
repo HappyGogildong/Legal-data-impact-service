@@ -68,7 +68,7 @@ public class Discoverer {
         this.maxMissingRatio = maxMissingRatio;
     }
 
-    public DiscoveryResult discover(boolean full, boolean dryRun) {
+    public ScanResult discover(boolean full, boolean dryRun) {
         LocalDate today = LocalDate.now(clock);
         LocalDate horizon = today.plusYears(lookaheadYears);
         Map<String, PendingVersion> stored = new LinkedHashMap<>();
@@ -146,7 +146,7 @@ public class Discoverer {
                 enqueued.merge(task.kind(), 1, Integer::sum);
             }
         }
-        return new DiscoveryResult(list == null ? 0 : list.heads().size(), complete, planned, enqueued, markedMissing,
+        return new ScanResult(list == null ? 0 : list.heads().size(), complete, planned, enqueued, markedMissing,
                 mergedKeys, malformedRows);
     }
 
