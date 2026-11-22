@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.testsupport.TestLaws;
 import com.lia.core.web.LawDetailResponse.ChangedArticle;
 import com.lia.core.web.LawDetailResponse.SourceText;
 
@@ -24,8 +25,8 @@ class LawDetailMapperTest {
     @Test
     @DisplayName("시행예정본 — 헤더·개정 이유·시행 규칙·바뀐 조문(현행 대비)·부칙·기준선 시행일")
     void 시행예정본() {
-        Law law = CitedSourceResolverTest.law(Law.Status.시행예정, EF, "① 통합심의한다.");
-        Law baseline = CitedSourceResolverTest.law(Law.Status.시행중, BASELINE_EF, "① 심의한다.");
+        Law law = TestLaws.housing(Law.Status.시행예정, EF, "① 통합심의한다.");
+        Law baseline = TestLaws.housing(Law.Status.시행중, BASELINE_EF, "① 심의한다.");
 
         LawDetailResponse body = mapper.toBody(law, baseline, null);
 
@@ -55,7 +56,7 @@ class LawDetailMapperTest {
     @Test
     @DisplayName("시행된 버전 — 변경 유형은 두되 현행 대비·기준선 시행일 없음, 인용키에 날짜 없음")
     void 시행된_버전() {
-        Law law = CitedSourceResolverTest.law(Law.Status.시행중, EF, "① 통합심의한다.");
+        Law law = TestLaws.housing(Law.Status.시행중, EF, "① 통합심의한다.");
 
         LawDetailResponse body = mapper.toBody(law, null, null);
 
@@ -70,7 +71,7 @@ class LawDetailMapperTest {
     @Test
     @DisplayName("기준선이 없는 시행예정본(제정 등) — 현행 대비 없음")
     void 기준선_없음() {
-        Law law = CitedSourceResolverTest.law(Law.Status.시행예정, EF, "① 통합심의한다.");
+        Law law = TestLaws.housing(Law.Status.시행예정, EF, "① 통합심의한다.");
 
         LawDetailResponse body = mapper.toBody(law, null, null);
 
@@ -86,14 +87,14 @@ class LawDetailMapperTest {
                 List.of(), List.of(), null, List.of("세부 기준은 대통령령"), "참고용", null);
 
         LawDetailResponse pending = mapper.toBody(
-                CitedSourceResolverTest.law(Law.Status.시행예정, EF, "① 통합심의한다."), null, summary);
+                TestLaws.housing(Law.Status.시행예정, EF, "① 통합심의한다."), null, summary);
         assertEquals(new LawDetailResponse.LawSummary("절차가 짧아져요.",
                 List.of(new LawDetailResponse.SummaryClaim("통합심의가 넓어진다", List.of("LAW:001809@2026-11-01:art:18"))),
                 List.of("세부 기준은 대통령령")), pending.summary());
 
         LawDetailResponse inForce = mapper.toBody(
-                CitedSourceResolverTest.law(Law.Status.시행중, EF, "① 통합심의한다."), null, summary);
+                TestLaws.housing(Law.Status.시행중, EF, "① 통합심의한다."), null, summary);
         assertNull(inForce.summary());
-        assertNull(mapper.toBody(CitedSourceResolverTest.law(Law.Status.시행예정, EF, "①"), null, null).summary());
+        assertNull(mapper.toBody(TestLaws.housing(Law.Status.시행예정, EF, "①"), null, null).summary());
     }
 }

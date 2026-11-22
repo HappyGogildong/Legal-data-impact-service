@@ -2,7 +2,6 @@ package com.lia.core.web;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -12,10 +11,10 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.lia.core.domain.law.Addendum;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
 import com.lia.core.lawdata.LawSource;
+import com.lia.core.testsupport.TestLaws;
 import com.lia.core.web.AnalysisApiResponse.CitedSource;
 
 /** 인용키 → 근거 라벨·원문. 정본은 메모리 LawSource. */
@@ -32,24 +31,9 @@ class CitedSourceResolverTest {
         public Optional<Law> findBaseline(String lawId) { lookups++; return Optional.ofNullable(baseline); }
     }
 
-    static Law law(Law.Status status, LocalDate ef, String article18Text) {
-        List<Article> articles = List.of(
-                new Article("18", "사업계획의 통합심의", article18Text, true, Article.ChangeType.개정, null, null, ef, true, null),
-                new Article("19", "제19조", "① 그대로다.", false, Article.ChangeType.없음, null, null, ef, true, null));
-        return law(status, ef, articles);
-    }
-
-    static Law law(Law.Status status, LocalDate ef, List<Article> articles) {
-        List<Addendum> addenda = List.of(new Addendum("제1조", "시행일", Addendum.kindOf("시행일"), "이 법은 공포 후 6개월이 경과한 날부터 시행한다.", "21323", ef));
-        return new Law("001809", "283191", "주택법", status, Law.AmendKind.일부개정, Law.LawType.법률, "국토교통부",
-                LocalDate.of(2026, 2, 3), "21323", ef, "공포 후 6개월", Law.EnforcementType.유예,
-                "심의 절차를 간소화한다.", "주택법 일부를 다음과 같이 개정한다.", addenda, articles, List.of(),
-                null, "url", "rev", Instant.now());
-    }
-
     private static CitedSourceResolver resolverWith(CountingLawSource source) {
-        source.pending.put("001809@" + EF, law(Law.Status.시행예정, EF, "① 통합심의한다."));
-        source.baseline = law(Law.Status.시행중, LocalDate.of(2020, 1, 1), "① 심의한다.");
+        source.pending.put("001809@" + EF, TestLaws.housing(Law.Status.시행예정, EF, "① 통합심의한다."));
+        source.baseline = TestLaws.housing(Law.Status.시행중, LocalDate.of(2020, 1, 1), "① 심의한다.");
         return new CitedSourceResolver(source);
     }
 
@@ -120,7 +104,7 @@ class CitedSourceResolverTest {
     void 시행중_버전_날짜_인용() {
         CountingLawSource source = new CountingLawSource();
         LocalDate inForce = LocalDate.of(2020, 1, 1);
-        source.pending.put("001809@" + inForce, law(Law.Status.시행중, inForce, "① 심의한다."));
+        source.pending.put("001809@" + inForce, TestLaws.housing(Law.Status.시행중, inForce, "① 심의한다."));
         CitedSourceResolver resolver = resolverWith(source);
 
         CitedSource cited = resolver.resolve(List.of("LAW:001809@2020-01-01:art:18")).get(0);
@@ -137,8 +121,8 @@ class CitedSourceResolverTest {
         CountingLawSource source = new CountingLawSource();
         LocalDate past = LocalDate.of(2019, 1, 1);
         LocalDate withdrawn = LocalDate.of(2018, 1, 1);
-        source.pending.put("001809@" + past, law(Law.Status.과거, past, "① 옛날."));
-        source.pending.put("001809@" + withdrawn, law(Law.Status.철회, withdrawn, "① 철회."));
+        source.pending.put("001809@" + past, TestLaws.housing(Law.Status.과거, past, "① 옛날."));
+        source.pending.put("001809@" + withdrawn, TestLaws.housing(Law.Status.철회, withdrawn, "① 철회."));
         CitedSourceResolver resolver = resolverWith(source);
 
         for (CitedSource cited : resolver.resolve(List.of(
@@ -164,7 +148,7 @@ class CitedSourceResolverTest {
     void 시행예정본_이동_삭제_신설() {
         CountingLawSource source = new CountingLawSource();
         LocalDate ef = LocalDate.of(2027, 1, 1);
-        source.pending.put("001809@" + ef, law(Law.Status.시행예정, ef, List.of(
+        source.pending.put("001809@" + ef, TestLaws.housing(Law.Status.시행예정, ef, List.of(
                 new Article("20", "제20조", "① 옮겨 왔다.", true, Article.ChangeType.이동, "19", null, ef, true, null),
                 new Article("18", "제18조", "", true, Article.ChangeType.삭제, null, null, ef, true, null),
                 new Article("25", "제25조", "① 새로 생겼다.", true, Article.ChangeType.신설, null, null, ef, true, null))));

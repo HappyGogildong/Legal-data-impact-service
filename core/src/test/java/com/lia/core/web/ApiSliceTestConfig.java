@@ -39,6 +39,7 @@ import com.lia.core.testsupport.InMemoryLawBookmarkStore;
 import com.lia.core.testsupport.InMemoryLawSubscriptionStore;
 import com.lia.core.testsupport.InMemoryNotificationStore;
 import com.lia.core.testsupport.InMemoryUserProfileStore;
+import com.lia.core.testsupport.TestLaws;
 
 
 /**
@@ -133,13 +134,13 @@ class ApiSliceTestConfig {
             @Override
             public Optional<Law> find(String lawId, LocalDate effectiveDate) {
                 if (!"001809".equals(lawId) || !LAW_EFFECTIVE.equals(effectiveDate)) return Optional.empty();
-                return Optional.of(CitedSourceResolverTest.law(Law.Status.시행예정, LAW_EFFECTIVE, "① 통합심의한다."));
+                return Optional.of(TestLaws.housing(Law.Status.시행예정, LAW_EFFECTIVE, "① 통합심의한다."));
             }
 
             @Override
             public Optional<Law> findBaseline(String lawId) {
                 if (!"001809".equals(lawId)) return Optional.empty();
-                return Optional.of(CitedSourceResolverTest.law(Law.Status.시행중, LAW_BASELINE, "① 심의한다."));
+                return Optional.of(TestLaws.housing(Law.Status.시행중, LAW_BASELINE, "① 심의한다."));
             }
         };
     }
