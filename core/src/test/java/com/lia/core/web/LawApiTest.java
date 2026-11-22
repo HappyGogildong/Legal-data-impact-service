@@ -16,6 +16,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import com.lia.core.testsupport.ApiSliceTestConfig;
+
 /** Law Catalog API 웹 슬라이스 — 익명 공개·검증 400·없음 404. */
 @SpringJUnitWebConfig(ApiSliceTestConfig.class)
 class LawApiTest {

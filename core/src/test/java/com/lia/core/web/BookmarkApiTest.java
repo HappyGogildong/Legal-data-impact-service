@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import com.lia.core.auth.CurrentUser;
+import com.lia.core.testsupport.ApiSliceTestConfig;
 import com.lia.core.testsupport.InMemoryAccountStore;
 
 /** Bookmark API 웹 슬라이스 — 204 멱등·404·409·목록 형식(상태 라벨)·401·403. */

@@ -27,6 +27,7 @@ import com.lia.core.application.analysis.ActionRevisionUseCase;
 import com.lia.core.application.analysis.RevisionOutcome;
 import com.lia.core.auth.CurrentUser;
 import com.lia.core.pipeline.dispatch.Unmet;
+import com.lia.core.testsupport.ApiSliceTestConfig;
 import com.lia.core.testsupport.InMemoryAccountStore;
 
 /** 대응 방안 재생성 API 웹 슬라이스 — 익명 401 · CSRF 없음 403 · 로그인+CSRF 200(unmet 은 200 본문) · 답 검증 400. */

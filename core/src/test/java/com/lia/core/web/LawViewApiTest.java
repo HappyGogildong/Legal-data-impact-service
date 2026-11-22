@@ -17,6 +17,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import com.lia.core.testsupport.ApiSliceTestConfig;
+
 /** Trending API 웹 슬라이스 — 익명 순위·조회 신호(CSRF 토큰 없이)·400·404. */
 @SpringJUnitWebConfig(ApiSliceTestConfig.class)
 class LawViewApiTest {

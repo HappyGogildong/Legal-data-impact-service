@@ -22,6 +22,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import com.lia.core.auth.CurrentUser;
+import com.lia.core.testsupport.ApiSliceTestConfig;
 import com.lia.core.testsupport.InMemoryAccountStore;
 import com.lia.core.testsupport.InMemoryNotificationStore;
 

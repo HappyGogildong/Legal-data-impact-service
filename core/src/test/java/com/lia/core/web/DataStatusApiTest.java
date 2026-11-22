@@ -13,6 +13,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import com.lia.core.testsupport.ApiSliceTestConfig;
+
 /** Data Status API 웹 슬라이스 — 익명 공개·응답 필드. */
 @SpringJUnitWebConfig(ApiSliceTestConfig.class)
 class DataStatusApiTest {

@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.testsupport;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -33,13 +33,21 @@ import com.lia.core.store.LawBookmarkStore;
 import com.lia.core.store.LawCatalogStore;
 import com.lia.core.store.LawViewStore;
 import com.lia.core.store.TrendingWindow;
-import com.lia.core.testsupport.InMemoryAccountStore;
-import com.lia.core.testsupport.InMemoryAnalysisHistoryStore;
-import com.lia.core.testsupport.InMemoryLawBookmarkStore;
-import com.lia.core.testsupport.InMemoryLawSubscriptionStore;
-import com.lia.core.testsupport.InMemoryNotificationStore;
-import com.lia.core.testsupport.InMemoryUserProfileStore;
-import com.lia.core.testsupport.TestLaws;
+import com.lia.core.web.AccountController;
+import com.lia.core.web.ActionRevisionController;
+import com.lia.core.web.ApiExceptionHandler;
+import com.lia.core.web.AuthProvidersController;
+import com.lia.core.web.BookmarkController;
+import com.lia.core.web.CitedSourceResolver;
+import com.lia.core.web.ConsentController;
+import com.lia.core.web.DataStatusController;
+import com.lia.core.web.HistoryController;
+import com.lia.core.web.LawController;
+import com.lia.core.web.LawDetailMapper;
+import com.lia.core.web.LawViewController;
+import com.lia.core.web.NotificationController;
+import com.lia.core.web.ProfileController;
+import com.lia.core.web.SubscriptionController;
 
 
 /**
@@ -58,12 +66,12 @@ import com.lia.core.testsupport.TestLaws;
         DataStatusController.class, LawController.class, LawViewController.class, ActionRevisionController.class,
         BookmarkController.class, HistoryController.class, SubscriptionController.class, NotificationController.class,
         AuthProvidersController.class})
-class ApiSliceTestConfig {
+public class ApiSliceTestConfig {
 
-    static final String POLICY = "v-test";
-    static final OffsetDateTime STATUS_UPDATED_AT = OffsetDateTime.parse("2026-10-23T04:12:00+09:00");
-    static final LocalDate LAW_EFFECTIVE = LocalDate.of(2026, 11, 1);
-    static final LocalDate LAW_BASELINE = LocalDate.of(2020, 1, 1);
+    public static final String POLICY = "v-test";
+    public static final OffsetDateTime STATUS_UPDATED_AT = OffsetDateTime.parse("2026-10-23T04:12:00+09:00");
+    public static final LocalDate LAW_EFFECTIVE = LocalDate.of(2026, 11, 1);
+    public static final LocalDate LAW_BASELINE = LocalDate.of(2020, 1, 1);
 
     @Bean
     InMemoryUserProfileStore userProfileStore() {

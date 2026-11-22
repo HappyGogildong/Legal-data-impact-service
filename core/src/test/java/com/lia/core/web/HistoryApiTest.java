@@ -36,6 +36,7 @@ import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.store.AnalysisHistoryStore;
+import com.lia.core.testsupport.ApiSliceTestConfig;
 import com.lia.core.testsupport.InMemoryAccountStore;
 
 /** History API 웹 슬라이스 — 세션 결과로 저장(201/200 멱등)·만료 409·한도 409·목록·상세(남의 것 404)·삭제 204·400·401·403. */

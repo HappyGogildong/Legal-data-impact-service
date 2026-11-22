@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import com.lia.core.auth.CurrentUser;
+import com.lia.core.testsupport.ApiSliceTestConfig;
 import com.lia.core.testsupport.InMemoryAccountStore;
 
 /** Subscription API 웹 슬라이스 — PUT 만들기·변경, 400·404·409, DELETE 멱등, 목록(다음 시행일 생략), 401·403. */

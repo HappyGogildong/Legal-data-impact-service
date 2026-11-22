@@ -13,6 +13,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import com.lia.core.testsupport.ApiSliceTestConfig;
+
 /** 켜진 소셜 provider 목록(D78) — 익명 공개, id 만. */
 @SpringJUnitWebConfig(ApiSliceTestConfig.class)
 class AuthProvidersApiTest {
