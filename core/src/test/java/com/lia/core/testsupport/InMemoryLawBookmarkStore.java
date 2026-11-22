@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import com.lia.core.store.LawBookmarkStore;
+import com.lia.core.feature.bookmark.LawBookmarkStore;
 
 /**
  * 테스트용 인메모리 북마크 저장소 — JdbcClient 없이 공개 메서드를 대체. 단일 스레드 테스트 전용.

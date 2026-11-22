@@ -1,10 +1,10 @@
-package com.lia.core.web;
+package com.lia.core.feature.bookmark;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-import com.lia.core.store.LawBookmarkStore.BookmarkedLaw;
+import com.lia.core.feature.bookmark.LawBookmarkStore.BookmarkedLaw;
 
 /** {@code GET /api/v1/bookmarks} 응답(D72). 상태는 화면 라벨 셋으로 접는다 — 시행중·과거 → 시행됨. */
 public record BookmarkListResponse(List<BookmarkItem> items) {

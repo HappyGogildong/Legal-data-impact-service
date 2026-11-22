@@ -9,9 +9,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.lia.core.application.account.AccountNotFoundException;
-import com.lia.core.application.bookmark.BookmarkLimitException;
 import com.lia.core.application.subscription.SubscriptionLimitException;
 import com.lia.core.feature.analysis.usage.AnonymousLimitException;
+import com.lia.core.feature.bookmark.BookmarkLimitException;
 import com.lia.core.feature.history.AnalysisExpiredException;
 import com.lia.core.feature.history.HistoryLimitException;
 import com.lia.core.feature.history.HistoryNotFoundException;

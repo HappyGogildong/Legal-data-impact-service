@@ -15,7 +15,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import com.lia.core.application.account.AccountUseCase;
-import com.lia.core.application.bookmark.BookmarkUseCase;
 import com.lia.core.application.notification.NotificationUseCase;
 import com.lia.core.application.subscription.SubscriptionUseCase;
 import com.lia.core.auth.EnabledOAuthProviders;
@@ -26,6 +25,9 @@ import com.lia.core.domain.law.Law;
 import com.lia.core.feature.analysis.ActionRevisionUseCase;
 import com.lia.core.feature.analysis.web.ActionRevisionController;
 import com.lia.core.feature.analysis.web.CitedSourceResolver;
+import com.lia.core.feature.bookmark.BookmarkController;
+import com.lia.core.feature.bookmark.BookmarkUseCase;
+import com.lia.core.feature.bookmark.LawBookmarkStore;
 import com.lia.core.feature.history.HistoryController;
 import com.lia.core.feature.history.HistoryUseCase;
 import com.lia.core.feature.law.DataStatusController;
@@ -41,11 +43,9 @@ import com.lia.core.feature.profile.ProfileController;
 import com.lia.core.feature.profile.ProfileUseCase;
 import com.lia.core.lawdata.LawSource;
 import com.lia.core.lawdata.LawSummaries;
-import com.lia.core.store.LawBookmarkStore;
 import com.lia.core.web.AccountController;
 import com.lia.core.web.ApiExceptionHandler;
 import com.lia.core.web.AuthProvidersController;
-import com.lia.core.web.BookmarkController;
 import com.lia.core.web.NotificationController;
 import com.lia.core.web.SubscriptionController;
 

@@ -1,4 +1,4 @@
-package com.lia.core.store;
+package com.lia.core.feature.bookmark;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,8 +20,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import com.lia.core.domain.law.Law;
-import com.lia.core.store.LawBookmarkStore.AddResult;
-import com.lia.core.store.LawBookmarkStore.BookmarkedLaw;
+import com.lia.core.feature.bookmark.LawBookmarkStore.AddResult;
+import com.lia.core.feature.bookmark.LawBookmarkStore.BookmarkedLaw;
 import com.lia.core.testsupport.TestDatabases;
 
 /** 관심 법령 북마크(D72) — 멱등·한도·법령 존재·cascade·보여 줄 버전. Docker 없으면 스킵. */

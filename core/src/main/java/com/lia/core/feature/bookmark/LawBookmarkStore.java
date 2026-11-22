@@ -1,4 +1,4 @@
-package com.lia.core.store;
+package com.lia.core.feature.bookmark;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
