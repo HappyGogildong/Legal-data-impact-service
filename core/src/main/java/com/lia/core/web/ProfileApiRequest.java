@@ -3,14 +3,14 @@ package com.lia.core.web;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.lia.core.profile.EmploymentType;
-import com.lia.core.profile.HouseholdType;
-import com.lia.core.profile.HousingType;
-import com.lia.core.profile.Labeled;
-import com.lia.core.profile.Occupation;
-import com.lia.core.profile.Purpose;
-import com.lia.core.profile.Sido;
-import com.lia.core.profile.UserProfile;
+import com.lia.core.domain.user.EmploymentType;
+import com.lia.core.domain.user.HouseholdType;
+import com.lia.core.domain.user.HousingType;
+import com.lia.core.domain.user.Labeled;
+import com.lia.core.domain.user.Occupation;
+import com.lia.core.domain.user.Purpose;
+import com.lia.core.domain.user.Sido;
+import com.lia.core.domain.user.UserProfile;
 
 /**
  * {@code PUT /api/v1/profile} 바디 — 값은 라벨 문자열(component-specs §2). 전부 선택 입력, 전체 교체.

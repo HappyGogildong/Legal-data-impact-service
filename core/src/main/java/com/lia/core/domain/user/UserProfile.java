@@ -1,4 +1,4 @@
-package com.lia.core.profile;
+package com.lia.core.domain.user;
 
 import java.util.Collections;
 import java.util.EnumSet;
@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 /**
  * 자기신고 프로필 속성(D41·D61) — 슬라이스 ③에서 프롬프트 {@code <profile>} 에 그대로 들어갈 값.
  *
- * <p>userId·타임스탬프는 넣지 않는다(Store 키·메타데이터는 {@link StoredProfile}). 전부 선택 입력.
+ * <p>userId·타임스탬프는 넣지 않는다(Store 키·메타데이터는 {@link com.lia.core.profile.StoredProfile}). 전부 선택 입력.
  * 설계: docs/components/profile/UserProfile.md, 스키마 SSOT: component-specs §2.
  */
 public record UserProfile(

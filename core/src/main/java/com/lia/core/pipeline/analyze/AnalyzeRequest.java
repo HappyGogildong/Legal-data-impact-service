@@ -5,8 +5,8 @@ import java.util.Objects;
 
 import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.law.Law;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.UserProfile;
 
 /**
  * 분석 1건 요청 — 해소된 시행예정 정본 + (있으면) 기준선. 검색이 아니라 <b>정확 조회된 정본</b>이 들어온다.

@@ -1,4 +1,4 @@
-package com.lia.core.profile;
+package com.lia.core.domain.user;
 
 /**
  * 17개 시도 — 공식 전체 명칭만(약칭·시군구 거부, D41 최소 수집).

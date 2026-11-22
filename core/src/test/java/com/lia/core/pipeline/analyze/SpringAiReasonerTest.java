@@ -17,12 +17,12 @@ import org.springframework.ai.chat.prompt.Prompt;
 
 import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.domain.user.HousingType;
+import com.lia.core.domain.user.Sido;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.observability.llm.LlmUsage;
 import com.lia.core.observability.llm.UsageCapture;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.HousingType;
-import com.lia.core.profile.Sido;
-import com.lia.core.profile.UserProfile;
 
 /** SpringAiReasoner 단위 — meta 확정(모델명·버전·계층)과 응답에서 thinking 블록 거르기. 실 API 없음(고정 응답 ChatModel). */
 class SpringAiReasonerTest {

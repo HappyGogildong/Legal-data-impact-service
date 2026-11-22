@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 import com.lia.core.domain.law.Article;
+import com.lia.core.domain.law.ArticleComparison;
 import com.lia.core.domain.law.Law;
 import com.lia.core.store.LawSource;
 import com.lia.core.web.AnalysisApiResponse.CitedSource;

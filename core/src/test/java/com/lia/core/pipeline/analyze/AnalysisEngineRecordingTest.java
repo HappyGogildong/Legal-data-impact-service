@@ -16,12 +16,12 @@ import org.junit.jupiter.api.Test;
 import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.observability.llm.LlmCall;
 import com.lia.core.observability.llm.LlmPurpose;
 import com.lia.core.observability.llm.LlmUsage;
 import com.lia.core.observability.llm.UsageCapture;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.UserProfile;
 
 /** AnalysisEngine 의 호출 기록(D83) — 시도마다 한 행, 재시도 묶음·인용 검증 결과·목적. 실 Opus 없음. */
 class AnalysisEngineRecordingTest {

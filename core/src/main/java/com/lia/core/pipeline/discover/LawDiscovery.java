@@ -12,7 +12,7 @@ import java.util.Set;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
-import com.lia.core.profile.UserProfile;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.store.Chunk;
 import com.lia.core.store.ChunkStore;
 import com.lia.core.store.LawSource;

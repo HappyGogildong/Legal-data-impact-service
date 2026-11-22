@@ -3,10 +3,10 @@ package com.lia.core.web;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-import com.lia.core.profile.Labeled;
-import com.lia.core.profile.Purpose;
+import com.lia.core.domain.user.Labeled;
+import com.lia.core.domain.user.Purpose;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.profile.StoredProfile;
-import com.lia.core.profile.UserProfile;
 
 /** 프로필 응답 — 속성 라벨 + updatedAt. userId 를 담을 필드 자체가 없다(D41). */
 public record ProfileResponse(

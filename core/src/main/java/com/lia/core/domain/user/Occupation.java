@@ -1,4 +1,4 @@
-package com.lia.core.profile;
+package com.lia.core.domain.user;
 
 /** 직업군 대분류 — 자유 문자열이 아니라 닫힌 값(프롬프트 인젝션 경로 차단, D61). */
 public enum Occupation implements Labeled {

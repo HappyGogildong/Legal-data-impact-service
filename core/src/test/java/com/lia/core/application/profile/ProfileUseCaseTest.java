@@ -9,9 +9,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.lia.core.application.account.AccountNotFoundException;
-import com.lia.core.profile.Occupation;
-import com.lia.core.profile.Purpose;
-import com.lia.core.profile.UserProfile;
+import com.lia.core.domain.user.Occupation;
+import com.lia.core.domain.user.Purpose;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.testsupport.InMemoryUserProfileStore;
 
 /** ProfileUseCase — 동의가 먼저, 현재 버전 동의가 있을 때만 수정, 버전 기반 재동의. */

@@ -12,6 +12,15 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import com.lia.core.domain.user.EmploymentType;
+import com.lia.core.domain.user.HouseholdType;
+import com.lia.core.domain.user.HousingType;
+import com.lia.core.domain.user.Labeled;
+import com.lia.core.domain.user.Occupation;
+import com.lia.core.domain.user.Purpose;
+import com.lia.core.domain.user.Sido;
+import com.lia.core.domain.user.UserProfile;
+
 /**
  * 프로필 저장소 — {@code user_profiles} 동의 기록·속성 교체·조회·파기(D41·D61, [[LawStore]] 패턴).
  *

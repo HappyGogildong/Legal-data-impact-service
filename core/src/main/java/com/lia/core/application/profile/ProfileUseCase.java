@@ -4,8 +4,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.lia.core.application.account.AccountNotFoundException;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.profile.StoredProfile;
-import com.lia.core.profile.UserProfile;
 import com.lia.core.profile.UserProfileStore;
 
 /**

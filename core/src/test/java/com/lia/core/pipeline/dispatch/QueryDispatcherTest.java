@@ -14,9 +14,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import com.lia.core.domain.analysis.ImpactResult;
-import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
+import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.analyze.InsufficientGroundingException;
 import com.lia.core.pipeline.discover.DiscoveryResult;
@@ -27,7 +28,6 @@ import com.lia.core.pipeline.plan.DiscoveryCriteria;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.plan.Target;
-import com.lia.core.profile.UserProfile;
 import com.lia.core.store.LawSource;
 
 /**

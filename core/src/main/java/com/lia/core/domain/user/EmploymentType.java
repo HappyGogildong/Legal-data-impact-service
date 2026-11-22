@@ -1,4 +1,4 @@
-package com.lia.core.profile;
+package com.lia.core.domain.user;
 
 /** 고용형태. */
 public enum EmploymentType implements Labeled {

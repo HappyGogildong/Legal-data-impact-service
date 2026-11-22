@@ -1,4 +1,4 @@
-package com.lia.core.profile;
+package com.lia.core.domain.user;
 
 /** 이용 목적(다중 선택) — 개인화의 핵심 축(component-specs §2). */
 public enum Purpose implements Labeled {

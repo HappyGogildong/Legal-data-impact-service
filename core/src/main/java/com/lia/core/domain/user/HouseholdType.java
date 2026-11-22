@@ -1,4 +1,4 @@
-package com.lia.core.profile;
+package com.lia.core.domain.user;
 
 /** 가구형태. "1인"은 숫자로 시작해 상수명을 `일인`으로 둔다. */
 public enum HouseholdType implements Labeled {

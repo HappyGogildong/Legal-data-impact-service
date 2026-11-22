@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Addendum;
 import com.lia.core.domain.law.Article;
+import com.lia.core.domain.law.ArticleComparison;
 import com.lia.core.domain.law.Law;
 import com.lia.core.web.LawDetailResponse.ChangedArticle;
 import com.lia.core.web.LawDetailResponse.LawSummary;

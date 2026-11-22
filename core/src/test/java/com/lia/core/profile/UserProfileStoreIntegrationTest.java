@@ -17,6 +17,14 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import com.lia.core.domain.user.EmploymentType;
+import com.lia.core.domain.user.HouseholdType;
+import com.lia.core.domain.user.HousingType;
+import com.lia.core.domain.user.Occupation;
+import com.lia.core.domain.user.Purpose;
+import com.lia.core.domain.user.Sido;
+import com.lia.core.domain.user.UserProfile;
+
 /**
  * UserProfileStore 통합 테스트 — 실 Postgres(Testcontainers). 동의가 행을 만들고, 속성 교체는 동의를
  * 보존하며, 동의 없이는 행이 생기지 않는다. text[]·라벨 라운드트립, accounts 삭제 cascade, age CHECK.

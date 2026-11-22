@@ -1,4 +1,4 @@
-package com.lia.core.profile;
+package com.lia.core.domain.user;
 
 /**
  * 라벨을 가진 프로필 enum 공통 — API·DB 값은 라벨 문자열 하나(D61).

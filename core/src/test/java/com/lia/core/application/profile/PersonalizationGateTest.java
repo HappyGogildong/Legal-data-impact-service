@@ -8,10 +8,10 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.pipeline.dispatch.Personalization;
 import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.profile.StoredProfile;
-import com.lia.core.profile.UserProfile;
 import com.lia.core.profile.UserProfileStore;
 
 /** PersonalizationGate — 현재 버전 동의 + 속성 ≥ 1 인 프로필만 Layer B 에(D69). DB 없이 저장소 대체. */

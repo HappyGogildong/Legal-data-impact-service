@@ -1,4 +1,4 @@
-package com.lia.core.profile;
+package com.lia.core.domain.user;
 
 /** 주거형태 — 주거 법령 영향에 직결. */
 public enum HousingType implements Labeled {
