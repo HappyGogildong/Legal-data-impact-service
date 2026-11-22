@@ -1,4 +1,4 @@
-package com.lia.core.store;
+package com.lia.core.feature.law;
 
 /** 자주 찾는 법령 집계 구간 — 오늘(서울) 포함 일 수. 이름은 API 값 그대로(day·week·month). */
 public enum TrendingWindow {

@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.law;
 
 import java.time.LocalDate;
 import java.util.List;

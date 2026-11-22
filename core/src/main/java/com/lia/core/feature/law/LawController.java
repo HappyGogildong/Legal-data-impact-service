@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.law;
 
 import java.time.DateTimeException;
 import java.time.LocalDate;
@@ -13,7 +13,6 @@ import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
 import com.lia.core.lawdata.LawSource;
 import com.lia.core.lawdata.LawSummaries;
-import com.lia.core.store.LawCatalogStore;
 
 /**
  * {@code /api/v1/laws} — 곧 시행되는 법령 목록·시행예정본 목록·법령 상세([[service-api-spec]] §3.1~3.3, D65).

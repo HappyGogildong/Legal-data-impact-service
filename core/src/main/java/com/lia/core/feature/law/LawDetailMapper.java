@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.law;
 
 import java.util.List;
 
@@ -9,10 +9,10 @@ import com.lia.core.domain.law.Addendum;
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.ArticleComparison;
 import com.lia.core.domain.law.Law;
-import com.lia.core.web.LawDetailResponse.ChangedArticle;
-import com.lia.core.web.LawDetailResponse.LawSummary;
-import com.lia.core.web.LawDetailResponse.SourceText;
-import com.lia.core.web.LawDetailResponse.SummaryClaim;
+import com.lia.core.feature.law.LawDetailResponse.ChangedArticle;
+import com.lia.core.feature.law.LawDetailResponse.LawSummary;
+import com.lia.core.feature.law.LawDetailResponse.SourceText;
+import com.lia.core.feature.law.LawDetailResponse.SummaryClaim;
 
 /**
  * {@link Law}(+기준선) → {@link LawDetailResponse} 표현 매핑(S05). 조문 대비는 시행예정본일 때만 — 시행된 버전은

@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.law;
 
 /** 요청한 법령·버전이 저장소에 없음 — 404(service-api-spec §3.2·§3.3). */
 public class LawNotFoundException extends RuntimeException {

@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.law;
 
 import java.time.DateTimeException;
 import java.time.LocalDate;
@@ -12,9 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.lia.core.store.LawViewStore;
-import com.lia.core.store.TrendingWindow;
 
 /**
  * 자주 찾는 법령 — {@code GET /api/v1/laws/trending}·조회 신호 {@code POST /api/v1/laws/{lawId}/{effectiveDate}/views}

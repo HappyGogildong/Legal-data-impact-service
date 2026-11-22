@@ -1,4 +1,4 @@
-package com.lia.core.store;
+package com.lia.core.feature.law;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Types;

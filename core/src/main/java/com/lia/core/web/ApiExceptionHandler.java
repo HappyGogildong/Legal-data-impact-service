@@ -16,6 +16,7 @@ import com.lia.core.application.history.HistoryLimitException;
 import com.lia.core.application.history.HistoryNotFoundException;
 import com.lia.core.application.profile.ConsentRequiredException;
 import com.lia.core.application.subscription.SubscriptionLimitException;
+import com.lia.core.feature.law.LawNotFoundException;
 import com.lia.core.lawdata.UnknownLawException;
 
 /**

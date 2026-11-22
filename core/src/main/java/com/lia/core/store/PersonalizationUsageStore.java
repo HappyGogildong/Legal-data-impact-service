@@ -9,7 +9,7 @@ import com.lia.core.pipeline.dispatch.PersonalizationQuota;
 /**
  * 하루 개인화 분석 한도(D69) — {@code personalization_usage_daily}. Opus 호출 직전에 1회 차감한다.
  * 한 문장 upsert 의 {@code WHERE count < 한도} 가 동시 요청에도 한도를 넘지 않게 한다(넘으면 갱신 0행 → false).
- * 날짜는 서울 기준({@link LawViewStore}와 같은 식).
+ * 날짜는 서울 기준({@link com.lia.core.feature.law.LawViewStore}와 같은 식).
  */
 public class PersonalizationUsageStore implements PersonalizationQuota {
 

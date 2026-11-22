@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.law;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -10,9 +10,9 @@ import org.junit.jupiter.api.Test;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.feature.law.LawDetailResponse.ChangedArticle;
+import com.lia.core.feature.law.LawDetailResponse.SourceText;
 import com.lia.core.testsupport.TestLaws;
-import com.lia.core.web.LawDetailResponse.ChangedArticle;
-import com.lia.core.web.LawDetailResponse.SourceText;
 
 /** 법령 상세 표현 — 정본 사실 그대로, 조문 대비는 근거 패널과 같은 규칙. */
 class LawDetailMapperTest {

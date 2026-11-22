@@ -6,13 +6,13 @@ import java.util.function.Supplier;
 import java.util.UUID;
 
 import com.lia.core.application.profile.PersonalizationGate;
+import com.lia.core.feature.law.LawViews;
 import com.lia.core.pipeline.dispatch.Personalization;
 import com.lia.core.pipeline.dispatch.QueryDispatcher;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.PlanResult;
 import com.lia.core.pipeline.plan.QueryPlanner;
 import com.lia.core.pipeline.plan.Target;
-import com.lia.core.store.LawViews;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

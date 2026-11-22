@@ -1,7 +1,7 @@
 package com.lia.core.domain.law;
 
 /**
- * 조문 대비 규칙 — 근거 패널({@link com.lia.core.web.CitedSourceResolver})과 법령 상세({@link com.lia.core.web.LawDetailMapper})가 같은 규칙을 쓴다.
+ * 조문 대비 규칙 — 근거 패널({@link com.lia.core.web.CitedSourceResolver})과 법령 상세({@link com.lia.core.feature.law.LawDetailMapper})가 같은 규칙을 쓴다.
  * 현행 원문은 시행예정본의 개정·삭제·이동 조문에만 있다(신설·무변경은 현행이 없다). 이동은 옛 번호로 찾는다.
  */
 public final class ArticleComparison {

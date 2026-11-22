@@ -23,6 +23,7 @@ import com.lia.core.application.analysis.AnonymousAnalysisQuota;
 import com.lia.core.application.analysis.QueryEventRecorder;
 import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.domain.law.Law;
+import com.lia.core.feature.law.LawViews;
 import com.lia.core.lawdata.LawSource;
 import com.lia.core.lawdata.LawSummaries;
 import com.lia.core.lawdata.LawSummaryStore;
@@ -51,7 +52,6 @@ import com.lia.core.pipeline.resolve.ChunkStoreLawSearch;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
 import com.lia.core.store.AnonymousAnalysisUsageStore;
-import com.lia.core.store.LawViews;
 import com.lia.core.store.PersonalizationUsageStore;
 
 /**
