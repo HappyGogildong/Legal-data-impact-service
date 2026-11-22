@@ -1,4 +1,4 @@
-package com.lia.core.application.history;
+package com.lia.core.feature.history;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -10,7 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.lia.core.application.account.AccountNotFoundException;
-import com.lia.core.store.AnalysisHistoryStore.NewEntry;
+import com.lia.core.feature.history.AnalysisHistoryStore.NewEntry;
 import com.lia.core.testsupport.InMemoryAccountStore;
 import com.lia.core.testsupport.InMemoryAnalysisHistoryStore;
 

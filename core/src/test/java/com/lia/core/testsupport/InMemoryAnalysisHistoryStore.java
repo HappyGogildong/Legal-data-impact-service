@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import com.lia.core.store.AnalysisHistoryStore;
+import com.lia.core.feature.history.AnalysisHistoryStore;
 
 /**
  * 테스트용 인메모리 이력 저장소 — JdbcClient 없이 공개 메서드를 대체. 단일 스레드 테스트 전용.

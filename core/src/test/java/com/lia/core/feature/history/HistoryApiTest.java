@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.history;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -28,7 +28,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import com.jayway.jsonpath.JsonPath;
-import com.lia.core.application.history.HistoryUseCase;
 import com.lia.core.auth.CurrentUser;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.analysis.SituationQuestion;
@@ -38,7 +37,6 @@ import com.lia.core.feature.analysis.web.AnalysisApiResponse;
 import com.lia.core.feature.analysis.web.HttpSessionRecentAnalyses;
 import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.LawRef;
-import com.lia.core.store.AnalysisHistoryStore;
 import com.lia.core.testsupport.ApiSliceTestConfig;
 import com.lia.core.testsupport.InMemoryAccountStore;
 

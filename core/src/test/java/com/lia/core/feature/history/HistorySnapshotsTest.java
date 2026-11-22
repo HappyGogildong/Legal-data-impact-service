@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.history;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -21,8 +21,8 @@ import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.feature.analysis.web.ActionRevisionApiResponse;
 import com.lia.core.feature.analysis.web.AnalysisApiResponse;
 import com.lia.core.feature.analysis.web.HttpSessionRecentAnalyses;
+import com.lia.core.feature.history.HistoryApiDtos.HistorySnapshot;
 import com.lia.core.pipeline.dispatch.Unmet;
-import com.lia.core.web.HistoryApiDtos.HistorySnapshot;
 
 import tools.jackson.core.JacksonException;
 

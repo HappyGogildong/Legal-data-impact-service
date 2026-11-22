@@ -1,4 +1,4 @@
-package com.lia.core.store;
+package com.lia.core.feature.history;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -19,11 +19,11 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-import com.lia.core.store.AnalysisHistoryStore.HistoryEntry;
-import com.lia.core.store.AnalysisHistoryStore.HistoryRow;
-import com.lia.core.store.AnalysisHistoryStore.NewEntry;
-import com.lia.core.store.AnalysisHistoryStore.SaveResult;
-import com.lia.core.store.AnalysisHistoryStore.SaveStatus;
+import com.lia.core.feature.history.AnalysisHistoryStore.HistoryEntry;
+import com.lia.core.feature.history.AnalysisHistoryStore.HistoryRow;
+import com.lia.core.feature.history.AnalysisHistoryStore.NewEntry;
+import com.lia.core.feature.history.AnalysisHistoryStore.SaveResult;
+import com.lia.core.feature.history.AnalysisHistoryStore.SaveStatus;
 import com.lia.core.testsupport.TestDatabases;
 
 /** 질의·분석 이력(D73) — 멱등·한도·만료·cascade·남의 기록·갱신 판정·최신 시행예정본. Docker 없으면 스킵. */

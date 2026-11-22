@@ -1,11 +1,11 @@
-package com.lia.core.web;
+package com.lia.core.feature.history;
 
 import java.util.List;
 
 import com.lia.core.feature.analysis.web.ActionRevisionApiResponse;
 import com.lia.core.feature.analysis.web.AnalysisApiResponse;
 import com.lia.core.feature.analysis.web.HttpSessionRecentAnalyses;
-import com.lia.core.web.HistoryApiDtos.HistorySnapshot;
+import com.lia.core.feature.history.HistoryApiDtos.HistorySnapshot;
 
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.cfg.EnumFeature;

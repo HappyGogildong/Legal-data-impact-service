@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.history;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,19 +16,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.lia.core.application.history.AnalysisExpiredException;
-import com.lia.core.application.history.HistoryUseCase;
-import com.lia.core.application.history.SavedHistory;
 import com.lia.core.auth.CurrentUser;
 import com.lia.core.feature.analysis.web.HttpSessionRecentAnalyses;
-import com.lia.core.store.AnalysisHistoryStore.HistoryEntry;
-import com.lia.core.store.AnalysisHistoryStore.NewEntry;
-import com.lia.core.web.HistoryApiDtos.HistoryDetailResponse;
-import com.lia.core.web.HistoryApiDtos.HistoryItem;
-import com.lia.core.web.HistoryApiDtos.HistoryListResponse;
-import com.lia.core.web.HistoryApiDtos.HistorySaveRequest;
-import com.lia.core.web.HistoryApiDtos.HistorySavedResponse;
-import com.lia.core.web.HistoryApiDtos.HistorySnapshot;
+import com.lia.core.feature.history.AnalysisHistoryStore.HistoryEntry;
+import com.lia.core.feature.history.AnalysisHistoryStore.NewEntry;
+import com.lia.core.feature.history.HistoryApiDtos.HistoryDetailResponse;
+import com.lia.core.feature.history.HistoryApiDtos.HistoryItem;
+import com.lia.core.feature.history.HistoryApiDtos.HistoryListResponse;
+import com.lia.core.feature.history.HistoryApiDtos.HistorySaveRequest;
+import com.lia.core.feature.history.HistoryApiDtos.HistorySavedResponse;
+import com.lia.core.feature.history.HistoryApiDtos.HistorySnapshot;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;

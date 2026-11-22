@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.history;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.lia.core.feature.analysis.web.ActionRevisionApiResponse;
 import com.lia.core.feature.analysis.web.AnalysisApiResponse;
 import com.lia.core.feature.analysis.web.HttpSessionRecentAnalyses;
-import com.lia.core.store.AnalysisHistoryStore.HistoryRow;
+import com.lia.core.feature.history.AnalysisHistoryStore.HistoryRow;
 
 /** {@code /api/v1/history} 요청·응답(D73). 스냅샷 본문은 {@link HistorySnapshot}. */
 final class HistoryApiDtos {

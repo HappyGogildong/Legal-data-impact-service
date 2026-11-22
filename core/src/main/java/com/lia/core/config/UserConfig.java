@@ -9,14 +9,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.application.bookmark.BookmarkUseCase;
-import com.lia.core.application.history.HistoryUseCase;
 import com.lia.core.application.notification.NotificationUseCase;
 import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.application.profile.ProfileUseCase;
 import com.lia.core.application.subscription.SubscriptionUseCase;
 import com.lia.core.auth.AccountStore;
+import com.lia.core.feature.history.AnalysisHistoryStore;
+import com.lia.core.feature.history.HistoryUseCase;
 import com.lia.core.profile.UserProfileStore;
-import com.lia.core.store.AnalysisHistoryStore;
 import com.lia.core.store.LawBookmarkStore;
 import com.lia.core.store.LawSubscriptionStore;
 import com.lia.core.store.NotificationStore;

@@ -1,13 +1,12 @@
-package com.lia.core.application.history;
+package com.lia.core.feature.history;
 
 import java.util.List;
 import java.util.UUID;
 
 import com.lia.core.application.account.AccountNotFoundException;
-import com.lia.core.store.AnalysisHistoryStore;
-import com.lia.core.store.AnalysisHistoryStore.HistoryEntry;
-import com.lia.core.store.AnalysisHistoryStore.HistoryRow;
-import com.lia.core.store.AnalysisHistoryStore.NewEntry;
+import com.lia.core.feature.history.AnalysisHistoryStore.HistoryEntry;
+import com.lia.core.feature.history.AnalysisHistoryStore.HistoryRow;
+import com.lia.core.feature.history.AnalysisHistoryStore.NewEntry;
 
 /**
  * 질의·분석 이력 유스케이스(D73) — 저장소 결과를 예외로 바꾼다. 스냅샷은 web 이 만든 불투명한 JSON 문자열.

@@ -1,4 +1,4 @@
-package com.lia.core.application.history;
+package com.lia.core.feature.history;
 
 /** 이력이 없거나 남의 기록 — web 이 404 {@code not_found} 로 매핑(존재 자체를 숨긴다). */
 public class HistoryNotFoundException extends RuntimeException {
