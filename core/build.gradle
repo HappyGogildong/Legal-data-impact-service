@@ -62,6 +62,7 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'       // 인가 규칙 테스트(oauth2Login()·인증 없음→401)
     testImplementation 'org.testcontainers:postgresql'                          // Law Store 통합 테스트(실 Postgres)
     testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'com.tngtech.archunit:archunit:1.5.1'
 }
 
 // 자격증명 단일 소스(D39): 레포 루트 .env 를 읽어 JVM 환경변수로 주입한다.
