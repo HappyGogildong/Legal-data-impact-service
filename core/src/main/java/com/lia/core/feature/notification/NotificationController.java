@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.notification;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,10 +9,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.lia.core.application.notification.NotificationUseCase;
 import com.lia.core.auth.CurrentUser;
-import com.lia.core.web.NotificationApiDtos.NotificationItem;
-import com.lia.core.web.NotificationApiDtos.NotificationListResponse;
+import com.lia.core.feature.notification.NotificationApiDtos.NotificationItem;
+import com.lia.core.feature.notification.NotificationApiDtos.NotificationListResponse;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;

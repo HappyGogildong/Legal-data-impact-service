@@ -1,10 +1,10 @@
-package com.lia.core.web;
+package com.lia.core.feature.notification;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-import com.lia.core.store.NotificationStore.NotificationRow;
+import com.lia.core.feature.notification.NotificationStore.NotificationRow;
 
 /** {@code /api/v1/notifications} 응답(D74). */
 final class NotificationApiDtos {

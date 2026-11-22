@@ -38,6 +38,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.feature.notification.NotificationStore;
 import com.lia.core.ingest.MinIntervalLimiter;
 import com.lia.core.ingest.handler.IndexHandler;
 import com.lia.core.ingest.handler.IngestService;
@@ -64,7 +65,6 @@ import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.diff.DiffBuilder;
 import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.normalize.Normalizer;
-import com.lia.core.store.NotificationStore;
 import com.lia.core.testsupport.FakeEmbeddingModel;
 import com.lia.core.testsupport.FakeLawFeed;
 import com.lia.core.testsupport.LawFixtures;

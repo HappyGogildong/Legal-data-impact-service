@@ -1,4 +1,4 @@
-package com.lia.core.store;
+package com.lia.core.feature.notification;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -15,7 +15,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-import com.lia.core.store.NotificationStore.NotificationRow;
+import com.lia.core.feature.notification.NotificationStore.NotificationRow;
 import com.lia.core.testsupport.TestDatabases;
 
 /** 구독 알림(D74) — 시점 경계·놓친 날 보충·정확히 한 번·시행예정만·시점 변경·새 개정·목록·읽음. Docker 없으면 스킵. */

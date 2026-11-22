@@ -19,6 +19,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import io.micrometer.observation.ObservationRegistry;
 import tools.jackson.databind.ObjectMapper;
 
+import com.lia.core.feature.notification.NotificationStore;
 import com.lia.core.ingest.MinIntervalLimiter;
 import com.lia.core.ingest.handler.IndexHandler;
 import com.lia.core.ingest.handler.IngestService;
@@ -43,7 +44,6 @@ import com.lia.core.pipeline.analyze.SpringAiReasoner;
 import com.lia.core.pipeline.connector.LawConnector;
 import com.lia.core.pipeline.connector.PendingLawFeed;
 import com.lia.core.pipeline.index.RAGIndexer;
-import com.lia.core.store.NotificationStore;
 
 /**
  * 적재 배치 배선(D62) — {@code batch} 프로파일에서만. 웹 컨텍스트에는 배치 빈이 없다.

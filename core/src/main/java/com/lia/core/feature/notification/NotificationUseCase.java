@@ -1,10 +1,9 @@
-package com.lia.core.application.notification;
+package com.lia.core.feature.notification;
 
 import java.util.List;
 import java.util.UUID;
 
-import com.lia.core.store.NotificationStore;
-import com.lia.core.store.NotificationStore.NotificationRow;
+import com.lia.core.feature.notification.NotificationStore.NotificationRow;
 
 /** 인앱 알림함 유스케이스(D74) — 최근 {@value #INBOX_SIZE}개 + 읽지 않은 수, 읽음 처리. */
 public class NotificationUseCase {

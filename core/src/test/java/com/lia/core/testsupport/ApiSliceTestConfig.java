@@ -15,7 +15,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import com.lia.core.application.account.AccountUseCase;
-import com.lia.core.application.notification.NotificationUseCase;
 import com.lia.core.auth.EnabledOAuthProviders;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.config.SecurityConfig;
@@ -37,6 +36,8 @@ import com.lia.core.feature.law.LawDetailMapper;
 import com.lia.core.feature.law.LawViewController;
 import com.lia.core.feature.law.LawViewStore;
 import com.lia.core.feature.law.TrendingWindow;
+import com.lia.core.feature.notification.NotificationController;
+import com.lia.core.feature.notification.NotificationUseCase;
 import com.lia.core.feature.profile.ConsentController;
 import com.lia.core.feature.profile.ProfileController;
 import com.lia.core.feature.profile.ProfileUseCase;
@@ -47,7 +48,6 @@ import com.lia.core.lawdata.LawSummaries;
 import com.lia.core.web.AccountController;
 import com.lia.core.web.ApiExceptionHandler;
 import com.lia.core.web.AuthProvidersController;
-import com.lia.core.web.NotificationController;
 
 
 /**

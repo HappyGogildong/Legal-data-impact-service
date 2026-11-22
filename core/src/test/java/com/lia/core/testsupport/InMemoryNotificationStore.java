@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.lia.core.store.NotificationStore;
+import com.lia.core.feature.notification.NotificationStore;
 
 /** 테스트용 인메모리 알림 저장소 — {@link #add} 로 알림을 넣는다. 단일 스레드 전용. */
 public class InMemoryNotificationStore extends NotificationStore {
