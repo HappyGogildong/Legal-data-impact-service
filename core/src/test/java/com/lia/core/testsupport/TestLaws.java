@@ -23,7 +23,6 @@ public final class TestLaws {
                 "개정이유", "개정문", List.of(), List.of(), List.of(), null, "url", "rev-" + mst, Instant.now());
     }
 
-    /** 조문이 있는 주택법 — 제18조(본문 지정, 개정)·제19조(무변경). 근거 패널·법령 상세·API 슬라이스가 함께 쓴다. */
     public static Law housing(Law.Status status, LocalDate effectiveDate, String article18Text) {
         List<Article> articles = List.of(
                 new Article("18", "사업계획의 통합심의", article18Text, true, Article.ChangeType.개정, null, null, effectiveDate, true, null),
