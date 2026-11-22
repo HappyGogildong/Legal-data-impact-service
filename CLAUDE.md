@@ -60,31 +60,38 @@ Spring 버전 변경점(Boot 3.x→4.0, AI 1.x→2.0)은 `docs/reference/spring-
 - 오류 응답은 최상위 `{"RESULT": {...}}` 형태(정상 응답의 `head[].RESULT`와 다름) — `AssemblyEnvelope.resultCode`가 둘 다 처리.
 - (열린국회, post-MVP) `Type=json` 이어도 **`Content-Type: text/html`** 로 응답 → `String`으로 받아 Jackson 3로 직접 파싱. 국가법령정보는 정상 `application/json` 이지만 오류가 200으로 오므로 봉투 검사는 필수(`LawEnvelope.checkError`).
 
-## 패키지 규약 (core — 2026-08-02 확정)
+## 패키지 규약 (core — 2026-11-23 개정, D90)
 
 ```
 com.lia.core
-├── domain/            공유 도메인 — 바운디드 컨텍스트별로 나눈다
-│   ├── law/           Law · Article · Addendum        (수집·정규화)
-│   ├── analysis/      LawFacts · ImpactResult          (#13)
-│   └── user/          UserProfile                      (#12, D41)
-├── pipeline/          처리 단계(stage)별 — 계층도 기능도 아님
-│   ├── connector/     수집   LawConnector · LawEnvelope · RawLaw
-│   ├── resolve/       식별   SourceAnalyzer · LawLookup · Resolution*
-│   ├── normalize/     정규화 (#5)
-│   ├── diff/          대조   (#12)
-│   └── index/         적재   (#6·#7)
-└── config/            빈 조립 · 프로퍼티
+├── domain/            공유 도메인 — 바운디드 컨텍스트별
+│   ├── law/           Law · Article · Addendum · ArticleComparison
+│   ├── analysis/      ImpactResult · Situation* · StepNote
+│   └── user/          UserProfile · 선택지 enum
+├── lawdata/           여러 곳이 함께 쓰는 법령 데이터 — LawStore · LawSource · 요약·변경점 저장 · chunk/
+├── pipeline/          처리 단계(stage)별 — connector · normalize · diff · resolve · plan · discover ·
+│                      dispatch · analyze · embed · index
+├── ingest/            오프라인 배치 — job · task · handler · scan
+├── feature/           사용자 기능 — 기능 하나 = 폴더 하나(컨트롤러 · 유스케이스 · DTO · 저장소)
+│   ├── analysis/      (+ web · usage · event)
+│   └── law · history · profile · bookmark · subscription · notification · account
+├── web/               ApiExceptionHandler (기능 예외 → HTTP)
+└── auth/ · config/ · observability/ · eval/ · dev/
 ```
 
-**네 가지 규칙:**
+축이 둘이다. 데이터가 단계를 차례로 지나는 코드(pipeline·ingest)는 **단계별**, 화면에서 DB까지 한 줄로 이어지는 사용자 기능은 **기능별**.
 
-1. **의존 방향은 `pipeline → domain` 단방향.** `domain`은 파이프라인을 import하지 않는다. 도메인 타입은 천천히 변하고 단계는 자주 변하므로, 섞으면 안정된 것이 불안정한 것에 딸려 움직인다.
-2. **`Raw*`는 도메인이 아니다.** `RawLaw`는 출처 원형을 담은 커넥터 지역 DTO(`Map raw` 보유)이고 `connector/`에 산다. `RawLaw → Law` 변환이 **Anti-Corruption Layer**이며, 출처 API의 기벽은 전부 이 층에 가둔다(원칙 ② 수집과 해석의 분리).
-3. **포트는 교체가 실제로 예정된 것만.** `LawLookup`은 커넥터 → Law Store 로 구현을 실제로 갈아끼웠다(D87, `LawStoreLookup`). 저장소는 Postgres 하나로 고정(D04)이라 Repository 추상화를 따로 두지 않는다.
-4. **`domain`은 빈약(anemic)해도 된다 — 단, 우리가 만든 판정은 예외.** `Law`·`Article`은 우리가 저작하지 않는 외부 권위 사실이라 강제할 불변식이 없다. 반면 **우리가 산출한 판정에는 있다**: `ResolutionResult`의 fail-closed 4상태(D23)는 생성자에서 강제한다. 인용 없는 주장 차단(D08)도 타입이 알아야 한다 — #13에서 같은 방식으로.
+**규칙:**
 
-> 도입하지 않는 것(현 단계에서 순수 비용): Aggregate Root(`Law`는 통째로 읽고 쓰는 불변 스냅샷), Repository 추상화, Domain Event, Spring Modulith, Value Object 남발.
+1. **의존은 안쪽으로만: `domain ← lawdata ← pipeline ← ingest·feature`.** `domain`은 core 의 다른 패키지를 import하지 않고, `lawdata`는 `domain`만 쓴다. `pipeline`은 기능·배치를 모른다. 도메인 타입은 천천히 변하고 단계·기능은 자주 변하므로, 섞으면 안정된 것이 불안정한 것에 딸려 움직인다. (남은 예외: `AnalysisEngine → eval.FaithfulnessGate`, `LawConnector → config.LiaSourceProperties`, `observability ↔ pipeline`)
+2. **기능끼리는 `history → analysis → {law, profile}`, `profile → account` 방향만.** 새로 기능 간 의존이 필요하면 공용 부분을 `domain`·`lawdata`로 내릴 수 있는지 먼저 본다(예: `ArticleComparison`). 기능이 포트를 구현할 때는 기능 → 포트 방향(`NotificationStore implements ingest.job.DueNotifications`).
+3. **기능 폴더가 커지면 그 안에서 관심사로 나눈다**(`feature.analysis`의 `web`·`usage`·`event`). 하위 패키지끼리도 한 방향 — `web → 루트 → usage·event`.
+4. **`Raw*`는 도메인이 아니다.** `RawLaw`는 출처 원형을 담은 커넥터 지역 DTO(`Map raw` 보유)이고 `connector/`에 산다. `RawLaw → Law` 변환이 **Anti-Corruption Layer**이며, 출처 API의 기벽은 전부 이 층에 가둔다(원칙 ② 수집과 해석의 분리).
+5. **포트는 교체가 실제로 예정된 것만.** `LawLookup`은 커넥터 → Law Store 로 구현을 실제로 갈아끼웠다(D87, `LawStoreLookup` — 포트 옆 `pipeline.resolve`). 저장소는 Postgres 하나로 고정(D04)이라 Repository 추상화를 따로 두지 않는다.
+6. **`domain`은 빈약(anemic)해도 된다 — 단, 우리가 만든 판정은 예외.** `Law`·`Article`은 우리가 저작하지 않는 외부 권위 사실이라 강제할 불변식이 없다. 반면 **우리가 산출한 판정에는 있다**: `ResolutionResult`의 fail-closed 4상태(D23)는 생성자에서 강제한다. 인용 없는 주장 차단(D08)도 타입이 알아야 한다.
+7. **주석 링크만을 위한 상향 import 는 만들지 않는다** — `{@link com.lia.core.feature...}`처럼 정규화된 이름으로 적는다.
+
+> 도입하지 않는 것(현 단계에서 순수 비용): Aggregate Root(`Law`는 통째로 읽고 쓰는 불변 스냅샷), Repository 추상화, 헥사고날식 저장소별 포트, Domain Event, Spring Modulith, Value Object 남발.
 
 ## 설정·비밀 관리
 
