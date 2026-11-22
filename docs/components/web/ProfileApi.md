@@ -19,7 +19,7 @@ related: ["components/profile/UserProfile.md", "components/application/ProfileUs
 - [[Auth]] — `CurrentUser`로 세션 `userId`. 없으면 401.
 - [[ProfileUseCase]] — update/find/delete.
 
-## HTTP Contract — `com.lia.core.web`
+## HTTP Contract — `com.lia.core.feature.profile`
 | 메서드 | 경로 | 동작 | 응답 |
 |---|---|---|---|
 | `PUT` | `/api/v1/profile` | 속성 **전체 교체**(보내지 않은 필드 → null). 동의는 건드리지 않는다 | 200 + 저장된 프로필 / **409** 현재 버전 동의 없음 |

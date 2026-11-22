@@ -21,7 +21,7 @@ related: ["components/web/BookmarkApi.md", "components/web/AnalysisApi.md", "com
 - `HistoryUseCase` — save / list / get / delete. 저장소의 결과(enum)를 예외로 바꾼다.
 - `AnalysisHistoryStore` — `analysis_history` 읽기·쓰기, 계정 행 잠금, 멱등·한도 판단, 저장한 버전의 현재 revision·상태 읽기, 한 트랜잭션.
 
-## HTTP Contract — `com.lia.core.web`
+## HTTP Contract — `com.lia.core.feature.history`
 | 메서드 | 경로 | 동작 | 응답 |
 |---|---|---|---|
 | `POST` | `/api/v1/history` | 이력 저장 — 본문 `{ "analysisId": "…" }` 뿐 | 201 `{ "id": 12 }`(새로 저장) / 200 같은 id(같은 `analysisId` 를 이미 저장 — 스냅샷을 지금 결과로 바꾼다) / **400**(`analysisId` 없음·빈 값) / **409** `analysis_expired` / **409** `history_limit` |

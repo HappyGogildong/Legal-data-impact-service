@@ -20,7 +20,7 @@ ConsentController ─┴──→  ProfileUseCase  ──→  UserProfileStore
 - **담당**: 동의 전제조건(`over14`)·버전 스탬프 · "현재 버전 동의 없으면 수정 거부" · 동의 상태의 `upToDate` 판정.
 - **담당 안 함**: HTTP·세션(web) · 값 불변식·라벨 변환([[UserProfile]]) · SQL([[UserProfile|UserProfileStore]]) · 알림 이메일 동의([[AccountUseCase]]).
 
-## 구조 — `com.lia.core.application.profile`
+## 구조 — `com.lia.core.feature.profile`
 | 클래스 | 역할 |
 |---|---|
 | `ProfileUseCase` | 아래 Contract. 생성자에 현재 처리방침 버전(`lia.privacy.policy-version`)을 받는다. |

@@ -81,7 +81,7 @@ flowchart LR
 ### 4. Batch reliability — overlapping runs, partial failures, reruns
 **Problem** The external API can go down mid-run, a manual run can overlap the scheduled one, or only some laws can fail.
 **Decision** Work is split into a DB task queue that workers claim with `FOR UPDATE SKIP LOCKED`, and an advisory lock ensures only one run at a time. Only changed items are processed, keyed by the law-version id (MST) and a content hash (revision), so **running twice in a row produces the same result.** Repeatedly failing tasks are quarantined so they don't block the next run.
-→ [`TaskQueue`](core/src/main/java/com/lia/core/pipeline/batch/TaskQueue.java) · [`JobLock`](core/src/main/java/com/lia/core/pipeline/batch/JobLock.java) · [design doc](docs/components/batch/IngestJob.md) · [D62](docs/adr/decision-log.md)
+→ [`TaskQueue`](core/src/main/java/com/lia/core/ingest/task/TaskQueue.java) · [`JobLock`](core/src/main/java/com/lia/core/ingest/job/JobLock.java) · [design doc](docs/components/batch/IngestJob.md) · [D62](docs/adr/decision-log.md)
 
 ## How quality is maintained
 

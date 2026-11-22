@@ -15,7 +15,7 @@ related: ["components/application/AccountUseCase.md", "components/auth/Auth.md",
 - **담당**: 세션 `userId`로 [[AccountUseCase]] 위임 · 계정 삭제 시 **세션 무효화 + `JSESSIONID` 삭제**(HTTP 관심사).
 - **담당 안 함**: 계정 영속([[Auth|AccountStore]]) · 알림 이메일 동의([[ConsentApi]]).
 
-## HTTP Contract — `com.lia.core.web`
+## HTTP Contract — `com.lia.core.feature.account`
 | 메서드 | 경로 | 동작 | 응답 |
 |---|---|---|---|
 | `GET` | `/api/v1/account` | `{provider, createdAt}` — **userId·email 없음**. SPA의 "로그인 상태 확인"에도 쓴다(200 = 로그인, 401 = 아님) | 200 |

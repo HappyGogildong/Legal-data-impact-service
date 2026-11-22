@@ -79,7 +79,7 @@ flowchart LR
 ### 4. 배치 신뢰성 — 중복 실행·부분 실패·재실행
 **문제** 수집 도중 외부 API가 죽거나, 수동 실행과 정기 실행이 겹치거나, 일부 법령만 실패할 수 있다.
 **결정** 작업을 DB 큐로 나눠 워커가 `FOR UPDATE SKIP LOCKED`로 가져가고, 실행 전체는 advisory lock으로 하나만 돌게 한다. 법령 버전 키(MST)와 본문 해시(revision)로 바뀐 것만 처리해 **두 번 연속 실행해도 결과가 같다.** 반복 실패하는 작업은 격리해 다음 실행을 막지 않는다.
-→ [`TaskQueue`](core/src/main/java/com/lia/core/pipeline/batch/TaskQueue.java) · [`JobLock`](core/src/main/java/com/lia/core/pipeline/batch/JobLock.java) · [설계 문서](docs/components/batch/IngestJob.md) · [D62](docs/adr/decision-log.md)
+→ [`TaskQueue`](core/src/main/java/com/lia/core/ingest/task/TaskQueue.java) · [`JobLock`](core/src/main/java/com/lia/core/ingest/job/JobLock.java) · [설계 문서](docs/components/batch/IngestJob.md) · [D62](docs/adr/decision-log.md)
 
 ## 품질을 지키는 방법
 

@@ -19,7 +19,7 @@ related: ["components/component-specs.md", "components/auth/Auth.md", "component
 - **DB**: `user_profiles`(JdbcClient+Flyway, [[LawStore]] 패턴). `user_id`는 [[Auth]] `accounts` FK.
 - 소비자: [[ProfileUseCase]] · Layer B(③ — userId로 조회해 프롬프트에 주입).
 
-## 구조 (컴포넌트) — `com.lia.core.profile`
+## 구조 (컴포넌트) — `com.lia.core.domain.user`(값) · `com.lia.core.feature.profile`(저장)
 | 클래스 | 역할 |
 |---|---|
 | `UserProfile` (record) | 속성만(프롬프트에 들어갈 값). **userId·타임스탬프 없음**. 불변식은 compact 생성자가 강제. |

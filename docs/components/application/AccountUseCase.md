@@ -20,7 +20,7 @@ ConsentController ─┴──→  AccountUseCase  ──→  AccountStore
 - **담당**: 알림 동의 전제조건(이메일이 있어야 함) · 계정 삭제 위임.
 - **담당 안 함**: 이메일을 **어디서** 얻는지(세션 principal → web이 `OAuth2Identity`로 추출해 넘긴다) · 세션 무효화(HTTP, web) · SQL([[Auth|AccountStore]]).
 
-## 구조 — `com.lia.core.application.account`
+## 구조 — `com.lia.core.feature.account`
 | 클래스 | 역할 |
 |---|---|
 | `AccountUseCase` | 아래 Contract. Spring 애노테이션 없음 — `config/UserConfig`의 `@Bean`. |

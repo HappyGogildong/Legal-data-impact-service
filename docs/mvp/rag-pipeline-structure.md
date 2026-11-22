@@ -82,14 +82,14 @@ flowchart TB
 | **LawConnector** | 국가법령정보 OpenAPI 호출, 인증·페이징·응답 기벽 흡수. `eflaw`(시행예정=분석대상)·`law`(시행중=diff 기준선) | `pipeline/connector/LawConnector.java` 수집·재시도 · `LawEnvelope.java` 봉투 검사(오류 200 판별·`법령` 블록 유무) · `RawLaw.java` 출처 원형 DTO(ACL 바깥) · `LawApiException.java` 오류 타입 | ✅ |
 | **Normalizer** | `RawLaw` → 표준 `Law`. 출처 기벽을 여기서 끝냄(ACL 안쪽) | `pipeline/normalize/Normalizer.java` 조문 항→호→목 재귀 병합·부칙 공포번호 필터·`effectiveRule`·`revision` 해시 · `domain/law/Law.java`·`Article.java`·`Addendum.java` 도메인 타입 | ✅ |
 | **DiffBuilder** | 변경 조문 ↔ 시행중본 대조. 신설·삭제·이동 확정, `diffVsCurrent` 근거 텍스트 | `pipeline/diff/DiffBuilder.java` 조문번호 정렬 대조·기준선 null이면 전부 신설(제정) | ✅ |
-| **LawStore** | **JSONB 정본** 저장·조회. `(lawId, effectiveDate)` 단위, baseline 조회 | `store/LawStore.java` `JdbcClient`+Jackson, upsert(ON CONFLICT)·find·findBaseline · `resources/db/migration/V1__law_versions.sql` 관계형 스키마(payload jsonb) | ✅ |
+| **LawStore** | **JSONB 정본** 저장·조회. `(lawId, effectiveDate)` 단위, baseline 조회 | `lawdata/LawStore.java` `JdbcClient`+Jackson, upsert(ON CONFLICT)·find·findBaseline · `resources/db/migration/V1__law_versions.sql` 관계형 스키마(payload jsonb) | ✅ |
 
 ### 오프라인 — 색인
 
 | 컴포넌트 | 역할 | 담당 파일 (역할) | 상태 |
 |---|---|---|---|
 | **RAGIndexer** | **청킹** — 변경 조문 + 제개정이유 요약을 잘라 `source_id` 부여 → ChunkStore에 적재(임베딩은 안 함) | `pipeline/index/RAGIndexer.java` 대상 선별·조문/요약 청킹·문자수 휴리스틱 과대 분할·`source_id`(`LAW:{lawId}@{efYd}:art:{no}`) | ✅ |
-| **ChunkStore** | 벡터 chunks **upsert·검색**. `source_id` 멱등, pgvector. **content 내부 임베딩** | `store/ChunkStore.java` 포트 · `store/PgVectorChunkStore.java` `PgVectorStore` 래핑·`Chunk`↔`Document` 매핑·삭제후삽입 · `Chunk` 값타입 · `vector_store` 테이블은 PgVectorStore 소유 | ✅ |
+| **ChunkStore** | 벡터 chunks **upsert·검색**. `source_id` 멱등, pgvector. **content 내부 임베딩** | `lawdata/chunk/ChunkStore.java` 포트 · `lawdata/chunk/PgVectorChunkStore.java` `PgVectorStore` 래핑·`Chunk`↔`Document` 매핑·삭제후삽입 · `Chunk` 값타입 · `vector_store` 테이블은 PgVectorStore 소유 | ✅ |
 | **Embedder** | 텍스트 → 1536차원 벡터. **RAG 핫패스 밖** — 모델·dim 고정 + 원시 임베딩 유틸(eval). PgVectorStore와 같은 EmbeddingModel 공유 | `pipeline/embed/Embedder.java` 포트(Mode PASSAGE/QUERY) · `OpenAiEmbedder.java` Spring AI 위임·L2 정규화·dim 가드 · `EmbeddingProperties.java` dim 단일 소스(1536) | ✅ |
 
 ### 오케스트레이션 · 계측

@@ -20,7 +20,7 @@ related: ["components/web/ProfileApi.md", "components/web/LawCatalogApi.md", "co
 - `BookmarkUseCase` — add / remove / list. 저장소의 추가 결과(enum)를 예외로 바꾼다.
 - `LawBookmarkStore` — `law_bookmarks` 읽기·쓰기, 계정 행 잠금, 법령 존재 확인, 한도 판단, 한 트랜잭션.
 
-## HTTP Contract — `com.lia.core.web`
+## HTTP Contract — `com.lia.core.feature.bookmark`
 | 메서드 | 경로 | 동작 | 응답 |
 |---|---|---|---|
 | `PUT` | `/api/v1/bookmarks/{lawId}` | 북마크 추가. 멱등 | 204(이미 있어도 204) / **404** `not_found`(저장된 버전이 하나도 없는 법령) / **409** `bookmark_limit` |
