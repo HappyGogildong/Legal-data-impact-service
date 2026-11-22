@@ -1,4 +1,4 @@
-package com.lia.core.application.subscription;
+package com.lia.core.feature.subscription;
 
 import static org.junit.jupiter.api.Assertions.*;
 

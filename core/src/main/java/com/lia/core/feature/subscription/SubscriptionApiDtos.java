@@ -1,11 +1,11 @@
-package com.lia.core.web;
+package com.lia.core.feature.subscription;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.lia.core.store.LawSubscriptionStore.SubscribedLaw;
+import com.lia.core.feature.subscription.LawSubscriptionStore.SubscribedLaw;
 
 /** {@code /api/v1/subscriptions} 요청·응답(D74). */
 final class SubscriptionApiDtos {

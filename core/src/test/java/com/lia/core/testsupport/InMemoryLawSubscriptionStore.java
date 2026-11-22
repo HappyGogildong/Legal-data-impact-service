@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import com.lia.core.store.LawSubscriptionStore;
+import com.lia.core.feature.subscription.LawSubscriptionStore;
 
 /** 테스트용 인메모리 구독 저장소 — {@code laws}: lawId → (법령명, 다음 시행일 또는 null). 단일 스레드 전용. */
 public class InMemoryLawSubscriptionStore extends LawSubscriptionStore {

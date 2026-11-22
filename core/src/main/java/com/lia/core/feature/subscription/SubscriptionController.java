@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.subscription;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,11 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.lia.core.application.subscription.SubscriptionUseCase;
 import com.lia.core.auth.CurrentUser;
-import com.lia.core.web.SubscriptionApiDtos.SubscriptionItem;
-import com.lia.core.web.SubscriptionApiDtos.SubscriptionListResponse;
-import com.lia.core.web.SubscriptionApiDtos.SubscriptionRequest;
+import com.lia.core.feature.subscription.SubscriptionApiDtos.SubscriptionItem;
+import com.lia.core.feature.subscription.SubscriptionApiDtos.SubscriptionListResponse;
+import com.lia.core.feature.subscription.SubscriptionApiDtos.SubscriptionRequest;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;

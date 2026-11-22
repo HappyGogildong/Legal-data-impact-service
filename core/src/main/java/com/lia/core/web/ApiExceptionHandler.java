@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.lia.core.application.account.AccountNotFoundException;
-import com.lia.core.application.subscription.SubscriptionLimitException;
 import com.lia.core.feature.analysis.usage.AnonymousLimitException;
 import com.lia.core.feature.bookmark.BookmarkLimitException;
 import com.lia.core.feature.history.AnalysisExpiredException;
@@ -17,6 +16,7 @@ import com.lia.core.feature.history.HistoryLimitException;
 import com.lia.core.feature.history.HistoryNotFoundException;
 import com.lia.core.feature.law.LawNotFoundException;
 import com.lia.core.feature.profile.ConsentRequiredException;
+import com.lia.core.feature.subscription.SubscriptionLimitException;
 import com.lia.core.lawdata.UnknownLawException;
 
 /**

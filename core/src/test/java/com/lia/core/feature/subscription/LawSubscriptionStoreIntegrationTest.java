@@ -1,4 +1,4 @@
-package com.lia.core.store;
+package com.lia.core.feature.subscription;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -19,8 +19,8 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-import com.lia.core.store.LawSubscriptionStore.SubscribeResult;
-import com.lia.core.store.LawSubscriptionStore.SubscribedLaw;
+import com.lia.core.feature.subscription.LawSubscriptionStore.SubscribeResult;
+import com.lia.core.feature.subscription.LawSubscriptionStore.SubscribedLaw;
 import com.lia.core.testsupport.TestDatabases;
 
 /** 법령 구독(D74) — 추가·시점 변경(한도 무관)·해지·한도·법령 없음·cascade·목록(다음 시행일·정렬). Docker 없으면 스킵. */

@@ -1,4 +1,4 @@
-package com.lia.core.store;
+package com.lia.core.feature.subscription;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
