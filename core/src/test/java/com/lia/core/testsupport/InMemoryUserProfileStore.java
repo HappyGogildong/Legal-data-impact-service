@@ -8,8 +8,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.lia.core.domain.user.UserProfile;
-import com.lia.core.profile.StoredProfile;
-import com.lia.core.profile.UserProfileStore;
+import com.lia.core.feature.profile.StoredProfile;
+import com.lia.core.feature.profile.UserProfileStore;
 
 /** 테스트용 인메모리 UserProfileStore — 실 store 와 같은 계약(동의가 행을 만들고, 교체는 동의 불변). */
 public class InMemoryUserProfileStore extends UserProfileStore {

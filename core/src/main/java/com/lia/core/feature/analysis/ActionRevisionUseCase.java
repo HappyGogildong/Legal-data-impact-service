@@ -9,7 +9,6 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.SituationAnswer;
 import com.lia.core.domain.analysis.SituationQuestion;
@@ -17,6 +16,7 @@ import com.lia.core.domain.analysis.SituationQuestionSet;
 import com.lia.core.domain.law.Law;
 import com.lia.core.feature.analysis.event.QueryEvent;
 import com.lia.core.feature.analysis.event.QueryEventRecorder;
+import com.lia.core.feature.profile.PersonalizationGate;
 import com.lia.core.lawdata.LawSource;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.AnalyzeRequest;

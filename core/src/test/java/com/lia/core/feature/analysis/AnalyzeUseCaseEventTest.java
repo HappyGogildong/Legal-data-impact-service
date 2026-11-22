@@ -10,11 +10,13 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.feature.analysis.event.QueryEvent;
 import com.lia.core.feature.analysis.event.QueryEventRecorder;
 import com.lia.core.feature.analysis.usage.AnonymousAnalysisQuota;
 import com.lia.core.feature.analysis.usage.AnonymousLimitException;
+import com.lia.core.feature.profile.PersonalizationGate;
+import com.lia.core.feature.profile.StoredProfile;
+import com.lia.core.feature.profile.UserProfileStore;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.ContextBuilder;
 import com.lia.core.pipeline.dispatch.DimensionHandlerRegistry;
@@ -27,8 +29,6 @@ import com.lia.core.pipeline.plan.QueryPlanner;
 import com.lia.core.pipeline.plan.QueryTranslator;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
-import com.lia.core.profile.StoredProfile;
-import com.lia.core.profile.UserProfileStore;
 
 /** AnalyzeUseCase 의 질의 이벤트(D83) — 요청 1건 = 행 1개, 익명 상한·예외도 한 행, 기록이 응답을 막지 않는다. */
 class AnalyzeUseCaseEventTest {

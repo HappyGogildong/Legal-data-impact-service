@@ -1,12 +1,10 @@
-package com.lia.core.application.profile;
+package com.lia.core.feature.profile;
 
 import java.util.Optional;
 import java.util.UUID;
 
 import com.lia.core.application.account.AccountNotFoundException;
 import com.lia.core.domain.user.UserProfile;
-import com.lia.core.profile.StoredProfile;
-import com.lia.core.profile.UserProfileStore;
 
 /**
  * 프로필·프로필 동의 유스케이스(application 계층, D61) — {@code user_profiles} 한 행을 둘러싼 규칙.

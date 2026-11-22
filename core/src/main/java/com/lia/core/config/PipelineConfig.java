@@ -17,7 +17,6 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.domain.law.Law;
 import com.lia.core.feature.analysis.ActionRevisionUseCase;
 import com.lia.core.feature.analysis.AnalyzeUseCase;
@@ -26,6 +25,7 @@ import com.lia.core.feature.analysis.usage.AnonymousAnalysisQuota;
 import com.lia.core.feature.analysis.usage.AnonymousAnalysisUsageStore;
 import com.lia.core.feature.analysis.usage.PersonalizationUsageStore;
 import com.lia.core.feature.law.LawViews;
+import com.lia.core.feature.profile.PersonalizationGate;
 import com.lia.core.lawdata.LawSource;
 import com.lia.core.lawdata.LawSummaries;
 import com.lia.core.lawdata.LawSummaryStore;

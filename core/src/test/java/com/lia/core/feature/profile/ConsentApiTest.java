@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.profile;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;

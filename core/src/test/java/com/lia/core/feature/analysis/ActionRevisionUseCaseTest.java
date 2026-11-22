@@ -13,7 +13,6 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.analysis.SituationAnswer;
@@ -24,6 +23,9 @@ import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
 import com.lia.core.domain.user.UserProfile;
 import com.lia.core.feature.analysis.event.QueryEvent;
+import com.lia.core.feature.profile.PersonalizationGate;
+import com.lia.core.feature.profile.StoredProfile;
+import com.lia.core.feature.profile.UserProfileStore;
 import com.lia.core.lawdata.LawSource;
 import com.lia.core.pipeline.analyze.AnalysisContext;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
@@ -34,8 +36,6 @@ import com.lia.core.pipeline.dispatch.PersonalizationQuota;
 import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.pipeline.plan.LawRef;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.StoredProfile;
-import com.lia.core.profile.UserProfileStore;
 
 /**
  * ActionRevisionUseCase 단위(D71) — 게이트 순서(개인화 → 세션 질문·묶음 → 답 검증 → 정본 → 기준선 → 한도 → 엔진)를

@@ -5,12 +5,12 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.UUID;
 
-import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.feature.analysis.event.QueryEvent;
 import com.lia.core.feature.analysis.event.QueryEventRecorder;
 import com.lia.core.feature.analysis.usage.AnonymousAnalysisQuota;
 import com.lia.core.feature.analysis.usage.AnonymousLimitException;
 import com.lia.core.feature.law.LawViews;
+import com.lia.core.feature.profile.PersonalizationGate;
 import com.lia.core.pipeline.dispatch.Personalization;
 import com.lia.core.pipeline.dispatch.QueryDispatcher;
 import com.lia.core.pipeline.plan.LawRef;

@@ -10,13 +10,13 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import com.lia.core.application.account.AccountNotFoundException;
 import com.lia.core.application.bookmark.BookmarkLimitException;
-import com.lia.core.application.profile.ConsentRequiredException;
 import com.lia.core.application.subscription.SubscriptionLimitException;
 import com.lia.core.feature.analysis.usage.AnonymousLimitException;
 import com.lia.core.feature.history.AnalysisExpiredException;
 import com.lia.core.feature.history.HistoryLimitException;
 import com.lia.core.feature.history.HistoryNotFoundException;
 import com.lia.core.feature.law.LawNotFoundException;
+import com.lia.core.feature.profile.ConsentRequiredException;
 import com.lia.core.lawdata.UnknownLawException;
 
 /**

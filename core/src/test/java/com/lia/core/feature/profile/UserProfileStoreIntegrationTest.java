@@ -1,4 +1,4 @@
-package com.lia.core.profile;
+package com.lia.core.feature.profile;
 
 import static org.junit.jupiter.api.Assertions.*;
 

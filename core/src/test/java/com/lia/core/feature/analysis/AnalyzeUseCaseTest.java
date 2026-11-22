@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
-import com.lia.core.application.profile.PersonalizationGate;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Article.ChangeType;
 import com.lia.core.domain.law.Article;
@@ -24,6 +23,9 @@ import com.lia.core.domain.law.Law;
 import com.lia.core.domain.user.UserProfile;
 import com.lia.core.feature.analysis.usage.AnonymousAnalysisQuota;
 import com.lia.core.feature.analysis.usage.AnonymousLimitException;
+import com.lia.core.feature.profile.PersonalizationGate;
+import com.lia.core.feature.profile.StoredProfile;
+import com.lia.core.feature.profile.UserProfileStore;
 import com.lia.core.lawdata.LawSource;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.ContextBuilder;
@@ -47,8 +49,6 @@ import com.lia.core.pipeline.plan.Target;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.ResolutionState;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
-import com.lia.core.profile.StoredProfile;
-import com.lia.core.profile.UserProfileStore;
 
 /**
  * AnalyzeUseCase 단위 — 실 {@link QueryPlanner}+{@link QueryDispatcher} 체인을 기존 Fake(번역·해소·정본·추론)로

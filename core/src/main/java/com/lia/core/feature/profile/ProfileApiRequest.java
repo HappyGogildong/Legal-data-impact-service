@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.profile;
 
 import java.util.List;
 import java.util.stream.Collectors;

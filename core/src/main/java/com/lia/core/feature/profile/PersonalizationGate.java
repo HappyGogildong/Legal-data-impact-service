@@ -1,4 +1,4 @@
-package com.lia.core.application.profile;
+package com.lia.core.feature.profile;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -6,8 +6,6 @@ import java.util.UUID;
 import com.lia.core.domain.user.UserProfile;
 import com.lia.core.pipeline.dispatch.Personalization;
 import com.lia.core.pipeline.dispatch.Unmet;
-import com.lia.core.profile.StoredProfile;
-import com.lia.core.profile.UserProfileStore;
 
 /**
  * Layer B 에 프로필을 넣어도 되는가(D69, UserProfile Layer B 소비 규칙) — 현재 처리방침 버전 동의 + 속성 ≥ 1.
