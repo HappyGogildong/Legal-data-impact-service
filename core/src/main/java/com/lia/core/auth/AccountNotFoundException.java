@@ -1,4 +1,4 @@
-package com.lia.core.application.account;
+package com.lia.core.auth;
 
 /**
  * 세션이 가리키는 {@code userId} 의 계정이 이미 없음(다른 기기에서 계정 삭제 후 등) — web 이 401 로 매핑(D61).

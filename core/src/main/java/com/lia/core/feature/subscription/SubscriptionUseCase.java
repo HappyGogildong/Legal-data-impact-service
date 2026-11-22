@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import com.lia.core.application.account.AccountNotFoundException;
+import com.lia.core.auth.AccountNotFoundException;
 import com.lia.core.feature.subscription.LawSubscriptionStore.SubscribedLaw;
 import com.lia.core.lawdata.UnknownLawException;
 

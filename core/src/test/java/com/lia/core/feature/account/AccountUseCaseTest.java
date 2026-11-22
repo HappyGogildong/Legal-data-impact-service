@@ -1,4 +1,4 @@
-package com.lia.core.application.account;
+package com.lia.core.feature.account;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.lia.core.auth.Account;
+import com.lia.core.auth.AccountNotFoundException;
 import com.lia.core.testsupport.InMemoryAccountStore;
 
 /** AccountUseCase — 알림 이메일 동의는 이메일이 있어야 하고, 철회·계정 삭제는 멱등. */

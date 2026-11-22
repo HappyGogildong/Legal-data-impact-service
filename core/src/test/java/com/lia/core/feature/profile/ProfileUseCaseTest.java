@@ -8,7 +8,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.lia.core.application.account.AccountNotFoundException;
+import com.lia.core.auth.AccountNotFoundException;
 import com.lia.core.domain.user.Occupation;
 import com.lia.core.domain.user.Purpose;
 import com.lia.core.domain.user.UserProfile;

@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import com.lia.core.application.account.AccountNotFoundException;
+import com.lia.core.auth.AccountNotFoundException;
 import com.lia.core.feature.analysis.usage.AnonymousLimitException;
 import com.lia.core.feature.bookmark.BookmarkLimitException;
 import com.lia.core.feature.history.AnalysisExpiredException;

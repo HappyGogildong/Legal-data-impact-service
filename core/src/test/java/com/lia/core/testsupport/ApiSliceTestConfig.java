@@ -14,12 +14,14 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
-import com.lia.core.application.account.AccountUseCase;
+import com.lia.core.auth.AuthProvidersController;
 import com.lia.core.auth.EnabledOAuthProviders;
 import com.lia.core.auth.OAuth2LoginSuccessHandler;
 import com.lia.core.config.SecurityConfig;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.feature.account.AccountController;
+import com.lia.core.feature.account.AccountUseCase;
 import com.lia.core.feature.analysis.ActionRevisionUseCase;
 import com.lia.core.feature.analysis.web.ActionRevisionController;
 import com.lia.core.feature.analysis.web.CitedSourceResolver;
@@ -45,9 +47,7 @@ import com.lia.core.feature.subscription.SubscriptionController;
 import com.lia.core.feature.subscription.SubscriptionUseCase;
 import com.lia.core.lawdata.LawSource;
 import com.lia.core.lawdata.LawSummaries;
-import com.lia.core.web.AccountController;
 import com.lia.core.web.ApiExceptionHandler;
-import com.lia.core.web.AuthProvidersController;
 
 
 /**

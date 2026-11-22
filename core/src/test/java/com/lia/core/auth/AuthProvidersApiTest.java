@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.auth;
 
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;

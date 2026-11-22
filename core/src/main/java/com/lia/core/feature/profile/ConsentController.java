@@ -13,10 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.auth.Account;
 import com.lia.core.auth.CurrentUser;
 import com.lia.core.auth.OAuth2Identity;
+import com.lia.core.feature.account.AccountUseCase;
 
 import jakarta.servlet.http.HttpServletRequest;
 

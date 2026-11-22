@@ -3,7 +3,7 @@ package com.lia.core.feature.bookmark;
 import java.util.List;
 import java.util.UUID;
 
-import com.lia.core.application.account.AccountNotFoundException;
+import com.lia.core.auth.AccountNotFoundException;
 import com.lia.core.feature.bookmark.LawBookmarkStore.BookmarkedLaw;
 import com.lia.core.lawdata.UnknownLawException;
 

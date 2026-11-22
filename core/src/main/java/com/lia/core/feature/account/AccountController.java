@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.account;
 
 import java.time.OffsetDateTime;
 
@@ -12,8 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.lia.core.application.account.AccountNotFoundException;
-import com.lia.core.application.account.AccountUseCase;
+import com.lia.core.auth.AccountNotFoundException;
 import com.lia.core.auth.CurrentUser;
 
 import jakarta.servlet.http.HttpServletRequest;

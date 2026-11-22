@@ -7,8 +7,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.lia.core.application.account.AccountUseCase;
 import com.lia.core.auth.AccountStore;
+import com.lia.core.feature.account.AccountUseCase;
 import com.lia.core.feature.bookmark.BookmarkUseCase;
 import com.lia.core.feature.bookmark.LawBookmarkStore;
 import com.lia.core.feature.history.AnalysisHistoryStore;

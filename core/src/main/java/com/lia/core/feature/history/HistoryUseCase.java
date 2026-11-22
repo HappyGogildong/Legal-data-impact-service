@@ -3,7 +3,7 @@ package com.lia.core.feature.history;
 import java.util.List;
 import java.util.UUID;
 
-import com.lia.core.application.account.AccountNotFoundException;
+import com.lia.core.auth.AccountNotFoundException;
 import com.lia.core.feature.history.AnalysisHistoryStore.HistoryEntry;
 import com.lia.core.feature.history.AnalysisHistoryStore.HistoryRow;
 import com.lia.core.feature.history.AnalysisHistoryStore.NewEntry;

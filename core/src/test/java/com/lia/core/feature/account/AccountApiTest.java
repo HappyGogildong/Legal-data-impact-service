@@ -1,4 +1,4 @@
-package com.lia.core.web;
+package com.lia.core.feature.account;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;

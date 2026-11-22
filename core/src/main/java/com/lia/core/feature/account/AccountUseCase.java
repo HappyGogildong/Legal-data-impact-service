@@ -1,9 +1,10 @@
-package com.lia.core.application.account;
+package com.lia.core.feature.account;
 
 import java.util.Optional;
 import java.util.UUID;
 
 import com.lia.core.auth.Account;
+import com.lia.core.auth.AccountNotFoundException;
 import com.lia.core.auth.AccountStore;
 
 /**

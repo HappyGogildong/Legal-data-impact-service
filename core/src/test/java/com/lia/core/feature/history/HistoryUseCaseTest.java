@@ -9,7 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.lia.core.application.account.AccountNotFoundException;
+import com.lia.core.auth.AccountNotFoundException;
 import com.lia.core.feature.history.AnalysisHistoryStore.NewEntry;
 import com.lia.core.testsupport.InMemoryAccountStore;
 import com.lia.core.testsupport.InMemoryAnalysisHistoryStore;
