@@ -18,6 +18,9 @@ import org.junit.jupiter.api.Test;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.analysis.StepNote;
+import com.lia.core.feature.analysis.web.ActionRevisionApiResponse;
+import com.lia.core.feature.analysis.web.AnalysisApiResponse;
+import com.lia.core.feature.analysis.web.HttpSessionRecentAnalyses;
 import com.lia.core.pipeline.dispatch.Unmet;
 import com.lia.core.web.HistoryApiDtos.HistorySnapshot;
 

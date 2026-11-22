@@ -2,6 +2,9 @@ package com.lia.core.web;
 
 import java.util.List;
 
+import com.lia.core.feature.analysis.web.ActionRevisionApiResponse;
+import com.lia.core.feature.analysis.web.AnalysisApiResponse;
+import com.lia.core.feature.analysis.web.HttpSessionRecentAnalyses;
 import com.lia.core.web.HistoryApiDtos.HistorySnapshot;
 
 import tools.jackson.databind.DeserializationFeature;

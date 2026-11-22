@@ -20,6 +20,7 @@ import com.lia.core.application.history.AnalysisExpiredException;
 import com.lia.core.application.history.HistoryUseCase;
 import com.lia.core.application.history.SavedHistory;
 import com.lia.core.auth.CurrentUser;
+import com.lia.core.feature.analysis.web.HttpSessionRecentAnalyses;
 import com.lia.core.store.AnalysisHistoryStore.HistoryEntry;
 import com.lia.core.store.AnalysisHistoryStore.NewEntry;
 import com.lia.core.web.HistoryApiDtos.HistoryDetailResponse;

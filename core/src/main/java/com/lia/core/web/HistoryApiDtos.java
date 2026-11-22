@@ -6,6 +6,9 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import com.lia.core.feature.analysis.web.ActionRevisionApiResponse;
+import com.lia.core.feature.analysis.web.AnalysisApiResponse;
+import com.lia.core.feature.analysis.web.HttpSessionRecentAnalyses;
 import com.lia.core.store.AnalysisHistoryStore.HistoryRow;
 
 /** {@code /api/v1/history} 요청·응답(D73). 스냅샷 본문은 {@link HistorySnapshot}. */
