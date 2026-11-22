@@ -7,7 +7,7 @@ import java.util.UUID;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 
-import com.lia.core.pipeline.batch.DueNotifications;
+import com.lia.core.ingest.job.DueNotifications;
 
 /**
  * 인앱 알림함(D74) — {@code notifications}. 배치가 {@link #createDue} 로 만들고, 고유 키
