@@ -18,7 +18,7 @@ related:
 ## Responsibility
 
 - 담당: Opus(요약·변경점·영향·대응, 대응 재생성)·Haiku(분류)·임베딩(법령 발견, 색인) 호출마다 목적·모델·토큰·종료 사유·성공 여부를 남긴다. 분석 엔진의 재시도는 묶음 키와 시도 번호, 인용 검증 통과 여부로 묶는다.
-- 담당 안 함: 비용 계산(조회 시 `llm_call_costs` 뷰), 지연 시간(Prometheus `gen_ai.*`), 품질 평가([[OfflineEvaluator]]), 질의 이벤트(다음 단계).
+- 담당 안 함: 비용 계산(조회 시 `llm_call_costs` 뷰), 지연 시간(Prometheus `gen_ai.*`), 품질 평가([[OfflineEvaluator]]), 질의 이벤트([[QueryEventRecorder]]).
 - 남기지 않는 것: `user_id`, 질문, 답변 내용, 프로필, 법령ID — 비용 분석에 필요 없다(최소수집 D41).
 
 ## Collaborators

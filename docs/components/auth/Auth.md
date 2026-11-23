@@ -17,7 +17,7 @@ related: ["components/auth/SecurityConfig.md", "components/auth/OAuth2LoginSucce
 
 ## Responsibility
 - **담당**: OAuth2 로그인 흐름·서버 세션 수립, provider 신원 → 내부 `userId` 매핑, 계정 영속, 인가 규칙(엔드포인트 보호), 로그아웃·파기.
-- **담당 안 함**: 프로필 속성 저장([[UserProfile]]) · 프로필 API([[ProfileApi]]) · 분석(application/pipeline).
+- **담당 안 함**: 프로필 속성 저장([[UserProfile]]) · 프로필 API([[ProfileApi]]) · 분석(feature.analysis·pipeline).
 
 ## Collaborators
 - **Spring Security** (`spring-boot-starter-security` · `spring-boot-starter-oauth2-client` — 신규 의존).

@@ -9,7 +9,7 @@ related: ["backend/observability.md", "adr/decision-log.md", "components/web/Ana
 
 # 배포 (self-host / staging)
 
-> `docker compose up` 한 번으로 **db + core(+관측)** 가 뜨는 자립 실행 스택. 클라우드 운영은 [[cloud-infra]](단일 EC2 + RDS, D63), 웹 UI 배포는 후속. 근거: [[decision-log]] D59.
+> `docker compose up` 한 번으로 **db + core(+관측)** 가 뜨는 자립 실행 스택. 클라우드 운영은 [[cloud-infra]](단일 EC2 + RDS, D63), 웹 UI 는 Vercel([[frontend-stack]], D64). 근거: [[decision-log]] D59.
 
 ## 구성 요소
 
@@ -95,7 +95,7 @@ docker compose run --rm ingest summarize --dry-run
 | `MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT` | `http://tempo:4318/v1/traces` | in-network 트레이싱(기본 `localhost`는 컨테이너에서 무의미) |
 | `MANAGEMENT_TRACING_SAMPLING_PROBABILITY` | `0.1` | prod 예시(dev 1.0) |
 
-- **비밀값**: 현재 `.env`(env_file)가 단일 소스. **클라우드 배포 시 시크릿 매니저**로 대체(후속).
+- **비밀값**: 로컬 compose 는 `.env`(env_file)가 단일 소스. 운영은 SSM Parameter Store 에서 실행할 때 환경변수로만 넘긴다([[cloud-infra]], D63).
 - **Flyway**: 기동 시 `law_versions` 마이그레이션(DB 필요). Hikari `initialization-fail-timeout:-1`이라 DB 늦게 떠도 컨텍스트는 부팅.
   - ⚠️ **Boot 4.0 함정**: 오토컨피그가 모듈로 분리돼 `org.flywaydb:flyway-core`만으론 기동 시 migrate가 **안 걸린다** — `org.springframework.boot:spring-boot-flyway`(오토컨피그 모듈)가 있어야 `spring.flyway.enabled`가 실제로 동작한다. (통합테스트는 `Flyway.configure().migrate()` 수동 실행이라 이 누락을 못 잡았고, `docker compose up` 실측으로 발견.)
 
@@ -107,6 +107,6 @@ docker compose run --rm ingest summarize --dry-run
 - `.github/workflows/ci-core.yml` — `ubuntu-latest`(Docker 내장) → 단위 + **Testcontainers 통합** 테스트. **라이브 스모크는 OC/`LIA_*_LIVE` 미설정으로 skip**(결정론 오프라인). 이어 PR 은 amd64 이미지 빌드 검증, main 병합은 `linux/amd64`·`linux/arm64` 이미지를 GHCR(`ghcr.io/happygogildong/lia-core`, 태그 커밋 SHA·`main`)에 푸시한다(D63). 이어 `deploy` 잡이 `.github/workflows/deploy.yml` 을 그 SHA 로 호출해 운영에 배포한다(D86).
 - `.github/workflows/deploy.yml` — 운영 배포. OIDC → IAM 역할 → SSM 문서 `LIA-Deploy`(git pull → `ops/deploy/cd-deploy.sh` → `lia up`) → 헬스 확인. ops 만 바뀐 main 푸시는 `current` 로, 수동 실행은 SHA 롤백·재배포([[cloud-infra]] "자동 배포").
 
-## 후속 (out of scope)
+## 이 문서 밖
 - 클라우드 운영 — [[cloud-infra]](D63·D78): 단일 EC2 + RDS pgvector + Caddy + SSM Parameter Store, main 머지 시 SSM 으로 자동 배포(D86). 운영 파일은 `ops/deploy/`, 구축 절차는 그 문서 §5 런북. 그 너머(IaC·ALB·ECS·무중단 배포)는 그 문서의 범위 밖 절.
 - mcp 컨테이너화 · Loki 로그 적재([[observability]] 계획).

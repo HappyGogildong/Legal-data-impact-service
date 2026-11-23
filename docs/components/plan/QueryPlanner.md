@@ -11,7 +11,7 @@ related: ["components/component-specs.md", "components/resolve/SourceAnalyzer.md
 
 > 자연어 질의를 **엄격한 타입 DTO(`AnalysisQuery`)** 로 번역하고, 타입에 따라 해소·검색·실행을 라우팅한다. LLM=번역기 → 타입 DTO → 결정론 dispatch[^orm]. 관련: [[v0.9-nl-query-planner]] §2 · [[service-api-spec]] · [[component-specs]] §1
 >
-> **이번 증분 (2026-08-27 확정) — 계획까지(`PlanResult`).** `QueryTranslator` + `QueryPlanner`만. Reference는 [[SourceAnalyzer]]에 연결, Discovery는 criteria 구성까지(검색 실행 없음). **`QueryDispatcher`·`DimensionHandler` 실제 실행은 [[AnalysisEngine]] 랜딩 시 후속.** 패키지 `com.lia.core.pipeline.plan`(ResolutionResult가 `pipeline/resolve`에 사는 것과 동형). 비법령·오프토픽(S9)은 **번역기의 `isLawQuery` 신호**로 Planner가 조기 거부(UNVERIFIED).
+> **범위 — 계획까지(`PlanResult`).** `QueryTranslator` + `QueryPlanner`. Reference는 [[SourceAnalyzer]]에 연결, Discovery는 criteria 구성까지(검색 실행은 [[QueryDispatcher]]가 [[LawDiscovery]]로). 패키지 `com.lia.core.pipeline.plan`(ResolutionResult가 `pipeline/resolve`에 사는 것과 동형). 비법령·오프토픽(S9)은 **번역기의 `isLawQuery` 신호**로 Planner가 조기 거부(UNVERIFIED).
 
 ## 역할
 
@@ -62,7 +62,7 @@ AnalysisQuery {
 
 ## 3. 컴포넌트
 
-### 이번 증분 (계획까지)
+### 플래너
 
 - **`QueryTranslator`** (포트) — `AnalysisQueryDraft translate(String query)`. **유일한 LLM 자유도**를 인터페이스로 격리한다. *포트를 두는 이유는 "교체 예정"이 아니라 **테스트 심***: 플래너의 결정론 로직을 LLM 없이(비용 0·결정론) 검증하려면 번역 결과를 가짜로 주입해야 한다(`ChatClient` 목은 플루언트 체인이라 지저분하고 행위 대신 구현을 테스트).
 - **`SpringAiQueryTranslator`** (구현) — `ChatClient.prompt().user(nl).call().entity(AnalysisQueryDraft.class)`. **모델 Haiku 4.5**(추출·분류는 저비용; Opus는 실제 분석 생성용 — 티어링, [[component-specs]] §3.3). `lawName` 은 **정식 법령명**으로 낸다 — 약칭은 풀고, 확실히 모르면 사용자가 쓴 그대로, 시행령·시행규칙은 사용자가 말했을 때만(D89, 해소가 적재 제목 글자 그대로 검색이라).
@@ -74,10 +74,10 @@ AnalysisQuery {
   4. DISCOVERY: `DiscoveryCriteria` 구성, `types`·`primaryType` 을 `LOOKUP` 으로 좁혀(D70) → `Planned`(검색 실행은 dispatch).
   5. **프로필 게이팅**: 프로필 유무로 Layer B(`IMPACT`·`ACTION`) 차원을 빼지 않는다(D69) — 프로필을 못 쓰는 사유는 디스패처가 `unmet` 으로 표기한다. 단 프로필이 없고 Layer A 차원이 하나도 없으면(Reference) `SUMMARY` 를 더해 요약은 보여 준다(선계산본이 있으면 비용 0, 주 차원은 그대로). 타입이 비면 기본 `SUMMARY`(Reference)/`LOOKUP`(Discovery) — **분류 실패로 거부하지 않는다**(best-effort, 자유도 보존).
 
-### 후속 (AnalysisEngine 랜딩 시)
+### 실행 — [[QueryDispatcher]]
 
 - **`QueryDispatcher`** — `AnalysisQuery`를 QueryType별 핸들러로 라우팅·조립. `types`+`Target` 결정론. Discovery 는 `LawDiscovery` 1회(후보만, D70).
-- **`DimensionHandler`** (interface) + 구현 — 실제 RAG/LLM/검색 실행. Embedder·ChunkStore·AnalysisEngine·LawDiscovery 의존.
+- **`DimensionHandler`** (interface) + 구현 — Layer A 는 저장본(`SummaryHandler`·`DiffHandler`), Layer B 는 `PersonalizedHandler`(D69).
 
 ## 3.1 타입 (`pipeline/plan`)
 
@@ -88,7 +88,7 @@ AnalysisQuery {
 ## 3.2 계측 · 검증
 
 - **계측**: 별도 `lia.plan` 스팬 없음 — Haiku 호출은 Spring AI `gen_ai.*`, 해소는 기존 `lia.resolve`가 커버(이중 스팬 회피, 임베딩 교훈 동일).
-- **단위**: `FakeQueryTranslator`(캔드 draft) + `SourceAnalyzer`(기존 `FakeLookup` 패턴) → Reference RESOLVED→Planned / 비법령→Unresolved(UNVERIFIED) / 무프로필→Layer B 차원 유지(D69) / Discovery→Planned criteria / AMBIGUOUS→Unresolved.
+- **단위**: 람다 번역기(`query -> draft`, 캔드 draft) + `SourceAnalyzer`(`FakeLookup`) → Reference RESOLVED→Planned / 비법령→Unresolved(UNVERIFIED) / 무프로필→Layer B 차원 유지(D69) / Discovery→Planned criteria / AMBIGUOUS→Unresolved.
 - **라이브 스모크(수동·게이트)**: `SpringAiQueryTranslator` 실 Haiku 호출 — `LIA_PLAN_LIVE`+`ANTHROPIC_API_KEY` 옵트인(비용, 사용자 실행). 기본 test에서 스킵.
 
 ## 4. 구조 결정 의도 (왜 이렇게)

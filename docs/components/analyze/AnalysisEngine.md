@@ -12,7 +12,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 >
 > **정합화 (2026-08-27).** 구 스펙의 "쿼리 임베딩 → `law` ns 시행중 조문 **RAG 검색**"은 **폐기**한다. 아래 근거로 **분석 경로에는 벡터 검색이 없다** — context는 조회로 확보한다.
 >
-> **이번 증분 (Layer A · SUMMARY+DIFF).** 프로필 무관 두 차원만. `ContextBuilder`(조립)·`Reasoner`(Opus 심)·`FaithfulnessGate`(인용검증)를 얇은 `AnalysisEngine`이 조율. **범위 밖(후속):** Layer B(IMPACT·ACTION — `UserProfile` 미구현) · `LawFacts` 캐시 · Layer A **결과 캐시**(D51) · `QueryDispatcher` 배선 · 검증훅 #3(LLM-judge).
+> **구성.** `ContextBuilder`(조립)·`Reasoner`(Opus 심)·`FaithfulnessGate`(인용검증)를 얇은 `AnalysisEngine`이 조율한다. Layer A(SUMMARY·DIFF)는 배치가 이 엔진으로 미리 만들고(D67·D80), Layer B(IMPACT·ACTION)는 요청 시 부른다(D69·D71). **범위 밖:** `LawFacts` 캐시 · Layer B 결과 저장(D69 로 저장하지 않음) · 검증훅 #3(LLM-judge).
 
 ## 왜 분석에 RAG 검색이 없나 (핵심 정합화)
 
@@ -88,6 +88,6 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 - **게이트 라이브 스모크(수동):** `SpringAiReasoner` 실 Opus — `LIA_ANALYZE_LIVE=1` 옵트인(비용). SUMMARY/DIFF 실 생성이 스키마·인용 존재성을 만족하는지 실측.
 
 ## 의존 / 관련
-- 의존: **[[LawStore]]**(정본 조회 — 이번 증분 캐시 아님), **Opus API**(Anthropic ChatClient), `FaithfulnessGate`. ~~Embedder·Vector Index~~(분석 경로 무관 — 위 정합화).
-- 호출자: `DimensionHandler`/`QueryDispatcher`(#10, 후속) — 내부 호출. 규약: [[analysis-prompt-spec]].
+- 의존: **Opus API**(Anthropic ChatClient), `FaithfulnessGate`, 호출 기록 `LlmCallRecorder`(D83). 정본은 호출자가 [[LawStore]]에서 읽어 넘긴다. ~~Embedder·Vector Index~~(분석 경로 무관 — 위 정합화).
+- 호출자: 배치 `SummarizeHandler`(Layer A 저장본, [[IngestJob]]) · `PersonalizedHandler`(Layer B, [[QueryDispatcher]]) · [[ActionRevisionUseCase]](대응 방안 재생성). 저장본 검증은 `GroundedSummaries`. 규약: [[analysis-prompt-spec]].
 - 출력 소비: Verification Gate(#12, 2차).
