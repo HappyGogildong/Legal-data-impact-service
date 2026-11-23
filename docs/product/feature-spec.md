@@ -2,14 +2,14 @@
 title: 기능 스펙 — LIA 서비스 기능 목록
 status: Living
 version: 0.1
-date: 2026-09-03
+date: 2026-11-24
 tags: [product, feature, spec, scope]
-related: ["mvp/service-api-spec.md", "components/component-specs.md", "PHILOSOPHY.md", "adr/decision-log.md"]
+related: ["mvp/service-api-spec.md", "components/component-specs.md", "../PHILOSOPHY.md", "adr/decision-log.md"]
 ---
 
 # 기능 스펙 — LIA가 제공하는 기능
 
-> LIA(입법 영향 분석기)가 **사용자에게 제공하는 기능**을 한 곳에 모은 카탈로그다. 각 기능이 무엇이고, 지금 어디까지 됐고(상태), 어떤 결정·컴포넌트가 뒷받침하는지를 본다. 세부 계약은 [[component-specs]]·[[service-api-spec]], 설계 철학은 [`PHILOSOPHY.md`](../PHILOSOPHY.md).
+> LIA(입법 영향 분석기)가 **사용자에게 제공하는 기능**을 한 곳에 모은 카탈로그다. 각 기능이 무엇이고, 지금 어디까지 됐고(상태), 어떤 결정·컴포넌트가 뒷받침하는지를 본다. 세부 계약은 [[component-specs]]·[[service-api-spec]], 설계 철학은 [`PHILOSOPHY.md`](../../PHILOSOPHY.md).
 
 **상태 범례:** ✅ 구현됨 · 🟡 진행/부분 · ⬜ 계획(MVP) · 🔭 post-MVP
 
@@ -25,9 +25,9 @@ related: ["mvp/service-api-spec.md", "components/component-specs.md", "PHILOSOPH
 
 | # | 기능 | 설명 | 상태 | 근거 |
 |---|---|---|---|---|
-| 1.1 | **회원가입** | 자기신고 프로필 입력으로 가입. **성명·연락처 등 식별정보는 받지 않는다**(속성만). | ⬜ | D41 |
-| 1.2 | **로그인 / 로그아웃** | 세션 인증. 개인화(Layer B) 기능의 전제. | ⬜ | — |
-| 1.3 | **프로필 관리** | `purposes·age·occupation·employmentType·householdType·housingType·regionSido` 조회·수정. 인구통계 정량 용도 아님(자기신고 표본). | ⬜ | D41 · #12 |
+| 1.1 | **회원가입** | 소셜 로그인(구글·카카오·네이버)으로 계정을 만들고, 처리방침 동의 후 자기신고 프로필을 입력. **성명·연락처 등 식별정보는 받지 않는다**(속성만, 알림 이메일은 동의 시에만). | ✅ | D41 · D60 · D61 |
+| 1.2 | **로그인 / 로그아웃** | 세션 인증. 개인화(Layer B) 기능의 전제. | ✅ | D60 |
+| 1.3 | **프로필 관리** | `purposes·age·occupation·employmentType·householdType·housingType·regionSido` 조회·수정. 인구통계 정량 용도 아님(자기신고 표본). | ✅ | D41 · D61 |
 
 > 프로필은 **"수신자 정보"일 뿐 인용 가능한 근거가 아니다**(D10 승계) — 분석은 법령 조문만 인용한다.
 
@@ -37,16 +37,16 @@ related: ["mvp/service-api-spec.md", "components/component-specs.md", "PHILOSOPH
 
 | # | 기능 | 설명 | 계층 | 상태 | 근거 |
 |---|---|---|---|---|---|
-| 2.1 | **자연어 질의** | "주택법 바뀌면 나 뭐 해야 해?" 같은 평이한 질문 입력. | — | 🟡 | D45·D46 · QueryPlanner ✅ |
-| 2.2 | **요약 (SUMMARY)** | 이번 개정이 무엇을 바꾸는지 한 문단 + 근거. | A | ✅ | SummaryHandler·AnalysisEngine |
-| 2.3 | **비교 (DIFF)** | 현행 조문 ↔ 개정 조문 대조 + 시행일. | A | ✅ | DiffHandler·AnalysisEngine |
-| 2.4 | **내 영향 (IMPACT)** | 내 프로필에 비춘 실제 영향. | B | ⬜ | UserProfile·LawFacts·Layer B |
-| 2.5 | **대응안 (ACTION)** | 해야 할 일·기한·근거(부칙 시행일 기반). | B | ⬜ | 상동 |
-| 2.6 | **법령 발견 (LOOKUP)** | "전세 세입자한테 불리한 법 있어?"처럼 **법 이름을 몰라도** 의미검색으로 관련 법령을 찾아 준다. | 발견 | ⬜ | D56 · LawDiscovery(#19) |
-| 2.7 | **결과 뷰** | 요약/내 영향/대응안 + **조문 인용 · 시행일 · 불확실성 · 면책** 표시. | — | ⬜ | #13 · ImpactResult |
+| 2.1 | **자연어 질의** | "주택법 바뀌면 나 뭐 해야 해?" 같은 평이한 질문 입력. | — | ✅ | D45·D46 · QueryPlanner |
+| 2.2 | **요약 (SUMMARY)** | 이번 개정이 무엇을 바꾸는지 한 문단 + 근거. 배치가 미리 만든 저장본으로 답한다. | A | ✅ | D67·D80 · SummaryHandler |
+| 2.3 | **비교 (DIFF)** | 현행 조문 ↔ 개정 조문 대조 + 시행일. 특정 조문만 물으면 그 조문으로 좁힌다. | A | ✅ | D80·D82 · DiffHandler |
+| 2.4 | **내 영향 (IMPACT)** | 내 프로필에 비춘 실제 영향. 사용자별 하루 한도. | B | ✅ | D69 · PersonalizedHandler |
+| 2.5 | **대응안 (ACTION)** | 해야 할 일·기한·근거(부칙 시행일 기반). 상황 질문에 답하면 대응 방안을 다시 만든다. | B | ✅ | D69 · D71 |
+| 2.6 | **법령 발견 (LOOKUP)** | "전세 세입자한테 불리한 법 있어?"처럼 **법 이름을 몰라도** 의미검색으로 관련 법령을 찾아 준다. | 발견 | ✅ | D56 · D70 · LawDiscovery |
+| 2.7 | **결과 뷰** | 요약/내 영향/대응안 + **조문 인용 · 시행일 · 불확실성 · 면책** 표시. | — | ✅ | S02 · ImpactResult |
 | 2.8 | **부분성공** | 프로필이 없으면 개인화 차원(IMPACT·ACTION)은 생략하고 Layer A만 채워 `unmet` 안내. | — | ✅ | QueryDispatcher |
 
-> **왜 발견(2.6)이 핵심인가:** 법령 API는 법명·키워드 검색만 되고 의미검색이 없다. 시민의 일상어를 법률용어 법령에 잇는 건 임베딩(RAG)만 가능하다 — 이것이 RAG를 두는 이유다(D56, [`PHILOSOPHY.md §3`](../PHILOSOPHY.md)).
+> **왜 발견(2.6)이 핵심인가:** 법령 API는 법명·키워드 검색만 되고 의미검색이 없다. 시민의 일상어를 법률용어 법령에 잇는 건 임베딩(RAG)만 가능하다 — 이것이 RAG를 두는 이유다(D56, [`PHILOSOPHY.md §3`](../../PHILOSOPHY.md)).
 
 ## 3. 알림 (서비스의 시간축 가치)
 
@@ -69,16 +69,16 @@ related: ["mvp/service-api-spec.md", "components/component-specs.md", "PHILOSOPH
 | 5.1 | **그라운딩 · 인용** | 모든 주장은 조문 `source_id`로 역추적된다. 인용 없는 주장은 무효(재생성). | ✅ | D08 · FaithfulnessGate |
 | 5.2 | **fail-closed 거부** | 미해소·비법령·조작 법명·이미 시행 중인 건 **지어내지 않고 거부**(4상태 안내). | ✅ | SourceAnalyzer |
 | 5.3 | **법률자문 아님 면책** | 결과는 참고 정보이며 법률 자문이 아님을 명시. | ✅ | ImpactResult.disclaimer |
-| 5.4 | **시행일 명시** | 같은 법에 시행예정본이 여럿이면 가장 이른 시행일 기준 표시 + 다른 시행일 선택. | ⬜ | D43 · #13 |
+| 5.4 | **시행일 명시** | 같은 법에 시행예정본이 여럿이면 가장 이른 시행일 기준 표시 + 다른 시행일 선택. | ✅ | D43 |
 
 ---
 
 ## 6. MVP 경계
 
-**MVP 목표 흐름:** 가입·프로필(1) → 자연어 질의(2.1) → 요약·비교(2.2·2.3, ✅) → 내 영향·대응안(2.4·2.5) → 결과 뷰(2.7) → 법령 발견(2.6).
+**MVP 흐름(✅ 구현됨):** 가입·프로필(1) → 자연어 질의(2.1) → 요약·비교(2.2·2.3) → 내 영향·대응안(2.4·2.5) → 결과 뷰(2.7) → 법령 발견(2.6).
 
-**MVP 이후(🔭):** 프로필 관련 알림(3.1)·이메일 채널(법령 구독 3.2·이력·북마크 4.1·4.2 는 ✅). 온라인에 새 작업을 넣기 전 "오프라인으로 미리 할 수 없나"를 먼저 묻는다(D40) — 알림은 오프라인 배치가 자연스럽다.
+**MVP 이후(🔭):** 프로필 관련 알림(3.1, 보류 — contextual retrieval 도입 때)·이메일 채널(#32). 법령 구독 3.2·이력·북마크 4.1·4.2 는 ✅. 온라인에 새 작업을 넣기 전 "오프라인으로 미리 할 수 없나"를 먼저 묻는다(D40) — 알림은 오프라인 배치가 자연스럽다.
 
 > 화면 구성은 [[screen-plan|화면 계획]](S01~S16)에서 이 카탈로그를 화면으로 옮긴다.
 
-> 이 문서는 **무엇을 제공하는가**의 카탈로그다. **어떻게 구현하는가**는 [[component-specs]], **API 표면**은 [[service-api-spec]], **왜 이렇게 설계했는가**는 [`PHILOSOPHY.md`](../PHILOSOPHY.md)·[[decision-log]].
+> 이 문서는 **무엇을 제공하는가**의 카탈로그다. **어떻게 구현하는가**는 [[component-specs]], **API 표면**은 [[service-api-spec]], **왜 이렇게 설계했는가**는 [`PHILOSOPHY.md`](../../PHILOSOPHY.md)·[[decision-log]].
