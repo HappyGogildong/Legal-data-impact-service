@@ -31,7 +31,7 @@ tags: [onboarding, start-here, guide]
 4. [[decision-log|결정 로그]] (D01~D90) — "왜 이렇게 됐나"를 한눈에
 5. [[component-specs|컴포넌트 상세 스펙]] — 도메인 모델·계약·정합성
 6. [[analysis-prompt-spec|프롬프트 정의서]] — LLM 입력계약·응답 JSON·인용검증
-7. 참조: [[law-attributes|법령 속성]] · [[triage-policy|Triage]] · [[embedding-benchmark|임베딩 벤치]] · [[spring-migration|Spring 버전 변경점]]
+7. 참조: [[law-attributes|법령 속성]] · [[law-domain-basics|법령 도메인 기초]] · [[spring-migration|Spring 버전 변경점]]
 
 ## 역할별 빠른 경로
 | 역할 | 먼저 볼 것 |
@@ -53,7 +53,7 @@ tags: [onboarding, start-here, guide]
 | `eval/` | RAG 평가 프레임워크 + 운영 보고서(`reports/`) | living |
 | `troubleshooting/` | 실제 문제의 원인 추적·해결 기록 | 기록 |
 | `status.md` · `achievements.md` | 구현 현황 · 성과와 사례 | living |
-| `mvp/` | 컴포넌트 카탈로그·MVP 범위(IN/OUT)·수용 기준 | living |
+| `mvp/` | 공개 API 스펙·RAG 파이프라인 구조·법령 API 응답 해부 (초기 MVP 범위 문서는 대체됨) | living |
 | `prompts/` | LLM 프롬프트 정의서(입력계약 12요소·JSON 스키마) | living |
 | `reference/` | 법령 속성·법령 도메인 기초·Triage·임베딩 벤치·Spring 마이그레이션 | living |
 | `onboarding.md` | 이 문서 | living |

@@ -1,6 +1,6 @@
 ---
 title: 임베딩 벤치마크 계획 (OpenAI vs Upstage)
-status: Draft
+status: Superseded
 version: 0.1
 date: 2026-06-28
 tags: [reference, embedding, benchmark, eval, rag]
@@ -13,6 +13,8 @@ related:
 # 임베딩 벤치마크 계획 — OpenAI vs Upstage
 
 **관련:** [[component-specs|컴포넌트 스펙]] §3.3 · [[rag-evaluation-framework|RAG 평가·회귀 프레임워크]] · [[decision-log|D32·D53]]
+
+> **대체됨(D58).** 임베딩 벤더는 비용을 근거로 OpenAI `text-embedding-3-small` 로 확정했고 이 벤치는 하지 않았다. 계획 기록으로만 남긴다.
 
 > **위치 (D53):** 이 문서의 **검색 평가(Recall@k·MRR)는 [[rag-evaluation-framework|RAG 평가·회귀 프레임워크]]의 Retrieval 층에 흡수**됐다. 임베딩 벤더 선택은 그 프레임워크의 config 스윕(embedding 노브)으로 수행한다. 아래 시나리오·지표는 벤더 선택 관점의 상세로 유효하되, **정답쌍 확보는 D42로 현행화**(신구조문대비표 폐기 → 시행중본↔시행예정본 직접 대조·`조문변경여부` 플래그).
 

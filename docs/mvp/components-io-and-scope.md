@@ -1,6 +1,6 @@
 ---
 title: 컴포넌트 역할·입출력 & MVP 범위
-status: Draft
+status: Superseded
 version: 0.1
 date: 2026-06-25
 tags: [mvp, components, scope, design]
@@ -13,6 +13,8 @@ related:
 # 컴포넌트 역할·입출력 & MVP 범위 (v0.1 Draft)
 
 **관련:** [[v0.3-no-video-internal-mcp|아키텍처 v0.3]] · [[analysis-prompt-spec|프롬프트 정의서]] · [[ADR-001-knowledge-store-sizing|ADR-001]]
+
+> **대체됨.** 의안을 분석 대상으로 삼던 시기(v0.3~v0.6)의 컴포넌트 카탈로그·MVP 범위 초안이다. 지금 기능 범위는 [[feature-spec]], 컴포넌트 계약은 [[component-specs]]와 `docs/components/`, 적재·검색 구조는 [[rag-pipeline-structure]], 구현 현황은 [[status]]를 본다.
 
 ## 0. 목적
 

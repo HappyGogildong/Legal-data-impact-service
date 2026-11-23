@@ -15,6 +15,8 @@ related:
 
 **관련:** [[law-attributes|법령 속성]] §4 (`impactScope`) · [[component-specs|컴포넌트 스펙]] (LawFacts) · [[ADR-001-knowledge-store-sizing|ADR-001]] (캐시·비용)
 
+> **구현되지 않음(post-MVP).** 분석 대상이 의안에서 시행예정 법령으로 바뀌었고(D42) `LawFacts` 도 만들지 않았다. 다시 착수할 때 이 문서를 지금 구조에 맞춰 고친다.
+
 법안을 분석 처리에 넣기 전, **"누구에게 얼마나 영향이고, 그래서 얼마나 깊게 분석할까"** 를 가려내는 분류·라우팅 정책. 분류 결과(`LawFacts.impactScope` + `affectedDomains`)가 *어떤 커맨드·페르소나로, 어느 깊이·모델·캐시 정책으로* 돌릴지를 결정한다.
 
 > **MVP 위치:** triage **스테이지(차등 라우팅)는 MVP 밖**. MVP는 `impactScope`·`affectedDomains`를 *메타데이터로 추출만* 하고, 4종 커맨드를 **사용자 프로필에 균일 적용**한다(D41). 본 문서는 *기준을 미리 고정*해 LawFacts 추출 프롬프트 설계를 명확히 하기 위함. (관련: [[decision-log|D24~D27]])

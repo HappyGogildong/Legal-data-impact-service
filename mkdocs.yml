@@ -75,7 +75,7 @@ nav:
   - 프롬프트:
       - 분석 프롬프트 정의서: prompts/analysis-prompt-spec.md
   - MVP:
-      - 컴포넌트·범위: mvp/components-io-and-scope.md
+      - 컴포넌트·범위 (대체됨): mvp/components-io-and-scope.md
       - 서비스 기능·공개 API: mvp/service-api-spec.md
       - RAG 파이프라인 구조: mvp/rag-pipeline-structure.md
       - 국가법령정보 응답 해부: mvp/law-api-response-anatomy.md
@@ -165,7 +165,7 @@ nav:
       - 법령 도메인 기초: reference/law-domain-basics.md
       - 법령 속성 카탈로그: reference/law-attributes.md
       - Triage 정책: reference/triage-policy.md
-      - 임베딩 벤치마크 계획: reference/embedding-benchmark.md
+      - 임베딩 벤치마크 계획 (대체됨): reference/embedding-benchmark.md
       - Spring 4.0·Spring AI 2.0 변경점: reference/spring-migration.md
       - 의안 속성 카탈로그 (대체됨): reference/bill-attributes.md
   - 리뷰:

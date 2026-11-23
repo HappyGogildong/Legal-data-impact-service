@@ -12,5 +12,4 @@ title: 입법 영향 분석기 (LIA) — 설계 문서
 - 전체 그림: [아키텍처 색인](ARCHITECTURE.md) → 최신 [v0.9](architecture/v0.9-nl-query-planner.md)
 - 결정 이력: [decision-log](adr/decision-log.md) (D01~D90)
 - 기능·현황: [feature-spec](product/feature-spec.md) · [status](status.md)
-- MVP 범위: [components-io-and-scope](mvp/components-io-and-scope.md)
 - 개발 상세: [component-specs](components/component-specs.md)
