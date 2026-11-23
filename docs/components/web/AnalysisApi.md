@@ -56,7 +56,7 @@ Controller·Mapper·DTO    AnalyzeUseCase             QueryPlanner · QueryDispa
 
 ## Error Handling
 - 빈/누락 `query`·(재생성) 위조·형식 위반 답 → 400(`ApiExceptionHandler`). 해소 실패·근거 부족은 예외가 아니라 200 본문(resolution/unmet).
-- `scope`는 이번 증분 미사용(후속).
+- `scope`는 받지만 쓰지 않는다(차원은 번역기가 정한다).
 
 ## Side Effects
 - 정본 읽기(`LawSource`) — 법령 헤더·근거 원문. 쓰기 없음.
