@@ -18,7 +18,7 @@ related: ["components/application/ProfileUseCase.md", "components/application/Ac
 - **담당**: 동의 요청 파싱 → 세션 `userId`로 유스케이스 위임 · 알림 동의 시 **세션 principal에서 IdP 이메일 추출**(`OAuth2Identity`) · 두 동의 상태 조합 응답.
 - **담당 안 함**: 동의 규칙·버전 판정([[ProfileUseCase]]) · 이메일 필수 판정([[AccountUseCase]]) · 프로필 속성([[ProfileApi]]).
 
-## HTTP Contract — `com.lia.core.web`
+## HTTP Contract — `com.lia.core.feature.profile`
 | 메서드 | 경로 | 동작 | 응답 |
 |---|---|---|---|
 | `GET` | `/api/v1/consents` | 두 동의 상태 | 200 |

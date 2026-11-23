@@ -21,7 +21,7 @@ Controller·Mapper·DTO    AnalyzeUseCase             QueryPlanner · QueryDispa
 - **담당**: HTTP 요청/응답 경계 — 요청 DTO 파싱·검증(빈 query→400), [[AnalyzeUseCase]] 위임, 결과→typed 응답 매핑(법령 헤더·근거 원문 조회 포함), 상태코드.
 - **담당 안 함**: plan→dispatch 조합·4상태 판정([[AnalyzeUseCase]]) · 번역·해소·라우팅(pipeline).
 
-## 구조 (컴포넌트) — `com.lia.core.web`
+## 구조 (컴포넌트) — `com.lia.core.feature.analysis.web` (오류 매핑 `ApiExceptionHandler` 만 `com.lia.core.web`)
 
 | 클래스 | 역할 |
 |---|---|

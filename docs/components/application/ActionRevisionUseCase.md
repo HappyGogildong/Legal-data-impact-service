@@ -24,7 +24,7 @@ HttpSessionSituationQuestions(포트 구현)
 
 ## 구조 (컴포넌트)
 
-`com.lia.core.application.analysis` (포트·유스케이스), 어댑터는 `com.lia.core.web`.
+`com.lia.core.feature.analysis` (포트·유스케이스), 어댑터는 `com.lia.core.feature.analysis.web`.
 
 | 클래스 | 역할 |
 |---|---|

@@ -23,7 +23,7 @@ related: ["components/web/BookmarkApi.md", "components/web/HistoryApi.md", "comp
 - `NotificationStore` — `notifications` 읽기·쓰기. API 쪽(목록·읽지 않은 수·읽음·모두 읽음)과 배치 쪽(`DueNotifications` 구현 — 알림 생성)을 함께 맡는다.
 - `DueNotifications` — 배치가 부르는 포트(알림 생성·드라이런 개수). `IngestJob` 이 쓰고 `NotificationStore` 가 구현한다.
 
-## HTTP Contract — `com.lia.core.web`
+## HTTP Contract — `com.lia.core.feature.subscription`
 
 ### 구독
 | 메서드 | 경로 | 동작 | 응답 |

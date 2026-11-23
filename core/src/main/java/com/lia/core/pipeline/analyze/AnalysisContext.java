@@ -5,8 +5,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.lia.core.domain.analysis.ConfirmedFact;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.UserProfile;
 
 /**
  * 분석 프롬프트에 주입할 <b>근거 블록 모음</b> — {@link ContextBuilder}가 정본에서 조립한다.

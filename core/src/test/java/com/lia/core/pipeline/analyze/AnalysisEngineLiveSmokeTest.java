@@ -13,12 +13,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Addendum;
-import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
+import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
+import com.lia.core.domain.user.HousingType;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.HousingType;
-import com.lia.core.profile.UserProfile;
 
 /**
  * 실 Opus 해석 스모크 — <b>비용 발생</b>. 기본 {@code ./gradlew test}에서 절대 안 돈다:

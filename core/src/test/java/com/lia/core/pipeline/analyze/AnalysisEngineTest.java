@@ -15,11 +15,11 @@ import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.analysis.StepNote;
-import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
+import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.UserProfile;
 
 /**
  * AnalysisEngine 단위 — <b>오케스트레이션</b>(조립→추론→인용검증→재생성≤N→폴백)을 FakeReasoner로 검증.

@@ -11,10 +11,10 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ActiveProfiles;
 
+import com.lia.core.ingest.job.IngestJob;
+import com.lia.core.ingest.job.IngestJobRunner;
 import com.lia.core.observability.llm.LlmPurpose;
 import com.lia.core.observability.llm.RecordingEmbeddingModel;
-import com.lia.core.pipeline.batch.IngestJob;
-import com.lia.core.pipeline.batch.IngestJobRunner;
 
 /**
  * batch 프로파일 컨텍스트 — 웹 서버 없이 뜨고(보안 필터체인 없음), 배치 빈이 배선된다.

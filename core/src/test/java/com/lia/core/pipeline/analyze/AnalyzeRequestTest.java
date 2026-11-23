@@ -7,9 +7,9 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
 import com.lia.core.domain.law.Law;
+import com.lia.core.domain.user.HousingType;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.HousingType;
-import com.lia.core.profile.UserProfile;
 import com.lia.core.testsupport.TestLaws;
 
 /** AnalyzeRequest — 프로필은 Layer B 에만(D69). */

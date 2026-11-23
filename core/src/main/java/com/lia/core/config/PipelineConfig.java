@@ -18,41 +18,41 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.lia.core.domain.law.Law;
+import com.lia.core.feature.analysis.ActionRevisionUseCase;
+import com.lia.core.feature.analysis.AnalyzeUseCase;
+import com.lia.core.feature.analysis.event.QueryEventRecorder;
+import com.lia.core.feature.analysis.usage.AnonymousAnalysisQuota;
+import com.lia.core.feature.analysis.usage.AnonymousAnalysisUsageStore;
+import com.lia.core.feature.analysis.usage.PersonalizationUsageStore;
+import com.lia.core.feature.law.LawViews;
+import com.lia.core.feature.profile.PersonalizationGate;
+import com.lia.core.lawdata.LawSource;
+import com.lia.core.lawdata.LawSummaries;
+import com.lia.core.lawdata.LawSummaryStore;
+import com.lia.core.lawdata.chunk.ChunkStore;
+import com.lia.core.lawdata.chunk.PgVectorChunkStore;
 import com.lia.core.observability.llm.LlmCallRecorder;
-import com.lia.core.pipeline.connector.LawConnector;
-import com.lia.core.pipeline.diff.DiffBuilder;
-import com.lia.core.pipeline.embed.Embedder;
-import com.lia.core.pipeline.embed.EmbeddingProperties;
-import com.lia.core.pipeline.embed.OpenAiEmbedder;
-import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.ContextBuilder;
 import com.lia.core.pipeline.analyze.GroundedSummaries;
 import com.lia.core.pipeline.analyze.Reasoner;
 import com.lia.core.pipeline.analyze.SpringAiReasoner;
+import com.lia.core.pipeline.connector.LawConnector;
+import com.lia.core.pipeline.diff.DiffBuilder;
+import com.lia.core.pipeline.discover.LawDiscovery;
+import com.lia.core.pipeline.dispatch.PersonalizationQuota;
+import com.lia.core.pipeline.dispatch.QueryDispatcher;
+import com.lia.core.pipeline.embed.Embedder;
+import com.lia.core.pipeline.embed.EmbeddingProperties;
+import com.lia.core.pipeline.embed.OpenAiEmbedder;
+import com.lia.core.pipeline.index.RAGIndexer;
 import com.lia.core.pipeline.normalize.Normalizer;
 import com.lia.core.pipeline.plan.QueryPlanner;
 import com.lia.core.pipeline.plan.QueryTranslator;
 import com.lia.core.pipeline.plan.SpringAiQueryTranslator;
-import com.lia.core.application.analysis.ActionRevisionUseCase;
-import com.lia.core.application.analysis.AnalyzeUseCase;
-import com.lia.core.application.analysis.AnonymousAnalysisQuota;
-import com.lia.core.application.analysis.QueryEventRecorder;
-import com.lia.core.application.profile.PersonalizationGate;
-import com.lia.core.pipeline.dispatch.PersonalizationQuota;
-import com.lia.core.pipeline.discover.LawDiscovery;
-import com.lia.core.pipeline.dispatch.QueryDispatcher;
 import com.lia.core.pipeline.resolve.ChunkStoreLawSearch;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
-import com.lia.core.store.ChunkStore;
-import com.lia.core.store.LawSource;
-import com.lia.core.store.LawSummaries;
-import com.lia.core.store.LawSummaryStore;
-import com.lia.core.store.LawViews;
-import com.lia.core.store.AnonymousAnalysisUsageStore;
-import com.lia.core.store.PersonalizationUsageStore;
-import com.lia.core.store.PgVectorChunkStore;
 
 /**
  * 파이프라인 빈 조립 (D35: Python config.py 팩토리의 Spring 대응).
@@ -100,7 +100,7 @@ public class PipelineConfig {
         return new RAGIndexer(chunkStore);
     }
 
-    /** 해소기 — 적재분 제목 검색(LawLookup = {@link com.lia.core.store.LawStoreLookup}, D87) + pending ns 의미검색(ChunkStore) 폴백. 임계 88/60(D23). */
+    /** 해소기 — 적재분 제목 검색(LawLookup = {@link com.lia.core.pipeline.resolve.LawStoreLookup}, D87) + pending ns 의미검색(ChunkStore) 폴백. 임계 88/60(D23). */
     @Bean
     public SourceAnalyzer sourceAnalyzer(LawLookup lookup, ChunkStore chunkStore,
                                          ObservationRegistry observations) {

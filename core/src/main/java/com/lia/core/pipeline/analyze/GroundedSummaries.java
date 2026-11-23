@@ -5,10 +5,10 @@ import java.util.Set;
 
 import com.lia.core.domain.analysis.ImpactResult;
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawDiffs;
+import com.lia.core.lawdata.LawSummaries;
+import com.lia.core.lawdata.LawSummaryStore;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.store.LawDiffs;
-import com.lia.core.store.LawSummaries;
-import com.lia.core.store.LawSummaryStore;
 
 /**
  * 미리 만든 Layer A 읽기(쉬운 요약 D67·변경점 D80) — 저장본이 <b>지금의 근거 집합 안에서만</b> 인용할 때만 돌려준다.

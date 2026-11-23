@@ -41,9 +41,9 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 
 검색은 chunks(pgvector)로 후보를 찾고, `source_id`로 `law_versions`에서 **정본을 되짚어** 인용한다(그라운딩) — 두 저장소를 잇는 키가 `source_id`.
 
-## store 패키지 테이블
+## 저장 테이블 지도
 
-`com.lia.core.store` 의 저장소 전체. 정본(`law_versions`) 외에는 각자 좁은 용도의 별도 테이블·클래스다(한 클래스에 몰지 않는다).
+테이블과 저장 클래스 전체. 여러 곳이 함께 쓰는 법령 데이터는 `com.lia.core.lawdata`(청크는 `lawdata.chunk`), 기능 전용 테이블은 그 기능의 `com.lia.core.feature.*` 에 있다. 정본(`law_versions`) 외에는 각자 좁은 용도의 별도 테이블·클래스다(한 클래스에 몰지 않는다).
 
 | 테이블 (Flyway) | 클래스 · 포트 | 용도 | 상세 |
 |---|---|---|---|
@@ -55,8 +55,8 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 | `anonymous_analysis_usage_daily` (V15) | `AnonymousAnalysisUsageStore` · `AnonymousAnalysisQuota` | 익명 분석 서비스 전체 하루 상한(D81) — 서울 날짜별 횟수만. 조건부 upsert 한 문장으로 차감 | `AnalyzeUseCase` |
 | `law_views_daily` (V8) | `LawViewStore` · `LawViews` | 자주 찾는 법령(D66) — 서울 날짜별 조회 횟수만(누가 봤는지 없음) | [[TrendingApi]] |
 | `personalization_usage_daily` (V10) | `PersonalizationUsageStore` · `PersonalizationQuota` | 사용자별 하루 개인화 한도(D69) — 원자 upsert 차감, 계정 삭제 시 cascade | [[QueryDispatcher]] |
-| `accounts`·`user_profiles` (V2~V4) | `auth.AccountStore`·`profile.UserProfileStore` | 계정·프로필·동의 | [[Auth]] · [[UserProfile]] |
-| `ingest_*` (V5) | `pipeline.batch.TaskQueue`·`IngestRunStore` | 배치 작업 큐·실행 기록 | [[IngestJob]] |
+| `accounts`·`user_profiles` (V2~V4) | `auth.AccountStore`·`feature.profile.UserProfileStore` | 계정·프로필·동의 | [[Auth]] · [[UserProfile]] |
+| `ingest_*` (V5) | `ingest.task.TaskQueue`·`ingest.job.IngestRunStore` | 배치 작업 큐·실행 기록 | [[IngestJob]] |
 
 ## Persistence Contract
 - **정본 (law_versions)**
@@ -106,5 +106,5 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 ## 구현 순서 (near-term → later)
 1. **완료:** `law_versions` upsert + `find`/`findBaseline` + Flyway 스키마 → 적재 파이프라인(Normalizer→DiffBuilder→Store).
 2. 벡터 chunks는 [[ChunkStore]]로 분리 — [[Embedder]]·[[RAGIndexer]]와 함께.
-3. **완료:** Layer A 저장본 `law_summaries`(D67·D80) · 조회 집계(D66) · 개인화 한도(D69) · 익명 상한(D81) — 위 §store 패키지 테이블.
+3. **완료:** Layer A 저장본 `law_summaries`(D67·D80) · 조회 집계(D66) · 개인화 한도(D69) · 익명 상한(D81) — 위 §저장 테이블 지도.
 4. `LawFacts`·답변 캐시 — 병목을 지표로 증명한 뒤(D48·D51).

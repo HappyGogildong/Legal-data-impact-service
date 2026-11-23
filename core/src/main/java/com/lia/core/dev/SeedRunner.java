@@ -21,9 +21,9 @@ import tools.jackson.databind.ObjectMapper;
 
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
+import com.lia.core.ingest.handler.IngestService;
+import com.lia.core.lawdata.LawStore;
 import com.lia.core.pipeline.connector.RawLaw;
-import com.lia.core.pipeline.ingest.IngestService;
-import com.lia.core.store.LawStore;
 
 /**
  * 데모 시드 러너 — {@code --spring.profiles.active=seed} 로만 활성화(운영 무영향).

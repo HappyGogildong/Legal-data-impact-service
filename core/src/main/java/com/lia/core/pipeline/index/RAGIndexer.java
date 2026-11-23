@@ -7,8 +7,8 @@ import java.util.Map;
 
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
-import com.lia.core.store.Chunk;
-import com.lia.core.store.ChunkStore;
+import com.lia.core.lawdata.chunk.Chunk;
+import com.lia.core.lawdata.chunk.ChunkStore;
 
 /**
  * 시행예정 코퍼스 색인기(오프라인, D30·D55) — <b>변경 조문 + 제개정이유 요약</b>을 청킹해

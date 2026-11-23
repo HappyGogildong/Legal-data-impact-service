@@ -6,12 +6,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.lawdata.LawSummaries;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.AnalyzeRequest;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.analyze.ContextBuilder;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.store.LawSummaries;
 
 /**
  * SUMMARY 차원(Layer A, 프로필 무관) — 개정 요약. 배치가 미리 만든 쉬운 요약(D67)이 유효하면(시행예정본·인용이 지금 근거 안)

@@ -8,11 +8,11 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.AnalyzeRequest;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.UserProfile;
 
 /**
  * Layer B(내 영향·대응 방안, D69) — IMPACT·ACTION 을 <b>엔진 1회</b>로 만들고 결과를 차원별로 나눈다.

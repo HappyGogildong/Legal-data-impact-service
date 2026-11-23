@@ -17,16 +17,16 @@ import org.junit.jupiter.api.Test;
 
 import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
+import com.lia.core.lawdata.LawSource;
+import com.lia.core.lawdata.chunk.Chunk;
+import com.lia.core.lawdata.chunk.ChunkStore;
 import com.lia.core.pipeline.connector.RawLaw;
 import com.lia.core.pipeline.discover.LawDiscovery;
-import com.lia.core.pipeline.plan.AnalysisQueryDraft;
 import com.lia.core.pipeline.plan.AnalysisQueryDraft.TargetKind;
+import com.lia.core.pipeline.plan.AnalysisQueryDraft;
 import com.lia.core.pipeline.plan.QueryType;
 import com.lia.core.pipeline.resolve.LawLookup;
 import com.lia.core.pipeline.resolve.SourceAnalyzer;
-import com.lia.core.store.Chunk;
-import com.lia.core.store.ChunkStore;
-import com.lia.core.store.LawSource;
 
 /** 서비스 경로(QueryPlanner → LawDiscovery)를 그대로 지나는지 — 가짜 번역기·조회·색인(D83). LLM·DB 없음. */
 class OfflineEvaluatorTest {

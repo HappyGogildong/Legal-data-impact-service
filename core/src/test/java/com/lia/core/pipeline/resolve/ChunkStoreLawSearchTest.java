@@ -8,9 +8,9 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import com.lia.core.lawdata.chunk.Chunk;
+import com.lia.core.lawdata.chunk.ChunkStore;
 import com.lia.core.pipeline.connector.RawLaw;
-import com.lia.core.store.Chunk;
-import com.lia.core.store.ChunkStore;
 
 /**
  * ChunkStoreLawSearch 단위 — pending ns 벡터 히트(청크)를 <b>lawId로 dedupe</b>해 {@code RawLaw} 후보로.

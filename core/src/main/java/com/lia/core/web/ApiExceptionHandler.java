@@ -8,15 +8,16 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import com.lia.core.application.account.AccountNotFoundException;
-import com.lia.core.application.analysis.AnonymousLimitException;
-import com.lia.core.application.bookmark.BookmarkLimitException;
-import com.lia.core.application.bookmark.UnknownLawException;
-import com.lia.core.application.history.AnalysisExpiredException;
-import com.lia.core.application.history.HistoryLimitException;
-import com.lia.core.application.history.HistoryNotFoundException;
-import com.lia.core.application.profile.ConsentRequiredException;
-import com.lia.core.application.subscription.SubscriptionLimitException;
+import com.lia.core.auth.AccountNotFoundException;
+import com.lia.core.feature.analysis.usage.AnonymousLimitException;
+import com.lia.core.feature.bookmark.BookmarkLimitException;
+import com.lia.core.feature.history.AnalysisExpiredException;
+import com.lia.core.feature.history.HistoryLimitException;
+import com.lia.core.feature.history.HistoryNotFoundException;
+import com.lia.core.feature.law.LawNotFoundException;
+import com.lia.core.feature.profile.ConsentRequiredException;
+import com.lia.core.feature.subscription.SubscriptionLimitException;
+import com.lia.core.lawdata.UnknownLawException;
 
 /**
  * API 오류 매핑([[service-api-spec]] §4.1 — <b>시스템 오류만 4xx/5xx</b>).

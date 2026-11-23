@@ -435,7 +435,7 @@ Layer A(SUMMARY·DIFF) 프롬프트에는 질문이 들어가지 않는다 — �
 - 역할: 법령 정본(`Law`/`Article`/`Addendum`) + 쉬운 요약 저장본(D67) + (후속) `LawFacts`(Layer A 캐시)·답변 캐시. **벡터 chunks는 별도 [[ChunkStore]]**(PgVectorStore)가 소유 — JSONB 정본(JdbcClient)과 벡터(PgVectorStore)를 분리(2026-08-27).
 - 입력/출력: Law/Article CRUD · 목록·상세 조회([[LawCatalogApi]]) · 요약 저장본 읽기·쓰기.
 - 동작: upsert. **유니크 키는 `(lawId, effectiveDate)`** — `lawId` 단독은 안 된다. 같은 법령에 시행예정본이 복수일 수 있다(D43). Layer A 저장본은 `law_summaries` 에 버전·차원마다 1행 — 정본 revision·프롬프트 버전(변경점은 기준선 revision 까지)이 같고 지금의 근거 집합으로 인용 검증을 다시 통과할 때만 유효(`GroundedSummaries`, D80). `LawFacts` 캐시 키=`lawId@effectiveDate + revision`(후속), 답변 캐시 키=§3.4(후속).
-- store 패키지의 테이블 전체는 [[LawStore]] §store 패키지 테이블.
+- 저장 테이블 전체는 [[LawStore]] §저장 테이블 지도.
 - 의존: 없음.
 - 오류: 제약 위반 → upsert 충돌 해소.
 - **저장소 결정 영향:** [[ADR-001-knowledge-store-sizing|ADR-001]] **불변**이며 D42로 여유가 커졌다 — MVP 코퍼스가 *의안 5만 건 가정*에서 **시행예정 899건 실측**으로 줄었다. 부피 주축은 diff 기준선용 시행중 법령 본문(~0.4GB 추정) 안쪽.

@@ -7,19 +7,19 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.lia.core.application.account.AccountUseCase;
-import com.lia.core.application.bookmark.BookmarkUseCase;
-import com.lia.core.application.history.HistoryUseCase;
-import com.lia.core.application.notification.NotificationUseCase;
-import com.lia.core.application.profile.PersonalizationGate;
-import com.lia.core.application.profile.ProfileUseCase;
-import com.lia.core.application.subscription.SubscriptionUseCase;
 import com.lia.core.auth.AccountStore;
-import com.lia.core.profile.UserProfileStore;
-import com.lia.core.store.AnalysisHistoryStore;
-import com.lia.core.store.LawBookmarkStore;
-import com.lia.core.store.LawSubscriptionStore;
-import com.lia.core.store.NotificationStore;
+import com.lia.core.feature.account.AccountUseCase;
+import com.lia.core.feature.bookmark.BookmarkUseCase;
+import com.lia.core.feature.bookmark.LawBookmarkStore;
+import com.lia.core.feature.history.AnalysisHistoryStore;
+import com.lia.core.feature.history.HistoryUseCase;
+import com.lia.core.feature.notification.NotificationStore;
+import com.lia.core.feature.notification.NotificationUseCase;
+import com.lia.core.feature.profile.PersonalizationGate;
+import com.lia.core.feature.profile.ProfileUseCase;
+import com.lia.core.feature.profile.UserProfileStore;
+import com.lia.core.feature.subscription.LawSubscriptionStore;
+import com.lia.core.feature.subscription.SubscriptionUseCase;
 
 /**
  * 사용자(계정·프로필·북마크·이력·구독·알림) 유스케이스 배선 — application 코어는 Spring 애노테이션 없이 두고 여기서 {@code @Bean} 으로 잇는다

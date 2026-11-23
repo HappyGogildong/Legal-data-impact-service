@@ -11,12 +11,12 @@ import org.junit.jupiter.api.Test;
 
 import com.lia.core.domain.analysis.ConfirmedFact;
 import com.lia.core.domain.law.Addendum;
-import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Article.ChangeType;
+import com.lia.core.domain.law.Article;
 import com.lia.core.domain.law.Law;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.pipeline.analyze.AnalysisContext.SourceBlock;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.UserProfile;
 
 /**
  * ContextBuilder 단위 — 해소된 정본에서 <b>차원별 근거 블록 + source_id</b>를 조립한다.

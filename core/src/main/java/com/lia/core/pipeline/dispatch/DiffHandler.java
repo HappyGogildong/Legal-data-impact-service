@@ -6,12 +6,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.lia.core.domain.analysis.ImpactResult;
+import com.lia.core.lawdata.LawDiffs;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.AnalyzeRequest;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
 import com.lia.core.pipeline.analyze.ContextBuilder;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.store.LawDiffs;
 
 /**
  * DIFF 차원(Layer A, 프로필 무관) — 변경 조문 ↔ 시행중 기준선 대조. 배치가 미리 만든 설명이 유효하면(시행예정본·정본과 기준선

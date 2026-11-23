@@ -21,7 +21,7 @@ AnalysisController     AnalyzeUseCase              QueryPlanner · QueryDispatch
 - **담당**: 개인화 판정 → plan → dispatch 조합, 4상태(미해소)·부분성공(`unmet`)을 결과 타입으로 표현, 자주 찾는 법령 집계(D66) 1회 기록.
 - **담당 안 함**: HTTP·세션(web — `CurrentUser` 로 userId 만 꺼내 넘긴다) · 프로필 규칙([[ProfileUseCase|PersonalizationGate]]) · 번역·해소([[QueryPlanner]]) · 라우팅·핸들러·한도([[QueryDispatcher]]) · 프롬프트·LLM([[AnalysisEngine]]).
 
-## 구조 (컴포넌트) — `com.lia.core.application.analysis`
+## 구조 (컴포넌트) — `com.lia.core.feature.analysis`
 
 | 클래스 | 역할 |
 |---|---|

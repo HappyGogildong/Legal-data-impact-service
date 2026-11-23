@@ -15,6 +15,7 @@ import com.lia.core.domain.analysis.Situation;
 import com.lia.core.domain.analysis.SituationQuestion;
 import com.lia.core.domain.analysis.StepNote;
 import com.lia.core.domain.law.Law;
+import com.lia.core.domain.user.UserProfile;
 import com.lia.core.pipeline.analyze.AnalysisContext;
 import com.lia.core.pipeline.analyze.AnalysisEngine;
 import com.lia.core.pipeline.analyze.AnalyzeResponse;
@@ -22,7 +23,6 @@ import com.lia.core.pipeline.analyze.ContextBuilder;
 import com.lia.core.pipeline.analyze.PersonalizedOutput;
 import com.lia.core.pipeline.analyze.Reasoner;
 import com.lia.core.pipeline.plan.QueryType;
-import com.lia.core.profile.UserProfile;
 import com.lia.core.testsupport.TestLaws;
 
 /** PersonalizedHandler — 두 차원을 요청해도 엔진(추론)은 1회, 결과를 IMPACT·ACTION 으로 나눈다(D69). */

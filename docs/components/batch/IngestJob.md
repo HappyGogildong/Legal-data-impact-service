@@ -29,7 +29,10 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 - 외부 시스템: 국가법령정보 API · 임베딩 API(OpenAI, ChunkStore 경유) · Postgres.
 - 트리거: 외부 스케줄러(cron 등) — [[deployment]].
 
-## 구조 (컴포넌트) — `com.lia.core.pipeline.batch`
+## 구조 (컴포넌트) — `com.lia.core.ingest`
+
+하위 패키지: `job`(IngestJobRunner·IngestJob·IngestRunStore·실행 결과) · `task`(TaskQueue·작업 모델) · `handler`(작업 처리기 5종·IngestService) · `scan`(Discoverer·ScanResult) · 루트(MinIntervalLimiter).
+
 | 컴포넌트 | 책임 |
 |---|---|
 | `IngestJobRunner` | `batch` 프로파일 진입점(`ApplicationRunner`). 명령 해석 → 잠금 → 잡 실행 → 종료 코드 |

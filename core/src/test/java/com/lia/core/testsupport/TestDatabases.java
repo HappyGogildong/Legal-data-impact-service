@@ -11,7 +11,7 @@ import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-import com.lia.core.store.PgVectorChunkStore;
+import com.lia.core.lawdata.chunk.PgVectorChunkStore;
 
 /** Testcontainers DB 준비 — Flyway 전체 마이그레이션과 가짜 임베딩 위의 ChunkStore. */
 public final class TestDatabases {

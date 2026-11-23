@@ -3,7 +3,7 @@ package com.lia.core.pipeline.dispatch;
 import java.util.Objects;
 import java.util.UUID;
 
-import com.lia.core.profile.UserProfile;
+import com.lia.core.domain.user.UserProfile;
 
 /**
  * 이 요청이 Layer B(내 영향·대응 방안)를 채울 수 있는가 — {@code PersonalizationGate}(application)가 판정해 넘긴다(D69).

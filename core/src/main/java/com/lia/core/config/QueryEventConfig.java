@@ -5,10 +5,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
-import com.lia.core.application.analysis.QueryEvent;
-import com.lia.core.application.analysis.QueryEventRecorder;
+import com.lia.core.feature.analysis.event.QueryEvent;
+import com.lia.core.feature.analysis.event.QueryEventRecorder;
+import com.lia.core.feature.analysis.event.QueryEventStore;
 import com.lia.core.observability.RecordWriter;
-import com.lia.core.store.QueryEventStore;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
