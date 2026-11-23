@@ -85,9 +85,10 @@ flowchart LR
 
 ## How quality is maintained
 
-- **Tests — 869 backend · 278 web unit · 34 E2E** — a thick layer of pure unit tests; real DB constraints and concurrency verified with Testcontainers (real Postgres); HTTP contracts, auth, and CSRF verified in a web slice running the actual `SecurityConfig`. Smoke tests against paid external APIs run only when keys are present.
+- **Tests — 906 backend · 285 web unit · 38 E2E** — a thick layer of pure unit tests; real DB constraints and concurrency verified with Testcontainers (real Postgres); HTTP contracts, auth, and CSRF verified in a web slice running the actual `SecurityConfig`. Smoke tests against paid external APIs run only when keys are present.
+- **Package rules as tests** — layer and feature dependency directions and the no-cycle rule are checked by ArchUnit tests ([D90](docs/adr/decision-log.md)).
 - **Spec-first** — every class with behavior gets a [component spec](docs/components/) before code, and that contract drives the implementation.
-- **Decision records** — [85 design decisions](docs/adr/decision-log.md) recorded with rationale and alternatives.
+- **Decision records** — [90 design decisions](docs/adr/decision-log.md) recorded with rationale and alternatives.
 - **No unmeasured numbers** — performance optimizations are applied only after metrics confirm the bottleneck ([D48](docs/adr/decision-log.md)). The figure above (137 → 6) is measured.
 
 ## Tech stack
@@ -98,14 +99,14 @@ flowchart LR
 | Data | PostgreSQL + pgvector · Flyway |
 | Models | Claude (reasoning) · OpenAI embeddings |
 | Frontend | Next.js · Vitest · Playwright |
-| Observability | Micrometer · Prometheus · Grafana · Tempo · Loki · k6 |
+| Observability | Micrometer · Prometheus · Grafana · Tempo |
 
 ## Running locally
 
 ```bash
 docker compose up -d db          # PostgreSQL + pgvector
 cd core && ./gradlew test        # backend tests (external API smoke tests are skipped without keys)
-cd web && npm install && npm run dev
+cd web && pnpm install && pnpm dev
 ```
 
 All secrets live in a single `.env` at the repo root (see [`.env.example`](.env.example)).

@@ -83,9 +83,10 @@ flowchart LR
 
 ## 품질을 지키는 방법
 
-- **테스트 — 백엔드 869 · 웹 단위 278 · E2E 34** — 순수 단위 테스트를 두껍게, 실제 DB 제약·동시성은 Testcontainers(실 Postgres), HTTP 계약·인증·CSRF는 실제 `SecurityConfig`를 띄운 웹 슬라이스로 검증한다. 유료 외부 API 스모크는 키가 있을 때만 돈다.
+- **테스트 — 백엔드 906 · 웹 단위 285 · E2E 38** — 순수 단위 테스트를 두껍게, 실제 DB 제약·동시성은 Testcontainers(실 Postgres), HTTP 계약·인증·CSRF는 실제 `SecurityConfig`를 띄운 웹 슬라이스로 검증한다. 유료 외부 API 스모크는 키가 있을 때만 돈다.
+- **패키지 의존 규칙을 테스트로** — 계층·기능 간 의존 방향과 순환 금지를 ArchUnit 테스트가 검사한다([D90](docs/adr/decision-log.md)).
 - **spec-first** — 행위가 있는 클래스는 코드보다 [컴포넌트 문서](docs/components/)를 먼저 쓰고, 그 계약이 구현을 이끈다.
-- **결정 기록** — 설계 판단 [85건](docs/adr/decision-log.md)을 근거·대안과 함께 남겼다.
+- **결정 기록** — 설계 판단 [90건](docs/adr/decision-log.md)을 근거·대안과 함께 남겼다.
 - **측정하지 않은 수치는 쓰지 않는다** — 성능 최적화는 지표로 병목을 확인한 뒤에만 적용한다([D48](docs/adr/decision-log.md)). 위의 수치(137 → 6)는 모두 실측이다.
 
 ## 기술 스택
@@ -96,14 +97,14 @@ flowchart LR
 | 데이터 | PostgreSQL + pgvector · Flyway |
 | 모델 | Claude(추론) · OpenAI 임베딩 |
 | 프론트엔드 | Next.js · Vitest · Playwright |
-| 관측 | Micrometer · Prometheus · Grafana · Tempo · Loki · k6 |
+| 관측 | Micrometer · Prometheus · Grafana · Tempo |
 
 ## 실행
 
 ```bash
 docker compose up -d db          # PostgreSQL + pgvector
 cd core && ./gradlew test        # 백엔드 테스트 (외부 API 스모크는 키가 없으면 건너뜀)
-cd web && npm install && npm run dev
+cd web && pnpm install && pnpm dev
 ```
 
 비밀값은 레포 루트 `.env` 하나로 관리한다([`.env.example`](.env.example) 참고).
