@@ -119,7 +119,7 @@ The design documents are written in Korean.
 | [Feature spec](docs/product/feature-spec.md) | Features and screens from the user's perspective |
 | [Architecture](docs/ARCHITECTURE.md) | Design snapshots and change history |
 | [Achievements and case studies](docs/achievements.md) | Production measurements · key achievements · troubleshooting cases (Korean) |
-| [Decision log](docs/adr/decision-log.md) | Design decisions D01–D86 with rationale |
+| [Decision log](docs/adr/decision-log.md) | Design decisions D01–D90 with rationale |
 | [Troubleshooting](docs/troubleshooting/README.md) | Root-cause investigations of real problems |
 | [Status](docs/status.md) | Implementation status and tech spec |
 | [Onboarding](docs/onboarding.md) | Where to start reading the code |

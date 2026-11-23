@@ -114,7 +114,7 @@ com.lia.core
 
 ## 현재 상태 (2026-11-18 기준)
 
-MVP 기능 구현과 **AWS 운영 투입 완료**(EC2+RDS+Vercel, [`docs/backend/cloud-infra.md`](docs/backend/cloud-infra.md)), **main 머지 시 자동 배포**(D86 — OIDC → SSM 문서 `LIA-Deploy`, 롤백은 Actions `Deploy` 수동 실행) — 시행예정 법령 수집·정규화·diff·색인 배치(D62, cron 매일 04:00·일요일 `--full`, 같은 시행일 공포본 병합 D85), 분석 Layer A 선계산(운영 일괄 요약은 꺼 둠)·Layer B 개인화(D69), 법령 발견(D70)·상황 확인(D71)·북마크·이력·구독 알림함(D72~D74), 웹(Next.js). 세부 진척은 [`docs/status.md`](docs/status.md), 결정은 decision-log(D01~D89). 다음: 평가 기준선(`lia eval`)·단가 입력 → ⑦b 프로필 관련 구독 · ⑦c 이메일. `mcp/`는 아직 PoC 스텁.
+MVP 기능 구현과 **AWS 운영 투입 완료**(EC2+RDS+Vercel, [`docs/backend/cloud-infra.md`](docs/backend/cloud-infra.md)), **main 머지 시 자동 배포**(D86 — OIDC → SSM 문서 `LIA-Deploy`, 롤백은 Actions `Deploy` 수동 실행) — 시행예정 법령 수집·정규화·diff·색인 배치(D62, cron 매일 04:00·일요일 `--full`, 같은 시행일 공포본 병합 D85), 분석 Layer A 선계산(운영 일괄 요약은 꺼 둠)·Layer B 개인화(D69), 법령 발견(D70)·상황 확인(D71)·북마크·이력·구독 알림함(D72~D74), 웹(Next.js). 세부 진척은 [`docs/status.md`](docs/status.md), 결정은 decision-log(D01~D90). 다음: 평가 기준선(`lia eval`)·단가 입력 → ⑦b 프로필 관련 구독 · ⑦c 이메일. `mcp/`는 아직 PoC 스텁.
 
 **MVP 수집 경로(D42, 2026-08-02):** 분석 대상은 의안이 아니라 **공포 후 시행 대기 법령**(`target=eflaw`). 전문·개정문·제개정이유·부칙이 모두 제공되므로 D38(법안 본문 갭)은 해소됐고, 의안 경로는 post-MVP로 강등돼 **코드에서 삭제**했다(`SourceConnector`·`RawBill`·`Assembly*`). 계약은 `docs/components/ingest/SourceConnector.md`에 보존.
 
