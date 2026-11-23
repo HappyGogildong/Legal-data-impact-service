@@ -28,9 +28,9 @@
 
 | ADR | 제목 | 기반 버전 | 반영 버전 | 상태 |
 |---|---|---|---|---|
-| [ADR-001](adr/ADR-001-knowledge-store-sizing.md) | 지식 저장소 구성 — 분리형 vs 통합형(Postgres+pgvector) | v0.3 | v0.4 (단일 Postgres+pgvector 반영됨) | Proposed |
+| [ADR-001](adr/ADR-001-knowledge-store-sizing.md) | 지식 저장소 구성 — 분리형 vs 통합형(Postgres+pgvector) | v0.3 | v0.4 (단일 Postgres+pgvector 반영됨) | Accepted |
 
-전체 결정 인덱스: [adr/decision-log.md](adr/decision-log.md) (D01~, 최신 D40).
+전체 결정 인덱스: [adr/decision-log.md](adr/decision-log.md) (D01~D90).
 
 > ADR이 `Accepted`되어 구조에 반영되면, 그 변경을 담은 새 버전 파일을 추가하고 위 "반영 버전"을 확정한다(예: v0.4). 동결 스냅샷에는 ADR 링크를 넣지 않으므로, 버전↔ADR 매핑은 **이 표가 단일 출처**다.
 

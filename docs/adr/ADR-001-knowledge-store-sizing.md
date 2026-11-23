@@ -1,24 +1,24 @@
 ---
 adr: 1
 title: 지식 저장소 구성 — 분리형 vs 통합형(Postgres+pgvector)
-status: Proposed
+status: Accepted
 date: 2026-06-22
 deciders: LIA 아키텍처 오너
 tags: [adr, architecture, storage, cost, rag]
 supersedes: null
 based_on: "architecture/v0.3-no-video-internal-mcp.md"
-applies_to: "architecture/v0.4 (예정)"
+applies_to: "architecture/v0.4"
 related: ["architecture/v0.3-no-video-internal-mcp.md", "ARCHITECTURE.md"]
 ---
 
 # ADR-001: 지식 저장소 구성 — 분리형(RDB + 전용 벡터DB) vs 통합형(Postgres+pgvector)
 
-**Status:** Proposed
+**Status:** Accepted — v0.4 부터 단일 Postgres+pgvector, 운영은 RDS PostgreSQL 16 + pgvector(HNSW, D63 · 2026-11-16 운영 투입)
 **Date:** 2026-06-22
 **Deciders:** LIA 아키텍처 오너
 **관련 아키텍처 버전**
 - **기반(결정 전):** [[v0.3-no-video-internal-mcp|v0.3]] §2 다이어그램의 `② 지식 저장소(S1/S2)` — 현재 S1/S2를 분리 저장소로 묘사.
-- **반영 예정(결정 후):** v0.4 (이 ADR이 `Accepted`되면 S1+S2를 단일 Postgres+pgvector로 합친 새 스냅샷 추가).
+- **반영:** v0.4 — S1+S2 를 단일 Postgres+pgvector 로 합친 스냅샷.
 - **매핑 출처:** [[ARCHITECTURE]] 의 "관련 결정(ADR)" 표 — 버전↔ADR 연결은 그 표가 단일 출처.
 
 ## Context
@@ -120,8 +120,8 @@ RDB와 벡터 인덱스를 한 Postgres 인스턴스에 둔다. (S1/S2는 논리
 
 ## Action Items
 
-1. [ ] 실측 보정: 의안 원문 50~100건 추출해 **평균 텍스트 크기** 측정 → 위 40KB 가정 검증
-2. [ ] 임베딩 **차원 결정**(1536 vs 768 한국어 특화) — 용량·정확도 trade-off 벤치
-3. [ ] RDS db.t4g.medium + pgvector(HNSW)로 **수직 슬라이스 1건**(v0.3 §7-1) 부하 측정
-4. [ ] **캐시 정책 확정** — 런타임 LLM 비용이 실질 운영비이므로 ImpactResult 캐시 적중률이 핵심
+1. ~~실측 보정: 의안 원문 50~100건 추출해 **평균 텍스트 크기** 측정 → 위 40KB 가정 검증~~ — 대상이 시행예정 법령으로 바뀌어(D42) 해당 없음. 운영 실측: 시행예정 877 버전, 청크 6,174개(2026-11-15)
+2. [x] 임베딩 **차원 결정** — 1536(D32), 벤더 OpenAI(D58)
+3. [ ] RDS db.t4g.medium + pgvector(HNSW)로 **수직 슬라이스 1건**(v0.3 §7-1) 부하 측정 — 운영 중, 부하 측정은 아직
+4. [x] **캐시 정책 확정** — Layer A 는 배치 선계산 저장본(D67·D80), Layer B 는 요청별 생성 + 사용자별 하루 한도(D69)
 5. [ ] 조례 확장 로드맵에 "벡터 저장소 재평가" 게이트 명시
