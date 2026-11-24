@@ -6,13 +6,14 @@
 
 ## 최신본
 
-→ **[architecture/v0.9-nl-query-planner.md](architecture/v0.9-nl-query-planner.md)** (v0.9, 현행)
+→ **[architecture/v1.0-operating-service.md](architecture/v1.0-operating-service.md)** (v1.0, 현행)
 
 ## 버전 이력
 
 | 버전 | 파일 | 날짜 | 상태 | 핵심 |
 |---|---|---|---|---|
-| v0.9 | [v0.9-nl-query-planner.md](architecture/v0.9-nl-query-planner.md) | 2026-08-02 | 현행 | 온라인 경로를 **자연어 질의 중심**으로 — Query Planner(NL→타입 DTO→dispatch), QueryType 5종(LOOKUP 포함), Reference/Discovery target. `AnalysisPipeline`→`QueryDispatcher` |
+| v1.0 | [v1.0-operating-service.md](architecture/v1.0-operating-service.md) | 2026-11-25 | 현행 | 운영 서비스 — 배치 작업 큐, Layer A 선계산(온라인 Opus 0)·Layer B 개인화, 법령 발견, 사용자 기능, AWS 운영·자동 배포, 평가·호출 기록, 패키지 두 축·ArchUnit. 구성도는 stack-diagram |
+| v0.9 | [v0.9-nl-query-planner.md](architecture/v0.9-nl-query-planner.md) | 2026-08-02 | 대체됨 | 온라인 경로를 **자연어 질의 중심**으로 — Query Planner(NL→타입 DTO→dispatch), QueryType 5종(LOOKUP 포함), Reference/Discovery target. `AnalysisPipeline`→`QueryDispatcher` |
 | v0.8 | [v0.8-pending-law-corpus.md](architecture/v0.8-pending-law-corpus.md) | 2026-08-02 | 대체됨 | 분석 대상을 의안에서 **공포 후 시행 대기 법령**(`eflaw`)으로 확정, `Law` 모델 신설·`Bill` 보류, 조문 diff를 오프라인으로 이관, 자기신고 프로필 반영 |
 | v0.7 | [v0.7-offline-online-split.md](architecture/v0.7-offline-online-split.md) | 2026-08-01 | 대체됨 | 오프라인(배치 적재)·온라인(요청 응답) 실행 모드 분리, Nemotron 군집(Persona Builder)은 그림에서 제외 |
 | v0.6 | [v0.6-spring-consolidation.md](architecture/v0.6-spring-consolidation.md) | 2026-07-21 | 대체됨 | 파이프라인을 Spring(Boot 4.0+Spring AI 2.0)으로 통합 — 3→2 런타임, Python 서버 대체 |
@@ -35,6 +36,18 @@
 > ADR이 `Accepted`되어 구조에 반영되면, 그 변경을 담은 새 버전 파일을 추가하고 위 "반영 버전"을 확정한다(예: v0.4). 동결 스냅샷에는 ADR 링크를 넣지 않으므로, 버전↔ADR 매핑은 **이 표가 단일 출처**다.
 
 ## 변경 이유 (Changelog)
+
+### v0.9 → v1.0 — "운영 서비스"
+
+**문제.** v0.9 는 질의 경로를 설계한 시점이고, 그 뒤 D59~D90 으로 배치·사용자 기능·운영·평가가 들어왔다. 스냅샷에는 작업 큐도, Layer A 저장본도, 배포 구성도 없어 "지금 어떻게 돌아가나"를 한 장으로 볼 문서가 없었다.
+
+**결과.**
+- **시스템 구성도 신설**(§3) — Vercel·EC2 compose(Caddy·core·ingest·Prometheus·Tempo·Grafana)·RDS·SSM·GitHub Actions·외부 API. `ops/deploy/docker-compose.prod.yml` 기준.
+- **오프라인 = 작업 큐**(D62) — `SYNC`·`INDEX`·`SUMMARIZE`·`TRANSITION`·`PURGE`, 재실행 안전·격리. v0.9 의 "LawFacts 파생" 단계는 만들지 않았고, Layer A 는 요약·변경점 저장본(D67·D80)이 맡는다.
+- **온라인 비용 구조 확정** — Layer A 는 저장본만(Opus 0), Layer B 만 요청 시 Opus(하루 한도, D69), 발견은 임베딩 1회(D70).
+- **사용자 기능·운영·평가** — 인증·프로필(D60·D61), 북마크·이력·구독(D72~D74), AWS 단일 EC2 + RDS·자동 배포(D63·D86), RAG 평가·호출 기록(D83).
+- **코드 구조**(§6) — 패키지 두 축과 의존 규칙, ArchUnit 으로 강제(D90).
+
 
 ### v0.8 → v0.9 — "자연어 질의 · Query Planner"
 

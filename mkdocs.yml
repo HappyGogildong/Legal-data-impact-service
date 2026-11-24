@@ -59,7 +59,8 @@ nav:
       - 기술 스택 (Next.js·Vercel): frontend/frontend-stack.md
       - 시각 디자인·화면 시안: frontend/visual-design.md
   - 아키텍처 버전:
-      - v0.9 — 현행 (자연어 질의·Query Planner): architecture/v0.9-nl-query-planner.md
+      - v1.0 — 현행 (운영 서비스): architecture/v1.0-operating-service.md
+      - v0.9 — 자연어 질의·Query Planner: architecture/v0.9-nl-query-planner.md
       - v0.8 — 시행 대기 법령 코퍼스: architecture/v0.8-pending-law-corpus.md
       - v0.7 — 오프라인·온라인 분리: architecture/v0.7-offline-online-split.md
       - v0.6 — Spring 통합·2런타임: architecture/v0.6-spring-consolidation.md

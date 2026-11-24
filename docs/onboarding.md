@@ -27,7 +27,7 @@ tags: [onboarding, start-here, guide]
 ## 권장 읽기 순서
 1. **이 문서** (지금)
 2. `CLAUDE.md` (레포 루트) — 개발 규약·명령어·함정 모음 (AI 세션은 자동 로드)
-3. [[ARCHITECTURE|아키텍처 색인]] → 최신 스냅샷 [[v0.9-nl-query-planner|v0.9]] — 전체 그림·데이터 흐름
+3. [[ARCHITECTURE|아키텍처 색인]] → 최신 스냅샷 [[v1.0-operating-service|v1.0]] — 시스템 구성도·실행 모드·코드 구조
 4. [[decision-log|결정 로그]] (D01~D90) — "왜 이렇게 됐나"를 한눈에
 5. [[component-specs|컴포넌트 상세 스펙]] — 도메인 모델·계약·정합성
 6. [[analysis-prompt-spec|프롬프트 정의서]] — LLM 입력계약·응답 JSON·인용검증
@@ -45,7 +45,7 @@ tags: [onboarding, start-here, guide]
 | 위치 | 무엇 | 성격 |
 |---|---|---|
 | `ARCHITECTURE.md` | 버전 색인 + ADR 매핑 + Changelog | living 색인 |
-| `architecture/` | 버전별 **동결 스냅샷**(현행 **v0.9**) | 수정 금지 |
+| `architecture/` | 버전별 **동결 스냅샷**(현행 **v1.0**) | 수정 금지 |
 | `adr/` | ADR-001 + **decision-log**(D01~D90) | living |
 | `components/` | 클래스 스펙(계약·불변식·결정 의도) — 코드 패키지별 | living |
 | `product/` · `frontend/` | 기능 스펙·화면 계획 · 웹 스택·시각 디자인 | living |
