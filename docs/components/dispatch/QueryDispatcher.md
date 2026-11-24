@@ -38,7 +38,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 | `PersonalizedHandler` | IMPACT·ACTION(Layer B, D69) — `AnalyzeRequest(IMPACT, law, baseline, profile, question)` 로 엔진 **1회**, 결과를 요청된 차원만 분할(IMPACT ← summary·claims·impacts / ACTION ← actions·effectiveInfo, 공통 uncertainties·disclaimer). 엔진이 낸 상황 질문·단계 설명은 ACTION 응답의 `Situation`(`questions`·`stepNotes`)에 싣는다(D71, IMPACT 응답은 `Situation.none()`). |
 | `PersonalAdmission` (정적 함수 모음) | Layer B 판정의 **공통 부분**(D71) — 개정본인데 기준선 없음(`BASELINE_NOT_LOADED`)·하루 한도 차감(`DAILY_LIMIT`)·정본 없음·근거 부족 사유를 만든다. 첫 Layer B(디스패처)와 상황 재생성([[ActionRevisionUseCase]])이 **같은 함수를 공유**해 규칙이 갈라지지 않는다. |
 | `Personalization` (sealed) | 개인화 판정 — `Usable(userId, UserProfile)` \| `Blocked(Reason)`. `anonymous()` = `Blocked(PROFILE_REQUIRED)`. 만드는 쪽은 `PersonalizationGate`([[ProfileUseCase]]). |
-| `PersonalizationQuota` (포트) | `tryConsume(userId)` — 하루 한도 원자 차감, 초과면 false. 구현 `store.PersonalizationUsageStore`(V10). |
+| `PersonalizationQuota` (포트) | `tryConsume(userId)` — 하루 한도 원자 차감, 초과면 false. 구현 `feature.analysis.usage.PersonalizationUsageStore`(V10). |
 | `Unmet` (record) | 미충족 사유 `{ reason, message }` — `LAW_NOT_LOADED`·`BASELINE_NOT_LOADED`·`PROFILE_REQUIRED`·`CONSENT_OUTDATED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`·`NOT_PRECOMPUTED`(D80, Layer A 저장본 없음)·`ARTICLE_NOT_CHANGED`·`ARTICLE_NOT_FOUND`(D82, 지목한 조문이 안 바뀜·없음)·`SITUATION_EXPIRED`(D71, 상황 재생성 전용 — 디스패처는 만들지 않는다)·`NOT_IMPLEMENTED`. 공개 API 코드와 같다([[AnalysisApi]]). |
 | `DispatchContext` (record) | 핸들러 실행 재료 `{ law, baseline?, query }`. dispatcher가 정본 1회 조회해 조립. |
 | `DispatchResult` (record) | 차원별 결과 묶음 `{ primaryType, filled, unmet, discovery? }`. `fullySatisfied()`. `discovery` 는 Discovery 질문일 때만(D70). |
@@ -96,7 +96,7 @@ related: ["components/component-specs.md", "components/plan/QueryPlanner.md", "c
 
 - `LawSource` **읽기** + Discovery 요청 시 임베딩 API 1회·색인 읽기(`LawDiscovery`, 한도·집계 없음, D70) + Layer B 요청 시 **한도 1회 차감**(`PersonalizationQuota` — 핸들러 호출 직전, 실패해도 환불 없음, D69). 그 외 쓰기·캐시·이벤트 없음. (답변 캐시는 측정 후 도입, D48·D51)
 
-## 남은 경계 (의존 착지 후)
+## 남은 경계
 
 - **답변 캐싱(D51)** — 병목을 지표로 증명한 뒤(D48). context prompt-caching은 [[AnalysisEngine]] 관심사. Layer B 개인화 답은 저장하지 않는다(D69).
 - **독립 Verification Gate(#12)** — [[AnalysisEngine]]가 재생성 루프 안에서 인용검증(`grounded`)을 수행하므로 지금은 중복. 필요가 생기면 조립 시점에 도입.

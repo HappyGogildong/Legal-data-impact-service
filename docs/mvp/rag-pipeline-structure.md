@@ -73,7 +73,7 @@ flowchart TB
 
 ## 3. 컴포넌트별 역할 · 담당 파일
 
-> 상태: ✅ 구현됨 · 🟡 스펙 확정·구현 착수 · ⬜ 후속
+> 상태: ✅ 구현됨
 
 ### 오프라인 — 적재
 
@@ -96,15 +96,16 @@ flowchart TB
 
 | 컴포넌트 | 역할 | 담당 파일 (역할) | 상태 |
 |---|---|---|---|
-| **IngestService** | 적재 단계 조립·순서·경계. `store`(정규화→diff→정본, 임베딩 프리). 색인은 배치 잡의 `INDEX` 작업이 맡는다(`IngestJob`, D62) | `pipeline/ingest/IngestService.java` 오케스트레이터. `store()`는 API 불필요(테스트 가능) | ✅ |
+| **IngestService** | 적재 단계 조립·순서·경계. `store`(정규화→diff→정본, 임베딩 프리). 색인은 배치 잡의 `INDEX` 작업이 맡는다(`IngestJob`, D62) | `ingest/handler/IngestService.java` 오케스트레이터. `store()`는 API 불필요(테스트 가능) | ✅ |
 | **Observability** | 계측 지표·태그 이름 고정. 파이프라인 단계 span/timer | `observability/Obs.java` `lia.*` 상수 · `SampleIngestRunner.java` 데모 계측 러너(demo 프로필). 임베딩·벡터 계측은 Spring AI `gen_ai.*`·`db.vector.*` 내장 위임 | ✅ |
 
 ### 온라인 — 검색·추론 (참고)
 
 | 컴포넌트 | 역할 | 담당 파일 (역할) | 상태 |
 |---|---|---|---|
-| **SourceAnalyzer** | 입력 → 시행예정 법령 ref 해소(fail-closed 4상태). 약매칭 시 `ChunkStore` 의미검색 | `pipeline/resolve/SourceAnalyzer.java`·`LawLookup.java`·`Resolution*`·`store/LawStoreLookup.java` — 검색 포트(ChunkStore) 주입은 색인 landing 후 | ✅ (검색 포트 미주입) |
-| **AnalysisEngine** | RAG 검색 결과 + 정본 context로 LLM 추론, 인용검증 게이트 | (미구현) | ⬜ |
+| **SourceAnalyzer** | 입력 → 시행예정 법령 ref 해소(fail-closed 4상태). 약매칭 시 `ChunkStore` 의미검색 | `pipeline/resolve/SourceAnalyzer.java`·`LawLookup.java`·`LawStoreLookup.java`(제목 검색, D87)·`Resolution*`·`ChunkStoreLawSearch.java`(의미검색 폴백) | ✅ |
+| **LawDiscovery** | 법령 이름 없는 질문 → `pending` 색인 유사도 검색 → 법령 단위로 묶은 후보(D70) | `pipeline/discover/LawDiscovery.java` | ✅ |
+| **AnalysisEngine** | 정본 context 로 LLM 추론(분석 경로에 벡터 검색 없음), 인용검증 게이트 | `pipeline/analyze/AnalysisEngine.java`·`ContextBuilder.java`·`SpringAiReasoner.java` | ✅ |
 
 ## 4. 데이터 흐름 한 줄 요약
 

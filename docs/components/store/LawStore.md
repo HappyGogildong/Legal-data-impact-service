@@ -8,10 +8,10 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 
 # LawStore
 
-> 법령 **정본(원문) 영속·조회** + **벡터 chunks**(RAG 검색) + (후속) Layer A/B 캐시. **구현 전 계약(spec-first)** — 이 스펙이 구현을 이끈다. 스키마 SSOT: [[component-specs]] §1. 저장소: ADR-001(Postgres+pgvector).
+> 법령 **정본(원문) 영속·조회**(`com.lia.core.lawdata`). 벡터 chunks 는 [[ChunkStore]], Layer A 저장본은 `law_summaries`(`LawSummaryStore`). 스키마 SSOT: [[component-specs]] §1. 저장소: ADR-001(Postgres+pgvector).
 
 ## Responsibility
-- **담당:** `Law` 정본 upsert·조회(`(lawId, effectiveDate)` 단위) · **baseline 조회**(lawId→시행중본) · (후속) `LawFacts`·`ImpactResult` 캐시.
+- **담당:** `Law` 정본 upsert·조회(`(lawId, effectiveDate)` 단위) · **baseline 조회**(lawId→시행중본) · 배치용 버전 상태 관리.
 - **담당 안 함:** 임베딩 *생성*([[Embedder]]) · **벡터 chunks 적재·검색([[ChunkStore]])** · 정규화([[Normalizer]]) · diff([[DiffBuilder]]) · 검색 전략(SourceAnalyzer/RAG). Store는 **정본 저장·조회만**.
 
 > **chunks는 [[ChunkStore]]가 소유한다.** LawStore는 `JdbcClient`로 JSONB 정본을, ChunkStore는 `PgVectorStore`로 벡터를 다룬다 — 다른 라이브러리·다른 테이블이라 한 클래스에 두 영속 메커니즘을 섞지 않는다(2026-08-27 구조 결정).
@@ -63,13 +63,13 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
   - `upsert(Law)` — `(lawId, effectiveDate)` 단위 삽입/갱신. `revision` 다르면 payload·인덱스 갱신.
   - `find(lawId, effectiveDate) → Law?` — 특정 버전 정본.
   - `findBaseline(lawId) → Law?` — 같은 lawId의 **시행중본**. 없으면 null(제정, [[law-domain-basics]] §3).
-  - `findPending(criteria) → Law[]` — 해소·목록용(status=시행예정, 시도·도메인 필터).
+  - 해소용 제목 검색은 `LawStoreLookup`([[SourceAnalyzer]], D87), 곧 시행 목록은 `LawCatalogStore`([[LawCatalogApi]]) — 같은 테이블을 읽는 별도 클래스.
 - **상태 값**(D62): `시행중` · `시행예정` · **`과거`**(같은 법령의 더 새 시행중본에 대체됨) · **`철회`**(목록에서 사라진 시행예정본). 지나간 버전도 **행을 지우지 않는다** — 과거 답변이 인용한 `source_id`를 계속 되짚을 수 있게. `findBaseline`은 `시행중`만 본다.
 - **배치용 계약**([[IngestJob]]): 탐색용 시행예정 버전 목록(`lawId`·`efYd`·`mst`·`missing_since`) · 상태 변경(**컬럼과 payload의 `status`를 함께** — `find`는 payload를 역직렬화) · 더 오래된 `시행중` → `과거` 일괄 전환 · `missing_since` 설정/해제 · 같은 법령의 남은 시행예정본 조회 · 증분 비교용 저장 revision 조회(**상태가 같을 때만** 일치로 본다 — 철회본이 같은 내용으로 다시 나타나도 `시행예정`으로 복원되게). 컬럼 `missing_since date`(완주 목록에서 처음 안 보인 날, KST)는 `V5__ingest_batch.sql`.
 - 배치 쓰기는 호출자 트랜잭션에 참여한다(`JdbcClient` → 같은 `DataSource`) — `SyncHandler`가 저장과 `INDEX` 등록을 한 트랜잭션으로 묶는다.
 - **벡터 (chunks)** — [[ChunkStore]] 소유. 여기서 다루지 않는다.
 - **Layer A 저장본** — `law_summaries`(위 표, D67·D80). 답변 캐시가 아니라 배치가 미리 만든 Layer A 결과.
-- **캐시 (후속)**
+- **캐시 (없음 — 도입은 지표로 병목을 확인한 뒤, D48·D51)**
   - `LawFacts` — 키 `lawId@efYd + revision`(프로필 무관).
   - `ImpactResult` 답변 캐시 — 키 `hash(정규화 질문)+law_ref+profileHash+prompt_version+revision`(완전 동일 질의, D51). Layer B 개인화 답은 지금 저장하지 않는다(D69).
 
@@ -100,11 +100,8 @@ related: ["components/component-specs.md", "components/normalize/Normalizer.md",
 - **DB 쓰기**(law_versions upsert). 읽기 조회. 외부 API 없음(임베딩 생성은 Embedder, 벡터 저장은 ChunkStore).
 
 ## Design Constraints
-- **ADR-001 불변** — 시행예정 899건, 벡터 부피 주축은 diff 기준선 본문(~0.4GB). dim **1536**(D32).
+- **ADR-001 불변** — 시행예정 877 버전(운영 백필 2026-11-15), 벡터 부피 주축은 diff 기준선 본문(~0.4GB). dim **1536**(D32).
 - pgvector `CREATE EXTENSION vector`(D34). 스키마 소유권: 관계형=Flyway, 벡터=PgVectorStore.
 
-## 구현 순서 (near-term → later)
-1. **완료:** `law_versions` upsert + `find`/`findBaseline` + Flyway 스키마 → 적재 파이프라인(Normalizer→DiffBuilder→Store).
-2. 벡터 chunks는 [[ChunkStore]]로 분리 — [[Embedder]]·[[RAGIndexer]]와 함께.
-3. **완료:** Layer A 저장본 `law_summaries`(D67·D80) · 조회 집계(D66) · 개인화 한도(D69) · 익명 상한(D81) — 위 §저장 테이블 지도.
-4. `LawFacts`·답변 캐시 — 병목을 지표로 증명한 뒤(D48·D51).
+## 남은 것
+- `LawFacts`·답변 캐시 — 병목을 지표로 증명한 뒤(D48·D51).

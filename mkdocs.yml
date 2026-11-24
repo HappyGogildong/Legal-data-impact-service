@@ -51,6 +51,7 @@ nav:
   - 🚀 시작하기(온보딩): onboarding.md
   - 홈(색인): ARCHITECTURE.md
   - 🏆 핵심 성과와 사례: achievements.md
+  - 📋 현황·기술 스펙: status.md
   - 제품 (Product):
       - 기능 스펙: product/feature-spec.md
       - 화면 계획 (웹): product/screen-plan.md
@@ -74,18 +75,29 @@ nav:
   - 프롬프트:
       - 분석 프롬프트 정의서: prompts/analysis-prompt-spec.md
   - MVP:
-      - 컴포넌트·범위: mvp/components-io-and-scope.md
+      - 컴포넌트·범위 (대체됨): mvp/components-io-and-scope.md
       - 서비스 기능·공개 API: mvp/service-api-spec.md
+      - RAG 파이프라인 구조: mvp/rag-pipeline-structure.md
+      - 국가법령정보 응답 해부: mvp/law-api-response-anatomy.md
   - 백엔드:
       - 배포 (컨테이너·compose·CI): backend/deployment.md
       - 클라우드 인프라 (AWS·저비용): backend/cloud-infra.md
       - 운영 명령 매뉴얼: backend/ops-manual.md
       - 관측성·성능 측정: backend/observability.md
       - 동시성·신뢰성: backend/concurrency-and-reliability.md
+      - 비용 정책: backend/cost-policy.md
+  - 평가:
+      - RAG 평가·회귀 프레임워크: eval/rag-evaluation-framework.md
   - 트러블슈팅:
       - 개요: troubleshooting/README.md
       - 001 · law API display=1: troubleshooting/001-lawapi-display1-single-object.md
       - 002 · 위임 정규식 한글: troubleshooting/002-delegation-regex-korean-morphology.md
+      - 003 · Boot 4 트레이싱 자동 구성 이동: troubleshooting/003-boot4-tracing-autoconfig-moved.md
+      - 004 · 제정 법령 기준선 없음: troubleshooting/004-jejeong-law-no-baseline-english-envelope.md
+      - 005 · 조문 본문 번호 중복: troubleshooting/005-article-text-number-duplication.md
+      - 006 · 현행본이 공포일 기준: troubleshooting/006-current-law-by-promulgation-date.md
+      - 007 · 시행예정 목록 nw 필요: troubleshooting/007-eflaw-list-needs-nw.md
+      - 008 · 같은 날 공포본: troubleshooting/008-same-day-promulgations.md
   - 컴포넌트 스펙:
       - 상세 스펙·계약·정합성: components/component-specs.md
       - domain/law:
@@ -112,6 +124,8 @@ nav:
           - ChunkStore: components/store/ChunkStore.md
       - plan:
           - Query Planner: components/plan/QueryPlanner.md
+      - discover:
+          - Law Discovery (법령 발견): components/discover/LawDiscovery.md
       - resolve:
           - SourceAnalyzer: components/resolve/SourceAnalyzer.md
       - dispatch:
@@ -122,12 +136,18 @@ nav:
           - AnalyzeUseCase: components/application/AnalyzeUseCase.md
           - ProfileUseCase (프로필·동의): components/application/ProfileUseCase.md
           - AccountUseCase (계정·알림 이메일): components/application/AccountUseCase.md
+          - ActionRevisionUseCase (대응 방안 상황 확인): components/application/ActionRevisionUseCase.md
       - auth:
           - Auth (OAuth2·세션): components/auth/Auth.md
           - SecurityConfig (인가·CSRF): components/auth/SecurityConfig.md
           - OAuth2 Login Success Handler: components/auth/OAuth2LoginSuccessHandler.md
       - profile:
           - UserProfile (도메인·Store): components/profile/UserProfile.md
+      - eval:
+          - OfflineEvaluator: components/eval/OfflineEvaluator.md
+      - observability:
+          - LlmCallRecorder (호출 기록): components/observability/LlmCallRecorder.md
+          - QueryEventRecorder (질의 이벤트): components/observability/QueryEventRecorder.md
       - web:
           - Analysis API: components/web/AnalysisApi.md
           - Data Status API (데이터 현황): components/web/DataStatusApi.md
@@ -142,7 +162,11 @@ nav:
           - Account API: components/web/AccountApi.md
   - 참조 (Reference):
       - Law 도메인 이해 (초심자용): reference/law-domain-understanding.md
+      - 법령 도메인 기초: reference/law-domain-basics.md
       - 법령 속성 카탈로그: reference/law-attributes.md
       - Triage 정책: reference/triage-policy.md
-      - 임베딩 벤치마크 계획: reference/embedding-benchmark.md
+      - 임베딩 벤치마크 계획 (대체됨): reference/embedding-benchmark.md
       - Spring 4.0·Spring AI 2.0 변경점: reference/spring-migration.md
+      - 의안 속성 카탈로그 (대체됨): reference/bill-attributes.md
+  - 리뷰:
+      - 수집 설계 리뷰: reviews/ingestion-design-review.md

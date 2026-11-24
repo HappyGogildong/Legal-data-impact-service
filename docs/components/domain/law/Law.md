@@ -16,7 +16,7 @@ related: ["components/component-specs.md", "components/domain/law/Article.md", "
 
 ## Collaborators
 - 보유: [[Article]]·[[Addendum]](값 리스트).
-- 생성: [[Normalizer]]가 `RawLaw`→`Law`. 소비: [[DiffBuilder]]·[[ContextBuilder]]·[[RAGIndexer]]·[[LawStore]].
+- 생성: [[Normalizer]]가 `RawLaw`→`Law`. 소비: [[DiffBuilder]]·`ContextBuilder`([[AnalysisEngine]])·[[RAGIndexer]]·[[LawStore]].
 
 ## Contract
 - `changedArticles()` — `changed=true` **실조문**만(=이번 개정 대상, 비용 레버 137→6). 장·절 제목 행은 `changed`가 켜져도 제외(장 첫 조문과 번호가 같아 인용키가 겹침). **`changeType`(신설/삭제)이 아니라 `changed` 플래그 기준** — 판정은 DiffBuilder 몫.

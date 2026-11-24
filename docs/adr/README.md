@@ -13,5 +13,5 @@
 
 | ADR | 제목 | 상태 | 날짜 |
 |---|---|---|---|
-| [ADR-001](ADR-001-knowledge-store-sizing.md) | 지식 저장소 구성 — 분리형 vs 통합형(Postgres+pgvector) | Proposed | 2026-06-22 |
+| [ADR-001](ADR-001-knowledge-store-sizing.md) | 지식 저장소 구성 — 분리형 vs 통합형(Postgres+pgvector) | Accepted | 2026-06-22 |
 | [decision-log](decision-log.md) | 결정 로그 (전체 결정 요약 인덱스) | Living | 2026-06-25 |

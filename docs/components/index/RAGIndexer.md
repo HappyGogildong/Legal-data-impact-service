@@ -10,7 +10,7 @@ related: ["components/component-specs.md", "components/embed/Embedder.md", "comp
 
 > **시행예정 코퍼스**를 임베딩해 벡터 인덱스([[ChunkStore]])에 적재. 검색 *전에* 오프라인으로. 관련: [[component-specs]] §4 #4 · [[decision-log|D30·D55]].
 >
-> **이번 증분 (2026-08-27 확정):** 색인 대상 = **변경 조문 + `amendReason`(제개정이유) 요약**. 요약의 최종 소스는 D55의 LawFacts지만 미구현이라, 지금 있는 `amendReason`으로 법령단위 요약 벡터를 만든다(LawFacts 랜딩 시 소스만 교체). 과대 조문 분할 = **문자수 휴리스틱**(토크나이저 의존 없음). 저장은 **전용 [[ChunkStore]]**(PgVectorStore 래핑, **정본 단위 replace**로 재색인 = 현재 상태).
+> **색인 대상 (2026-08-27 확정):** **변경 조문 + `amendReason`(제개정이유) 요약**. D55 는 요약 소스로 LawFacts 를 잡았지만 LawFacts 가 없어 `amendReason` 으로 법령 단위 요약 벡터를 만든다. 과대 조문 분할 = **문자수 휴리스틱**(토크나이저 의존 없음). 저장은 **전용 [[ChunkStore]]**(PgVectorStore 래핑, **정본 단위 replace**로 재색인 = 현재 상태).
 >
 > **임베딩 주체 (2026-08-27 정정):** RAGIndexer는 **임베딩을 직접 하지 않는다.** Spring AI `PgVectorStore.add(Document)`가 `content`를 **내부에서** 설정된 `EmbeddingModel`로 임베딩한다. RAGIndexer는 **Document(content+metadata+source_id)만 조립**해 [[ChunkStore]]에 넘긴다. "적재·검색 동일 모델"은 PgVectorStore의 add/search가 같은 EmbeddingModel을 쓰므로 자동 보장된다. ([[Embedder]] 포트는 이 경로 밖 — 설정 핀·eval 유틸.)
 

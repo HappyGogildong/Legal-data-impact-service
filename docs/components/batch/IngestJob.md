@@ -43,7 +43,7 @@ related: ["components/ingest/IngestService.md", "components/index/RAGIndexer.md"
 | `MinIntervalLimiter` | 외부 API별 최소 호출 간격(국가법령정보·임베딩 각각) |
 | `IngestRunStore` | `ingest_runs`: 실행 기록 · 중단된 실행 정리 |
 
-`IngestService.ingestPending()`은 이 잡이 대체하므로 **제거**한다(실행 경로 하나).
+적재 실행 경로는 이 잡 하나다 — `IngestService` 는 SYNC 처리기가 부르는 단계 조립만 맡는다.
 
 ## 실행 모델 · 명령 · 종료 코드
 - `--spring.profiles.active=batch`(웹 서버 비활성: `spring.main.web-application-type=none`). 같은 컨테이너 이미지.

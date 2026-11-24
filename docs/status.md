@@ -1,7 +1,7 @@
 ---
 title: 프로젝트 현황 · 기술 스펙 · 구현 체크리스트
 status: Living
-date: 2026-11-21
+date: 2026-11-24
 tags: [status, spec, roadmap]
 related: ["ARCHITECTURE.md", "backend/observability.md", "adr/decision-log.md"]
 ---
@@ -17,8 +17,8 @@ related: ["ARCHITECTURE.md", "backend/observability.md", "adr/decision-log.md"]
 > 실측 성과 수치(p99·QPS 등)는 부하 테스트 단계에서 채운다 — 이 프로젝트는 **측정하지 않은 수치를 쓰지 않는다**([D48](backend/observability.md)). 아래는 현재까지의 기술적 하이라이트다.
 
 - ⚡ **비용 인지 설계** — 자연어 질의를 타입 DTO로 번역하는 [Query Planner](components/plan/QueryPlanner.md)로 선계산(Layer A)/요청별 LLM(Layer B)을 분기. 요약·변경점은 배치가 미리 만들어 온라인 Opus 호출 0(D80, 분류 Haiku 는 요청마다 1회). `조문변경여부` 플래그로 분석 대상을 **137 → 6 조문(약 20분의 1)** 으로 축소(주택법 실측).
-- 🔄 **법령 수집 파이프라인** — 국가법령정보 *시행 대기 법령*을 배치 수집·정규화·조문 diff 선계산(**실측 899건**). 오프라인(적재)·온라인(질의) 실행 모드 분리.
-- 📊 **측정 선행 Observability** — Prometheus·Loki·Grafana·Tempo + k6. single-flight 등 동시성 기법은 **지표로 병목을 증명한 뒤** 적용(speculative 최적화 배제).
+- 🔄 **법령 수집 파이프라인** — 국가법령정보 *시행 대기 법령*을 배치 수집·정규화·조문 diff 선계산(운영 백필 시행예정 **877 버전**, 2026-11-15). 오프라인(적재)·온라인(질의) 실행 모드 분리.
+- 📊 **측정 선행 Observability** — Prometheus·Grafana·Tempo(로그 Loki·부하 k6 는 증분 2 계획). single-flight 등 동시성 기법은 **지표로 병목을 증명한 뒤** 적용(speculative 최적화 배제).
 
 ### 부하 테스트 후 채울 수치 슬롯 (측정 전에는 비워 둔다)
 
@@ -39,11 +39,11 @@ related: ["ARCHITECTURE.md", "backend/observability.md", "adr/decision-log.md"]
 | Spring Boot | 4.0.0 | GA 2025-11 |
 | Spring AI | 2.0.0 | GA 2026-05. **Boot 4 전용** — 3.x와 혼용 불가 |
 | Gradle | 9.5.1 (wrapper) | 툴체인 자동 프로비저닝(foojay) 포함 |
-| TypeScript | 5.5+ / Node 20+ | 웹 프론트엔드 |
+| 웹 | Next.js 16.4 · React 19.3 · TypeScript 5 · Node 24(CI) | Vercel 배포 |
 | DB | PostgreSQL 16 + pgvector | `pgvector/pgvector:pg16` |
 | 추론 모델 | Claude Opus 5.5 | `claude-opus-5-5`, adaptive thinking·effort `medium`, 출력 상한 16K(D68) |
 | 분류·번역 모델 | Claude Haiku 4.5 | `claude-haiku-4-5-20251001`, 질의 번역(티어링) |
-| 임베딩 | 외부 API, dim 1536 | OpenAI vs Upstage 벤치 후 확정 |
+| 임베딩 | OpenAI `text-embedding-3-small`, dim 1536 | 비용 근거로 확정(D58) |
 | Python | 3.12+ | 진단 스크립트 전용(운영 경로 아님) |
 
 ### JDK를 21로 고정한 이유
@@ -72,45 +72,45 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 | `domain/law` — `Law`·`Article`·`Addendum` | ✅ |
 | `DiffBuilder` — 변경 조문 ↔ 기준선 대조(신설·삭제 확정, `diffVsCurrent`) | ✅ |
 | 관측 환경(증분1) — Actuator·Micrometer→Prometheus·Tracing→Tempo·pg-exporter + 파이프라인 계측 | ✅ |
-| RAG 평가·회귀 프레임워크(D83) — 1단계: 서비스 경로(`QueryPlanner`→`LawDiscovery`)를 지나는 오프라인 평가 하네스·지표·회귀 게이트, `eval` 프로파일 실행 | 🟡 1단계 ✅(단위·가짜 데이터). 3단계: 정답 세트 초안 39문항·운영 래퍼(`lia eval`) ✅, 정답 세트 검토 ✅(2026-11-20, 운영 데이터 대조), 운영 기준선 ✅(2026-11-21, 이미지 1271e4f — 주제 검색 상위 3 92.9%, 법령 이름 해소 57.1%, 관련 없는 질문 후보 100%; `docs/eval/reports/`). 2단계 ✅: 호출 기록(`llm_calls`)·대시보드 `LIA · Token & Cost`, 질의 이벤트(`query_events`)·대시보드 `LIA · Requests`. 4·5단계는 남음 |
+| RAG 평가·회귀 프레임워크(D83) — 1단계: 서비스 경로(`QueryPlanner`→`LawDiscovery`)를 지나는 오프라인 평가 하네스·지표·회귀 게이트, `eval` 프로파일 실행 | 🟡 1단계 ✅(단위·가짜 데이터). 3단계: 정답 세트 초안 39문항·운영 래퍼(`lia eval`) ✅, 정답 세트 검토 ✅(2026-11-20, 운영 데이터 대조), 운영 기준선 ✅(2026-11-21, 이미지 1271e4f — 주제 검색 상위 3 92.9%, 법령 이름 해소 57.1%, 관련 없는 질문 후보 100%; `docs/eval/reports/`). 이후 해소 개선(D87~D89)으로 법령 이름 해소 92.9%(13/14, ed9aa6f), 문항별 결과가 실린 보고서(1dbc40b, 2026-11-22). 2단계 ✅: 호출 기록(`llm_calls`)·대시보드 `LIA · Token & Cost`, 질의 이벤트(`query_events`)·대시보드 `LIA · Requests`. 4·5단계는 남음 |
 | 컴포넌트 클래스 스펙 규약 + 핵심 4종(DiffBuilder·Normalizer·SourceAnalyzer·LawConnector) | ✅ |
 | Law Store — **near-term 구현**(`law_versions` upsert·find·findBaseline, Flyway V1, JdbcClient+JSONB) | ✅ 실 Postgres 통합테스트 통과(Testcontainers 3/3) |
 | `IngestService` — **적재 파이프라인 조립**(Normalizer→DiffBuilder→LawStore, `store`) | ✅ 실 Postgres 조립 통합테스트 통과(기준선·제정 2/2) |
-| Embedder — **포트 + OpenAI 구현체**(Spring AI 위임·정규화·dim 가드·mode 흡수, D32) | ✅ 단위 7 통과(Fake 4·OpenAi 3)·라이브 스모크 옵트인. 벤더 최종확정은 D33 벤치 |
+| Embedder — **포트 + OpenAI 구현체**(Spring AI 위임·정규화·dim 가드·mode 흡수, D32) | ✅ 단위 7 통과(Fake 4·OpenAi 3)·라이브 스모크 옵트인. 벤더는 OpenAI 확정(D58) |
 | RAG Indexer — **구현**(변경조문 청킹·`amendReason` 요약·문자수 오버랩 분할·source_id, D55) | ✅ 단위 2(Fake ChunkStore) |
 | ChunkStore — **구현**(포트 + `PgVectorChunkStore`, PgVectorStore 래핑·**정본 단위 replace**(재색인=현재 상태)·내부 임베딩) | ✅ 실 pgvector 통합 3(라운드트립·stale제거·스코프격리) |
 | IngestService 색인 배선 — `store`는 임베딩 프리, 색인은 배치 잡의 `INDEX` 작업이 호출(`IngestJob`, D62) | ✅ 배선·카나리아 |
-| RAG 검색 경로 — `ChunkStoreRetriever`(실물 Retriever) + `SourceAnalyzer.semanticSearch` 배선(ChunkStore) + chunk 메타 title | ✅ 단위 2·실 왕복 스모크 옵트인 |
+| RAG 검색 경로 — 법령 발견 `LawDiscovery`(ChunkStore 유사도 검색) + 이름 해소 의미검색 폴백 `ChunkStoreLawSearch` + chunk 메타 title | ✅ 단위·Testcontainers. 이름 해소 폴백은 재설계 이슈 #104 |
 | RAG 성능 평가(자기검색 기준선) — `SelfRetrievalGold` + `RagEvalLiveTest`. 벤더 OpenAI 임시확정 | ❌ D83 으로 제거 — 서비스 경로를 재지 않고 문제가 쉬워 품질 근거로 쓰지 않는다 |
-| Query Planner — **계획까지**(`QueryTranslator` 포트+Haiku·`QueryPlanner`: NL→PlanResult, 해소·프로필 게이팅·비법령 거부, D46) | ✅ 단위 4(Fake 번역기)·라이브 스모크 옵트인. Dispatcher/핸들러 실행은 후속 |
+| Query Planner — **계획까지**(`QueryTranslator` 포트+Haiku·`QueryPlanner`: NL→PlanResult, 해소·프로필 게이팅·비법령 거부, D46) | ✅ 단위 4(Fake 번역기)·라이브 스모크 옵트인 |
 | Analysis Engine — **Layer A**(SUMMARY·DIFF): `ContextBuilder`(정본→source_id 블록)·`Reasoner` 포트+`SpringAiReasoner`(Opus)·`AnalysisEngine`(조립→추론→인용검증→재생성≤N→폴백) | ✅ 단위 10(ContextBuilder 6·Engine 4, FakeReasoner)·라이브 스모크 옵트인 |
-| QueryDispatcher + 차원핸들러 — **Layer A 슬라이스**(D47): `DimensionHandler` 포트+레지스트리·`QueryDispatcher`(Reference 정본 1회조회→차원 라우팅→부분성공 `unmet`)·`Summary`/`Diff` 핸들러(AnalysisEngine 위임)·`LawSource` 포트 | ✅ 단위 11(Dispatcher 7·Handler 2·Registry 2). ImpactHandler·ActionHandler·LookupHandler·캐시·독립 검증게이트는 의존 착지 후 |
-| Analysis API — **최소 수직 슬라이스**(#13): `application/AnalyzeUseCase`(plan→dispatch 유스케이스·4상태/부분성공·애노테이션 없는 @Bean)·`web`(컨트롤러 HTTP만·`AnalysisResponseMapper` 표현 매핑·`POST /api/v1/analyses`·400). 계층 web→application→pipeline. Reference·Layer A만(profilePresent=false) | ✅ 단위 8(UseCase in-JVM 관통 3[explicitRef 포함]·Controller 3·Mapper 2). 웹 UI·Discovery·Layer B는 후속 |
-| 배포 — **컨테이너화 + compose 자립 실행**(D59): `core/Dockerfile`(멀티스테이지)·compose 정합(db healthcheck·depends_on·in-network env·mcp 제외)·GitHub Actions CI(단위+Testcontainers)·`db/init.sql` 정리·배포 문서 | ✅ 산출물. 실 `docker build`·`compose up` 검증은 수동(Docker) |
-| 인증 — **슬라이스 ①**(D60): 소셜 OAuth2+세션-쿠키·`SecurityConfig`(API 401·`/error`·`csrf.spa()`·로그아웃 204)·`AccountStore`(경합 안전 findOrCreate)·`OAuth2LoginSuccessHandler`(fail-closed·프론트 리다이렉트) | ✅ PR #30. 실제 소셜 로그인 왕복은 provider 콘솔 등록 후 수동 확인 |
-| UserProfile — **슬라이스 ②**(D61): 프로필 도메인(enum 6종·age 14~120)·`UserProfileStore`(동의가 행을 만듦)·동의 모델(`/consents` 분리·현재 버전 동의 없으면 409·버전 기반 재동의)·알림 이메일은 동의 시에만 저장·계정 삭제 | ✅ 단위·통합·웹 슬라이스. ③ Layer B(프로필→프롬프트)는 후속. 실제 개인정보처리방침 문서는 법무 산출물로 별도 |
-| 적재·RAG 색인 배치(D62, #40): 1회성 잡 프로파일(`run`·`run --full`·`run --dry-run`·`sync`·`index`·`reindex-all`·`requeue-dead`, 색인 끄기 설정, compose `ingest` 서비스) + DB 작업 큐(`SYNC`·`INDEX`·`TRANSITION`·`PURGE`, `SKIP LOCKED`·법령 단위 직렬화·API별 호출 간격·실행 토큰 소유권)·2단 증분(MST·본문+기준선 revision, 상태 포함)·`과거`/`철회` 상태 보존(다른 날 두 번 미확인)·실행당 1회+3회 격리·시도 이력 `ingest_task_attempts`·`ingest_runs` 관측(열린 실행 정리)·SYNC 저장+등록 한 트랜잭션·색인 교체 한 트랜잭션 | ✅ 단위·통합(큐·탐색·핸들러·잡 전체·잠금). 실제 API 백필·정기 실행(cron) 등록은 운영 단계 |
-| 클라우드 인프라(D63): 개인 AWS 계정 단일 EC2(t4g.medium·compose: Caddy·core·ingest·관측) + RDS PostgreSQL 16 pgvector · SSM 접속·Parameter Store · GHCR 이미지 · main 머지 시 자동 배포(D86, OIDC → SSM 문서 `LIA-Deploy`) · 호스트 cron · Grafana 배치 대시보드·경보 3개(Discord) — [[cloud-infra]] | 🟡 저장소 산출물 ✅ · **AWS 구축·운영 투입 ✅(2026-11-16, #44)** — EC2·RDS·Vercel 웹 경유 API·구글 로그인 왕복·Grafana 대시보드 4개·Discord 경보 확인, 백필(시행예정 877 버전·DEAD 0·임베딩 4,425,906 토큰)·cron 설치. 런북은 실제 구축 순서로 보정(20단계). **자동 배포 ✅(2026-11-18, #92·#93)** — 첫 실행에서 secret 미전달·헬스 판정 2건을 고쳐 `CI core` → 배포 `DEPLOYED`·헬스 UP 확인(런북 21단계). 다음: `llm_prices` 단가 · 평가 기준선(`lia eval`, 유료) |
-| 웹 1단계 백엔드 전제(#14): 분석 응답 typed DTO(`AnalysisApiResponse` — 법령 헤더·다른 시행일·근거 원문 `sources`(현행 원문 포함), camelCase) · 미충족 사유 코드(`Unmet`) · 데이터 현황 API `GET /api/v1/data-status` · springdoc OpenAPI + `api/openapi.json` 스냅샷 · OAuth 리다이렉트 `OAUTH2_REDIRECT_BASE_URL`·로그인 착지 `/login/done` | ✅ 단위·통합·스냅샷. 웹 화면은 계획 2·3 |
+| QueryDispatcher + 차원핸들러 — **Layer A 슬라이스**(D47): `DimensionHandler` 포트+레지스트리·`QueryDispatcher`(Reference 정본 1회조회→차원 라우팅→부분성공 `unmet`)·`Summary`/`Diff` 핸들러(AnalysisEngine 위임)·`LawSource` 포트 | ✅ 단위 11(Dispatcher 7·Handler 2·Registry 2). 개인화 차원은 `PersonalizedHandler`(D69), 발견은 `LawDiscovery`(D70) |
+| Analysis API — **최소 수직 슬라이스**(#13): `feature.analysis.AnalyzeUseCase`(plan→dispatch 유스케이스·4상태/부분성공·애노테이션 없는 @Bean)·`feature.analysis.web`(컨트롤러 HTTP만·`AnalysisResponseMapper` 표현 매핑·`POST /api/v1/analyses`·400). 의존 web → 유스케이스 → pipeline(D90) | ✅ 단위 8(UseCase in-JVM 관통 3[explicitRef 포함]·Controller 3·Mapper 2) |
+| 배포 — **컨테이너화 + compose 자립 실행**(D59): `core/Dockerfile`(멀티스테이지)·compose 정합(db healthcheck·depends_on·in-network env·mcp 제외)·GitHub Actions CI(단위+Testcontainers)·`db/init.sql` 정리·배포 문서 | ✅ CI `docker-build` 가 arm64·amd64 이미지를 만들고 운영 compose 로 배포 중(D78·D86) |
+| 인증 — **슬라이스 ①**(D60): 소셜 OAuth2+세션-쿠키·`SecurityConfig`(API 401·`/error`·`csrf.spa()`·로그아웃 204)·`AccountStore`(경합 안전 findOrCreate)·`OAuth2LoginSuccessHandler`(fail-closed·프론트 리다이렉트) | ✅ PR #30. 구글 로그인 왕복은 운영에서 확인, 카카오·네이버는 #36 |
+| UserProfile — **슬라이스 ②**(D61): 프로필 도메인(enum 6종·age 14~120)·`UserProfileStore`(동의가 행을 만듦)·동의 모델(`/consents` 분리·현재 버전 동의 없으면 409·버전 기반 재동의)·알림 이메일은 동의 시에만 저장·계정 삭제 | ✅ 단위·통합·웹 슬라이스. 실제 개인정보처리방침 문서는 법무 산출물로 별도(#35) |
+| 적재·RAG 색인 배치(D62, #40): 1회성 잡 프로파일(`run`·`run --full`·`run --dry-run`·`sync`·`index`·`reindex-all`·`requeue-dead`, 색인 끄기 설정, compose `ingest` 서비스) + DB 작업 큐(`SYNC`·`INDEX`·`TRANSITION`·`PURGE`, `SKIP LOCKED`·법령 단위 직렬화·API별 호출 간격·실행 토큰 소유권)·2단 증분(MST·본문+기준선 revision, 상태 포함)·`과거`/`철회` 상태 보존(다른 날 두 번 미확인)·실행당 1회+3회 격리·시도 이력 `ingest_task_attempts`·`ingest_runs` 관측(열린 실행 정리)·SYNC 저장+등록 한 트랜잭션·색인 교체 한 트랜잭션 | ✅ 단위·통합(큐·탐색·핸들러·잡 전체·잠금). 운영 백필(2026-11-15)·cron(2026-11-16) ✅ |
+| 클라우드 인프라(D63): 개인 AWS 계정 단일 EC2(t4g.medium·compose: Caddy·core·ingest·관측) + RDS PostgreSQL 16 pgvector · SSM 접속·Parameter Store · GHCR 이미지 · main 머지 시 자동 배포(D86, OIDC → SSM 문서 `LIA-Deploy`) · 호스트 cron · Grafana 배치 대시보드·경보 3개(Discord) — [[cloud-infra]] | 🟡 저장소 산출물 ✅ · **AWS 구축·운영 투입 ✅(2026-11-16, #44)** — EC2·RDS·Vercel 웹 경유 API·구글 로그인 왕복·Grafana 대시보드 4개·Discord 경보 확인, 백필(시행예정 877 버전·DEAD 0·임베딩 4,425,906 토큰)·cron 설치. 런북은 실제 구축 순서로 보정(20단계). **자동 배포 ✅(2026-11-18, #92·#93)** — 첫 실행에서 secret 미전달·헬스 판정 2건을 고쳐 `CI core` → 배포 `DEPLOYED`·헬스 UP 확인(런북 21단계). 평가 기준선 ✅(2026-11-21). 다음: `llm_prices` 단가 |
+| 웹 1단계 백엔드 전제(#14): 분석 응답 typed DTO(`AnalysisApiResponse` — 법령 헤더·다른 시행일·근거 원문 `sources`(현행 원문 포함), camelCase) · 미충족 사유 코드(`Unmet`) · 데이터 현황 API `GET /api/v1/data-status` · springdoc OpenAPI + `api/openapi.json` 스냅샷 · OAuth 리다이렉트 `OAUTH2_REDIRECT_BASE_URL`·로그인 착지 `/login/done` | ✅ 단위·통합·스냅샷 |
 | 웹 1단계 — 웹 기반·익명 흐름(#14): `web/` Next.js 16(Vercel 대상)·시각 방향 A 토큰·shadcn · S01 홈 질문창 · S02 결과(접이식 카드·조문 대비·근거 패널/시트·후속 질문) · S03 해소 안내 · S15 데이터 현황 · S16 오류 · CI `web`(타입 동기·린트·단위·E2E) | ✅ 단위·E2E(모의 API). 로그인 흐름은 계획 3 |
-| 웹 1단계 — 로그인 흐름(#14): S07 로그인·착지(`/login/done`)·S08 동의(재동의·만 14세 미만)·S09 프로필(409 재동의 대화상자)·S10 내 정보(이메일 알림 동의·계정 삭제) · 결과 "내 영향" → 로그인·프로필 → 복귀 · 프로필 선택지 동기 테스트 | ✅ 단위·E2E(모의 API). 실제 소셜 로그인은 미점검(provider 콘솔 로컬 콜백 등록 후 사용자 점검) |
+| 웹 1단계 — 로그인 흐름(#14): S07 로그인·착지(`/login/done`)·S08 동의(재동의·만 14세 미만)·S09 프로필(409 재동의 대화상자)·S10 내 정보(이메일 알림 동의·계정 삭제) · 결과 "내 영향" → 로그인·프로필 → 복귀 · 프로필 선택지 동기 테스트 | ✅ 단위·E2E(모의 API). 구글 로그인은 운영에서 확인, 카카오·네이버는 #36 |
 | 법령 조회(#39, 하위 프로젝트 1/7): `GET /api/v1/laws`(곧 시행 목록 — 오늘(서울) 이후·키셋 커서)·`/laws/{lawId}`(시행예정본·기준선)·`/laws/{lawId}/{efYd}`(결정론 상세 — 개정 이유·시행 규칙·바뀐 조문 현행 대비·부칙·위임 조항, D65) · 웹 홈 곧 시행 5개·S06 목록(기간 필터·더 보기)·S05 상세(조문 고유 주소·쉬운 요약 보기 → S02)·S02 → S05 링크 · 서버 렌더링 조회(`"use cache"`) · E2E 모의 API 서버 | ✅ 단위·통합·웹 슬라이스·E2E(모의 API)·로컬 실데이터 점검. 점검에서 찾은 적재 정규화 버그 수정 — 소관부처에 부처 코드가 섞임(V7 1회 정리), 조문가지번호 누락(제105조의2가 제105조와 겹침), 조문 이동 자리표시 `000000`을 이동으로 오인, 조문 이동 값 6자리(`000703`)가 조문번호와 안 맞음, 장·절 제목 행이 조문번호를 공유해 조문 조회·바뀐 조문에 섞임. 자주 찾는 법령·분야 필터는 다음 하위 프로젝트 |
 | 자주 찾는 법령(하위 프로젝트 2/7, D66): 조회 1회 = S05 상세 방문(브라우저 조회 신호·탭당 1회) + 분석 해소 · `law_views_daily`(V8, 서울 날짜별 횟수만) · `GET /api/v1/laws/trending`(day·week·month, `previousRank`) · `POST …/views`(CSRF 예외) · 웹 홈 이번 주 5개·S06 탭 곧 시행·자주 찾는 | ✅ 단위·통합·웹 슬라이스·E2E(모의 API). 요청 빈도 제한·분야 필터는 후속 |
-| 쉬운 요약 선계산(D67, #38 일부): 배치 작업 `SUMMARIZE`(SYNC 가 바뀐 시행예정본에 등록, `summarize` 명령은 시행예정본 전체를 등록하고 유효한 요약은 건너뜀, 분석과 같은 엔진·인용 검증, 실패면 저장 안 함) · `law_summaries`(V9, revision·프롬프트 버전으로 유효성, 읽을 수 없는 행은 낡음) · 유료 보호(`run`은 `lia.batch.summary.enabled` 켜짐일 때만, 다른 수동 명령은 처리 안 함) · 분석 SUMMARY 가 저장본으로 답 · 상세 API `summary` · S05 쉬운 요약 기본·인용 칩 → 조문·개정 이유 원문 접힘 | ✅ 단위·통합·E2E(가짜 추론기·모의 API). 실제 일괄 생성(유료 Opus)은 사용자 승인 후. DIFF·LawFacts 선계산은 후속 |
+| 쉬운 요약 선계산(D67, #38 일부): 배치 작업 `SUMMARIZE`(SYNC 가 바뀐 시행예정본에 등록, `summarize` 명령은 시행예정본 전체를 등록하고 유효한 요약은 건너뜀, 분석과 같은 엔진·인용 검증, 실패면 저장 안 함) · `law_summaries`(V9, revision·프롬프트 버전으로 유효성, 읽을 수 없는 행은 낡음) · 유료 보호(`run`은 `lia.batch.summary.enabled` 켜짐일 때만, 다른 수동 명령은 처리 안 함) · 분석 SUMMARY 가 저장본으로 답 · 상세 API `summary` · S05 쉬운 요약 기본·인용 칩 → 조문·개정 이유 원문 접힘 | ✅ 단위·통합·E2E(가짜 추론기·모의 API). 운영 일괄 생성(유료 Opus)은 꺼 둠 — 켜기는 승인 후. 변경점 선계산은 아래 D80 행 |
 | Layer A 온라인 Opus 제거(D80)·익명 상한(D81) | ✅ 요약·변경점은 배치(`summarize`)가 차원별로 저장(V14, 변경점은 기준선 revision 까지 유효), 온라인은 저장본만 읽고 없으면 `NOT_PRECOMPUTED`. 익명 분석은 서비스 전체 하루 상한(V15, 기본 1,000 잠정), 넘으면 429 |
 | 특정 조문 변경점(D82) | ✅ "제18조 뭐가 바뀌었어?"는 저장 변경점을 그 조문으로 좁혀 답한다. 안 바뀐 조문·없는 조문은 저장본 없이 `ARTICLE_NOT_CHANGED`·`ARTICLE_NOT_FOUND`. |
 | Layer B — 내 영향·대응 방안 (D69) | ✅ 질문·버튼 요청 시 Opus 1회(근거 부족 시 재생성 ≤2회, 한도는 요청당 1), 하루 한도 20(`lia.personalization.daily-limit`, 서울 날짜), 미충족 사유 3종(`CONSENT_OUTDATED`·`DAILY_LIMIT`·`INSUFFICIENT_GROUNDING`). 라이브 스모크(`layerB_실생성이_…`)는 옵트인(`LIA_ANALYZE_LIVE`, 유료) — 실행은 사용자 승인 후 |
 | 법령 발견(#19, D70): 법령명 없는 질문 → pending 색인 유사도 검색·법령 단위 묶기·시행예정 확인 → S04 후보(쉬운 요약 첫 문장·근거 칩), 프로필 기준 토글, 후보 선택 시 기존 분석(같은 질문 + lawRef 재요청은 LOOKUP 을 빼고 요약으로) · 라이브 스모크(옵트인 `LIA_DISCOVERY_LIVE`, 유료 임베딩) | ✅ 단위(`LawDiscoveryTest`·플래너·디스패처·유스케이스)·API 슬라이스·웹 단위·E2E(모의 API). 유사도 하한 제외는 Testcontainers(`PgVectorChunkStoreIntegrationTest`). 하한 값은 클라우드 전체 색인 뒤 조정 |
 | 대응 방안 상황 확인(⑤, D71): Layer B 가 상황 질문(최대 3, 근거 조문) 함께 생성 → 세션(메모리) 보관 → 답하면 대응 방안만 재생성(한도 1회), "내 상황 반영" 강조 · 비용 정책 문서 신설 | ✅ 단위·API 슬라이스·웹·E2E, 라이브 스모크(옵트인 `LIA_SITUATION_LIVE`, 유료). 자유 입력 사실 추출은 다음 단계 |
-| 웹 프론트엔드 (#14) — 화면 계획 [[screen-plan]](S01~S16: 질문 중심 + 법령 상세 허브, 모바일 우선, 법령 맥락 후속 질문, 대응 방안 상황 확인, 4단계 구현) · 기술 스택 [[frontend-stack]](D64: Next.js on Vercel + rewrites, Tailwind·shadcn/ui, OpenAPI 타입 생성) · 시각 디자인 [[visual-design]](방향 A 신뢰·공공형, 화면 시안 S01~S16) | 🟡 화면 계획·스택·시안 확정. 1단계(익명·로그인 흐름) 구현됨. 2단계는 하위 프로젝트로 — ①법령 조회 ✅ → ②자주 찾는 법령 ✅ → ②′쉬운 요약 선계산 ✅ → ③Layer B ✅ → ④법령 발견 ✅ → ⑤상황 확인 ✅ → ⑥a 북마크 ✅ → ⑥b 이력 ✅ → ⑦a 구독·알림함 ✅ → ⑦b 프로필 관련 구독 → ⑦c 이메일 발송 |
+| 웹 프론트엔드 (#14) — 화면 계획 [[screen-plan]](S01~S16: 질문 중심 + 법령 상세 허브, 모바일 우선, 법령 맥락 후속 질문, 대응 방안 상황 확인, 4단계 구현) · 기술 스택 [[frontend-stack]](D64: Next.js on Vercel + rewrites, Tailwind·shadcn/ui, OpenAPI 타입 생성) · 시각 디자인 [[visual-design]](방향 A 신뢰·공공형, 화면 시안 S01~S16) | 🟡 화면 계획·스택·시안 확정. 1단계(익명·로그인 흐름) 구현됨. 2단계는 하위 프로젝트로 — ①법령 조회 ✅ → ②자주 찾는 법령 ✅ → ②′쉬운 요약 선계산 ✅ → ③Layer B ✅ → ④법령 발견 ✅ → ⑤상황 확인 ✅ → ⑥a 북마크 ✅ → ⑥b 이력 ✅ → ⑦a 구독·알림함 ✅ → ⑦c 이메일 발송 · ⑦b 프로필 관련 구독(보류 — contextual retrieval 도입 때) |
 
-`./gradlew test` 기준 869개(2026-11-15) — 통합(실 Postgres/pgvector, Testcontainers)과 무료 국가법령정보 API 라이브 스모크(로컬 `.env` 의 OC 로 켜짐, CI 는 건너뜀) 포함. 라이브 스모크 6건은 로컬 IP 가 법제처 OPEN API 에 등록돼 있지 않아 실패(`사용자 정보 검증에 실패`), 나머지는 통과. 웹 `pnpm vitest run` 46개 파일·278 · Playwright E2E 34(17개 × 모바일·데스크톱, 모의 API). skip 8건(6개 클래스)은 실 임베딩·번역·해석(Layer A·Layer B)·법령 발견·상황 확인 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
+`./gradlew test` 기준 906개(2026-11-24, 실패 0) — 통합(실 Postgres/pgvector, Testcontainers)·패키지 의존 규칙(`ArchitectureTest`, D90)과 무료 국가법령정보 API 라이브 스모크(로컬 `.env` 의 OC 로 켜짐, CI 는 건너뜀) 포함. 웹 `pnpm test` 46개 파일·285 · Playwright E2E 38(19개 × 모바일·데스크톱, 모의 API). skip 8건(6개 클래스)은 실 임베딩·번역·해석(Layer A·Layer B)·법령 발견·상황 확인 라이브 스모크/평가(`*LiveSmokeTest`·`*LiveTest`, 유료 API)로 옵트인·수동 전용.
 
 > ✅ **`[Law]` 해결(D54 · [[004-jejeong-law-no-baseline-english-envelope|troubleshooting/004]]).** `본문 응답에 '법령' 블록이 없다: [Law]`는 **제정 법령 = 현행본 없음**이 원인 — `fetchCurrent`가 `null` 반환(전부 신설)으로 처리. 남은 라이브 스모크의 `빈 응답`은 진단 probe 과다호출로 인한 **국가법령정보 API 일일 쿼터 소진**(쿼터 회복 후 정상, 코드 무관).
 
 ### 구현 순서 (큐)
 
-… Query Planner ✅ · Analysis Engine Layer A ✅ · QueryDispatcher 차원핸들러 ✅ · 최소 수직 슬라이스(REST) ✅(#13) · **배포 자립 스택(compose+CI) ✅**(D59) → **인증·UserProfile(#12)** ①인증 ✅(D60) · ②프로필·동의 ✅(D61) → **③Layer B(프로필→프롬프트)** ✅ · **LawDiscovery(#19)** ✅ · **웹 UI**(#14) · 클라우드 인프라(D63) 설계 ✅ → 저장소 산출물 ✅ → **AWS 구축·운영 투입 ✅**(2026-11-16, #44) → 평가 기준선(`lia eval`) · ⑦b · ⑦c.
+… Query Planner ✅ · Analysis Engine Layer A ✅ · QueryDispatcher 차원핸들러 ✅ · 최소 수직 슬라이스(REST) ✅(#13) · **배포 자립 스택(compose+CI) ✅**(D59) → **인증·UserProfile(#12)** ①인증 ✅(D60) · ②프로필·동의 ✅(D61) → **③Layer B(프로필→프롬프트)** ✅ · **LawDiscovery(#19)** ✅ · **웹 UI**(#14) · 클라우드 인프라(D63) 설계 ✅ → 저장소 산출물 ✅ → **AWS 구축·운영 투입 ✅**(2026-11-16, #44) → 평가 기준선 ✅(2026-11-21) → 이름 해소 개선 ✅(D87~D89) → 패키지 재배치·의존 규칙 ✅(D90) → ⑦c 이메일 · 개인정보처리방침(#35) (⑦b 보류).
 
 ---
 
@@ -119,9 +119,9 @@ JDK 21이 없어도 `settings.gradle`의 foojay 리졸버가 자동으로 받아
 같은 애플리케이션이지만 성격이 다르다. **온라인에 새 작업을 넣기 전에 "오프라인으로 미리 할 수 없나"를 먼저 묻는다.**
 
 ```
-[오프라인 · 배치]  스케줄러 → LawConnector → Normalizer → Diff Builder
-                   → LawFacts 파생 → RAG Indexer → Postgres+pgvector
+[오프라인 · 배치]  cron → IngestJob(작업 큐) → LawConnector → Normalizer → DiffBuilder
+                   → LawStore(정본) → RAGIndexer(pgvector) → SUMMARIZE(Layer A 저장본)
 
-[온라인 · 요청]    사용자 → 웹앱 → REST → Query Planner(번역·해소/검색)
-                   → QueryDispatcher(조립) → AnalysisEngine(RAG+LLM) → 인용검증 → 결과
+[온라인 · 요청]    사용자 → 웹앱 → REST → Query Planner(번역·해소/발견)
+                   → QueryDispatcher → Layer A 저장본 | AnalysisEngine(Layer B, Claude) → 인용검증 → 결과
 ```

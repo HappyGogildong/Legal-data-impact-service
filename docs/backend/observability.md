@@ -49,7 +49,7 @@ Grafana `http://localhost:3001`(익명 Admin) · Prometheus `:9090` · Tempo `:3
 
 ### 1.1 증분 1 — 구축 범위·상태 (2026-08-18)
 
-**측정·추적 대상을 먼저 정의하고(§2·§3.1) 그에 맞춘 스택만 세운다.** 온라인 답변 경로(dispatch·LLM·RAG)는 미구현이라 도메인 지표는 **hook(배선)** 으로 두고, 지금 코드가 있는 **오프라인 파이프라인**을 실측한다.
+**측정·추적 대상을 먼저 정의하고(§2·§3.1) 그에 맞춘 스택만 세운다.** 증분 1 당시엔 온라인 답변 경로(dispatch·LLM·RAG)가 없어 **오프라인 파이프라인**을 실측했다. 온라인 경로는 이후 들어왔고, 그 계측은 Prometheus 지표가 아니라 DB 기록(`llm_calls`·`query_events`, D83)으로 한다(§1 아래 행·[[QueryEventRecorder]]).
 
 | 구성 | 이번 증분 | 비고 |
 |---|---|---|
@@ -59,7 +59,7 @@ Grafana `http://localhost:3001`(익명 Admin) · Prometheus `:9090` · Tempo `:3
 | **오프라인 파이프라인 계측** | ✅ | fetch·normalize·diff·resolve·ingest (§2 live) |
 | Grafana 대시보드(`lia-overview`) | ✅ | 파이프라인 지연·JVM·HTTP. LLM 호출·비용은 `LIA · Token & Cost`, 분석 결과는 `LIA · Requests` 로 안내 |
 | 데모 러너(`@Profile("demo")`) | ✅ | 번들 fixture → normalize→diff, 베이스라인 생성 |
-| **Loki**(로그)·**k6**(부하) | ⬜ 증분 2 | 이번 "측정·추적 대상"이 아님 — 온라인 경로 landing 후 |
+| **Loki**(로그)·**k6**(부하) | ⬜ 증분 2 | 아직 착수 안 함 — 배포 스택에 없다 |
 | LLM 호출·토큰·비용 | ✅ DB 기록 | 호출 1회 = `llm_calls` 1행, 대시보드 `LIA · Token & Cost`(D83) — Prometheus 카운터 대신 |
 
 ---

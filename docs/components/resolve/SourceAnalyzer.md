@@ -16,7 +16,7 @@ related: ["components/component-specs.md", "architecture/v0.8-pending-law-corpus
 
 ## Collaborators
 - 아웃바운드 포트: **`LawLookup`**(정확 매칭) · `semanticSearch`(의미검색, 선택 — `Function<String, List<RawLaw>>`).
-  - `LawLookup` 구현 = **`store.LawStoreLookup`**([[LawStore]]) — `law_versions` 에서 오늘(서울) 이후 시행예정본 중 제목에 이름이 글자 그대로 들어 있는 것, 정확히 같은 제목 → 짧은 제목 → 시행일 순 최대 10건(D87). `lookup` 이 없으면 정확 매칭을 건너뛴다.
+  - `LawLookup` 구현 = **`pipeline.resolve.LawStoreLookup`**([[LawStore]] 의 `law_versions` 를 읽는다) — `law_versions` 에서 오늘(서울) 이후 시행예정본 중 제목에 이름이 글자 그대로 들어 있는 것, 정확히 같은 제목 → 짧은 제목 → 시행일 순 최대 10건(D87). `lookup` 이 없으면 정확 매칭을 건너뛴다.
   - `semanticSearch` 구현 = **`ChunkStoreLawSearch`** — [[ChunkStore]] 검색 청크 20개를 `lawId` 로 dedupe(랭킹 순서 보존)해 후보 5개, 메타(title·efYd)는 청크 metadata([[RAGIndexer]]).
 - 계측: `ObservationRegistry`(선택, `NOOP`) — `lia.resolve{state}`.
 - 외부 시스템: 없음(포트 뒤).

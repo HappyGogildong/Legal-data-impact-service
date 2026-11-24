@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트
 
-**LIA (입법 영향 분석기)** — 아직 시행 전인 법안이 시민 개인에게 미칠 영향과 대응 행동을 알려주는 웹앱. 문서·주석·커밋 메시지는 한국어.
+**LIA (입법 영향 분석기)** — 공포됐지만 아직 시행 전인 법령이 시민 개인에게 미칠 영향과 대응 행동을 알려주는 웹앱. 문서·주석·커밋 메시지는 한국어.
 
-처음 온보딩할 때는 `docs/onboarding.md` → `docs/ARCHITECTURE.md`(색인, 최신 스냅샷 v0.6) → `docs/adr/decision-log.md`(결정 D01~) 순서로 읽는다.
+처음 온보딩할 때는 `docs/onboarding.md` → `docs/ARCHITECTURE.md`(색인, 최신 스냅샷 v0.9) → `docs/adr/decision-log.md`(결정 D01~) 순서로 읽는다.
 
 ## 명령어
 
@@ -14,8 +14,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Java 테스트 (단위 + 자격증명 바인딩 + 실 API 스모크; 키 없으면 스모크는 자동 스킵)
 cd core && ./gradlew test
 
-# 출처 연동 진단 (자격증명·응답 형식·본문 서비스 탐색)
-./.venv/Scripts/python.exe tools/probe_sources.py 주택임대차
+# 웹 (Next.js) — 단위(vitest)·E2E(Playwright, 모의 API)
+cd web && pnpm test && pnpm e2e
+
+# 국가법령정보 응답 진단 (시행예정 목록·본문)
+./.venv/Scripts/python.exe tools/probe_eflaw.py
 
 # 문서 사이트
 ./.venv/Scripts/python.exe -m mkdocs serve
@@ -30,25 +33,27 @@ Windows 콘솔(cp949)에서 한글 출력이 깨지면 `export PYTHONIOENCODING=
 
 | 디렉터리 | 언어 | 책임 |
 |---|---|---|
-| `core/` | Java Spring (**Boot 4.0 + Spring AI 2.0**) | **운영 전체** — 파이프라인(수집·식별·정규화·임베딩·추론) + 도메인·커맨드·REST API |
-| `tools/` | Python | 독립 진단 스크립트(`probe_sources.py`) — 운영 코드 아님. `.env`만 읽음 |
-| `mcp/` | TypeScript | 웹 프론트엔드. MCP 어댑터는 내부 전용 — **사용자에게 노출하지 않음** |
+| `core/` | Java Spring (**Boot 4.0 + Spring AI 2.0**) | **운영 전체** — 배치(수집·정규화·diff·색인·요약 선계산) + 질의(번역·해소·발견·분석) + 사용자 기능·REST API |
+| `web/` | TypeScript (Next.js 16) | 웹 프론트엔드 — Vercel 배포, API 는 rewrites 로 core 에 프록시(D64) |
+| `ops/` | 셸·compose·Grafana | 운영 배포(EC2 compose·`lia` 명령·cron·자동 배포)와 관측 구성(D63·D86) |
+| `tools/` | Python | 진단 스크립트(`probe_eflaw.py` 등)·평가 보고서 렌더러(`eval/render_report.py`) — 운영 코드 아님 |
+| `mcp/` | TypeScript | PoC 스텁. MCP 어댑터는 내부 전용 — **사용자에게 노출하지 않음** |
 
 Spring 버전 변경점(Boot 3.x→4.0, AI 1.x→2.0)은 `docs/reference/spring-migration.md` 참고 — Jackson 3(`tools.jackson`)·옵션 빌더 강제가 코드에서 주의할 핵심.
 
-데이터 흐름 두 갈래: **(수집·적재)** 신뢰 출처 → Connectors → 법안은 Normalizer→Bill Store, 현행법은 RAG Indexer→Vector Index. **(런타임)** 웹 → Spring REST → AnalysisPipeline(게이트·조립·검증·캐시) → Analysis Engine(RAG 검색 + Claude 추론, 내부 호출) → 구조화 ImpactResult 반환.
+데이터 흐름 두 갈래: **(오프라인 배치)** 국가법령정보 → `LawConnector`(ACL) → `Normalizer` → `DiffBuilder` → `LawStore`(정본) · `RAGIndexer` → pgvector 색인 · `SUMMARIZE` 작업이 Layer A 저장본(`law_summaries`)을 만든다(D62·D67). **(온라인 질의)** 웹 → REST → `AnalyzeUseCase` → `QueryPlanner`(번역·해소/발견) → `QueryDispatcher`(차원 핸들러) → Layer A 는 저장본 조회, Layer B 는 `AnalysisEngine`(Claude 추론·인용 검증) → 응답 DTO.
 
 핵심 설계 원칙 (전 코드에 관철):
 - **그라운딩**: 모든 분석 주장은 주입된 조문 `source_id`만 인용 가능. 인용 없는 응답은 게이트에서 차단.
 - **fail-closed 해소 4상태**: `RESOLVED / AMBIGUOUS / NOT_FOUND_YET / UNVERIFIED`. 신뢰 출처에서 확인 안 되면 분석하지 않는다. 뉴스·사용자 입력 *내용*은 사실이 아니라 식별 단서.
-- **2계층 분석**: Layer A(법령 사실·LawFacts·조문 diff — 프로필 무관, 오프라인 선계산·캐시) → Layer B(프로필별 영향·대응안, 온라인).
+- **2계층 분석**: Layer A(요약·변경점 — 프로필 무관, 배치가 선계산해 저장, 온라인 Opus 호출 0, D67·D80) → Layer B(프로필별 영향·대응안, 요청 시 온라인, D69).
 - **RAG는 탐색(Discovery)에만**: 시행예정 변경조문·요약을 단일 `pending` ns에 색인(D55), "어떤 법인지 찾기"에 사용(SourceAnalyzer/LawDiscovery). **분석 경로는 벡터 검색이 아니다** — 대상이 특정된 뒤 정본·baseline을 `(lawId, effectiveDate)`로 LawStore에서 **정확 조회**해 컨텍스트에 통째로 넣는다(전문 임베딩 안 함, AnalysisEngine 정합화 2026-08-27). 색인·검색은 PgVectorStore가 **동일 EmbeddingModel**로 내부 임베딩해 벡터공간 일치를 보장(옛 law ns·공유 Embedder 핫패스 가정은 폐기).
-- 추론=Claude Opus 5.5(외부 API, D68), 임베딩=별도 외부 API(OpenAI vs Upstage 벤치 중, `docs/reference/embedding-benchmark.md`). 자체 모델 학습·파인튜닝 없음.
+- 추론=Claude Opus 5.5(외부 API, D68), 임베딩=OpenAI `text-embedding-3-small`(dim 1536, D58). 자체 모델 학습·파인튜닝 없음.
 - 저장소=단일 Postgres+pgvector(ADR-001). 임베딩 테이블은 파이프라인 소유(`db/init.sql`), 관계형 도메인은 Spring 소유.
 
 ## 신뢰 출처 — 이름 혼동 주의
 
-법제처(MOLEG)가 입법예고와 국가법령정보센터를 **둘 다 운영**하므로, 설정 키는 운영기관이 아니라 **내용 기준**:
+법제처(MOLEG)가 입법예고와 국가법령정보센터를 **둘 다 운영**하므로, 설정 키는 운영기관이 아니라 **내용 기준**이다. MVP 가 쓰는 출처는 `law` 하나(D42) — `assembly`·`moleg` 는 설정만 남은 post-MVP 경로:
 
 | 키 | 출처 | 내용 | 인증 |
 |---|---|---|---|
@@ -56,8 +61,8 @@ Spring 버전 변경점(Boot 3.x→4.0, AI 1.x→2.0)은 `docs/reference/spring-
 | `moleg` | 법제처 정부입법예고 | 정부제출 법안 | **OC** (회원 이메일의 아이디 부분) |
 | `law` | 국가법령정보(law.go.kr) | 현행 법령(diff 기준선) | **OC** |
 
-열린국회 API 함정 2가지 (실측·해결됨):
-- 오류 응답은 최상위 `{"RESULT": {...}}` 형태(정상 응답의 `head[].RESULT`와 다름) — `AssemblyEnvelope.resultCode`가 둘 다 처리.
+열린국회 API 함정 2가지 (실측 — 의안 경로 재도입 시 참고):
+- 오류 응답은 최상위 `{"RESULT": {...}}` 형태(정상 응답의 `head[].RESULT`와 다름) — 삭제된 `AssemblyEnvelope.resultCode`가 둘 다 처리했다.
 - (열린국회, post-MVP) `Type=json` 이어도 **`Content-Type: text/html`** 로 응답 → `String`으로 받아 Jackson 3로 직접 파싱. 국가법령정보는 정상 `application/json` 이지만 오류가 200으로 오므로 봉투 검사는 필수(`LawEnvelope.checkError`).
 
 ## 패키지 규약 (core — 2026-11-23 개정, D90)
@@ -112,10 +117,10 @@ com.lia.core
 - **작업 트래킹**: GitHub Issues(라벨 `area:*`/`type:*`/`priority:*`, 마일스톤 M1~M4). 완료 작업도 이슈로 남기고 close해 이력을 유지한다. 코드 변경 시 관련 이슈 번호를 커밋/PR에 참조.
 - mermaid 다이어그램의 엣지 라벨에 괄호 `()`를 쓰면 파싱이 깨진다(노드 라벨은 따옴표라 무관).
 
-## 현재 상태 (2026-11-18 기준)
+## 현재 상태 (2026-11-24 기준)
 
-MVP 기능 구현과 **AWS 운영 투입 완료**(EC2+RDS+Vercel, [`docs/backend/cloud-infra.md`](docs/backend/cloud-infra.md)), **main 머지 시 자동 배포**(D86 — OIDC → SSM 문서 `LIA-Deploy`, 롤백은 Actions `Deploy` 수동 실행) — 시행예정 법령 수집·정규화·diff·색인 배치(D62, cron 매일 04:00·일요일 `--full`, 같은 시행일 공포본 병합 D85), 분석 Layer A 선계산(운영 일괄 요약은 꺼 둠)·Layer B 개인화(D69), 법령 발견(D70)·상황 확인(D71)·북마크·이력·구독 알림함(D72~D74), 웹(Next.js). 세부 진척은 [`docs/status.md`](docs/status.md), 결정은 decision-log(D01~D89). 다음: 평가 기준선(`lia eval`)·단가 입력 → ⑦b 프로필 관련 구독 · ⑦c 이메일. `mcp/`는 아직 PoC 스텁.
+MVP 기능 구현과 **AWS 운영 투입 완료**(EC2+RDS+Vercel, [`docs/backend/cloud-infra.md`](docs/backend/cloud-infra.md)), **main 머지 시 자동 배포**(D86 — OIDC → SSM 문서 `LIA-Deploy`, 롤백은 Actions `Deploy` 수동 실행) — 시행예정 법령 수집·정규화·diff·색인 배치(D62, cron 매일 04:00·일요일 `--full`, 같은 시행일 공포본 병합 D85), 분석 Layer A 선계산(운영 일괄 요약은 꺼 둠)·Layer B 개인화(D69), 법령 발견(D70)·상황 확인(D71)·북마크·이력·구독 알림함(D72~D74), 웹(Next.js), RAG 오프라인 평가와 운영 보고서(D83, `lia eval` → `docs/eval/reports/`), 법령 이름 해소 개선(D87~D89), 패키지 재배치·ArchUnit 의존 규칙(D90). 세부 진척은 [`docs/status.md`](docs/status.md), 결정은 decision-log(D01~D90), 열린 일은 `gh issue list`. `mcp/`는 아직 PoC 스텁.
 
-**MVP 수집 경로(D42, 2026-08-02):** 분석 대상은 의안이 아니라 **공포 후 시행 대기 법령**(`target=eflaw`). 전문·개정문·제개정이유·부칙이 모두 제공되므로 D38(법안 본문 갭)은 해소됐고, 의안 경로는 post-MVP로 강등돼 **코드에서 삭제**했다(`SourceConnector`·`RawBill`·`Assembly*`). 계약은 `docs/components/ingest/SourceConnector.md`에 보존.
+**MVP 수집 경로(D42, 2026-08-02):** 분석 대상은 의안이 아니라 **공포 후 시행 대기 법령**(`target=eflaw`). 전문·개정문·제개정이유·부칙이 모두 제공되므로 D38(법안 본문 갭)은 해소됐고, 의안 경로는 post-MVP로 강등돼 **코드에서 삭제**했다(`SourceConnector`·`RawBill`·`Assembly*`). 계약은 `docs/components/connector/SourceConnector.md`에 보존.
 
 **실측 함정(국가법령정보):** ① `display=1` 이면 `law`가 배열이 아니라 **단일 객체** ② 인증 실패도 **HTTP 200** + `{"result":"사용자 정보 검증에 실패..."}` ③ `조문내용`만 읽으면 본문이 빔(`항→호→목` 재귀 병합 필수) ④ 부칙은 이력 전체 → `부칙공포번호`로 필터 ⑤ 연결키는 **`법령ID`**(MST는 버전마다 다름). 재현: `python tools/probe_eflaw.py`
