@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **LIA (입법 영향 분석기)** — 공포됐지만 아직 시행 전인 법령이 시민 개인에게 미칠 영향과 대응 행동을 알려주는 웹앱. 문서·주석·커밋 메시지는 한국어.
 
-처음 온보딩할 때는 `docs/onboarding.md` → `docs/ARCHITECTURE.md`(색인, 최신 스냅샷 v0.9) → `docs/adr/decision-log.md`(결정 D01~) 순서로 읽는다.
+처음 온보딩할 때는 `docs/onboarding.md` → `docs/ARCHITECTURE.md`(색인, 최신 스냅샷 v1.0) → `docs/adr/decision-log.md`(결정 D01~) 순서로 읽는다.
 
 ## 명령어
 

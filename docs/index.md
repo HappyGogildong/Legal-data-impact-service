@@ -9,7 +9,7 @@ title: 입법 영향 분석기 (LIA) — 설계 문서
 > **처음 오셨나요? → [🚀 시작하기(온보딩)](onboarding.md)** 부터 읽으세요. 읽기 순서·문서 지도·역할별 경로를 안내합니다.
 
 ## 바로가기
-- 전체 그림: [아키텍처 색인](ARCHITECTURE.md) → 최신 [v0.9](architecture/v0.9-nl-query-planner.md)
+- 전체 그림: [아키텍처 색인](ARCHITECTURE.md) → 최신 [v1.0](architecture/v1.0-operating-service.md)
 - 결정 이력: [decision-log](adr/decision-log.md) (D01~D90)
 - 기능·현황: [feature-spec](product/feature-spec.md) · [status](status.md)
 - 개발 상세: [component-specs](components/component-specs.md)
